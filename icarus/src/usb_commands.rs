@@ -4,9 +4,9 @@ use crate::{
     utilities, Mono,
 };
 use bin_packets::packets::{CommandPacket, ConnectionTest};
-use icarus::{print, println};
 use embedded_io::Write;
 use fugit::ExtU64;
+use icarus::{print, println};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use rtic_sync::channel::Receiver;
@@ -108,7 +108,7 @@ pub async fn command_handler(
                         .radio_link
                         .lock(|device| device.construct_packet(packet, Device::Icarus));
                     let serialized =
-                        bincode::encode_to_vec(&link_packet, bincode::config::standard()).unwrap();
+                        bincode::encode_to_vec(link_packet, bincode::config::standard()).unwrap();
 
                     ctx.shared.radio_link.lock(|device| {
                         device.device.write(&serialized).ok();

@@ -12,6 +12,9 @@ pub mod usb_commands;
 pub mod usb_io;
 pub mod utilities;
 
+#[allow(dead_code)]
+use panic_halt as _;
+
 // We require an allocator for some heap stuff - unfortunatly bincode serde
 // doesn't have support for heapless vectors yet
 extern crate alloc;
@@ -20,16 +23,10 @@ use linked_list_allocator::LockedHeap;
 use crate::tasks::*;
 use crate::usb_commands::*;
 use crate::usb_io::*;
-use core::{
-    cmp::max,
-    mem::MaybeUninit,
-};
-use bme280::i2c::BME280;
-use embedded_hal::{digital::{OutputPin, StatefulOutputPin}};
-use embedded_hal_bus::i2c::AtomicDevice;
+use core::mem::MaybeUninit;
+//use bme280::i2c::BME280;
 use embedded_hal_bus::util::AtomicCell;
-use icarus::{I2CMainBus, DelayTimer};
-
+use icarus::{DelayTimer, I2CMainBus};
 
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
@@ -90,7 +87,6 @@ mod app {
     >;
 
     pub static mut USB_BUS: Option<UsbBusAllocator<hal::usb::UsbBus>> = None;
-
     #[shared]
     pub struct Shared {
         //uart0: UART0Bus,
@@ -103,7 +99,7 @@ mod app {
         pub serial_console_writer: serial_handler::SerialWriter,
         pub clock_freq_hz: u32,
         pub software_delay: DelayTimer,
-        pub env_sensor: BME280<AtomicDevice<'static,I2CMainBus>>
+        //pub env_sensor: BME280<AtomicDevice<'static,I2CMainBus>>
     }
 
     #[local]
@@ -175,8 +171,8 @@ mod app {
         #[task(shared = [radio_link], priority = 1)]
         async fn radio_flush(mut ctx: radio_flush::Context);
 
-        #[task(shared = [serial_console_writer, software_delay, env_sensor], priority = 3)]
+        #[task(shared = [serial_console_writer, software_delay], priority = 3)]
         async fn sample_sensors(mut ctx: sample_sensors::Context);
-        
+
     }
 }

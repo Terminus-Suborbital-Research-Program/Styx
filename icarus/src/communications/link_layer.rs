@@ -52,7 +52,7 @@ impl LinkPacket {
             hash = hash.wrapping_mul(fnv_prime);
         }
 
-        for byte in bincode::encode_to_vec(&self.payload, standard()).unwrap() {
+        for byte in bincode::encode_to_vec(self.payload, standard()).unwrap() {
             hash ^= byte as u32;
             hash = hash.wrapping_mul(fnv_prime);
         }
@@ -129,9 +129,10 @@ where
 
 // When we can read, we can decode packets from the underlying device
 impl<D> LinkLayerDevice<D>
-    where
-        D: Read,{
-        pub fn read_link_packet(&mut self) -> Result<LinkPacket, DecodeError> {
-            todo!();
-        }
+where
+    D: Read,
+{
+    pub fn read_link_packet(&mut self) -> Result<LinkPacket, DecodeError> {
+        todo!();
+    }
 }

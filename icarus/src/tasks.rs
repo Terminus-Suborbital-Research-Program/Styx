@@ -1,10 +1,10 @@
 use bin_packets::{packets::CommandPacket, ConnectionTest};
 use bincode::{config::standard, error::DecodeError};
-use icarus::{print, println};
 use core::fmt::Write;
 use embedded_hal::digital::StatefulOutputPin;
 use embedded_io::Read;
 use fugit::ExtU64;
+use icarus::{print, println};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 
@@ -48,7 +48,7 @@ pub async fn radio_flush(mut ctx: radio_flush::Context<'_>) {
             core::cmp::min(on_board_baudrate.to_u32(), on_board_baudrate.to_in_air_bd());
 
         // slower is bps, so /1000 to get ms
-        slower = slower / 1000;
+        slower /= 1000;
 
         // Delay for that times the number of bytes flushed
         Mono::delay((slower as u64 * bytes_to_flush as u64).millis()).await;
@@ -131,8 +131,8 @@ pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'
                     continue;
                 }
 
-                match packet.payload {
-                    LinkLayerPayload::Payload(app_packet) => match app_packet {
+                if let LinkLayerPayload::Payload(app_packet) = packet.payload {
+                    match app_packet {
                         bin_packets::ApplicationPacket::Command(command) => match command {
                             // Connection test sequence
                             CommandPacket::ConnectionTest(connection) => match connection {
@@ -174,9 +174,7 @@ pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'
                             }
                             println!(ctx, "\n");
                         }
-                    },
-
-                    _ => {}
+                    }
                 }
             }
         }
@@ -185,63 +183,63 @@ pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'
     }
 }
 
-pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>) {
-    loop{
-        ctx.shared.software_delay.lock(|mut delay|{
-            ctx.shared.env_sensor.lock(|environment|{
-                let measurements = environment.measure(&mut delay).unwrap();
-                println!(ctx, "Measurements: {}", measurements.temperature);
-            });
-        });
+pub async fn sample_sensors(ctx: sample_sensors::Context<'_>) {
+    loop {
+        // ctx.shared.software_delay.lock(|mut delay|{
+        //     ctx.shared.env_sensor.lock(|environment|{
+        //         let measurements = environment.measure(&mut delay).unwrap();
+        //         println!(ctx, "Measurements: {}", measurements.temperature);
+        //     });
+        // });
         Mono::delay(250_u64.millis()).await;
     }
     // let pressure_result = environment.read_pressure();
-        // match pressure_result{
-        //     Ok(atomic_response) =>{
-        //         match atomic_response{
-        //             Some(pressure_value)=>{
-        //                 println!(ctx, "Pressure: {}", pressure_value);
-        //             }
-        //             None =>{
-        //                 println!(ctx, "No Pressure Result");
-        //             }
-        //         }
-        //     }
-        //     Err(atomic_response)=>{
-        //         match atomic_response{
-        //             embedded_hal_bus::i2c::AtomicError::Busy=>{
-        //                 println!(ctx, "Busy...");
-        //             }
-        //             embedded_hal_bus::i2c::AtomicError::Other(other_value) =>{
-        //                 match other_value{
-        //                     rp235x_hal::i2c::Error::Abort(_)=>{
-        //                         println!(ctx, "Aborted");                                
-        //                     }
-        //                     rp235x_hal::i2c::Error::InvalidReadBufferLength=>{
-        //                         println!(ctx,"Invalid Read Buffer Length");                                
-        //                     }
-        //                     rp235x_hal::i2c::Error::InvalidWriteBufferLength=>{
-        //                         println!(ctx,"Invalid Write Buffer Length");                                
-        //                     }
-        //                     rp235x_hal::i2c::Error::AddressOutOfRange(_)=>{
-        //                         println!(ctx,"Address Out of Range");                                
+    // match pressure_result{
+    //     Ok(atomic_response) =>{
+    //         match atomic_response{
+    //             Some(pressure_value)=>{
+    //                 println!(ctx, "Pressure: {}", pressure_value);
+    //             }
+    //             None =>{
+    //                 println!(ctx, "No Pressure Result");
+    //             }
+    //         }
+    //     }
+    //     Err(atomic_response)=>{
+    //         match atomic_response{
+    //             embedded_hal_bus::i2c::AtomicError::Busy=>{
+    //                 println!(ctx, "Busy...");
+    //             }
+    //             embedded_hal_bus::i2c::AtomicError::Other(other_value) =>{
+    //                 match other_value{
+    //                     rp235x_hal::i2c::Error::Abort(_)=>{
+    //                         println!(ctx, "Aborted");
+    //                     }
+    //                     rp235x_hal::i2c::Error::InvalidReadBufferLength=>{
+    //                         println!(ctx,"Invalid Read Buffer Length");
+    //                     }
+    //                     rp235x_hal::i2c::Error::InvalidWriteBufferLength=>{
+    //                         println!(ctx,"Invalid Write Buffer Length");
+    //                     }
+    //                     rp235x_hal::i2c::Error::AddressOutOfRange(_)=>{
+    //                         println!(ctx,"Address Out of Range");
 
-        //                     }
-        //                     rp235x_hal::i2c::Error::AddressReserved(_)=>{
-        //                         println!(ctx,"Address Reserved");                                
-        //                     }
-        //                     _=>{
-        //                         println!(ctx, "Something Happendededed");                                
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
-        // let temperature = environment.read_temperature().unwrap().unwrap();
-        // let humidity = environment.read_humidity().unwrap().unwrap();
+    //                     }
+    //                     rp235x_hal::i2c::Error::AddressReserved(_)=>{
+    //                         println!(ctx,"Address Reserved");
+    //                     }
+    //                     _=>{
+    //                         println!(ctx, "Something Happendededed");
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+    // let temperature = environment.read_temperature().unwrap().unwrap();
+    // let humidity = environment.read_humidity().unwrap().unwrap();
 
-        // println!(ctx, "Pressure: {}", pressure);
-        // println!(ctx, "Temperature: {}", pressure);
-        // println!(ctx, "Humidity: {}", pressure);
+    // println!(ctx, "Pressure: {}", pressure);
+    // println!(ctx, "Temperature: {}", pressure);
+    // println!(ctx, "Humidity: {}", pressure);
 }

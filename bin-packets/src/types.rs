@@ -131,7 +131,7 @@ mod timestamp_tests {
         let timestamp1 = UnixTimestampMillis::new(1000);
         let timestamp2 = UnixTimestampMillis::new(2000);
         let duration = (timestamp2 - timestamp1).expect("Underflow");
-    
+
         assert_eq!(duration.duration, 1000);
     }
 

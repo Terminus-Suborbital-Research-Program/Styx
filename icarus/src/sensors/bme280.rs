@@ -1,4 +1,1 @@
-
-struct BME280{
-    
-}
+struct BME280 {}

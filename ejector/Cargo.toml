@@ -7,8 +7,6 @@ build="build.rs"
 [dependencies]
 # HAL for the RP350X architecture
 rp235x-hal = {version="0.2.0", features = ["binary-info", "critical-section-impl", "rt", "defmt", "rtic-monotonic"], optional = true}
-# HAL for the older RP2040
-rp2040-hal = {version = "0.11.0", features = ["critical-section-impl", "rt", "defmt", "rtic-monotonic"], optional = true}
 # Embedded-hal for io traits
 embedded-hal-nb = "1.0.0"
 # Cortex-M peripherals
@@ -66,11 +64,3 @@ rp2350 = [
     "rtic-monotonics/rp235x",
     "rtic/thumbv8main-backend"
 ]
-
-[profile.dev]
-codegen-units = 1
-lto = "thin"
-debug = true
-
-[profile.release]
-lto = true

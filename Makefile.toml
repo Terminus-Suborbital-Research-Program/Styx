@@ -1,0 +1,2 @@
+[tasks.my_task]
+script = ["echo hello"]

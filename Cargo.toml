@@ -5,5 +5,11 @@ members = [
 	"gs-cli",
 	"icarus"
 ]
+resolver = "3"
 
+[profile.dev]
+lto = false
+
+[profile.release]
+lto = true
 
