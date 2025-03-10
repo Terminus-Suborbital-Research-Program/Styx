@@ -1,0 +1,9 @@
+[workspace]
+members = [
+	"bin-packets",
+	"ejector",
+	"gs-cli",
+	"icarus"
+]
+
+
