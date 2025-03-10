@@ -1,0 +1,40 @@
+[target.thumbv6m-none-eabi]
+# Pass some extra options to rustc, some of which get passed on to the linker.
+#
+# * linker argument --nmagic turns off page alignment of sections (which saves
+#   flash space)
+# * linker argument -Tlink.x tells the linker to use link.x as the linker
+#   script. This is usually provided by the cortex-m-rt crate, and by default
+#   the version in that crate will include a file called `memory.x` which
+#   describes the particular memory layout for your specific chip.
+# * no-vectorize-loops turns off the loop vectorizer (seeing as the M0+ doesn't
+#   have SIMD)
+rustflags = [
+    "-C", "link-arg=--nmagic",
+    "-C", "link-arg=-Tlink.x",
+    "-C", "link-arg=-Tdefmt.x",
+    "-C", "no-vectorize-loops",
+]
+
+runner = 'probe-rs run --chip rp235x'
+
+[target.thumbv8m.main-none-eabihf]
+
+rustflags = [
+    "-C", "link-arg=--nmagic",
+    "-C", "link-arg=-Tlink.x",
+    "-C", "link-arg=-Tdefmt.x",
+    "-C", "target-cpu=cortex-m33",
+]
+
+# "./picotool/build/picotool load -u -v -x -t elf" <- Old picotool loader
+runner = 'probe-rs run --chip rp235x'
+
+[build]
+target = "thumbv8m.main-none-eabihf" # Cortex-M33 (with FPU)
+
+[alias]
+flash-picotool = "build && ./picotool/build/picotool load -u -v -x -t elf"
+
+[env]
+DEFMT_LOG = "info"

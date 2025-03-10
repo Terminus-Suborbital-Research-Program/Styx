@@ -1,0 +1,9 @@
+[package]
+name = "bin-packets"
+version = "0.1.2"
+edition = "2021"
+publish = false
+
+[dependencies]
+bincode = {version="2.0.0", features = ["derive"], default-features = false}
+defmt = "0.3.10"

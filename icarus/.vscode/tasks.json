@@ -1,0 +1,66 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build Rust Project (Release)",
+            "type": "process",
+            "isBuildCommand": true,
+            "command": "cargo",
+            "args": [
+                "build",
+                "--release",
+                "--target",
+                "thumbv8m.main-none-eabihf"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": ["$rustc"],
+        },
+        {
+            "label": "Build Rust Project (For Debug)",
+            "type": "process",
+            "isBuildCommand": true,
+            "command": "cargo",
+            "args": [
+                "build",
+                "--target",
+                "thumbv8m.main-none-eabihf"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": ["$rustc"],
+        },
+        {
+            "label": "Flash Rust Project",
+            "type": "process",
+            "command": "${userHome}/.pico-sdk/openocd/0.12.0+dev/openocd.exe",
+            "args": [
+                "-s",
+                "${userHome}/.pico-sdk/openocd/0.12.0+dev/scripts",
+                "-f",
+                "interface/cmsis-dap.cfg",
+                "-f",
+                "target/rp2350.cfg",
+                "-c",
+                 "adapter speed 5000; program \"${workspaceFolder}/target/thumbv8m.main-none-eabihf/debug/canonical-toolchain\" verify reset exit"
+                // ^ This is needs to match the path to the outputted file from cargo build (no release)
+            ],
+            "options": {
+                "env": {
+                "WORKSPACE_FOLDER": "${workspaceFolder}"
+                }
+            },
+            "problemMatcher": [],
+            "windows": {
+                "command": "${env:USERPROFILE}/.pico-sdk/openocd/0.12.0+dev/openocd.exe"
+            }
+        }
+        
+    ]
+}
