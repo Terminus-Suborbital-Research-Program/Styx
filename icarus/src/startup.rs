@@ -1,4 +1,4 @@
-use bme280::i2c::BME280;
+//use bme280::i2c::BME280;
 use embedded_hal::digital::OutputPin;
 use fugit::RateExtU32;
 use fugit::RateExtU64;
@@ -20,9 +20,10 @@ use usb_device::device::UsbDeviceBuilder;
 use usb_device::device::UsbVidPid;
 use usbd_serial::SerialPort;
 
-use crate::actuators::{PWM2a};
-use crate::actuators::servo::{EjectionServoMosfet, LockingServoMosfet, Servo, LOCKING_SERVO_LOCKED};
 use crate::actuators::motor::{Motor, MotorXPWM};
+use crate::actuators::servo::HOLDING_ANGLE;
+use crate::actuators::servo::{EjectionServoMosfet, LockingServoMosfet, Servo};
+use crate::actuators::PWM2a;
 
 use crate::app::*;
 use crate::communications::hc12::HC12;
@@ -31,11 +32,11 @@ use crate::communications::link_layer::LinkLayerDevice;
 use crate::communications::serial_handler;
 use crate::communications::serial_handler::HeaplessString;
 use crate::communications::serial_handler::MAX_USB_LINES;
-use crate::{I2CMainBus, DelayTimer};
 use crate::hal;
 use crate::Mono;
 use crate::ALLOCATOR;
 use crate::HEAP_MEMORY;
+use crate::{DelayTimer, I2CMainBus};
 
 use embedded_hal_bus::i2c::AtomicDevice;
 use embedded_hal_bus::util::AtomicCell;
@@ -146,13 +147,13 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let locking_channel_pin = locking_channel_a.output_to(bank0_pins.gpio2);
     locking_channel_a.set_enabled(true);
     let mut locking_servo = Servo::new(locking_channel_a, locking_channel_pin, locking_mosfet_pin);
-    locking_servo.set_angle(LOCKING_SERVO_LOCKED);
+    locking_servo.set_angle(HOLDING_ANGLE);
 
     // Motor Initialization
     let mut motor_xy_pwm = pwm_slices.pwm2;
     motor_xy_pwm.enable();
-    motor_xy_pwm.set_top(65534/2);
-    motor_xy_pwm.set_div_int(1); 
+    motor_xy_pwm.set_top(65534 / 2);
+    motor_xy_pwm.set_div_int(1);
     let mut motor_x_channel: PWM2a = motor_xy_pwm.channel_a;
     let motor_x_channel_pin = motor_x_channel.output_to(bank0_pins.gpio4);
     let mut motor_x = Motor::new(motor_x_channel, motor_x_channel_pin);
@@ -163,7 +164,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let sda_pin = bank0_pins.gpio14.reconfigure();
     let scl_pin = bank0_pins.gpio15.reconfigure();
 
-    let i2c1: I2CMainBus= I2C::new_controller(
+    let i2c1: I2CMainBus = I2C::new_controller(
         ctx.device.I2C1,
         sda_pin,
         scl_pin,
@@ -173,10 +174,11 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     );
 
     let i2c_bus = ctx.local.i2c_main_bus.write(AtomicCell::new(i2c1));
-    
-    let mut delay: DelayTimer = rp235x_hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks); 
-    let mut bme280 = BME280::new_primary(AtomicDevice::new(i2c_bus));
-    bme280.init(&mut delay);
+
+    let mut delay: DelayTimer =
+        rp235x_hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
+    //let mut bme280 = BME280::new_primary(AtomicDevice::new(i2c_bus));
+    //bme280.init(&mut delay);
 
     // Set up USB Device allocator
     let usb_bus = UsbBusAllocator::new(hal::usb::UsbBus::new(
@@ -223,8 +225,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             serial_console_writer,
             clock_freq_hz: clock_freq.to_Hz(),
             software_delay: delay,
-            env_sensor: bme280
-            
+            //env_sensor: bme280
         },
         Local { led: led_pin },
     )

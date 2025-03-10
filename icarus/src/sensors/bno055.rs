@@ -1,3 +1,1 @@
-struct BNO055{
-    
-}
+struct BNO055 {}

@@ -6,10 +6,7 @@ build="build.rs"
 
 [dependencies]
 # HAL for the RP350X architecture
-rp235x-hal = {version="0.2.0", features = ["binary-info", "critical-section-impl", "rt", "defmt", "rtic-monotonic", "dcp-fast-f64"], optional = true}
-# HAL for the older RP2040
-rp2040-hal = {version = "0.11.0", features = ["critical-section-impl", "rt", "defmt", "rtic-monotonic"], optional = true}
-# Embedded-hal for io traits
+rp235x-hal = {version="0.2.0", features = ["binary-info", "critical-section-impl", "rt", "defmt", "rtic-monotonic", "dcp-fast-f64"], optional = true}# Embedded-hal for io traits
 embedded-hal-nb = "1.0.0"
 embedded_hal_0_2 = {package = "embedded-hal", version = "0.2.5", features = ["unproven"]}
 embedded-hal-bus = {version="0.3.0", features=["async"]}
@@ -48,18 +45,11 @@ bin-packets = { path = "../bin-packets" }
 linked_list_allocator = "0.10.5"
 
 # Sensors
-bme280 = { version = "0.5.1"}
-bmi323 = {path="../bmi323"}
+#bme280 = { version = "0.5.1"}
+#bmi323 = {path="../bmi323"}
 #bmi323 = {git"https://github.com/MeechaelA/bmi323.git"} - Request Access
-bmm350 = {path="../bmm350"}
+#bmm350 = {path="../bmm350"}
 #bmm350 = {git"https://github.com/MeechaelA/bmm350.git"} - Request Access
-
-
-
-[workspace]
-members = [
-]
-
 
 # Target features
 [features]
@@ -69,9 +59,3 @@ rp2350 = [
     "rtic-monotonics/rp235x",
     "rtic/thumbv8main-backend"
 ]
-
-[profile.dev]
-lto = false
-
-[profile.release]
-lto = true

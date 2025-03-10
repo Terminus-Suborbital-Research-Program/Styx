@@ -1,8 +1,15 @@
-use embedded_hal::pwm::SetDutyCycle;
 use crate::actuators::PWM2a;
+use embedded_hal::pwm::SetDutyCycle;
 
 // Motors Configuration
-pub type MotorXPWM = Motor<PWM2a, rp235x_hal::gpio::Pin<rp235x_hal::gpio::bank0::Gpio4, rp235x_hal::gpio::FunctionPwm, rp235x_hal::gpio::PullDown>>;
+pub type MotorXPWM = Motor<
+    PWM2a,
+    rp235x_hal::gpio::Pin<
+        rp235x_hal::gpio::bank0::Gpio4,
+        rp235x_hal::gpio::FunctionPwm,
+        rp235x_hal::gpio::PullDown,
+    >,
+>;
 
 pub struct Motor<C, P> {
     channel: C,

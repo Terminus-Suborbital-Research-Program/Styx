@@ -129,9 +129,10 @@ where
 
 // When we can read, we can decode packets from the underlying device
 impl<D> LinkLayerDevice<D>
-    where
-        D: Read,{
-        pub fn read_link_packet(&mut self) -> Result<LinkPacket, DecodeError> {
-            todo!();
-        }
+where
+    D: Read,
+{
+    pub fn read_link_packet(&mut self) -> Result<LinkPacket, DecodeError> {
+        todo!();
+    }
 }
