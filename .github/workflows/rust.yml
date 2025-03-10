@@ -18,6 +18,8 @@ jobs:
     steps:
     - uses: davidB/rust-cargo-make@v1.12.1
     - uses: actions/checkout@v4
+    - name: Install target
+      run: rustup target add thumbv8m.main-none-eabihf
     - name: Build
       run: cargo make build --verbose
     - name: Run tests
