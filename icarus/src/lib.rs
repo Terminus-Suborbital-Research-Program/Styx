@@ -1,10 +1,5 @@
 #![no_std]
-use rp235x_hal::{
-    gpio,
-    pac::I2C1,
-    uart::{UartConfig, UartPeripheral},
-    I2C,
-};
+use rp235x_hal::{gpio, pac::I2C1, uart::UartPeripheral, I2C};
 
 pub type UART0Bus = UartPeripheral<
     rp235x_hal::uart::Enabled,

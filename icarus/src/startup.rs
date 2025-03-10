@@ -20,7 +20,7 @@ use usb_device::device::UsbDeviceBuilder;
 use usb_device::device::UsbVidPid;
 use usbd_serial::SerialPort;
 
-use crate::actuators::motor::{Motor, MotorXPWM};
+use crate::actuators::motor::Motor;
 use crate::actuators::servo::HOLDING_ANGLE;
 use crate::actuators::servo::{EjectionServoMosfet, LockingServoMosfet, Servo};
 use crate::actuators::PWM2a;
@@ -38,7 +38,6 @@ use crate::ALLOCATOR;
 use crate::HEAP_MEMORY;
 use crate::{DelayTimer, I2CMainBus};
 
-use embedded_hal_bus::i2c::AtomicDevice;
 use embedded_hal_bus::util::AtomicCell;
 
 pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
@@ -175,7 +174,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     let i2c_bus = ctx.local.i2c_main_bus.write(AtomicCell::new(i2c1));
 
-    let mut delay: DelayTimer =
+    let delay: DelayTimer =
         rp235x_hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
     //let mut bme280 = BME280::new_primary(AtomicDevice::new(i2c_bus));
     //bme280.init(&mut delay);

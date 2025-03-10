@@ -48,7 +48,7 @@ pub async fn radio_flush(mut ctx: radio_flush::Context<'_>) {
             core::cmp::min(on_board_baudrate.to_u32(), on_board_baudrate.to_in_air_bd());
 
         // slower is bps, so /1000 to get ms
-        slower = slower / 1000;
+        slower /= 1000;
 
         // Delay for that times the number of bytes flushed
         Mono::delay((slower as u64 * bytes_to_flush as u64).millis()).await;
@@ -131,8 +131,8 @@ pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'
                     continue;
                 }
 
-                match packet.payload {
-                    LinkLayerPayload::Payload(app_packet) => match app_packet {
+                if let LinkLayerPayload::Payload(app_packet) = packet.payload {
+                    match app_packet {
                         bin_packets::ApplicationPacket::Command(command) => match command {
                             // Connection test sequence
                             CommandPacket::ConnectionTest(connection) => match connection {
@@ -174,9 +174,7 @@ pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'
                             }
                             println!(ctx, "\n");
                         }
-                    },
-
-                    _ => {}
+                    }
                 }
             }
         }
@@ -185,7 +183,7 @@ pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'
     }
 }
 
-pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>) {
+pub async fn sample_sensors(ctx: sample_sensors::Context<'_>) {
     loop {
         // ctx.shared.software_delay.lock(|mut delay|{
         //     ctx.shared.env_sensor.lock(|environment|{

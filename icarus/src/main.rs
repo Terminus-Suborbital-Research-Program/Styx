@@ -12,6 +12,9 @@ pub mod usb_commands;
 pub mod usb_io;
 pub mod utilities;
 
+#[allow(dead_code)]
+use panic_halt as _;
+
 // We require an allocator for some heap stuff - unfortunatly bincode serde
 // doesn't have support for heapless vectors yet
 extern crate alloc;
@@ -20,10 +23,8 @@ use linked_list_allocator::LockedHeap;
 use crate::tasks::*;
 use crate::usb_commands::*;
 use crate::usb_io::*;
-use core::{cmp::max, mem::MaybeUninit};
+use core::mem::MaybeUninit;
 //use bme280::i2c::BME280;
-use embedded_hal::digital::{OutputPin, StatefulOutputPin};
-use embedded_hal_bus::i2c::AtomicDevice;
 use embedded_hal_bus::util::AtomicCell;
 use icarus::{DelayTimer, I2CMainBus};
 

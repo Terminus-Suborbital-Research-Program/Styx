@@ -20,9 +20,9 @@ pub struct ChecksumError {
 impl LinkPacket {
     pub fn calculate_checksum(&self) -> u8 {
         let mut buffer = [0u8; 256];
-        let mut clone = self.clone();
+        let mut clone = *self;
         clone.checksum = 0;
-        let written = encode_into_slice(&clone, &mut buffer, standard()).unwrap();
+        let written = encode_into_slice(clone, &mut buffer, standard()).unwrap();
         crc_32(&buffer[..written]) as u8
     }
 
