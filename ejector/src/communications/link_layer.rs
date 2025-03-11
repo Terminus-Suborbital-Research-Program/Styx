@@ -56,7 +56,7 @@ impl LinkPacket {
         }
 
         let mut buffer = [0u8; 256];
-        let bytes = bincode::encode_into_slice(&self.payload, &mut buffer, standard()).unwrap();
+        let bytes = bincode::encode_into_slice(self.payload, &mut buffer, standard()).unwrap();
         for byte in &buffer[0..bytes] {
             hash ^= *byte as u32;
             hash = hash.wrapping_mul(fnv_prime);
@@ -179,7 +179,7 @@ where
                 },
             }
 
-            if self.buffer.len() == 0 {
+            if self.buffer.is_empty() {
                 return None;
             }
         }

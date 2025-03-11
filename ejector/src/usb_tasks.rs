@@ -1,8 +1,7 @@
-use crate::{communications::link_layer::Device, hal, utilities};
-use bin_packets::packets::ApplicationPacket;
+use crate::{hal, utilities};
 use ejector::println;
 use embedded_io::Write;
-use fugit::{Duration, ExtU64};
+use fugit::ExtU64;
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use rtic_sync::channel::{Receiver, Sender};
