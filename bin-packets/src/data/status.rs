@@ -6,6 +6,8 @@ use crate::{
     types::{DurationMillis, UnixTimestampMillis},
 };
 
+use super::JupiterTelemetry;
+
 /// Status information for Ejector
 #[derive(Debug, Clone, Copy, Encode, Decode, Format)]
 pub struct EjectorStatus {
@@ -29,6 +31,7 @@ pub struct JupiterStatus {
     pub time_in_phase: DurationMillis,
     pub timestamp: UnixTimestampMillis,
     pub packet_number: u16,
+    pub telemetry: JupiterTelemetry,
 }
 
 /// Status packet for Relay

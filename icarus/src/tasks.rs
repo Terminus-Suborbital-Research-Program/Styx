@@ -1,4 +1,3 @@
-use bin_packets::{packets::CommandPacket, ConnectionTest};
 use bincode::{config::standard, error::DecodeError};
 use core::fmt::Write;
 use embedded_hal::digital::StatefulOutputPin;
@@ -56,8 +55,6 @@ pub async fn radio_flush(mut ctx: radio_flush::Context<'_>) {
 }
 
 pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'_>) {
-    let mut connection_test_sequence: u16 = 0;
-    let mut connection_test_start = Mono::now();
     loop {
         let buffer = ctx
             .shared
@@ -134,33 +131,6 @@ pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'
                 if let LinkLayerPayload::Payload(app_packet) = packet.payload {
                     match app_packet {
                         bin_packets::ApplicationPacket::Command(command) => match command {
-                            // Connection test sequence
-                            CommandPacket::ConnectionTest(connection) => match connection {
-                                ConnectionTest::Start => {
-                                    connection_test_sequence = 0;
-                                    connection_test_start = Mono::now();
-                                }
-
-                                ConnectionTest::Sequence(seq) => {
-                                    connection_test_sequence += 1;
-                                    println!(ctx, "Received Connection Test Sequence: {}", seq);
-                                }
-
-                                ConnectionTest::End => {
-                                    println!(ctx, "Received Connection Test End");
-
-                                    let percentage_recieved =
-                                        (connection_test_sequence as f32 / 256.0) * 100.0;
-                                    println!(
-                                        ctx,
-                                        "Received {}% of the connection test sequence",
-                                        percentage_recieved
-                                    );
-
-                                    let elapsed = Mono::now() - connection_test_start;
-                                    println!(ctx, "Elapsed Time: {}ms", elapsed.to_millis());
-                                }
-                            },
                             _ => {}
                         },
 
@@ -183,7 +153,7 @@ pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'
     }
 }
 
-pub async fn sample_sensors(ctx: sample_sensors::Context<'_>) {
+pub async fn sample_sensors(_ctx: sample_sensors::Context<'_>) {
     loop {
         // ctx.shared.software_delay.lock(|mut delay|{
         //     ctx.shared.env_sensor.lock(|environment|{
