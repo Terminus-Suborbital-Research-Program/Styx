@@ -12,3 +12,10 @@ A shared library for communication packets is also present, as well as a common 
 If `picotool` is installed, `cargo make flash_debug_usb` or `cargo make flash_release_usb` will run the compiled source on a connected microcontroller. If a `probe-rs`-compatible device is connected and hooked up to a device, `cargo make run_debug_probers` will flash the flight software to the device through the SWD interface.
 
 Since not all binaries support testing, `cargo make test` excludes non-compatible crates from unit tests.
+
+It is generally better to run from within a `Docker` container (see below)
+
+# Docker
+Docker provides us a much more convenient method for running debuggers and flashers. It does require some setup.
+## Linux
+If you have `docker` installed, it should be plug and play using the `vscode` extention `Dev Containers`.
