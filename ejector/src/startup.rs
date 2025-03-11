@@ -1,6 +1,5 @@
 use defmt::info;
 use embedded_hal::digital::OutputPin;
-use embedded_io::Write;
 use fugit::RateExtU32;
 use hc12_rs::configuration::baudrates::B9600;
 use hc12_rs::configuration::{Channel, HC12Configuration, Power};
@@ -99,7 +98,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
                                             // GPIO10 is the programming pin for HC-12
     let programming = bank0_pins.gpio10.into_push_pull_output();
     // Copy the timer
-    let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks).clone();
+    let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
 
     info!("UART1 configured, assembling HC-12");
     let builder = hc12_rs::device::HC12Builder::<(), (), (), ()>::empty()

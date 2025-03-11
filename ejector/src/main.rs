@@ -49,7 +49,7 @@ mod app {
 
     use super::*;
 
-    use communications::{link_layer::LinkLayerDevice, *};
+    use communications::*;
 
     use hal::gpio::{self, FunctionSio, PullNone, SioOutput};
     use rp235x_hal::uart::UartPeripheral;

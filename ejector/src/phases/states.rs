@@ -7,6 +7,12 @@ pub struct EjectorStateMachine {
     next_phase: Option<EjectorPhase>,
 }
 
+impl Default for EjectorStateMachine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EjectorStateMachine {
     /// Ejector always enters the Standby phase first
     pub fn new() -> Self {
@@ -39,7 +45,7 @@ impl EjectorStateMachine {
 
     /// Copies the current phase
     pub fn phase(&self) -> EjectorPhase {
-        self.phase.clone()
+        self.phase
     }
 
     /// Sets the phase to a specific value

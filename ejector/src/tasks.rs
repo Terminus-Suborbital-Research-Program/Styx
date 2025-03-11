@@ -1,21 +1,15 @@
 use core::cmp::max;
 
-use bin_packets::{packets::ApplicationPacket, phases::EjectorPhase};
-use defmt::{error, info};
-use ejector::{print, println};
+use bin_packets::phases::EjectorPhase;
+use defmt::info;
 use embedded_hal::digital::StatefulOutputPin;
-use embedded_io::{Read, ReadReady, Write};
 use fugit::ExtU64;
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 
-use crate::{
-    app::*,
-    communications::link_layer::{LinkLayerPayload, LinkPacket},
-    Mono,
-};
+use crate::{app::*, Mono};
 
-pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'_>) {
+pub async fn incoming_packet_handler(ctx: incoming_packet_handler::Context<'_>) {
     // loop {
     //     if ctx.shared.suspend_packet_handler.lock(|suspend| *suspend) {
     //         Mono::delay(100_u64.millis()).await;
@@ -88,7 +82,7 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     }
 }
 
-pub fn uart_interrupt(mut ctx: uart_interrupt::Context<'_>) {
+pub fn uart_interrupt(ctx: uart_interrupt::Context<'_>) {
     // ctx.shared.radio_link.lock(|radio| {
     //     radio.device.update().ok();
     // });
@@ -96,10 +90,10 @@ pub fn uart_interrupt(mut ctx: uart_interrupt::Context<'_>) {
 
 pub async fn state_machine_update(mut ctx: state_machine_update::Context<'_>) {
     loop {
-        let wait_time = ctx.shared.state_machine.lock(|state_machine| {
-            let wait_time = state_machine.transition();
-            wait_time
-        });
+        let wait_time = ctx
+            .shared
+            .state_machine
+            .lock(|state_machine| state_machine.transition());
 
         match ctx
             .shared
@@ -146,7 +140,7 @@ pub async fn state_machine_update(mut ctx: state_machine_update::Context<'_>) {
     }
 }
 
-pub async fn hc12_programmer(mut ctx: hc12_programmer::Context<'_>) {
+pub async fn hc12_programmer(ctx: hc12_programmer::Context<'_>) {
     info!("Programming HC12. Don't do this!");
 
     // // Suspend the packet handler
