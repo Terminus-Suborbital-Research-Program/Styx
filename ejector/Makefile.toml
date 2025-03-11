@@ -26,7 +26,7 @@ command = "picotool"
 args = ["load", "-u", "-v", "-x", "-t", "elf", "../target/thumbv8m.main-none-eabihf/release/ejector"]
 dependencies = ["build_release"]
 
-[tasks.run_debug_probers]
+[tasks.run_debug_probe]
 install_crate = "probe-rs"
 command = "probe-rs"
 # run --chip rp235x
