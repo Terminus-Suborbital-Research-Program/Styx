@@ -1,23 +1,11 @@
 use bincode::{Decode, Encode};
 use defmt::Format;
 
-use crate::{
-    phases::{EjectorPhase, IcarusPhase, JupiterPhase},
-    types::UnixTimestampMillis,
-};
+use crate::phases::EjectorPhase;
 
-/// Commands a transition into a phase
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode, Format)]
-pub enum DevicePhaseVariants {
-    Jupiter(JupiterPhase),
-    Icarus(IcarusPhase),
-    Ejector(EjectorPhase),
-}
-
-/// Holds command variants
-#[derive(Debug, Clone, Copy, Encode, Decode, Format)]
-pub enum CommandVariants {
-    SetTimeTo(UnixTimestampMillis),
-    SetPhase(DevicePhaseVariants),
+#[derive(Debug, Clone, Copy, Encode, Decode, PartialEq, Eq, Format)]
+pub enum CommandPacket {
+    SyncTime(u32),
     Ping,
+    EjectorPhaseSet(EjectorPhase),
 }
