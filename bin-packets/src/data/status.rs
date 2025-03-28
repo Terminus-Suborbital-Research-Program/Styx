@@ -1,5 +1,6 @@
 use bincode::{Decode, Encode};
 use defmt::Format;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     phases::EjectorPhase,
@@ -9,7 +10,7 @@ use crate::{
 use super::JupiterTelemetry;
 
 /// Status information for Ejector
-#[derive(Debug, Clone, Copy, Encode, Decode, Format)]
+#[derive(Debug, Clone, Copy, Encode, Decode, Format, Serialize, Deserialize)]
 pub struct EjectorStatus {
     pub phase: EjectorPhase,
     pub time_in_phase: u64,
@@ -18,7 +19,7 @@ pub struct EjectorStatus {
 }
 
 /// Status information for ICARUS
-#[derive(Debug, Clone, Copy, Encode, Decode, Format)]
+#[derive(Debug, Clone, Copy, Encode, Decode, Format, Serialize, Deserialize)]
 pub struct IcarusStatus {
     pub time_in_phase: DurationMillis,
     pub timestamp: UnixTimestampMillis,
@@ -26,7 +27,7 @@ pub struct IcarusStatus {
 }
 
 /// Status information for JUPITER
-#[derive(Debug, Clone, Copy, Encode, Decode, Format)]
+#[derive(Debug, Clone, Copy, Encode, Decode, Format, Serialize, Deserialize)]
 pub struct JupiterStatus {
     pub time_in_phase: DurationMillis,
     pub timestamp: UnixTimestampMillis,
