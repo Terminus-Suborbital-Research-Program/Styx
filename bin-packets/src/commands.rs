@@ -3,7 +3,9 @@ use defmt::Format;
 
 use crate::phases::EjectorPhase;
 
-#[derive(Debug, Clone, Copy, Encode, Decode, PartialEq, Eq, Format)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Copy, Encode, Decode, PartialEq, Eq, Format, Serialize, Deserialize)]
 pub enum CommandPacket {
     SyncTime(u32),
     Ping,

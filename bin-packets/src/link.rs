@@ -1,9 +1,11 @@
 use bincode::{config::standard, encode_into_slice, Decode, Encode};
 use defmt::Format;
 
+use serde::{Deserialize, Serialize};
+
 use crate::{ApplicationPacket, DeviceIdentifier};
 
-#[derive(Debug, Clone, Copy, Encode, Decode, Format)]
+#[derive(Debug, Clone, Copy, Encode, Decode, Format, Serialize, Deserialize)]
 pub struct LinkPacket {
     pub from: DeviceIdentifier,
     pub to: DeviceIdentifier,
@@ -11,7 +13,7 @@ pub struct LinkPacket {
     checksum: u8,
 }
 
-#[derive(Debug, Clone, Copy, Encode, Decode, PartialEq, Eq, Format)]
+#[derive(Debug, Clone, Copy, Encode, Decode, PartialEq, Eq, Format, Serialize, Deserialize)]
 pub struct ChecksumError {
     pub expected: u8,
     pub actual: u8,

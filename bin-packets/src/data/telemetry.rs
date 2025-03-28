@@ -1,10 +1,11 @@
 use bincode::{Decode, Encode};
 use defmt::Format;
+use serde::{Deserialize, Serialize};
 
 use crate::types::UnixTimestampMillis;
 
 /// Telemetry information for JUPITER
-#[derive(Debug, Clone, Copy, Encode, Decode, Format)]
+#[derive(Debug, Clone, Copy, Encode, Decode, Format, Serialize, Deserialize)]
 pub struct JupiterTelemetry {
     pub battery_voltage: f32,
     pub timestamp: UnixTimestampMillis,
