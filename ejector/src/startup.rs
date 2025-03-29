@@ -1,4 +1,5 @@
 use defmt::info;
+use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
 use fugit::RateExtU32;
 use hc12_rs::configuration::baudrates::B9600;
@@ -99,6 +100,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     let programming = bank0_pins.gpio12.into_push_pull_output();
     // Copy the timer
     let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
+    let mut timer_two = timer.clone();
 
     info!("UART1 configured, assembling HC-12");
     let builder = hc12_rs::device::HC12Builder::<(), (), (), ()>::empty()
@@ -119,6 +121,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     info!("Programming HC12...");
     let radio = radio.into_at_mode().unwrap();
     info!("HC12 in AT Mode");
+    timer_two.delay_ms(100);
     let radio = radio.set_baudrate(B9600).unwrap();
     info!("HC12 baudrate set to 9600");
     let radio = radio.set_channel(Channel::Channel1).unwrap();
@@ -181,6 +184,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     state_machine_update::spawn().ok();
     hc12_programmer::spawn().ok();
     incoming_packet_handler::spawn().ok();
+    radio_heartbeat::spawn().ok();
 
     (
         Shared {

@@ -1,6 +1,6 @@
 use core::cmp::max;
 
-use bin_packets::{phases::EjectorPhase, ApplicationPacket};
+use bin_packets::{phases::EjectorPhase, ApplicationPacket, LinkPacket};
 use bincode::config::standard;
 use defmt::info;
 use embedded_hal::digital::StatefulOutputPin;
@@ -12,62 +12,7 @@ use rtic_monotonics::Monotonic;
 use crate::{app::*, Mono};
 
 pub async fn incoming_packet_handler(ctx: incoming_packet_handler::Context<'_>) {
-    // loop {
-    //     if ctx.shared.suspend_packet_handler.lock(|suspend| *suspend) {
-    //         Mono::delay(100_u64.millis()).await;
-    //         continue;
-    //     }
-    //     while let Some(packet) = ctx.shared.radio_link.lock(|radio| radio.read_link_packet()) {
-    //         // Only act on packets with valid checksums
-    //         if !packet.verify_checksum() {
-    //             continue;
-    //         }
-
-    //         match packet.payload {
-    //             LinkLayerPayload::Payload(app_packet) => {
-    //                 // Ejector only handles commands right now
-    //                 match app_packet {
-    //                     ApplicationPacket::Command(command) => {
-    //                         // Enter phase, based on the command
-    //                         match command {
-    //                             bin_packets::packets::CommandPacket::EjectorPhaseSet(phase) => {
-    //                                 ctx.shared.state_machine.lock(|state_machine| {
-    //                                     state_machine.set_phase(phase);
-    //                                 });
-
-    //                                 // Send a response, with no data (for my testing)
-    //                                 ctx.shared.radio_link.lock(|radio| {
-    //                                     let packet = LinkPacket::default();
-    //                                     radio.write_link_packet(packet).ok();
-    //                                 });
-    //                             }
-
-    //                             // Ping commands return an empty packet
-    //                             bin_packets::packets::CommandPacket::Ping => {
-    //                                 ctx.shared.radio_link.lock(|radio| {
-    //                                     let packet = LinkPacket::default();
-    //                                     radio.write_link_packet(packet).ok();
-    //                                 });
-    //                             }
-
-    //                             _ => {
-    //                                 // Unhandled command on the Ejector
-    //                             }
-    //                         }
-    //                     }
-
-    //                     _ => {}
-    //                 }
-    //             }
-
-    //             _ => {
-    //                 // Link not implimented
-    //             }
-    //         }
-    //     }
-
-    //     Mono::delay(10_u64.millis()).await;
-    // }
+    Mono::delay(1000_u64.millis()).await;
 }
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
@@ -93,6 +38,9 @@ pub async fn radio_heartbeat(mut ctx: radio_heartbeat::Context<'_>) {
             timestamp: 300,
             packet_number: packet_num,
         });
+
+        let packet = LinkPacket::new(bin_packets::DeviceIdentifier::Ejector, bin_packets::DeviceIdentifier::Broadcast, packet);
+        packet_num += 1;
 
         ctx.shared.radio.lock(|radio| {
             let mut buf = [0u8; 64];

@@ -3,6 +3,7 @@ use std::time::Duration;
 use bin_packets::LinkPacket;
 use bincode::{config::standard, decode_from_slice};
 use clap::{Parser, Subcommand};
+use serialport::SerialPortType;
 
 #[derive(Parser)]
 #[command(name = "groundstation")]
@@ -31,9 +32,23 @@ fn main() {
 
         Commands::List => {
             let ports = serialport::available_ports().expect("Failed to list serial ports");
-            for port in ports {
-                println!("{:?}", port);
-            }
+            ports.iter().for_each(|port| match &port.port_type {
+                SerialPortType::UsbPort(_) => {
+                    println!("USB Port: {}", port.port_name);
+                }
+
+                SerialPortType::Unknown => {
+                    // Nothing
+                }
+
+                SerialPortType::BluetoothPort => {
+                    println!("Bluetooth Port: {} - {:?}", port.port_name, port.port_type);
+                }
+
+                SerialPortType::PciPort => {
+                    println!("PCI Port: {} - {:?}", port.port_name, port.port_type);
+                }
+            });
         }
     }
 }
