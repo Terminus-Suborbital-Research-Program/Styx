@@ -12,8 +12,7 @@ pub mod usb_commands;
 pub mod usb_io;
 pub mod utilities;
 
-#[allow(dead_code)]
-use panic_halt as _;
+use defmt_rtt as _; // global logger
 
 // We require an allocator for some heap stuff - unfortunatly bincode serde
 // doesn't have support for heapless vectors yet
@@ -32,7 +31,18 @@ use icarus::{DelayTimer, I2CMainBus};
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
 static mut HEAP_MEMORY: [u8; 1024 * 64] = [0; 1024 * 64];
 
-use panic_halt as _;
+/// Lets us know when we panic
+#[panic_handler]
+fn panic(info: &core::panic::PanicInfo) -> ! {
+    defmt::error!("Panic: {}", info);
+    loop {
+        // Halt the CPU
+        unsafe {
+            hal::sio::spinlock_reset();
+        }
+    }
+}
+
 
 // HAL Access
 #[cfg(feature = "rp2350")]
@@ -58,12 +68,12 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 mod app {
     use crate::{
         actuators::servo::{EjectionServo, LockingServo},
-        communications::hc12::{UART1Bus, GPIO10},
+        communications::{hc12::{UART1Bus, GPIO10}, link_layer::LinkLayerDevice},
     };
 
     use super::*;
 
-    use communications::{link_layer::LinkLayerDevice, *};
+    use communications::{ *};
 
     use hal::gpio::{self, FunctionSio, PullNone, SioOutput};
     use rp235x_hal::uart::UartPeripheral;

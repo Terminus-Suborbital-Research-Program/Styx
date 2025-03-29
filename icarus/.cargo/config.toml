@@ -32,6 +32,5 @@ runner = "../picotool/build/picotool load -u -v -x -t elf"
 [build]
 target = "thumbv8m.main-none-eabihf" # Cortex-M33 (with FPU)
 
-[alias]
-build-rp2040 = "build --no-default-features --features rp2040 --target thumbv6m-none-eabi"
-run-rp2040 =   "run   --no-default-features --features rp2040 --target thumbv6m-none-eabi"
+[env]
+DEFMT_LOG = "info"

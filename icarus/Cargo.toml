@@ -19,8 +19,6 @@ embedded-io = "0.6.1"
 cortex-m = "0.7.7"
 # Startup/Runtime for Cortex-M microcontrollers
 cortex-m-rt = "0.7.5"
-# Simple panic handler
-panic-halt = "1.0.0"
 # RTIC for real-time operations
 rtic = {version = "2.1.2"}
 rtic-monotonics = "2.0.3"
