@@ -1,8 +1,10 @@
 use core::cmp::max;
 
-use bin_packets::phases::EjectorPhase;
+use bin_packets::{phases::EjectorPhase, ApplicationPacket};
+use bincode::config::standard;
 use defmt::info;
 use embedded_hal::digital::StatefulOutputPin;
+use embedded_io::Write;
 use fugit::ExtU64;
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
@@ -82,6 +84,27 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     }
 }
 
+pub async fn radio_heartbeat(mut ctx: radio_heartbeat::Context<'_>) {
+    let mut packet_num = 0;
+    loop {
+        let packet = ApplicationPacket::EjectorStatus(bin_packets::EjectorStatus {
+            phase: EjectorPhase::Hold,
+            time_in_phase: 100,
+            timestamp: 300,
+            packet_number: packet_num,
+        });
+
+        ctx.shared.radio.lock(|radio| {
+            let mut buf = [0u8; 64];
+            let bytes = bincode::encode_into_slice(packet, &mut buf, standard()).unwrap();
+
+            radio.write_all(&buf[0..bytes]).ok();
+        });
+
+        Mono::delay(1000_u64.millis()).await;
+    }
+}
+
 pub fn uart_interrupt(ctx: uart_interrupt::Context<'_>) {
     // ctx.shared.radio_link.lock(|radio| {
     //     radio.device.update().ok();
@@ -142,78 +165,6 @@ pub async fn state_machine_update(mut ctx: state_machine_update::Context<'_>) {
 
 pub async fn hc12_programmer(ctx: hc12_programmer::Context<'_>) {
     info!("Programming HC12. Don't do this!");
-
-    // // Suspend the packet handler
-    // ctx.shared
-    //     .suspend_packet_handler
-    //     .lock(|suspend| *suspend = true);
-    // // Set mode to configuration
-    // ctx.shared.radio_link.lock(|link| {
-    //     link.device.set_mode(hc12::HC12Mode::Configuration).ok();
-    // });
-
-    // Mono::delay(100_u64.millis()).await;
-
-    // // Set baudrate
-    // ctx.shared.radio_link.lock(|link| {
-    //     link.device.write("AT+B9600\n".as_bytes()).ok();
-    //     link.device.flush(16).ok();
-    // });
-    // Mono::delay(100_u64.millis()).await;
-
-    // // Set channel (100)
-    // ctx.shared.radio_link.lock(|link| {
-    //     link.device.write("AT+C100\n".as_bytes()).ok();
-    //     link.device.flush(16).ok();
-    // });
-    // Mono::delay(100_u64.millis()).await;
-
-    // // Set power to max (8)
-    // ctx.shared.radio_link.lock(|link| {
-    //     link.device.write("AT+P8\n".as_bytes()).ok();
-    //     link.device.flush(16).ok();
-    // });
-    // Mono::delay(100_u64.millis()).await;
-
-    // // Get parameters with AT+RX
-    // ctx.shared.radio_link.lock(|link| {
-    //     link.device.write("AT+RX\n".as_bytes()).ok();
-    //     link.device.flush(16).ok();
-    // });
-    // Mono::delay(100_u64.millis()).await;
-
-    // // Get response
-    // let mut response = [0u8; 128];
-    // let read = ctx.shared.radio_link.lock(|link| {
-    //     link.device.update().ok();
-    //     link.device.read(&mut response)
-    // });
-
-    // match read {
-    //     Ok(read) => {
-    //         let response = core::str::from_utf8(&response[..read]).unwrap();
-    //         info!("Read {=u32} bytes", read as u32);
-    //         info!("HC12 Parameters: {=str}", response);
-    //     }
-
-    //     Err(_) => {
-    //         error!("Error reading HC12 parameters");
-    //     }
-    // }
-
-    // info!("HC12 Programming Complete, restarting packet handler");
-
-    // // Set mode back to normal
-    // ctx.shared.radio_link.lock(|link| {
-    //     link.device.set_mode(hc12::HC12Mode::Normal).ok();
-    // });
-
-    // // Kickoff packet handling after this is done
-    // incoming_packet_handler::spawn().ok(); // Might already be running
-    //                                        // if this was triggered by the console
-    // ctx.shared
-    //     .suspend_packet_handler
-    //     .lock(|suspend| *suspend = false);
 }
 
 // pub async fn radio_flush(mut ctx: radio_flush::Context<'_>) {

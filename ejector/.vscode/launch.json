@@ -20,7 +20,7 @@
         "coreConfigs": [
           {
             "coreIndex": 0,
-            "programBinary": "target/thumbv8m.main-none-eabihf/debug/ejector",
+            "programBinary": "../target/thumbv8m.main-none-eabihf/debug/ejector",
             "rttEnabled": true
           }
         ]

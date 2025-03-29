@@ -96,7 +96,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             .unwrap();
     uart1_peripheral.enable_rx_interrupt(); // Make sure we can drive our interrupts
                                             // GPIO10 is the programming pin for HC-12
-    let programming = bank0_pins.gpio10.into_push_pull_output();
+    let programming = bank0_pins.gpio12.into_push_pull_output();
     // Copy the timer
     let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
 
@@ -195,6 +195,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             state_machine: EjectorStateMachine::new(),
             blink_status_delay_millis: 1000,
             suspend_packet_handler: false,
+            radio: hc,
         },
         Local { led: led_pin },
     )
