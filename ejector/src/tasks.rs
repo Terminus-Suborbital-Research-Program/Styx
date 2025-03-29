@@ -114,27 +114,3 @@ pub async fn state_machine_update(mut ctx: state_machine_update::Context<'_>) {
 pub async fn hc12_programmer(ctx: hc12_programmer::Context<'_>) {
     info!("Programming HC12. Don't do this!");
 }
-
-// pub async fn radio_flush(mut ctx: radio_flush::Context<'_>) {
-//     let mut on_board_baudrate: BaudRate = BaudRate::B9600;
-//     let bytes_to_flush = 16;
-
-//     loop {
-//         ctx.shared.radio_link.lock(|radio| {
-//             radio.device.flush(bytes_to_flush).ok();
-//             on_board_baudrate = radio.device.get_baudrate();
-//         });
-
-//         // Need to wait wait the in-air baudrate, or the on-board baudrate
-//         // whichever is slower
-
-//         let mut slower =
-//             core::cmp::min(on_board_baudrate.to_u32(), on_board_baudrate.to_in_air_bd());
-
-//         // slower is bps, so /1000 to get ms
-//         slower = slower / 1000;
-
-//         // Delay for that times the number of bytes flushed
-//         Mono::delay((slower as u64 * bytes_to_flush as u64).millis()).await;
-//     }
-// }
