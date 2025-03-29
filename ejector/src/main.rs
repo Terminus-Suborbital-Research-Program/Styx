@@ -70,6 +70,34 @@ mod app {
         ),
     >;
 
+    use crate::hal::timer::CopyableTimer1;
+    use hal::gpio::Pin;
+    use hal::pac::UART1;
+    use hal::uart::Enabled;
+    use hal::Timer;
+    use hc12_rs::configuration::baudrates::B9600;
+    use hc12_rs::ProgrammingPair;
+    use hc12_rs::FU3;
+    use hc12_rs::HC12;
+    use rp235x_hal::gpio::bank0::{Gpio12, Gpio8, Gpio9};
+    use rp235x_hal::gpio::FunctionUart;
+    use rp235x_hal::gpio::PullDown;
+    use rp235x_hal::uart::UartDevice;
+
+    pub type EjectorHC12 = HC12<
+        UartPeripheral<
+            Enabled,
+            UART1,
+            (
+                Pin<Gpio8, FunctionUart, PullDown>,
+                Pin<Gpio9, FunctionUart, PullDown>,
+            ),
+        >,
+        ProgrammingPair<Pin<Gpio12, FunctionSio<SioOutput>, PullDown>, Timer<CopyableTimer1>>,
+        FU3<B9600>,
+        B9600,
+    >;
+
     pub static mut USB_BUS: Option<UsbBusAllocator<hal::usb::UsbBus>> = None;
 
     #[shared]
@@ -82,6 +110,7 @@ mod app {
         pub state_machine: EjectorStateMachine,
         pub blink_status_delay_millis: u64,
         pub suspend_packet_handler: bool,
+        pub radio: EjectorHC12,
     }
 
     #[local]
@@ -104,8 +133,12 @@ mod app {
         async fn state_machine_update(mut ctx: state_machine_update::Context);
 
         // Heartbeats the main led
-        #[task(local = [led], shared = [blink_status_delay_millis], priority = 2)]
+        #[task(local = [led], shared = [blink_status_delay_millis, radio], priority = 2)]
         async fn heartbeat(mut ctx: heartbeat::Context);
+
+        // Heartbeats the radio
+        #[task(shared = [radio], priority = 2)]
+        async fn radio_heartbeat(mut ctx: radio_heartbeat::Context);
 
         // Reads from the USB console
         #[task(priority = 3, shared = [usb_device, usb_serial, serial_console_writer])]
