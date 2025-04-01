@@ -10,3 +10,7 @@ args = ["build"]
 [tasks.test]
 command = "cargo"
 args = ["test"]
+
+[tasks.docs]
+command = "cargo"
+args = ["doc"]
