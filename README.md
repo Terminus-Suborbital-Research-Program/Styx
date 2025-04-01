@@ -1,21 +1,9 @@
 ![status](https://github.com/Terminus-Suborbital-Research-Program/AMALTHEA/actions/workflows/test.yml/badge.svg)
 # AMALTHEA
-Software systems, tools, and libraries for the 2025 AMALTHEA Rocksat-X mission by the University of Alabama in Huntsville. The AMALTHEA mission consists of several components, all of which have crates or binaries under this repository:
+Software systems, tools, and libraries for the 2025 AMALTHEA Rocksat-X mission by the University of Alabama in Huntsville. The AMALTHEA mission consists of several components. The ones listed under this repositoy include binaries for:
 
-1. The ICARUS payload
-2. The ejector assembly
-3. The relay deployable from ICARUS
+- ICARUS:   The deployable 1.5U CubeSat experiment to demonstrate active control and reentry of a CubeSat on a suborbital scale
+- Ejector:  The add-on to the JUPITER stack reponsible for deployment and communicataion of ICARUS
+- gs-cli:   A command line interface for ground station testing and operation
 
-A shared library for communication packets is also present, as well as a common library for shared components.
-
-# Building and running
-If `picotool` is installed, `cargo make flash_debug_usb` or `cargo make flash_release_usb` will run the compiled source on a connected microcontroller. If a `probe-rs`-compatible device is connected and hooked up to a device, `cargo make run_debug_probers` will flash the flight software to the device through the SWD interface.
-
-Since not all binaries support testing, `cargo make test` excludes non-compatible crates from unit tests.
-
-It is generally better to run from within a `Docker` container (see below)
-
-# Docker
-Docker provides us a much more convenient method for running debuggers and flashers. It does require some setup.
-## Linux
-If you have `docker` installed, it should be plug and play using the `vscode` extention `Dev Containers`.
+In addition, `bin-packets` provides a library for encoding and decoding strongly-typed and effecient packets for communication between AMALTHEA components, and other devices on the TERMINUS stack.
