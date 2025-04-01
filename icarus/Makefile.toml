@@ -10,6 +10,10 @@ args = ["build"]
 [tasks.test]
 command = "echo"
 
+[tasks.docs]
+command = "cargo"
+args = ["doc"]
+
 [tasks.flash_debug_usb]
 #command = "pwd"
 command = "picotool"
