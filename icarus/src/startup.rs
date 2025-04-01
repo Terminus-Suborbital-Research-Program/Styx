@@ -1,3 +1,4 @@
+use defmt::info;
 //use bme280::i2c::BME280;
 use embedded_hal::digital::OutputPin;
 use fugit::RateExtU32;
@@ -13,6 +14,7 @@ use rp235x_hal::Clock;
 use rp235x_hal::Sio;
 use rp235x_hal::Watchdog;
 use rp235x_hal::I2C;
+use rtic_monotonics::Monotonic;
 use rtic_sync::make_channel;
 use usb_device::bus::UsbBusAllocator;
 use usb_device::device::StringDescriptors;
@@ -40,18 +42,26 @@ use crate::{DelayTimer, I2CMainBus};
 
 use embedded_hal_bus::util::AtomicCell;
 
+// Logs our time for demft
+defmt::timestamp!("{=u64:us}", {
+    Mono::now().duration_since_epoch().to_nanos()
+});
+
 pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     // Reset the spinlocks - this is skipped by soft-reset
     unsafe {
         hal::sio::spinlock_reset();
     }
 
-    // Set up the global allocator
+    // Set up the global allocator, have to do unsafe shit
+    #[allow(static_mut_refs)]
     unsafe {
         ALLOCATOR
             .lock()
             .init(HEAP_MEMORY.as_ptr() as *mut u8, HEAP_MEMORY.len());
     }
+
+    info!("Good morning sunshine! Icarus is awake!");
 
     // Channel for sending strings to the USB console
     let (usb_console_line_sender, usb_console_line_receiver) =
@@ -190,27 +200,14 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     unsafe {
         USB_BUS = Some(usb_bus);
     }
+    #[allow(static_mut_refs)]
     let usb_bus_ref = unsafe { USB_BUS.as_ref().unwrap() };
 
     let serial = SerialPort::new(usb_bus_ref);
-    let usb_dev = UsbDeviceBuilder::new(usb_bus_ref, UsbVidPid(0x16c0, 0x27dd))
-        .strings(&[StringDescriptors::default()
-            .manufacturer("UAH TERMINUS PROGRAM")
-            .product("Canonical Toolchain USB Serial Port")
-            .serial_number("TEST")])
-        .unwrap()
-        .device_class(2)
-        .build();
 
-    usb_serial_console_printer::spawn(usb_console_line_receiver).ok();
-    usb_console_reader::spawn(usb_console_command_sender).ok();
-    command_handler::spawn(usb_console_command_receiver).ok();
     radio_flush::spawn().ok();
     incoming_packet_handler::spawn().ok();
     sample_sensors::spawn().ok();
-
-    // Serial Writer Structure
-    let serial_console_writer = serial_handler::SerialWriter::new(usb_console_line_sender);
 
     (
         Shared {
@@ -219,9 +216,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             radio_link,
             ejector_driver: ejection_servo,
             locking_driver: locking_servo,
-            usb_device: usb_dev,
             usb_serial: serial,
-            serial_console_writer,
             clock_freq_hz: clock_freq.to_Hz(),
             software_delay: delay,
             //env_sensor: bme280

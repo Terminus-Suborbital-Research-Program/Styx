@@ -92,12 +92,9 @@ pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'
 
                 _ => {
                     let mut buffer = alloc::string::String::new();
-                    write!(buffer, "Error decoding packet: {:#?}", e).ok();
                     for c in buffer.chars() {
-                        print!(ctx, "{}", c);
                         Mono::delay(1_u64.millis()).await;
                     }
-                    println!(ctx, "");
                 }
             },
 
@@ -124,7 +121,6 @@ pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'
                 // and clear the buffer
                 if !packet.verify_checksum() {
                     ctx.shared.radio_link.lock(|radio| radio.device.clear());
-                    println!(ctx, "Bad Packet, checksum failure");
                     continue;
                 }
 
@@ -139,10 +135,8 @@ pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'
                                 alloc::string::String::new();
                             write!(buffer_heapless_stirng, "{:#?}", packet).ok();
                             for char in buffer_heapless_stirng.chars() {
-                                print!(ctx, "{}", char);
                                 Mono::delay(1_u64.millis()).await;
                             }
-                            println!(ctx, "\n");
                         }
                     }
                 }
