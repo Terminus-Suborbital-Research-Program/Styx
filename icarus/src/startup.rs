@@ -204,24 +204,10 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let usb_bus_ref = unsafe { USB_BUS.as_ref().unwrap() };
 
     let serial = SerialPort::new(usb_bus_ref);
-    let usb_dev = UsbDeviceBuilder::new(usb_bus_ref, UsbVidPid(0x16c0, 0x27dd))
-        .strings(&[StringDescriptors::default()
-            .manufacturer("UAH TERMINUS PROGRAM")
-            .product("Canonical Toolchain USB Serial Port")
-            .serial_number("TEST")])
-        .unwrap()
-        .device_class(2)
-        .build();
 
-    usb_serial_console_printer::spawn(usb_console_line_receiver).ok();
-    usb_console_reader::spawn(usb_console_command_sender).ok();
-    command_handler::spawn(usb_console_command_receiver).ok();
     radio_flush::spawn().ok();
     incoming_packet_handler::spawn().ok();
     sample_sensors::spawn().ok();
-
-    // Serial Writer Structure
-    let serial_console_writer = serial_handler::SerialWriter::new(usb_console_line_sender);
 
     (
         Shared {
@@ -230,9 +216,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             radio_link,
             ejector_driver: ejection_servo,
             locking_driver: locking_servo,
-            usb_device: usb_dev,
             usb_serial: serial,
-            serial_console_writer,
             clock_freq_hz: clock_freq.to_Hz(),
             software_delay: delay,
             //env_sensor: bme280

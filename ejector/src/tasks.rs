@@ -39,7 +39,11 @@ pub async fn radio_heartbeat(mut ctx: radio_heartbeat::Context<'_>) {
             packet_number: packet_num,
         });
 
-        let packet = LinkPacket::new(bin_packets::DeviceIdentifier::Ejector, bin_packets::DeviceIdentifier::Broadcast, packet);
+        let packet = LinkPacket::new(
+            bin_packets::DeviceIdentifier::Ejector,
+            bin_packets::DeviceIdentifier::Broadcast,
+            packet,
+        );
         packet_num += 1;
 
         ctx.shared.radio.lock(|radio| {

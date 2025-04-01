@@ -8,7 +8,6 @@ pub mod communications;
 pub mod sensors;
 pub mod startup;
 pub mod tasks;
-pub mod usb_commands;
 pub mod usb_io;
 pub mod utilities;
 
@@ -20,7 +19,6 @@ extern crate alloc;
 use linked_list_allocator::LockedHeap;
 
 use crate::tasks::*;
-use crate::usb_commands::*;
 use crate::usb_io::*;
 use core::mem::MaybeUninit;
 //use bme280::i2c::BME280;
@@ -42,7 +40,6 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
         }
     }
 }
-
 
 // HAL Access
 #[cfg(feature = "rp2350")]
@@ -68,12 +65,15 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 mod app {
     use crate::{
         actuators::servo::{EjectionServo, LockingServo},
-        communications::{hc12::{UART1Bus, GPIO10}, link_layer::LinkLayerDevice},
+        communications::{
+            hc12::{UART1Bus, GPIO10},
+            link_layer::LinkLayerDevice,
+        },
     };
 
     use super::*;
 
-    use communications::{ *};
+    use communications::*;
 
     use hal::gpio::{self, FunctionSio, PullNone, SioOutput};
     use rp235x_hal::uart::UartPeripheral;
@@ -105,8 +105,6 @@ mod app {
         pub locking_driver: LockingServo,
         pub radio_link: LinkLayerDevice<HC12<UART1Bus, GPIO10>>,
         pub usb_serial: SerialPort<'static, hal::usb::UsbBus>,
-        pub usb_device: UsbDevice<'static, hal::usb::UsbBus>,
-        pub serial_console_writer: serial_handler::SerialWriter,
         pub clock_freq_hz: u32,
         pub software_delay: DelayTimer,
         //pub env_sensor: BME280<AtomicDevice<'static,I2CMainBus>>
@@ -135,53 +133,20 @@ mod app {
         async fn heartbeat(ctx: heartbeat::Context);
 
         // Takes care of incoming packets
-        #[task(shared = [radio_link, serial_console_writer], priority = 1)]
+        #[task(shared = [radio_link], priority = 1)]
         async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context);
     }
 
     extern "Rust" {
-        // USB Console Reader
-        #[task(priority = 2, shared = [usb_device, usb_serial, serial_console_writer])]
-        async fn usb_console_reader(
-            mut ctx: usb_console_reader::Context,
-            mut command_sender: Sender<
-                'static,
-                heapless::String<HEAPLESS_STRING_ALLOC_LENGTH>,
-                MAX_USB_LINES,
-            >,
-        );
-
-        // USB Console Printer
-        #[task(priority = 2, shared = [usb_device, usb_serial])]
-        async fn usb_serial_console_printer(
-            mut ctx: usb_serial_console_printer::Context,
-            mut reciever: Receiver<
-                'static,
-                heapless::String<HEAPLESS_STRING_ALLOC_LENGTH>,
-                MAX_USB_LINES,
-            >,
-        );
-
-        // Command Handler
-        #[task(shared=[serial_console_writer, radio_link, clock_freq_hz, ejector_driver, locking_driver], priority = 2)]
-        async fn command_handler(
-            mut ctx: command_handler::Context,
-            mut reciever: Receiver<
-                'static,
-                heapless::String<HEAPLESS_STRING_ALLOC_LENGTH>,
-                MAX_USB_LINES,
-            >,
-        );
-
         // Updates the radio module on the serial interrupt
-        #[task(binds = UART1_IRQ, shared = [radio_link, serial_console_writer])]
+        #[task(binds = UART1_IRQ, shared = [radio_link])]
         fn uart_interrupt(mut ctx: uart_interrupt::Context);
 
         // Radio Flush Task
         #[task(shared = [radio_link], priority = 1)]
         async fn radio_flush(mut ctx: radio_flush::Context);
 
-        #[task(shared = [serial_console_writer, software_delay], priority = 3)]
+        #[task(shared = [software_delay], priority = 3)]
         async fn sample_sensors(mut ctx: sample_sensors::Context);
 
     }
