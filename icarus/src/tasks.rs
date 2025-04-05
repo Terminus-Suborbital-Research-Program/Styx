@@ -1,9 +1,11 @@
 use bincode::{config::standard, error::DecodeError};
-use core::fmt::Write;
+use core::{fmt::Write, task::Poll};
+use defmt::{error, info, trace};
 use embedded_hal::digital::StatefulOutputPin;
+use embedded_hal_async::i2c::I2c;
 use embedded_io::Read;
 use fugit::ExtU64;
-use icarus::{print, println};
+use futures::FutureExt as _;
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 
@@ -13,6 +15,7 @@ use crate::{
         hc12::BaudRate,
         link_layer::{LinkLayerPayload, LinkPacket},
     },
+    device_constants::MotorI2cBus,
     Mono,
 };
 
@@ -28,6 +31,86 @@ pub fn uart_interrupt(mut ctx: uart_interrupt::Context<'_>) {
     ctx.shared.radio_link.lock(|radio| {
         radio.device.update().ok();
     });
+}
+
+use rp235x_pac::interrupt;
+#[interrupt]
+unsafe fn I2C0_IRQ() {
+    use rp235x_hal::async_utils::AsyncPeripheral;
+    MotorI2cBus::on_interrupt();
+}
+
+pub async fn motor_drivers(ctx: motor_drivers::Context<'_>) {
+    info!("Motor driver task started!");
+
+    // Motor driver i2c
+    let motor_i2c = ctx.local.motor_i2c_bus;
+
+    loop {
+        // Gotta unmask the NVIC core, we're not using the RTIC scheduler for this
+        unsafe {
+            cortex_m::peripheral::NVIC::unpend(rp235x_hal::pac::Interrupt::I2C0_IRQ);
+            cortex_m::peripheral::NVIC::unmask(rp235x_hal::pac::Interrupt::I2C0_IRQ);
+        }
+
+        // The speed is set through the DIGITAL_SPEED_CTRL field as a unsigned 14 bit value
+        // This is bytes 16-30. Why they chose a 14 bit field is beyond me
+        // This gives us a max speed of 32767
+        let speed_percent = 0;
+        let speed = ((speed_percent as u32) * 32767) / 100;
+        let speed = speed & 0x3FFF; // Mask to 14 bits
+        let speed = speed << 16; // Shift to the right place
+
+        // let first_byte = ((speed >> 24) & 0xFF) as u8;
+        // let second_byte = ((speed >> 16) & 0xFF) as u8;
+        // let third_byte = ((speed >> 8) & 0xFF) as u8;
+        // let fourth_byte = (speed & 0xFF) as u8;
+
+        // BRRRRT! WRONG, ITS LSB FIRST
+        let first_byte = (speed & 0xFF) as u8;
+        let second_byte = ((speed >> 8) & 0xFF) as u8;
+        let third_byte = ((speed >> 16) & 0xFF) as u8;
+        let fourth_byte = ((speed >> 24) & 0xFF) as u8;
+
+        // Register 0xec
+        let bytes: [u8; 7] = [
+            0b0001_0000,
+            0b0000_0000u8,
+            0xec,
+            first_byte,
+            second_byte,
+            third_byte,
+            fourth_byte,
+        ];
+
+        let mut cnt = 0;
+        let timeout = core::future::poll_fn(|cx| {
+            trace!("Waker called!");
+            cx.waker().wake_by_ref();
+            match cnt {
+                10 => Poll::Ready(()),
+                _ => {
+                    cnt += 1;
+
+                    Poll::Pending
+                }
+            }
+        });
+
+        // Fuse, timing out if we don't get a response
+        info!("Writing Speed...");
+        futures::select_biased! {
+            r = motor_i2c.write(0x26u8, &bytes).fuse() => {
+                info!("I2c write result: {:?}", r);
+            }
+
+            _ = timeout.fuse() => {
+                info!("I2C Timeout!");
+            }
+        }
+
+        Mono::delay(500_u64.millis()).await;
+    }
 }
 
 pub async fn radio_flush(mut ctx: radio_flush::Context<'_>) {
@@ -91,10 +174,8 @@ pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'
                 }
 
                 _ => {
-                    let mut buffer = alloc::string::String::new();
-                    for c in buffer.chars() {
-                        Mono::delay(1_u64.millis()).await;
-                    }
+                    // Something else, log it. Bincode doen't impliment defmt::Debug unfortunately
+                    error!("Decoding error: {:?}", defmt::Debug2Format(&e));
                 }
             },
 
@@ -134,9 +215,6 @@ pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'
                             let mut buffer_heapless_stirng: alloc::string::String =
                                 alloc::string::String::new();
                             write!(buffer_heapless_stirng, "{:#?}", packet).ok();
-                            for char in buffer_heapless_stirng.chars() {
-                                Mono::delay(1_u64.millis()).await;
-                            }
                         }
                     }
                 }
@@ -149,66 +227,11 @@ pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'
 
 pub async fn sample_sensors(_ctx: sample_sensors::Context<'_>) {
     loop {
-        // ctx.shared.software_delay.lock(|mut delay|{
-        //     ctx.shared.env_sensor.lock(|environment|{
-        //         let measurements = environment.measure(&mut delay).unwrap();
-        //         println!(ctx, "Measurements: {}", measurements.temperature);
-        //     });
-        // });
         Mono::delay(250_u64.millis()).await;
     }
-    // let pressure_result = environment.read_pressure();
-    // match pressure_result{
-    //     Ok(atomic_response) =>{
-    //         match atomic_response{
-    //             Some(pressure_value)=>{
-    //                 println!(ctx, "Pressure: {}", pressure_value);
-    //             }
-    //             None =>{
-    //                 println!(ctx, "No Pressure Result");
-    //             }
-    //         }
-    //     }
-    //     Err(atomic_response)=>{
-    //         match atomic_response{
-    //             embedded_hal_bus::i2c::AtomicError::Busy=>{
-    //                 println!(ctx, "Busy...");
-    //             }
-    //             embedded_hal_bus::i2c::AtomicError::Other(other_value) =>{
-    //                 match other_value{
-    //                     rp235x_hal::i2c::Error::Abort(_)=>{
-    //                         println!(ctx, "Aborted");
-    //                     }
-    //                     rp235x_hal::i2c::Error::InvalidReadBufferLength=>{
-    //                         println!(ctx,"Invalid Read Buffer Length");
-    //                     }
-    //                     rp235x_hal::i2c::Error::InvalidWriteBufferLength=>{
-    //                         println!(ctx,"Invalid Write Buffer Length");
-    //                     }
-    //                     rp235x_hal::i2c::Error::AddressOutOfRange(_)=>{
-    //                         println!(ctx,"Address Out of Range");
-
-    //                     }
-    //                     rp235x_hal::i2c::Error::AddressReserved(_)=>{
-    //                         println!(ctx,"Address Reserved");
-    //                     }
-    //                     _=>{
-    //                         println!(ctx, "Something Happendededed");
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-    // let temperature = environment.read_temperature().unwrap().unwrap();
-    // let humidity = environment.read_humidity().unwrap().unwrap();
-
-    // println!(ctx, "Pressure: {}", pressure);
-    // println!(ctx, "Temperature: {}", pressure);
-    // println!(ctx, "Humidity: {}", pressure);
 }
 
-
-pub async fn inertial_nav(_ctx: inertial_nav::Context<'_>){
-    todo!("TODO: Implement the inertial navigation functionality");
+pub async fn inertial_nav(_ctx: inertial_nav::Context<'_>) {
+    //TODO: Implement the inertial navigation functionality
+    //! This would have crashed it lol
 }

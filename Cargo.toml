@@ -1,10 +1,5 @@
 [workspace]
-members = [
-	"bin-packets",
-	"ejector",
-	"gs-cli",
-	"icarus"
-]
+members = ["bin-packets", "ejector", "gs-cli", "icarus", "mcf8316c-rs"]
 resolver = "3"
 
 [profile.dev]
@@ -12,4 +7,3 @@ lto = false
 
 [profile.release]
 lto = true
-

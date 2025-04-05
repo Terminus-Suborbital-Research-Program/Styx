@@ -5,10 +5,11 @@
 // Our Modules
 pub mod actuators;
 pub mod communications;
+pub mod device_constants;
+pub mod peripherals;
 pub mod sensors;
 pub mod startup;
 pub mod tasks;
-pub mod usb_io;
 pub mod utilities;
 
 use defmt_rtt as _; // global logger
@@ -19,7 +20,6 @@ extern crate alloc;
 use linked_list_allocator::LockedHeap;
 
 use crate::tasks::*;
-use crate::usb_io::*;
 use core::mem::MaybeUninit;
 //use bme280::i2c::BME280;
 use embedded_hal_bus::util::AtomicCell;
@@ -69,6 +69,7 @@ mod app {
             hc12::{UART1Bus, GPIO10},
             link_layer::LinkLayerDevice,
         },
+        device_constants::MotorI2cBus,
     };
 
     use super::*;
@@ -79,12 +80,10 @@ mod app {
     use rp235x_hal::uart::UartPeripheral;
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
-    use usb_device::{class_prelude::*, prelude::*};
+    use usb_device::class_prelude::*;
 
     use hc12::HC12;
 
-    use rtic_sync::channel::{Receiver, Sender};
-    use serial_handler::{HEAPLESS_STRING_ALLOC_LENGTH, MAX_USB_LINES};
     use usbd_serial::SerialPort;
 
     pub type UART0Bus = UartPeripheral<
@@ -113,6 +112,7 @@ mod app {
     #[local]
     pub struct Local {
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
+        pub motor_i2c_bus: MotorI2cBus,
     }
 
     #[init(
@@ -135,6 +135,10 @@ mod app {
         // Takes care of incoming packets
         #[task(shared = [radio_link], priority = 1)]
         async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context);
+
+        // Handler for the I2C electronic speed controllers
+        #[task(local = [motor_i2c_bus], priority = 3)]
+        async fn motor_drivers(&mut ctx: motor_drivers::Context);
     }
 
     extern "Rust" {

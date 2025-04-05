@@ -41,6 +41,8 @@ bincode = {version="2.0.0-rc.3", features = ["derive", "alloc"], default-feature
 bin-packets = { path = "../bin-packets" }
 # Allocator - requireed to get serde to work
 linked_list_allocator = "0.10.5"
+futures = { version = "0.3.31", default-features = false, features = ["async-await"] }
+rp235x-pac = "0.1.0"
 
 # Sensors
 bme280 = { version = "0.5.1", features=["with_defmt"]}
