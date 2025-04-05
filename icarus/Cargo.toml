@@ -43,11 +43,15 @@ bin-packets = { path = "../bin-packets" }
 linked_list_allocator = "0.10.5"
 
 # Sensors
-#bme280 = { version = "0.5.1"}
-#bmi323 = {path="../bmi323"}
-#bmi323 = {git"https://github.com/MeechaelA/bmi323.git"} - Request Access
-#bmm350 = {path="../bmm350"}
-#bmm350 = {git"https://github.com/MeechaelA/bmm350.git"} - Request Access
+bme280 = { version = "0.5.1", features=["with_defmt"]}
+
+# Math
+nalgebra = { version = "*", default-features = false, features = [ "libm-force" ] }
+minikalman = {version = "0.6.0", features=["nalgebra", "libm"]} #https://docs.rs/minikalman/latest/minikalman/
+# Time
+hifitime = {version = "3.2", default-features = false}
+# WGS84
+wgs84={git="https://github.com/MeechaelA/WGS84.git"}
 
 # Target features
 [features]
