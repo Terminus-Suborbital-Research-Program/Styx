@@ -97,52 +97,17 @@ pub async fn motor_drivers(ctx: motor_drivers::Context<'_>) {
             }
         });
 
-        // // Fuse, timing out if we don't get a response
-        // info!("Writing Speed...");
-        // futures::select_biased! {
-        //     r = motor_i2c.write(0x26u8, &bytes).fuse() => {
-        //         info!("I2c write result: {:?}", r);
-        //     }
+        // Fuse, timing out if we don't get a response
+        info!("Writing Speed...");
+        futures::select_biased! {
+            r = motor_i2c.write(0x26u8, &bytes).fuse() => {
+                info!("I2c write result: {:?}", r);
+            }
 
-        //     _ = timeout.fuse() => {
-        //         info!("I2C Timeout!");
-        //     }
-        // }
-
-        // Mono::delay(100_u64.millis()).await;
-
-        // // Read back that register to make sure it worked
-        // let mut incoming: [u8; 4] = [0, 0, 0, 0];
-
-        // let bytes: [u8; 3] = [0b1001_0000, 0b0000_0000u8, 0xec];
-
-        // let mut cnt = 0;
-        // let timeout = core::future::poll_fn(|cx| {
-        //     trace!("Waker called!");
-        //     cx.waker().wake_by_ref();
-        //     match cnt {
-        //         10 => Poll::Ready(()),
-        //         _ => {
-        //             cnt += 1;
-
-        //             Poll::Pending
-        //         }
-        //     }
-        // });
-
-        // info!("Reading ALGO_DEBUG register...");
-        // futures::select_biased! {
-        //     r = motor_i2c.write_read(0x26u8, &bytes, &mut incoming).fuse() => {
-        //         info!("I2c read result: {:?}", r);
-        //         let register: u32 = ((incoming[3] as u32) << 24) | ((incoming[2] as u32) << 16) | ((incoming[1] as u32) << 8) | incoming[0] as u32;
-        //         info!("Register value: {:#X}", register);
-        //     }
-
-        //     _ = timeout.fuse() => {
-        //         info!("I2C Timeout!");
-        //     }
-        // }
-        // info!("I2C test complete!");
+            _ = timeout.fuse() => {
+                info!("I2C Timeout!");
+            }
+        }
 
         Mono::delay(500_u64.millis()).await;
     }
