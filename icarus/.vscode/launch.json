@@ -2,36 +2,30 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "ICARUS Debug",
-            "cwd": "${userHome}/.pico-sdk/openocd/0.12.0+dev/scripts",
-            "executable": "${workspaceFolder}/target/thumbv8m.main-none-eabihf/debug/icarus",
+            "type": "probe-rs-debug",
             "request": "launch",
-            // ^ This is needs to match the path to the outputted file from cargo build (no release)
-            "type": "cortex-debug",
-            "servertype": "openocd",
-            "serverpath": "${userHome}/.pico-sdk/openocd/0.12.0+dev/openocd.exe",
-            "device": "RP2350",
-            "configFiles": [
-                "interface/cmsis-dap.cfg",
-                "target/rp2350.cfg"
+            "preLaunchTask": "rust: cargo build",
+            "name": "ICARUS Debug",
+            "cwd": "${workspaceFolder}",
+            "runtimeExecutable": "probe-rs",
+            "runtimeArgs": [
+                "dap-server"
             ],
-            // SVD File should match if you are debugging from a RP2040 or a RP2350...
-            // "svdFile": "${userHome}/.pico-sdk/sdk/2.1.0/src/rp2040/hardware_regs/RP2350.svd",
-            "svdFile": "${userHome}/.pico-sdk/sdk/2.1.0/src/rp2350/hardware_regs/RP2350.svd",
-            "runToEntryPoint": "main",
-            "overrideLaunchCommands": [
-                "monitor reset halt",  // Tries to halt target after reset
-                "load"
-            ],
-            "postLaunchCommands": [
-                "monitor reset halt"  // Ensures target is halted after load
-            ],
-            "openOCDLaunchCommands": [
-                "adapter speed 5000",  
-                "init",
-                "halt"
-            ],
-            "showDevDebugOutput": "raw" // For more in depth debug information if the debug setup is non-functional
+            "chip": "RP235x",
+            "flashingConfig": {
+                "flashingEnabled": true,
+                "haltAfterReset": false,
+                "formatOptions": {
+                    "binaryFormat": "elf"
+                }
+            },
+            "coreConfigs": [
+                {
+                    "coreIndex": 0,
+                    "programBinary": "../target/thumbv8m.main-none-eabihf/debug/icarus",
+                    "rttEnabled": true
+                }
+            ]
         }
     ]
 }
