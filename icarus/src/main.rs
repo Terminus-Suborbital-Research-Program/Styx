@@ -149,5 +149,7 @@ mod app {
         #[task(shared = [software_delay], priority = 3)]
         async fn sample_sensors(mut ctx: sample_sensors::Context);
 
+        #[task(shared = [software_delay], priority = 3)]
+        async fn inertial_nav(mut ctx: inertial_nav::Context);
     }
 }
