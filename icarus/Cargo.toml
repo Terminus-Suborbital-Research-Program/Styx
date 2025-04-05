@@ -52,6 +52,8 @@ minikalman = {version = "0.6.0", features=["nalgebra", "libm"]} #https://docs.rs
 hifitime = {version = "3.2", default-features = false}
 # WGS84
 wgs84={git="https://github.com/MeechaelA/WGS84.git"}
+# Earth Atmosphere
+united_states_standard_atmosphere={git="https://github.com/MeechaelA/UnitedStatesStandardAtmosphere.git"}
 
 # Target features
 [features]

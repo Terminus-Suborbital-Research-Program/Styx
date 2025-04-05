@@ -208,6 +208,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     radio_flush::spawn().ok();
     incoming_packet_handler::spawn().ok();
     sample_sensors::spawn().ok();
+    inertial_nav::spawn().ok();
 
     (
         Shared {
