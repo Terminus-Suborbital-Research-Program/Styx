@@ -65,33 +65,33 @@ pub fn ecef_to_ned(latitude: f64, longitude: f64)->Matrix3<f64>{
     return rotation_matrix;
 }
 
-pub fn r3(angle: f64)->Matrix3<f64>{
-    let r3 = matrix![
-        angle.cos(), angle.sin(), 0.0;
-        -angle.sin(), angle.cos(), 0.0;
-        0.0, 0.0, 1.0
-    ];
-    return r3;
-}
-pub fn r2(angle: f64)->Matrix3<f64>{
-    let r2 = matrix![
+pub fn rx(angle: f64)->Matrix3<f64>{
+    let rx = matrix![
         1.0, 0.0, 0.0;
-        0.0, angle.cos(), angle.cos();
-        0.0, -angle.sin(), angle.cos();
+        0.0, angle.cos(), -angle.sin();
+        0.0, angle.sin(), angle.cos();
     ];
-    return r2;
+    return rx;
 }
-pub fn r1(angle: f64)->Matrix3<f64>{
-    let r1 = matrix![
-        angle.cos(), angle.sin(), 0.0;
-        -angle.sin(), angle.cos(), 0.0;
+pub fn ry(angle: f64)->Matrix3<f64>{
+    let ry = matrix![
+        angle.cos(), 0.0, angle.sin();
+        0.0, 1.0, 0.0;
+        -angle.sin(), 0.0, angle.cos();
+    ];
+    return ry;
+}
+pub fn rz(angle: f64)->Matrix3<f64>{
+    let rz = matrix![
+        angle.cos(), -angle.sin(), 0.0;
+        angle.sin(), angle.cos(), 0.0;
         0.0, 0.0, 1.0;
     ];
-    return r1;
+    return rz;
 }
 
 pub fn euler_313_rotation(psi: f64, theta: f64, phi: f64)->Matrix3<f64>{
-    let rotation = r3(psi)*r1(theta)*r3(phi);
+    let rotation = rz(psi)*rx(theta)*rz(phi);
     return rotation;
 }
 
