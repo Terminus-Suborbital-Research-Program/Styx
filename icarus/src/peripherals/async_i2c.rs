@@ -35,13 +35,7 @@ pub struct AsyncI2c<I2C> {
 
 impl<I2C> AsyncI2c<I2C>
 where
-    I2C: i2c::I2c + use rp235x_pac::interrupt;
-    #[interrupt]
-    unsafe fn I2C0_IRQ() {
-        use rp235x_hal::async_utils::AsyncPeripheral;
-        MotorI2cBus::on_interrupt();
-    }
-    ,
+    I2C: i2c::I2c + AsyncPeripheral,
 {
     /// Creates a new async I2C device
     pub fn new(device: I2C, timeout: u32) -> Self {
