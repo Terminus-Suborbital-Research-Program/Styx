@@ -210,5 +210,5 @@ pub async fn sample_sensors(_ctx: sample_sensors::Context<'_>) {
 
 
 pub async fn inertial_nav(_ctx: inertial_nav::Context<'_>){
-    // TODO: Implement the inertial navigation functionality
+    todo!("TODO: Implement the inertial navigation functionality");
 }
