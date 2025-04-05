@@ -230,3 +230,8 @@ pub async fn sample_sensors(_ctx: sample_sensors::Context<'_>) {
         Mono::delay(250_u64.millis()).await;
     }
 }
+
+
+pub async fn inertial_nav(_ctx: inertial_nav::Context<'_>){
+    todo!("TODO: Implement the inertial navigation functionality");
+}

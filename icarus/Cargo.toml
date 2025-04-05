@@ -45,11 +45,17 @@ futures = { version = "0.3.31", default-features = false, features = ["async-awa
 rp235x-pac = "0.1.0"
 
 # Sensors
-#bme280 = { version = "0.5.1"}
-#bmi323 = {path="../bmi323"}
-#bmi323 = {git"https://github.com/MeechaelA/bmi323.git"} - Request Access
-#bmm350 = {path="../bmm350"}
-#bmm350 = {git"https://github.com/MeechaelA/bmm350.git"} - Request Access
+bme280 = { version = "0.5.1", features=["with_defmt"]}
+
+# Math
+nalgebra = { version = "*", default-features = false, features = [ "libm-force" ] }
+minikalman = {version = "0.6.0", features=["nalgebra", "libm"]} #https://docs.rs/minikalman/latest/minikalman/
+# Time
+hifitime = {version = "3.2", default-features = false}
+# WGS84
+wgs84={git="https://github.com/MeechaelA/WGS84.git"}
+# Earth Atmosphere
+united_states_standard_atmosphere={git="https://github.com/MeechaelA/UnitedStatesStandardAtmosphere.git"}
 
 # Target features
 [features]

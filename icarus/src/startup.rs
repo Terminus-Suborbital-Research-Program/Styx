@@ -196,6 +196,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     sample_sensors::spawn().ok();
     motor_drivers::spawn().ok();
     info!("Tasks spawned!");
+    inertial_nav::spawn().ok();
 
     (
         Shared {
