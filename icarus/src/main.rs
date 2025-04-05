@@ -6,6 +6,7 @@
 pub mod actuators;
 pub mod communications;
 pub mod device_constants;
+pub mod peripherals;
 pub mod sensors;
 pub mod startup;
 pub mod tasks;

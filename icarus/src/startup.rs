@@ -27,6 +27,7 @@ use crate::communications::link_layer::Device;
 use crate::communications::link_layer::LinkLayerDevice;
 use crate::device_constants::MotorI2cBus;
 use crate::hal;
+use crate::peripherals::async_i2c::AsyncI2c;
 use crate::Mono;
 use crate::ALLOCATOR;
 use crate::HEAP_MEMORY;
@@ -155,13 +156,16 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let sda_pin = bank0_pins.gpio16.reconfigure();
     let scl_pin = bank0_pins.gpio17.reconfigure();
 
-    let motor_i2c: MotorI2cBus = I2C::new_controller(
-        ctx.device.I2C0,
-        sda_pin,
-        scl_pin,
-        RateExtU32::kHz(400),
-        &mut ctx.device.RESETS,
-        clocks.system_clock.freq(),
+    let motor_i2c: MotorI2cBus = AsyncI2c::new(
+        I2C::new_controller(
+            ctx.device.I2C0,
+            sda_pin,
+            scl_pin,
+            RateExtU32::kHz(400),
+            &mut ctx.device.RESETS,
+            clocks.system_clock.freq(),
+        ),
+        10,
     );
 
     let delay: DelayTimer =

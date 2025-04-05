@@ -7,6 +7,8 @@ use rp235x_hal::{
     I2C,
 };
 
+use crate::peripherals::async_i2c::AsyncI2c;
+
 pub mod pins {
     use rp235x_hal::gpio::bank0::*;
 
@@ -64,11 +66,13 @@ pub type AvionicsI2cBus = I2C<
 >;
 
 /// ACS ESC I2C bus
-pub type MotorI2cBus = I2C<
-    I2C0,
-    (
-        Pin<EscI2CSdaPin, FunctionI2C, PullUp>,
-        Pin<EscI2CSclPin, FunctionI2C, PullUp>,
-    ),
-    Controller,
+pub type MotorI2cBus = AsyncI2c<
+    I2C<
+        I2C0,
+        (
+            Pin<EscI2CSdaPin, FunctionI2C, PullUp>,
+            Pin<EscI2CSclPin, FunctionI2C, PullUp>,
+        ),
+        Controller,
+    >,
 >;
