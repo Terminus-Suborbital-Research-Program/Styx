@@ -81,13 +81,30 @@ where
         address: i2c::SevenBitAddress,
         operations: &mut [i2c::Operation<'_>],
     ) -> Result<(), Self::Error> {
-        match timeout_future(self.device.transaction(address, operations), 10).await {
+        match timeout_future(self.device.transaction(address, operations), self.timeout).await {
             Ok(transacted) => match transacted {
                 Ok(_) => Ok(()),
                 Err(e) => Err(AsyncI2cError::DeviceError(e)),
             },
 
             Err(_) => Err(AsyncI2cError::Timeout),
+        }
+    }
+}
+
+/// Re-impliment the regular i2c trait where D: embedded_hal::i2c::I2c
+impl<D> embedded_hal::i2c::I2c for AsyncI2c<D>
+where
+    D: embedded_hal::i2c::I2c + i2c::I2c,
+{
+    fn transaction(
+        &mut self,
+        address: u8,
+        operations: &mut [embedded_hal::i2c::Operation],
+    ) -> Result<(), Self::Error> {
+        match embedded_hal::i2c::I2c::transaction(&mut self.device, address, operations) {
+            Ok(()) => Ok(()),
+            Err(e) => Err(AsyncI2cError::DeviceError(e)),
         }
     }
 }
