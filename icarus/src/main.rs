@@ -17,6 +17,8 @@ use defmt_rtt as _; // global logger
 // We require an allocator for some heap stuff - unfortunatly bincode serde
 // doesn't have support for heapless vectors yet
 extern crate alloc;
+
+// Allocator
 use linked_list_allocator::LockedHeap;
 
 use crate::tasks::*;
@@ -69,7 +71,7 @@ mod app {
             hc12::{UART1Bus, GPIO10},
             link_layer::LinkLayerDevice,
         },
-        device_constants::MotorI2cBus,
+        device_constants::{MotorI2cBus, ReactionWheelMotor},
     };
 
     use super::*;
@@ -112,7 +114,7 @@ mod app {
     #[local]
     pub struct Local {
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
-        pub motor_i2c_bus: MotorI2cBus,
+        pub motor_controller_i2c: MotorI2cBus,
     }
 
     #[init(
@@ -137,7 +139,7 @@ mod app {
         async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context);
 
         // Handler for the I2C electronic speed controllers
-        #[task(local = [motor_i2c_bus], priority = 3)]
+        #[task(local = [motor_controller_i2c], priority = 3)]
         async fn motor_drivers(&mut ctx: motor_drivers::Context);
     }
 

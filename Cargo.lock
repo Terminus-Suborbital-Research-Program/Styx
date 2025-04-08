@@ -400,7 +400,7 @@ dependencies = [
  "heapless 0.8.0",
  "panic-halt",
  "panic-probe",
- "rp235x-hal",
+ "rp235x-hal 0.2.0",
  "rtic",
  "rtic-monotonics",
  "rtic-sync",
@@ -433,6 +433,9 @@ name = "embedded-hal"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "361a90feb7004eca4019fb28352a9465666b24f840f5c3cddf0ff13920590b89"
+dependencies = [
+ "defmt 0.3.100",
+]
 
 [[package]]
 name = "embedded-hal-async"
@@ -440,6 +443,7 @@ version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c4c685bbef7fe13c3c6dd4da26841ed3980ef33e841cddfa15ce8a8fb3f1884"
 dependencies = [
+ "defmt 0.3.100",
  "embedded-hal 1.0.0",
 ]
 
@@ -462,6 +466,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "513e0b3a8fb7d3013a8ae17a834283f170deaf7d0eeab0a7c1a36ad4dd356d22"
 dependencies = [
  "critical-section",
+ "defmt 0.3.100",
  "embedded-hal 1.0.0",
  "embedded-hal-async",
 ]
@@ -756,11 +761,9 @@ dependencies = [
  "cortex-m-rt",
  "defmt 0.3.100",
  "defmt-rtt",
- "embedded-hal 0.2.7",
  "embedded-hal 1.0.0",
  "embedded-hal-async",
  "embedded-hal-bus 0.3.0",
- "embedded-hal-nb",
  "embedded-io",
  "embedded-time",
  "fugit",
@@ -768,9 +771,10 @@ dependencies = [
  "heapless 0.8.0",
  "hifitime",
  "linked_list_allocator",
+ "mcf8316c-rs",
  "minikalman",
  "nalgebra 0.33.2",
- "rp235x-hal",
+ "rp235x-hal 0.3.0",
  "rp235x-pac",
  "rtic",
  "rtic-monotonic",
@@ -983,6 +987,7 @@ version = "0.1.0"
 dependencies = [
  "defmt 1.0.1",
  "embedded-hal 1.0.0",
+ "embedded-hal-async",
 ]
 
 [[package]]
@@ -1339,6 +1344,44 @@ name = "rp235x-hal"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed1714150c427d4be4022ff92dbf26a7e69c4eb7c1eba151c5752299c7c7f165"
+dependencies = [
+ "bitfield 0.14.0",
+ "cortex-m",
+ "cortex-m-rt",
+ "critical-section",
+ "defmt 0.3.100",
+ "embedded-dma",
+ "embedded-hal 0.2.7",
+ "embedded-hal 1.0.0",
+ "embedded-hal-async",
+ "embedded-hal-nb",
+ "embedded-io",
+ "frunk",
+ "fugit",
+ "gcd",
+ "itertools",
+ "nb 1.1.0",
+ "paste",
+ "pio",
+ "rand_core",
+ "riscv",
+ "riscv-rt",
+ "rp-binary-info",
+ "rp-hal-common",
+ "rp235x-hal-macros",
+ "rp235x-pac",
+ "rtic-monotonic",
+ "sha2-const-stable",
+ "usb-device",
+ "vcell",
+ "void",
+]
+
+[[package]]
+name = "rp235x-hal"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2939c82776b0b4ae110168b4298b5adf831e6cff249b057bf2a2187453b959c"
 dependencies = [
  "bitfield 0.14.0",
  "cortex-m",

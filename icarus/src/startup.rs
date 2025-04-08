@@ -1,10 +1,16 @@
 use defmt::info;
 //use bme280::i2c::BME280;
 use embedded_hal::digital::OutputPin;
+use embedded_hal::i2c::I2c;
+use embedded_hal_bus::i2c::AtomicDevice;
 use fugit::RateExtU32;
 use fugit::RateExtU64;
+use mcf8316c_rs::controller::MotorController;
 use rp235x_hal::clocks::init_clocks_and_plls;
+use rp235x_hal::gpio::FunctionI2C;
+use rp235x_hal::gpio::Pin;
 use rp235x_hal::gpio::PullNone;
+use rp235x_hal::gpio::PullUp;
 use rp235x_hal::pwm::Slices;
 use rp235x_hal::uart::DataBits;
 use rp235x_hal::uart::StopBits;
@@ -25,6 +31,8 @@ use crate::app::*;
 use crate::communications::hc12::HC12;
 use crate::communications::link_layer::Device;
 use crate::communications::link_layer::LinkLayerDevice;
+use crate::device_constants::pins::EscI2CSclPin;
+use crate::device_constants::pins::EscI2CSdaPin;
 use crate::device_constants::MotorI2cBus;
 use crate::hal;
 use crate::peripherals::async_i2c::AsyncI2c;
@@ -153,20 +161,18 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     // Sensors
     // Init I2C pins
-    let sda_pin = bank0_pins.gpio16.reconfigure();
-    let scl_pin = bank0_pins.gpio17.reconfigure();
+    let sda_pin: Pin<EscI2CSdaPin, FunctionI2C, PullUp> = bank0_pins.gpio16.reconfigure();
+    let scl_pin: Pin<EscI2CSclPin, FunctionI2C, PullUp> = bank0_pins.gpio17.reconfigure();
 
-    let motor_i2c: MotorI2cBus = AsyncI2c::new(
-        I2C::new_controller(
-            ctx.device.I2C0,
-            sda_pin,
-            scl_pin,
-            RateExtU32::kHz(400),
-            &mut ctx.device.RESETS,
-            clocks.system_clock.freq(),
-        ),
-        10,
+    let motor_i2c = I2C::new_controller(
+        ctx.device.I2C0,
+        sda_pin,
+        scl_pin,
+        RateExtU32::kHz(400),
+        &mut ctx.device.RESETS,
+        clocks.system_clock.freq(),
     );
+    let async_motor_i2c = AsyncI2c::new(motor_i2c, 10);
 
     let delay: DelayTimer =
         rp235x_hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
@@ -209,7 +215,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         },
         Local {
             led: led_pin,
-            motor_i2c_bus: motor_i2c,
+            motor_controller_i2c: async_motor_i2c,
         },
     )
 }
