@@ -37,7 +37,7 @@ pub trait Register: sealed::Sealed + From<u32> + Into<u32> + Copy {
     }
 }
 
-/// ALGO_DEBUG Register. Used by us to control the speet of the motor
+/// ALGO_DEBUG Register. Used by us to control the speed of the motor
 #[derive(Clone, Copy, Debug, Format)]
 pub struct SpeedRegister {
     speed_percent: u8,
