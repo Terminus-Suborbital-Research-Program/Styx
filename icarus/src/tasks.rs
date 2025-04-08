@@ -215,6 +215,9 @@ pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'
                             let mut buffer_heapless_stirng: alloc::string::String =
                                 alloc::string::String::new();
                             write!(buffer_heapless_stirng, "{:#?}", packet).ok();
+                            for char in buffer_heapless_stirng.chars() {
+                                Mono::delay(1_u64.millis()).await;
+                            }
                         }
                     }
                 }
@@ -227,6 +230,12 @@ pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'
 
 pub async fn sample_sensors(_ctx: sample_sensors::Context<'_>) {
     loop {
+        // ctx.shared.software_delay.lock(|mut delay|{
+        //     ctx.shared.env_sensor.lock(|environment|{
+        //         let measurements = environment.measure(&mut delay).unwrap();
+        //         println!(ctx, "Measurements: {}", measurements.temperature);
+        //     });
+        // });
         Mono::delay(250_u64.millis()).await;
     }
 }
