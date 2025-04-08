@@ -45,7 +45,7 @@ pub struct ControlWord {
     /// Memory section
     memory_section: u8,
     /// Address of the transaction
-    address: u16, // Only twelve bytes used
+    address: u16, // Only twelve bits used
 }
 
 impl ControlWord {
