@@ -189,13 +189,10 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     let serial = SerialPort::new(usb_bus_ref);
 
-    info!("Peripherals initialized, spawning tasks...");
-    heartbeat::spawn().ok();
-    radio_flush::spawn().ok();
-    incoming_packet_handler::spawn().ok();
-    sample_sensors::spawn().ok();
-    motor_drivers::spawn().ok();
-    info!("Tasks spawned!");
+    // radio_flush::spawn().ok();
+    // incoming_packet_handler::spawn().ok();
+    // sample_sensors::spawn().ok();
+    // inertial_nav::spawn().ok();
 
     (
         Shared {
