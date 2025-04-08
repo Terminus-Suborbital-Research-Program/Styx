@@ -15,25 +15,17 @@ use rp235x_hal::Sio;
 use rp235x_hal::Watchdog;
 use rp235x_hal::I2C;
 use rtic_monotonics::Monotonic;
-use rtic_sync::make_channel;
 use usb_device::bus::UsbBusAllocator;
-use usb_device::device::StringDescriptors;
-use usb_device::device::UsbDeviceBuilder;
-use usb_device::device::UsbVidPid;
 use usbd_serial::SerialPort;
 
-use crate::actuators::motor::Motor;
 use crate::actuators::servo::HOLDING_ANGLE;
 use crate::actuators::servo::{EjectionServoMosfet, LockingServoMosfet, Servo};
-use crate::actuators::PWM2a;
 
 use crate::app::*;
 use crate::communications::hc12::HC12;
 use crate::communications::link_layer::Device;
 use crate::communications::link_layer::LinkLayerDevice;
-use crate::communications::serial_handler;
-use crate::communications::serial_handler::HeaplessString;
-use crate::communications::serial_handler::MAX_USB_LINES;
+use crate::device_constants::MotorI2cBus;
 use crate::hal;
 use crate::Mono;
 use crate::ALLOCATOR;
@@ -62,14 +54,6 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     }
 
     info!("Good morning sunshine! Icarus is awake!");
-
-    // Channel for sending strings to the USB console
-    let (usb_console_line_sender, usb_console_line_receiver) =
-        make_channel!(HeaplessString, MAX_USB_LINES);
-
-    // Channel for incoming commands from the USB console
-    let (usb_console_command_sender, usb_console_command_receiver) =
-        make_channel!(HeaplessString, MAX_USB_LINES);
 
     // Set up clocks
     let mut watchdog = Watchdog::new(ctx.device.WATCHDOG);
@@ -104,8 +88,6 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         .into_pull_type::<PullNone>()
         .into_push_pull_output();
     led_pin.set_low().unwrap();
-    // Start the heartbeat task
-    heartbeat::spawn().ok();
 
     // Get clock frequency
     let clock_freq = clocks.peripheral_clock.freq();
@@ -159,30 +141,28 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     locking_servo.set_angle(HOLDING_ANGLE);
 
     // Motor Initialization
-    let mut motor_xy_pwm = pwm_slices.pwm2;
-    motor_xy_pwm.enable();
-    motor_xy_pwm.set_top(65534 / 2);
-    motor_xy_pwm.set_div_int(1);
-    let mut motor_x_channel: PWM2a = motor_xy_pwm.channel_a;
-    let motor_x_channel_pin = motor_x_channel.output_to(bank0_pins.gpio4);
-    let mut motor_x = Motor::new(motor_x_channel, motor_x_channel_pin);
-    motor_x.set_speed(0);
+    // let mut motor_xy_pwm = pwm_slices.pwm2;
+    // motor_xy_pwm.enable();
+    // motor_xy_pwm.set_top(65534 / 2);
+    // motor_xy_pwm.set_div_int(1);
+    // let mut motor_x_channel: PWM2a = motor_xy_pwm.channel_a;
+    // let motor_x_channel_pin = motor_x_channel.output_to(bank0_pins.gpio4);
+    // let mut motor_x = Motor::new(motor_x_channel, motor_x_channel_pin);
+    // motor_x.set_speed(0);
 
     // Sensors
     // Init I2C pins
-    let sda_pin = bank0_pins.gpio14.reconfigure();
-    let scl_pin = bank0_pins.gpio15.reconfigure();
+    let sda_pin = bank0_pins.gpio16.reconfigure();
+    let scl_pin = bank0_pins.gpio17.reconfigure();
 
-    let i2c1: I2CMainBus = I2C::new_controller(
-        ctx.device.I2C1,
+    let motor_i2c: MotorI2cBus = I2C::new_controller(
+        ctx.device.I2C0,
         sda_pin,
         scl_pin,
         RateExtU32::kHz(400),
         &mut ctx.device.RESETS,
         clocks.system_clock.freq(),
     );
-
-    // let i2c_bus = ctx.local.i2c_main_bus.write(AtomicCell::new(i2c1));
 
     let delay: DelayTimer =
         rp235x_hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
@@ -205,23 +185,26 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     let serial = SerialPort::new(usb_bus_ref);
 
-    // radio_flush::spawn().ok();
-    // incoming_packet_handler::spawn().ok();
-    // sample_sensors::spawn().ok();
-    // inertial_nav::spawn().ok();
+    info!("Peripherals initialized, spawning tasks...");
+    heartbeat::spawn().ok();
+    radio_flush::spawn().ok();
+    incoming_packet_handler::spawn().ok();
+    sample_sensors::spawn().ok();
+    motor_drivers::spawn().ok();
+    info!("Tasks spawned!");
 
     (
         Shared {
-            //uart0: uart0_peripheral,
-            //uart0_buffer,
             radio_link,
             ejector_driver: ejection_servo,
             locking_driver: locking_servo,
             usb_serial: serial,
             clock_freq_hz: clock_freq.to_Hz(),
             software_delay: delay,
-            //env_sensor: bme280
         },
-        Local { led: led_pin },
+        Local {
+            led: led_pin,
+            motor_i2c_bus: motor_i2c,
+        },
     )
 }
