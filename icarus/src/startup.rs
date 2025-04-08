@@ -182,7 +182,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         clocks.system_clock.freq(),
     );
 
-    let i2c_bus = ctx.local.i2c_main_bus.write(AtomicCell::new(i2c1));
+    // let i2c_bus = ctx.local.i2c_main_bus.write(AtomicCell::new(i2c1));
 
     let delay: DelayTimer =
         rp235x_hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
@@ -205,10 +205,10 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     let serial = SerialPort::new(usb_bus_ref);
 
-    radio_flush::spawn().ok();
-    incoming_packet_handler::spawn().ok();
-    sample_sensors::spawn().ok();
-    inertial_nav::spawn().ok();
+    // radio_flush::spawn().ok();
+    // incoming_packet_handler::spawn().ok();
+    // sample_sensors::spawn().ok();
+    // inertial_nav::spawn().ok();
 
     (
         Shared {

@@ -208,7 +208,4 @@ pub async fn sample_sensors(_ctx: sample_sensors::Context<'_>) {
     // println!(ctx, "Humidity: {}", pressure);
 }
 
-
-pub async fn inertial_nav(_ctx: inertial_nav::Context<'_>){
-    
-}
+pub async fn inertial_nav(_ctx: inertial_nav::Context<'_>) {}
