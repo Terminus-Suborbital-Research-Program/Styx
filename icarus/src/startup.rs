@@ -21,6 +21,8 @@ use rp235x_hal::Sio;
 use rp235x_hal::Watchdog;
 use rp235x_hal::I2C;
 use rtic_monotonics::Monotonic;
+use rtic_sync::arbiter::i2c::ArbiterDevice;
+use rtic_sync::arbiter::Arbiter;
 use usb_device::bus::UsbBusAllocator;
 use usbd_serial::SerialPort;
 
@@ -173,6 +175,9 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         clocks.system_clock.freq(),
     );
     let async_motor_i2c = AsyncI2c::new(motor_i2c, 10);
+    let i2c_arbiter = ctx.local.i2c_main_bus.write(Arbiter::new(async_motor_i2c));
+    let motor_controller = MotorController::new(0x01, ArbiterDevice::new(i2c_arbiter));
+    let two = MotorController::new(0x01, ArbiterDevice::new(i2c_arbiter));
 
     let delay: DelayTimer =
         rp235x_hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
@@ -200,7 +205,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     radio_flush::spawn().ok();
     incoming_packet_handler::spawn().ok();
     sample_sensors::spawn().ok();
-    motor_drivers::spawn().ok();
+    motor_drivers::spawn(i2c_arbiter).ok();
     info!("Tasks spawned!");
     inertial_nav::spawn().ok();
 
@@ -213,9 +218,6 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             clock_freq_hz: clock_freq.to_Hz(),
             software_delay: delay,
         },
-        Local {
-            led: led_pin,
-            motor_controller_i2c: async_motor_i2c,
-        },
+        Local { led: led_pin },
     )
 }

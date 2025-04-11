@@ -82,6 +82,7 @@ mod app {
     use rp235x_hal::uart::UartPeripheral;
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
+    use rtic_sync::arbiter::Arbiter;
     use usb_device::class_prelude::*;
 
     use hc12::HC12;
@@ -114,7 +115,7 @@ mod app {
     #[local]
     pub struct Local {
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
-        pub motor_controller_i2c: MotorI2cBus,
+        //pub motor_controller_i2c: MotorI2cBus,
     }
 
     #[init(
@@ -122,7 +123,7 @@ mod app {
             // Task local initialized resources are static
             // Here we use MaybeUninit to allow for initialization in init()
             // This enables its usage in driver initialization
-            i2c_main_bus: MaybeUninit<AtomicCell<I2CMainBus>> = MaybeUninit::uninit(),
+            i2c_main_bus: MaybeUninit<Arbiter<MotorI2cBus>> = MaybeUninit::uninit(),
         ]
     )]
     fn init(ctx: init::Context) -> (Shared, Local) {
@@ -139,8 +140,11 @@ mod app {
         async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context);
 
         // Handler for the I2C electronic speed controllers
-        #[task(local = [motor_controller_i2c], priority = 3)]
-        async fn motor_drivers(&mut ctx: motor_drivers::Context);
+        #[task(priority = 3)]
+        async fn motor_drivers(
+            &mut ctx: motor_drivers::Context,
+            i2c: &'static Arbiter<MotorI2cBus>,
+        );
     }
 
     extern "Rust" {

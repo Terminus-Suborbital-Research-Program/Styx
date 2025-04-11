@@ -9,6 +9,7 @@ use futures::FutureExt as _;
 use mcf8316c_rs::{controller::MotorController, data_word_to_u32, registers::write_sequence};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
+use rtic_sync::arbiter::Arbiter;
 
 use crate::{
     app::{incoming_packet_handler, *},
@@ -41,22 +42,8 @@ unsafe fn I2C0_IRQ() {
     MotorI2cBus::on_interrupt();
 }
 
-pub async fn motor_drivers(ctx: motor_drivers::Context<'_>) {
-    info!("Motor driver task started!");
-    // Motor driver i2c
-    let i2c = ctx.local.motor_controller_i2c;
-    let arbiter = rtic_sync::arbiter::Arbiter::new(i2c);
-    let i2c_arbiter = rtic_sync::arbiter::i2c::ArbiterDevice::new(&arbiter);
-    let mut motor_controller = MotorController::new(0x01, i2c_arbiter);
-
-    loop {
-        info!(
-            "I2c write speed result: {:?}",
-            motor_controller.set_speed_percent(0).await
-        );
-
-        Mono::delay(500_u64.millis()).await;
-    }
+pub async fn motor_drivers(ctx: motor_drivers::Context<'_>, i2c: &'static Arbiter<MotorI2cBus>) {
+    loop {}
 }
 
 pub async fn radio_flush(mut ctx: radio_flush::Context<'_>) {
