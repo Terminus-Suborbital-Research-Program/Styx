@@ -37,7 +37,7 @@ impl SpacecraftLQR{
         self.state += 0.5 * (self.state + state_change) * dt;
     }
 
-    pub fn solve_riccati(a: &Matrix6<f64>, b: &Matrix6<f64>, q: &Matrix6<f64>, r: &Matrix6<f64>, dt: f64) -> Option<(DMatrix<f64>, DMatrix<f64>)> {
+    pub fn solve_riccati(a: &Matrix6<f64>, b: &Matrix6<f64>, q: &Matrix6<f64>, r: &Matrix6<f64>, dt: f64) -> Option<(Matrix6<f64>, Matrix6x1<f64>)> {
         let tolerance = 1e-5;
         let max_iter = 100_000;
     

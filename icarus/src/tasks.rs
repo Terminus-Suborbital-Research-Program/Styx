@@ -1,4 +1,6 @@
+use bincode::de;
 use bincode::{config::standard, error::DecodeError};
+use bme280_rs::{AsyncBme280, Configuration, Oversampling, SensorMode};
 use defmt::{error, info, trace};
 use embedded_hal::digital::StatefulOutputPin;
 use embedded_hal_async::i2c::{self, I2c};
@@ -9,8 +11,9 @@ use futures::FutureExt as _;
 use mcf8316c_rs::{controller::MotorController, data_word_to_u32, registers::write_sequence};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
-use rtic_sync::arbiter::Arbiter;
+use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
 
+use crate::device_constants::AvionicsI2cBus;
 use crate::{
     app::{incoming_packet_handler, *},
     communications::{
@@ -18,7 +21,7 @@ use crate::{
         link_layer::{LinkLayerPayload, LinkPacket},
     },
     device_constants::MotorI2cBus,
-    peripherals::async_i2c::AsyncI2cError,
+    peripherals::async_i2c::{self, AsyncI2cError},
     Mono,
 };
 
@@ -158,8 +161,42 @@ pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'
     }
 }
 
-pub async fn sample_sensors(_ctx: sample_sensors::Context<'_>) {
+pub async fn sample_sensors(
+    mut ctx: sample_sensors::Context<'_>,
+    avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
+) {
+    ctx.local
+        .bme280
+        .set_sampling_configuration(
+            Configuration::default()
+                .with_temperature_oversampling(Oversampling::Oversample1)
+                .with_pressure_oversampling(Oversampling::Oversample1)
+                .with_humidity_oversampling(Oversampling::Oversample1)
+                .with_sensor_mode(SensorMode::Normal),
+        )
+        .await
+        .expect("Failed to configure BME280");
+    Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
+    ctx.local.bme280.init().await.ok();
+    Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
+
+    // let avionics_arbiter = ctx.local.i2c_avionics_bus.read(Arbiter::new(avionics_i2c));
+    // let mut bme280 = BME280::new_primary(ArbiterDevice::new(avionics_arbiter));
+
+    // ctx.shared.software_delay.lock(|mut delay: &mut rp235x_hal::Timer<rp235x_hal::timer::CopyableTimer1>|{
+    //     bme280.init(delay);
+    // });
+
     loop {
+        let temperature = ctx.local.bme280.read_temperature().await;
+        match temperature {
+            Ok(value) => {
+                info!("Temperature: {}", value);
+            }
+            Err(errors) => {
+                info!("Errors...");
+            }
+        }
         Mono::delay(250_u64.millis()).await;
     }
 }

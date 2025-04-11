@@ -58,13 +58,15 @@ pub mod pins {
 pub type SoftwareLED = Pin<LedPin, FunctionSio<SioOutput>, PullNone>;
 
 // Avionics I2C bus
-pub type AvionicsI2cBus = I2C<
-    I2C1,
-    (
-        Pin<AvionicsI2CSdaPin, FunctionI2C, PullUp>,
-        Pin<AvionicsI2CSclPin, FunctionI2C, PullUp>,
-    ),
-    Controller,
+pub type AvionicsI2cBus = AsyncI2c<
+    I2C<
+        I2C1,
+        (
+            Pin<AvionicsI2CSdaPin, FunctionI2C, PullUp>,
+            Pin<AvionicsI2CSclPin, FunctionI2C, PullUp>,
+        ),
+        Controller,
+    >,
 >;
 
 /// ACS ESC I2C bus

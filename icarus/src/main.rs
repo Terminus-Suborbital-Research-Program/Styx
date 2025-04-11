@@ -23,9 +23,13 @@ use linked_list_allocator::LockedHeap;
 
 use crate::tasks::*;
 use core::mem::MaybeUninit;
-//use bme280::i2c::BME280;
-use embedded_hal_bus::util::AtomicCell;
 use icarus::{DelayTimer, I2CMainBus};
+
+// Sensors
+use bme280_rs::{AsyncBme280, Configuration, Oversampling, SensorMode};
+
+// Busses
+use rtic_sync::arbiter::i2c::ArbiterDevice;
 
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
@@ -71,15 +75,17 @@ mod app {
             hc12::{UART1Bus, GPIO10},
             link_layer::LinkLayerDevice,
         },
-        device_constants::{MotorI2cBus, ReactionWheelMotor},
+        device_constants::{AvionicsI2cBus, MotorI2cBus, ReactionWheelMotor},
     };
 
     use super::*;
 
     use communications::*;
 
+    use cortex_m::delay::Delay;
+    use embedded_hal_async::delay::DelayNs;
     use hal::gpio::{self, FunctionSio, PullNone, SioOutput};
-    use rp235x_hal::uart::UartPeripheral;
+    use rp235x_hal::{timer::CopyableTimer1, uart::UartPeripheral};
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
     use rtic_sync::arbiter::Arbiter;
@@ -108,14 +114,12 @@ mod app {
         pub radio_link: LinkLayerDevice<HC12<UART1Bus, GPIO10>>,
         pub usb_serial: SerialPort<'static, hal::usb::UsbBus>,
         pub clock_freq_hz: u32,
-        pub software_delay: DelayTimer,
-        //pub env_sensor: BME280<AtomicDevice<'static,I2CMainBus>>
     }
 
     #[local]
     pub struct Local {
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
-        //pub motor_controller_i2c: MotorI2cBus,
+        pub bme280: AsyncBme280<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
     }
 
     #[init(
@@ -123,7 +127,8 @@ mod app {
             // Task local initialized resources are static
             // Here we use MaybeUninit to allow for initialization in init()
             // This enables its usage in driver initialization
-            i2c_main_bus: MaybeUninit<Arbiter<MotorI2cBus>> = MaybeUninit::uninit(),
+            i2c_avionics_bus: MaybeUninit<Arbiter<AvionicsI2cBus>> = MaybeUninit::uninit(),
+            i2c_motor_bus: MaybeUninit<Arbiter<MotorI2cBus>> = MaybeUninit::uninit(),
         ]
     )]
     fn init(ctx: init::Context) -> (Shared, Local) {
@@ -145,9 +150,7 @@ mod app {
             &mut ctx: motor_drivers::Context,
             i2c: &'static Arbiter<MotorI2cBus>,
         );
-    }
 
-    extern "Rust" {
         // Updates the radio module on the serial interrupt
         #[task(binds = UART1_IRQ, shared = [radio_link])]
         fn uart_interrupt(mut ctx: uart_interrupt::Context);
@@ -156,10 +159,13 @@ mod app {
         #[task(shared = [radio_link], priority = 1)]
         async fn radio_flush(mut ctx: radio_flush::Context);
 
-        #[task(shared = [software_delay], priority = 3)]
-        async fn sample_sensors(mut ctx: sample_sensors::Context);
+        #[task(local = [bme280], priority = 3)]
+        async fn sample_sensors(
+            mut ctx: sample_sensors::Context,
+            avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
+        );
 
-        #[task(shared = [software_delay], priority = 3)]
+        #[task(priority = 3)]
         async fn inertial_nav(mut ctx: inertial_nav::Context);
     }
 }

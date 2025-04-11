@@ -59,7 +59,7 @@ rp235x-pac = "0.1.0"
 mcf8316c-rs = { path = "../mcf8316c-rs" }
 
 # Sensors
-bme280 = { version = "0.5.1", features = ["with_defmt"] }
+bme280-rs = {version="0.3.0", features=["async"]}
 
 # Math
 nalgebra = { version = "*", default-features = false, features = [
