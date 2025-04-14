@@ -14,6 +14,7 @@ use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
 
 use crate::device_constants::AvionicsI2cBus;
+use crate::phases::StateMachineListener;
 use crate::{
     app::{incoming_packet_handler, *},
     communications::{
@@ -45,7 +46,14 @@ unsafe fn I2C0_IRQ() {
     MotorI2cBus::on_interrupt();
 }
 
-pub async fn motor_drivers(ctx: motor_drivers::Context<'_>, i2c: &'static Arbiter<MotorI2cBus>) {
+pub async fn motor_drivers(
+    mut ctx: motor_drivers::Context<'_>,
+    i2c: &'static Arbiter<MotorI2cBus>,
+    mut esc_state_listener: StateMachineListener,
+) {
+    esc_state_listener
+        .wait_for_state_specific(bin_packets::IcarusPhase::OrientSolar)
+        .await;
     loop {}
 }
 

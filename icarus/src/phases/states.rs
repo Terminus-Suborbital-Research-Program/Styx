@@ -1,48 +1,61 @@
-use bin_packets::phases::EjectorPhase;
+use bin_packets::IcarusPhase;
+use heapless::Vec;
+use rtic_sync::signal::{Signal, SignalReader, SignalWriter};
 
-/// State machine for the Ejector, holds the current phase
-pub struct EjectorStateMachine {
-    phase: EjectorPhase,
-    next_phase: Option<EjectorPhase>,
+pub struct StateMachine<const N: usize> {
+    state: IcarusPhase,
+    channels: Vec<SignalWriter<'static, IcarusPhase>, N>,
 }
 
-impl EjectorStateMachine {
-    /// Ejector always enters the Standby phase first
+impl<const N: usize> StateMachine<N> {
     pub fn new() -> Self {
         Self {
-            phase: EjectorPhase::Standby,
-            next_phase: None,
+            state: IcarusPhase::Ejection,
+            channels: Vec::new(),
         }
     }
 
-    /// Mabye transition to the next phase, depending on conditions
-    /// returns the number of ms we should wait before trying to transition again
-    pub fn transition(&mut self) -> u64 {
-        if let Some(next_phase) = self.next_phase {
-            self.phase = next_phase;
-            self.next_phase = None;
+    pub fn get_phase(&self) -> IcarusPhase {
+        self.state
+    }
+
+    fn set_state(&mut self, state: IcarusPhase) {
+        self.state = state;
+
+        // Notify
+        self.channels.iter_mut().for_each(|writer| {
+            writer.write(state);
+        });
+    }
+
+    pub fn add_channel(&mut self, channel: SignalWriter<'static, IcarusPhase>) -> Result<(), ()> {
+        match self.channels.push(channel) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(()),
         }
+    }
+}
 
-        let (phase, time) = match self.phase {
-            // Standby only moves into ejection if explicitly commanded, so
-            // we don't model that here
-            EjectorPhase::Standby => (None, 0),
+pub struct StateMachineListener {
+    reader: SignalReader<'static, IcarusPhase>,
+}
 
-            EjectorPhase::Ejection => (Some(EjectorPhase::Hold), 5000),
-
-            EjectorPhase::Hold => (None, 10000),
-        };
-        self.next_phase = phase;
-        time
+impl StateMachineListener {
+    pub fn new(reader: SignalReader<'static, IcarusPhase>) -> Self {
+        Self { reader }
     }
 
-    /// Copies the current phase
-    pub fn phase(&self) -> EjectorPhase {
-        self.phase.clone()
+    async fn wait_for_state(&mut self) -> IcarusPhase {
+        self.reader.wait().await
     }
 
-    /// Sets the phase to a specific value
-    pub fn set_phase(&mut self, phase: EjectorPhase) {
-        self.phase = phase;
+    /// Waits for a specific state to be entered
+    pub async fn wait_for_state_specific(&mut self, state: IcarusPhase) {
+        loop {
+            let current_state = self.wait_for_state().await;
+            if current_state == state {
+                return;
+            }
+        }
     }
 }

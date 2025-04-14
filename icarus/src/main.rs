@@ -7,6 +7,7 @@ pub mod actuators;
 pub mod communications;
 pub mod device_constants;
 pub mod peripherals;
+pub mod phases;
 pub mod sensors;
 pub mod startup;
 pub mod tasks;
@@ -75,11 +76,13 @@ mod app {
             hc12::{UART1Bus, GPIO10},
             link_layer::LinkLayerDevice,
         },
-        device_constants::{AvionicsI2cBus, MotorI2cBus, ReactionWheelMotor},
+        device_constants::{AvionicsI2cBus, IcarusStateMachine, MotorI2cBus, ReactionWheelMotor},
+        phases::StateMachineListener,
     };
 
     use super::*;
 
+    use bin_packets::IcarusPhase;
     use communications::*;
 
     use cortex_m::delay::Delay;
@@ -88,7 +91,10 @@ mod app {
     use rp235x_hal::{timer::CopyableTimer1, uart::UartPeripheral};
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
-    use rtic_sync::arbiter::Arbiter;
+    use rtic_sync::{
+        arbiter::Arbiter,
+        signal::{Signal, SignalReader},
+    };
     use usb_device::class_prelude::*;
 
     use hc12::HC12;
@@ -114,6 +120,7 @@ mod app {
         pub radio_link: LinkLayerDevice<HC12<UART1Bus, GPIO10>>,
         pub usb_serial: SerialPort<'static, hal::usb::UsbBus>,
         pub clock_freq_hz: u32,
+        pub state_machine: IcarusStateMachine,
     }
 
     #[local]
@@ -129,6 +136,7 @@ mod app {
             // This enables its usage in driver initialization
             i2c_avionics_bus: MaybeUninit<Arbiter<AvionicsI2cBus>> = MaybeUninit::uninit(),
             i2c_motor_bus: MaybeUninit<Arbiter<MotorI2cBus>> = MaybeUninit::uninit(),
+            esc_state_signal: MaybeUninit<Signal<IcarusPhase>> = MaybeUninit::uninit(),
         ]
     )]
     fn init(ctx: init::Context) -> (Shared, Local) {
@@ -145,10 +153,11 @@ mod app {
         async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context);
 
         // Handler for the I2C electronic speed controllers
-        #[task(priority = 3)]
+        #[task(priority = 3, shared = [state_machine])]
         async fn motor_drivers(
             &mut ctx: motor_drivers::Context,
             i2c: &'static Arbiter<MotorI2cBus>,
+            mut esc_state_listener: StateMachineListener,
         );
 
         // Updates the radio module on the serial interrupt

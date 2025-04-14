@@ -9,7 +9,10 @@ use rp235x_hal::{
     I2C,
 };
 
-use crate::peripherals::async_i2c::AsyncI2c;
+use crate::{peripherals::async_i2c::AsyncI2c, phases::StateMachine};
+
+// State Machine
+pub type IcarusStateMachine = StateMachine<10>;
 
 pub mod pins {
     use rp235x_hal::gpio::bank0::*;
