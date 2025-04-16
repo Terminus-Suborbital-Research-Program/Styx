@@ -1,9 +1,6 @@
-use cortex_m::delay::Delay;
+use defmt::error;
 use defmt::info;
-use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
-use embedded_hal::i2c::I2c;
-use embedded_hal_bus::i2c::AtomicDevice;
 use fugit::RateExtU32;
 use fugit::RateExtU64;
 use mcf8316c_rs::controller::MotorController;
@@ -24,8 +21,8 @@ use rp235x_hal::I2C;
 use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::i2c::ArbiterDevice;
 use rtic_sync::arbiter::Arbiter;
-use usb_device::bus::UsbBusAllocator;
-use usbd_serial::SerialPort;
+// use usb_device::bus::UsbBusAllocator;
+// use usbd_serial::SerialPort;
 
 use crate::actuators::servo::HOLDING_ANGLE;
 use crate::actuators::servo::{EjectionServoMosfet, LockingServoMosfet, Servo};
@@ -46,6 +43,7 @@ use crate::{DelayTimer, I2CMainBus};
 
 // Sensors
 use bme280_rs::{AsyncBme280, Bme280, Configuration, Oversampling, SensorMode};
+use ina260_terminus::{AsyncINA260, Register as INA260Register};
 
 // Logs our time for demft
 defmt::timestamp!("{=u64:us}", {
@@ -68,7 +66,6 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     // Set up clocks
     let mut watchdog = Watchdog::new(ctx.device.WATCHDOG);
-    info!("Good morning sunshine! Icarus is awake!");
 
     let clocks = init_clocks_and_plls(
         XTAL_FREQ_HZ,
@@ -78,9 +75,17 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         ctx.device.PLL_USB,
         &mut ctx.device.RESETS,
         &mut watchdog,
-    )
-    .ok()
-    .unwrap();
+    );
+
+    let clocks = match clocks {
+        Ok(clocks) => clocks,
+        Err(err) => {
+            error!("Failed to initialize clocks: {:?}", err);
+            panic!();
+        }
+    };
+
+    info!("Good morning sunshine! Icarus is awake!");
 
     Mono::start(ctx.device.TIMER0, &ctx.device.RESETS);
 
@@ -155,11 +160,11 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     // Sensors
     // Init I2C pins
-    let motor_sda_pin: Pin<EscI2CSdaPin, FunctionI2C, PullUp> = bank0_pins.gpio16.reconfigure();
-    let motor_scl_pin: Pin<EscI2CSclPin, FunctionI2C, PullUp> = bank0_pins.gpio17.reconfigure();
+    let motor_sda_pin: Pin<EscI2CSdaPin, FunctionI2C, PullUp> = bank0_pins.gpio18.reconfigure();
+    let motor_scl_pin: Pin<EscI2CSclPin, FunctionI2C, PullUp> = bank0_pins.gpio19.reconfigure();
 
     let motor_i2c = I2C::new_controller(
-        ctx.device.I2C0,
+        ctx.device.I2C1,
         motor_sda_pin,
         motor_scl_pin,
         RateExtU32::kHz(400),
@@ -171,12 +176,12 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let motor_controller = MotorController::new(0x01, ArbiterDevice::new(motor_i2c_arbiter));
 
     let avionics_sda_pin: Pin<AvionicsI2CSdaPin, FunctionI2C, PullUp> =
-        bank0_pins.gpio6.reconfigure();
+        bank0_pins.gpio16.reconfigure();
     let avionics_scl_pin: Pin<AvionicsI2CSclPin, FunctionI2C, PullUp> =
-        bank0_pins.gpio7.reconfigure();
+        bank0_pins.gpio17.reconfigure();
 
     let avionics_i2c = I2C::new_controller(
-        ctx.device.I2C1,
+        ctx.device.I2C0,
         avionics_sda_pin,
         avionics_scl_pin,
         RateExtU32::kHz(400),
@@ -193,26 +198,15 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     // let mut delay_here = hal::Timer::new_timer1(pac.TIMER1, &mut pac.RESETS, &clocks);
 
     // Initialize Avionics Sensors
-    let mut bme280 = AsyncBme280::new(ArbiterDevice::new(avionics_i2c_arbiter), Mono);
+    let mut bme280 =
+        AsyncBme280::new_with_address(ArbiterDevice::new(avionics_i2c_arbiter), 0x77, Mono);
 
-    // Set up USB Device allocator
-    let usb_bus = UsbBusAllocator::new(hal::usb::UsbBus::new(
-        ctx.device.USB,
-        ctx.device.USB_DPRAM,
-        clocks.usb_clock,
-        true,
-        &mut ctx.device.RESETS,
-    ));
-    unsafe {
-        USB_BUS = Some(usb_bus);
-    }
-    #[allow(static_mut_refs)]
-    let usb_bus_ref = unsafe { USB_BUS.as_ref().unwrap() };
-
-    let serial = SerialPort::new(usb_bus_ref);
+    let mut ina260_1 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 32_u8, Mono);
+    let mut ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 33_u8, Mono);
+    let mut ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 34_u8, Mono);
 
     info!("Peripherals initialized, spawning tasks...");
-    heartbeat::spawn().ok();
+    // heartbeat::spawn().ok();
     radio_flush::spawn().ok();
     incoming_packet_handler::spawn().ok();
     motor_drivers::spawn(motor_i2c_arbiter).ok();
@@ -225,12 +219,14 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             radio_link,
             ejector_driver: ejection_servo,
             locking_driver: locking_servo,
-            usb_serial: serial,
             clock_freq_hz: clock_freq.to_Hz(),
         },
         Local {
             led: led_pin,
             bme280: bme280,
+            ina260_1,
+            ina260_2,
+            ina260_3,
         },
     )
 }
