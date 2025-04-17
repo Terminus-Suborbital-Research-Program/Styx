@@ -4,6 +4,7 @@ use core::task::{Context, Poll};
 use embedded_hal::i2c::{Error, ErrorKind};
 use futures::future::{select, Either, FutureExt};
 
+use crate::device_constants::MotorI2cBus;
 use embedded_hal_async::i2c;
 use futures::pin_mut;
 use rp235x_hal::async_utils::AsyncPeripheral;
@@ -27,6 +28,7 @@ where
     }
 }
 
+use rp235x_pac::interrupt;
 /// An asynchronous IO device that can timeout
 pub struct AsyncI2c<I2C> {
     device: I2C,

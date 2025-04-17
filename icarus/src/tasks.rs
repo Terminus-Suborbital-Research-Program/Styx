@@ -8,6 +8,7 @@ use embedded_hal_bus::{i2c::AtomicDevice, util::AtomicCell};
 use embedded_io::Read;
 use fugit::ExtU64;
 use futures::FutureExt as _;
+use ina260_terminus::{AsyncINA260, Register as INA260Register};
 use mcf8316c_rs::{controller::MotorController, data_word_to_u32, registers::write_sequence};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
@@ -54,7 +55,30 @@ pub async fn motor_drivers(
     esc_state_listener
         .wait_for_state_specific(bin_packets::IcarusPhase::OrientSolar)
         .await;
-    loop {}
+    info!("Motor Driver Task Started");
+
+    ctx.local.ina260_1.init().await.ok();
+    ctx.local.ina260_2.init().await.ok();
+    ctx.local.ina260_3.init().await.ok();
+
+    loop {
+        ctx.local
+            .ina260_1
+            .read_register(INA260Register::VOLTAGE)
+            .await
+            .ok();
+        ctx.local
+            .ina260_2
+            .read_register(INA260Register::VOLTAGE)
+            .await
+            .ok();
+        ctx.local
+            .ina260_3
+            .read_register(INA260Register::VOLTAGE)
+            .await
+            .ok();
+        Mono::delay(100_u64.millis()).await;
+    }
 }
 
 pub async fn radio_flush(mut ctx: radio_flush::Context<'_>) {
@@ -173,6 +197,7 @@ pub async fn sample_sensors(
     mut ctx: sample_sensors::Context<'_>,
     avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
 ) {
+    ctx.local.bme280.init().await.ok();
     ctx.local
         .bme280
         .set_sampling_configuration(
@@ -184,8 +209,7 @@ pub async fn sample_sensors(
         )
         .await
         .expect("Failed to configure BME280");
-    Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
-    ctx.local.bme280.init().await.ok();
+
     Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
 
     // let avionics_arbiter = ctx.local.i2c_avionics_bus.read(Arbiter::new(avionics_i2c));
@@ -196,20 +220,22 @@ pub async fn sample_sensors(
     // });
 
     loop {
-        let temperature = ctx.local.bme280.read_temperature().await;
-        match temperature {
-            Ok(value) => {
-                info!("Temperature: {}", value);
-            }
-            Err(errors) => {
-                info!("Errors...");
-            }
+        if let Ok(Some(temperature)) = ctx.local.bme280.read_temperature().await {
+            info!("Temperature: {}", temperature);
+        }
+        if let Ok(Some(pressure)) = ctx.local.bme280.read_pressure().await {
+            info!("Pressure: {}", pressure);
+        }
+        if let Ok(Some(humidity)) = ctx.local.bme280.read_humidity().await {
+            info!("Humidity: {}", humidity);
         }
         Mono::delay(250_u64.millis()).await;
     }
 }
 
 pub async fn inertial_nav(_ctx: inertial_nav::Context<'_>) {
-    //TODO: Implement the inertial navigation functionality
-    //! This would have crashed it lol
+    loop {
+        // info!("Inertial Navigation");
+        Mono::delay(250_u64.millis()).await;
+    }
 }

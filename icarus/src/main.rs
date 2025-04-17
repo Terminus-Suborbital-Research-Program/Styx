@@ -28,6 +28,7 @@ use icarus::{DelayTimer, I2CMainBus};
 
 // Sensors
 use bme280_rs::{AsyncBme280, Configuration, Oversampling, SensorMode};
+use ina260_terminus::AsyncINA260;
 
 // Busses
 use rtic_sync::arbiter::i2c::ArbiterDevice;
@@ -99,7 +100,7 @@ mod app {
 
     use hc12::HC12;
 
-    use usbd_serial::SerialPort;
+    // use usbd_serial::SerialPort;
 
     pub type UART0Bus = UartPeripheral<
         rp235x_hal::uart::Enabled,
@@ -110,7 +111,7 @@ mod app {
         ),
     >;
 
-    pub static mut USB_BUS: Option<UsbBusAllocator<hal::usb::UsbBus>> = None;
+    // pub static mut USB_BUS: Option<UsbBusAllocator<hal::usb::UsbBus>> = None;
     #[shared]
     pub struct Shared {
         //uart0: UART0Bus,
@@ -118,7 +119,7 @@ mod app {
         pub ejector_driver: EjectionServo,
         pub locking_driver: LockingServo,
         pub radio_link: LinkLayerDevice<HC12<UART1Bus, GPIO10>>,
-        pub usb_serial: SerialPort<'static, hal::usb::UsbBus>,
+        // pub usb_serial: SerialPort<'static, hal::usb::UsbBus>,
         pub clock_freq_hz: u32,
         pub state_machine: IcarusStateMachine,
     }
@@ -127,6 +128,9 @@ mod app {
     pub struct Local {
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
         pub bme280: AsyncBme280<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
+        pub ina260_1: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
+        pub ina260_2: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
+        pub ina260_3: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
     }
 
     #[init(
