@@ -19,6 +19,7 @@ use usbd_serial::SerialPort;
 
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
 use crate::communications::serial_handler::{self, HeaplessString, MAX_USB_LINES};
+use crate::device_constants::ListenPin;
 use crate::hal;
 use crate::phases::EjectorStateMachine;
 use crate::{app::*, Mono};
@@ -148,6 +149,8 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     ejector_servo.enable();
     ejector_servo.hold();
 
+    let gpio_detect: ListenPin = bank0_pins.gpio21.into_pull_up_input();
+
     // Set up USB Device allocator
     let usb_bus = UsbBusAllocator::new(hal::usb::UsbBus::new(
         ctx.device.USB,
@@ -176,10 +179,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     // Serial Writer Structure
     let serial_console_writer = serial_handler::SerialWriter::new(usb_console_line_sender);
-    usb_serial_console_printer::spawn(usb_console_line_receiver).ok();
-    usb_console_reader::spawn(usb_console_command_sender).ok();
-    #[cfg(debug_assertions)]
-    command_handler::spawn(usb_console_command_receiver).ok();
     //radio_flush::spawn().ok();
     state_machine_update::spawn().ok();
     hc12_programmer::spawn().ok();
@@ -200,6 +199,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             blink_status_delay_millis: 1000,
             suspend_packet_handler: false,
             radio: hc,
+            ejection_pin: gpio_detect,
         },
         Local { led: led_pin },
     )
