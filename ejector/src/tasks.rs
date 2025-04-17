@@ -3,7 +3,7 @@ use core::cmp::max;
 use bin_packets::{phases::EjectorPhase, ApplicationPacket, LinkPacket};
 use bincode::config::standard;
 use defmt::info;
-use embedded_hal::digital::StatefulOutputPin;
+use embedded_hal::digital::{InputPin, StatefulOutputPin};
 use embedded_io::Write;
 use fugit::ExtU64;
 use rtic::Mutex;
@@ -69,6 +69,10 @@ pub async fn state_machine_update(mut ctx: state_machine_update::Context<'_>) {
             .shared
             .state_machine
             .lock(|state_machine| state_machine.transition());
+
+        let gp_state = ctx.shared.ejection_pin.lock(|pin| pin.is_high().unwrap());
+
+        info!("Ejection pin is high: {}", gp_state);
 
         match ctx
             .shared
