@@ -15,6 +15,7 @@ use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
 
 use crate::device_constants::AvionicsI2cBus;
+use crate::phases::StateMachineListener;
 use crate::{
     app::{incoming_packet_handler, *},
     communications::{
@@ -47,9 +48,13 @@ unsafe fn I2C0_IRQ() {
 }
 
 pub async fn motor_drivers(
-    ctx: motor_drivers::Context<'_>,
-    motor_i2c: &'static Arbiter<MotorI2cBus>,
+    mut ctx: motor_drivers::Context<'_>,
+    i2c: &'static Arbiter<MotorI2cBus>,
+    mut esc_state_listener: StateMachineListener,
 ) {
+    esc_state_listener
+        .wait_for_state_specific(bin_packets::IcarusPhase::OrientSolar)
+        .await;
     info!("Motor Driver Task Started");
 
     ctx.local.ina260_1.init().await.ok();

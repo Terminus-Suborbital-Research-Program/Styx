@@ -4,6 +4,7 @@
 // Our Modules
 pub mod actuators;
 pub mod communications;
+mod device_constants;
 pub mod phases;
 pub mod utilities;
 
@@ -45,6 +46,7 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
     dispatchers = [PIO2_IRQ_0, PIO2_IRQ_1, DMA_IRQ_0],
 )]
 mod app {
+    use crate::device_constants::ListenPin;
     use crate::{actuators::servo::EjectorServo, phases::EjectorStateMachine};
 
     use super::*;
@@ -111,6 +113,7 @@ mod app {
         pub blink_status_delay_millis: u64,
         pub suspend_packet_handler: bool,
         pub radio: EjectorHC12,
+        pub ejection_pin: ListenPin,
     }
 
     #[local]
@@ -129,7 +132,7 @@ mod app {
         async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context);
 
         // State machine update
-        #[task(shared = [state_machine, serial_console_writer, ejector_servo, blink_status_delay_millis], priority = 1)]
+        #[task(shared = [state_machine, serial_console_writer, ejector_servo, blink_status_delay_millis, ejection_pin], priority = 1)]
         async fn state_machine_update(mut ctx: state_machine_update::Context);
 
         // Heartbeats the main led

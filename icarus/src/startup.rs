@@ -1,3 +1,5 @@
+use bin_packets::IcarusPhase;
+use cortex_m::delay::Delay;
 use defmt::error;
 use defmt::info;
 use embedded_hal::digital::OutputPin;
@@ -21,6 +23,10 @@ use rp235x_hal::I2C;
 use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::i2c::ArbiterDevice;
 use rtic_sync::arbiter::Arbiter;
+use rtic_sync::make_signal;
+use rtic_sync::signal::Signal;
+use usb_device::bus::UsbBusAllocator;
+use usbd_serial::SerialPort;
 // use usb_device::bus::UsbBusAllocator;
 // use usbd_serial::SerialPort;
 
@@ -33,9 +39,12 @@ use crate::communications::link_layer::Device;
 use crate::communications::link_layer::LinkLayerDevice;
 use crate::device_constants::pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin};
 use crate::device_constants::pins::{EscI2CSclPin, EscI2CSdaPin};
+use crate::device_constants::IcarusStateMachine;
 use crate::device_constants::MotorI2cBus;
 use crate::hal;
 use crate::peripherals::async_i2c::AsyncI2c;
+use crate::phases::StateMachine;
+use crate::phases::StateMachineListener;
 use crate::Mono;
 use crate::ALLOCATOR;
 use crate::HEAP_MEMORY;
@@ -201,6 +210,17 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let mut bme280 =
         AsyncBme280::new_with_address(ArbiterDevice::new(avionics_i2c_arbiter), 0x77, Mono);
 
+    // State machine
+    let mut state_machine: IcarusStateMachine = StateMachine::new();
+    let esc_state_signal: Signal<IcarusPhase> = Signal::new();
+    ctx.local.esc_state_signal.write(esc_state_signal);
+
+    let r = unsafe { ctx.local.esc_state_signal.assume_init_ref() };
+    let (writer, reader) = r.split();
+    state_machine.add_channel(writer).ok();
+    let esc_listener = StateMachineListener::new(reader);
+
+    let serial = SerialPort::new(usb_bus_ref);
     let mut ina260_1 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 32_u8, Mono);
     let mut ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 33_u8, Mono);
     let mut ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 34_u8, Mono);
@@ -209,7 +229,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     // heartbeat::spawn().ok();
     radio_flush::spawn().ok();
     incoming_packet_handler::spawn().ok();
-    motor_drivers::spawn(motor_i2c_arbiter).ok();
+    motor_drivers::spawn(motor_i2c_arbiter, esc_listener).ok();
     sample_sensors::spawn(avionics_i2c_arbiter).ok();
     inertial_nav::spawn().ok();
     info!("Tasks spawned!");
@@ -220,6 +240,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             ejector_driver: ejection_servo,
             locking_driver: locking_servo,
             clock_freq_hz: clock_freq.to_Hz(),
+            state_machine,
         },
         Local {
             led: led_pin,
