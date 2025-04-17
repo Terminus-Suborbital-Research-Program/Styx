@@ -1,0 +1,17 @@
+[package]
+name = "ina260_terminus"
+version = "0.1.0"
+edition = "2024"
+
+
+
+[dependencies]
+defmt = {version = "1.0.1", optional = true}
+embedded-hal = "1.0.0"
+embedded-hal-async = { version = "1.0.0", features = ["defmt-03"] , optional=true}
+
+[features]
+default = ["sync"]
+with_defmt = ["defmt"]
+sync = []
+async = ["embedded-hal-async"]

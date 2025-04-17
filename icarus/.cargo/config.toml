@@ -16,7 +16,7 @@ rustflags = [
     "-C", "no-vectorize-loops",
 ]
 
-runner = "../picotool/build/picotool load -v -x -t elf"
+runner = "picotool load -v -x -t elf"
 
 [target.thumbv8m.main-none-eabihf]
 
@@ -27,7 +27,7 @@ rustflags = [
     "-C", "target-cpu=cortex-m33",
 ]
 
-runner = "../picotool/build/picotool load -u -v -x -t elf"
+runner = "picotool load -u -v -x -t elf"
 
 [build]
 target = "thumbv8m.main-none-eabihf" # Cortex-M33 (with FPU)
