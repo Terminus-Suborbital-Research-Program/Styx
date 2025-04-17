@@ -2,14 +2,20 @@
 name = "icarus"
 version = "0.1.1"
 edition = "2021"
-build="build.rs"
+build = "build.rs"
 
 [dependencies]
 # HAL for the RP350X architecture
-rp235x-hal = {version="0.2.0", features = ["binary-info", "critical-section-impl", "rt", "defmt", "rtic-monotonic", "dcp-fast-f64"], optional = true}# Embedded-hal for io traits
-embedded-hal-nb = "1.0.0"
-embedded_hal_0_2 = {package = "embedded-hal", version = "0.2.5", features = ["unproven"]}
-embedded-hal-bus = {version="0.3.0", features=["async"]}
+rp235x-hal = { version = "0.3.0", features = [
+    "binary-info",
+    "critical-section-impl",
+    "rt",
+    "defmt",
+    "rtic-monotonic",
+    "dcp-fast-f64",
+], optional = true } # Embedded-hal for io traits
+
+embedded-hal-bus = { version = "0.3.0", features = ["async", "defmt-03"] }
 # Rust safe bindings to register-level control
 embedded-hal = "1.0.0"
 embedded-hal-async = "1.0"
@@ -20,11 +26,11 @@ cortex-m = "0.7.7"
 # Startup/Runtime for Cortex-M microcontrollers
 cortex-m-rt = "0.7.5"
 # RTIC for real-time operations
-rtic = {version = "2.1.2"}
+rtic = { version = "2.1.2" }
 rtic-monotonics = "2.0.3"
-rtic-monotonic = {version = "1.0.0", optional = true}
+rtic-monotonic = { version = "1.0.0", optional = true }
 
-rtic-sync = "1.3.0"
+rtic-sync = "*"
 # USB Device Support
 usb-device = "0.3.2"
 usbd-serial = "0.2.2"
@@ -35,27 +41,41 @@ fugit = "0.3.7"
 defmt = "0.3"
 defmt-rtt = "0.4.1"
 heapless = "0.8.0"
-bincode = {version="2.0.0-rc.3", features = ["derive", "alloc"], default-features = false}
+bincode = { version = "2.0.0-rc.3", features = [
+    "derive",
+    "alloc",
+], default-features = false }
 
 # Packets
 bin-packets = { path = "../bin-packets" }
 # Allocator - requireed to get serde to work
 linked_list_allocator = "0.10.5"
-futures = { version = "0.3.31", default-features = false, features = ["async-await"] }
+futures = { version = "0.3.31", default-features = false, features = [
+    "async-await",
+] }
 rp235x-pac = "0.1.0"
 
+# MCF control
+mcf8316c-rs = { path = "../mcf8316c-rs" }
+
 # Sensors
-bme280 = { version = "0.5.1", features=["with_defmt"]}
+bme280-rs = {version="0.3.0", features=["async"]}
+ina260_terminus = {path = "../ina260", features=["async"]}
 
 # Math
-nalgebra = { version = "*", default-features = false, features = [ "libm-force" ] }
-minikalman = {version = "0.6.0", features=["nalgebra", "libm"]} #https://docs.rs/minikalman/latest/minikalman/
+nalgebra = { version = "*", default-features = false, features = [
+    "libm-force",
+] }
+minikalman = { version = "0.6.0", features = [
+    "nalgebra",
+    "libm",
+] } #https://docs.rs/minikalman/latest/minikalman/
 # Time
-hifitime = {version = "3.2", default-features = false}
+hifitime = { version = "3.2", default-features = false }
 # WGS84
-wgs84={git="https://github.com/MeechaelA/WGS84.git"}
+wgs84 = { git = "https://github.com/MeechaelA/WGS84.git" }
 # Earth Atmosphere
-united_states_standard_atmosphere={git="https://github.com/MeechaelA/UnitedStatesStandardAtmosphere.git"}
+united_states_standard_atmosphere = { git = "https://github.com/MeechaelA/UnitedStatesStandardAtmosphere.git" }
 
 # Target features
 [features]
@@ -63,5 +83,5 @@ default = ["rp2350"]
 rp2350 = [
     "dep:rp235x-hal",
     "rtic-monotonics/rp235x",
-    "rtic/thumbv8main-backend"
+    "rtic/thumbv8main-backend",
 ]

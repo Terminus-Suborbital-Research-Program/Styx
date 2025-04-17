@@ -45,12 +45,12 @@ pub struct ControlWord {
     /// Memory section
     memory_section: u8,
     /// Address of the transaction
-    address: u8,
+    address: u16, // Only twelve bits used
 }
 
 impl ControlWord {
     /// Creates a new control word
-    pub fn new(transaction: Transaction, crc: bool, data_length: DataLength, address: u8) -> Self {
+    pub fn new(transaction: Transaction, crc: bool, data_length: DataLength, address: u16) -> Self {
         ControlWord {
             transaction,
             crc,
@@ -62,12 +62,12 @@ impl ControlWord {
     }
 
     /// Easy 32-bit write transaction 'address', no CRC
-    pub fn new_write(address: u8) -> Self {
+    pub fn new_write(address: u16) -> Self {
         ControlWord::new(Transaction::Write, false, DataLength::Bits32, address)
     }
 
     /// Easy 32-bit read transaction 'address', no CRC
-    pub fn new_read(address: u8) -> Self {
+    pub fn new_read(address: u16) -> Self {
         ControlWord::new(Transaction::Read, false, DataLength::Bits32, address)
     }
 

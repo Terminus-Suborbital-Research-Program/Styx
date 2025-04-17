@@ -1,14 +1,20 @@
+use bincode::de;
 use bincode::{config::standard, error::DecodeError};
-use core::{fmt::Write, task::Poll};
+use bme280_rs::{AsyncBme280, Configuration, Oversampling, SensorMode};
 use defmt::{error, info, trace};
 use embedded_hal::digital::StatefulOutputPin;
-use embedded_hal_async::i2c::I2c;
+use embedded_hal_async::i2c::{self, I2c};
+use embedded_hal_bus::{i2c::AtomicDevice, util::AtomicCell};
 use embedded_io::Read;
 use fugit::ExtU64;
 use futures::FutureExt as _;
+use ina260_terminus::{AsyncINA260, Register as INA260Register};
+use mcf8316c_rs::{controller::MotorController, data_word_to_u32, registers::write_sequence};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
+use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
 
+use crate::device_constants::AvionicsI2cBus;
 use crate::{
     app::{incoming_packet_handler, *},
     communications::{
@@ -16,6 +22,7 @@ use crate::{
         link_layer::{LinkLayerPayload, LinkPacket},
     },
     device_constants::MotorI2cBus,
+    peripherals::async_i2c::{self, AsyncI2cError},
     Mono,
 };
 
@@ -36,80 +43,36 @@ pub fn uart_interrupt(mut ctx: uart_interrupt::Context<'_>) {
 use rp235x_pac::interrupt;
 #[interrupt]
 unsafe fn I2C0_IRQ() {
-    use rp235x_hal::async_utils::AsyncPeripheral;
     MotorI2cBus::on_interrupt();
 }
 
-pub async fn motor_drivers(ctx: motor_drivers::Context<'_>) {
-    info!("Motor driver task started!");
+pub async fn motor_drivers(
+    ctx: motor_drivers::Context<'_>,
+    motor_i2c: &'static Arbiter<MotorI2cBus>,
+) {
+    info!("Motor Driver Task Started");
 
-    // Motor driver i2c
-    let motor_i2c = ctx.local.motor_i2c_bus;
+    ctx.local.ina260_1.init().await.ok();
+    ctx.local.ina260_2.init().await.ok();
+    ctx.local.ina260_3.init().await.ok();
 
     loop {
-        // Gotta unmask the NVIC core, we're not using the RTIC scheduler for this
-        unsafe {
-            cortex_m::peripheral::NVIC::unpend(rp235x_hal::pac::Interrupt::I2C0_IRQ);
-            cortex_m::peripheral::NVIC::unmask(rp235x_hal::pac::Interrupt::I2C0_IRQ);
-        }
-
-        // The speed is set through the DIGITAL_SPEED_CTRL field as a unsigned 14 bit value
-        // This is bytes 16-30. Why they chose a 14 bit field is beyond me
-        // This gives us a max speed of 32767
-        let speed_percent = 0;
-        let speed = ((speed_percent as u32) * 32767) / 100;
-        let speed = speed & 0x3FFF; // Mask to 14 bits
-        let speed = speed << 16; // Shift to the right place
-
-        // let first_byte = ((speed >> 24) & 0xFF) as u8;
-        // let second_byte = ((speed >> 16) & 0xFF) as u8;
-        // let third_byte = ((speed >> 8) & 0xFF) as u8;
-        // let fourth_byte = (speed & 0xFF) as u8;
-
-        // BRRRRT! WRONG, ITS LSB FIRST
-        let first_byte = (speed & 0xFF) as u8;
-        let second_byte = ((speed >> 8) & 0xFF) as u8;
-        let third_byte = ((speed >> 16) & 0xFF) as u8;
-        let fourth_byte = ((speed >> 24) & 0xFF) as u8;
-
-        // Register 0xec
-        let bytes: [u8; 7] = [
-            0b0001_0000,
-            0b0000_0000u8,
-            0xec,
-            first_byte,
-            second_byte,
-            third_byte,
-            fourth_byte,
-        ];
-
-        let mut cnt = 0;
-        let timeout = core::future::poll_fn(|cx| {
-            trace!("Waker called!");
-            cx.waker().wake_by_ref();
-            match cnt {
-                10 => Poll::Ready(()),
-                _ => {
-                    cnt += 1;
-
-                    Poll::Pending
-                }
-            }
-        });
-
-        // Fuse, timing out if we don't get a response
-        info!("Writing Speed...");
-        futures::select_biased! {
-            r = motor_i2c.write(0x26u8, &bytes).fuse() => {
-                info!("I2c write result: {:?}", r);
-            }
-
-            _ = timeout.fuse() => {
-                info!("I2C Timeout!");
-            }
-        }
-
-        Mono::delay(500_u64.millis()).await;
+        ctx.local
+            .ina260_1
+            .read_register(INA260Register::VOLTAGE)
+            .await
+            .ok();
+        ctx.local
+            .ina260_2
+            .read_register(INA260Register::VOLTAGE)
+            .await
+            .ok();
+        ctx.local
+            .ina260_3
+            .read_register(INA260Register::VOLTAGE)
+            .await
+            .ok();
+        Mono::delay(100_u64.millis()).await;
     }
 }
 
@@ -200,24 +163,24 @@ pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'
 
                 // Check the checksum, if it fails, the packet is bad, we should continue
                 // and clear the buffer
-                if !packet.verify_checksum() {
-                    ctx.shared.radio_link.lock(|radio| radio.device.clear());
-                    continue;
-                }
+                // if !packet.verify_checksum() {
+                //     ctx.shared.radio_link.lock(|radio| radio.device.clear());
+                //     continue;
+                // }
 
-                if let LinkLayerPayload::Payload(app_packet) = packet.payload {
-                    match app_packet {
-                        bin_packets::ApplicationPacket::Command(command) => match command {
-                            _ => {}
-                        },
+                // if let LinkLayerPayload::Payload(app_packet) = packet.payload {
+                //     match app_packet {
+                //         bin_packets::ApplicationPacket::Command(command) => match command {
+                //             _ => {}
+                //         },
 
-                        _ => {
-                            let mut buffer_heapless_stirng: alloc::string::String =
-                                alloc::string::String::new();
-                            write!(buffer_heapless_stirng, "{:#?}", packet).ok();
-                        }
-                    }
-                }
+                //         _ => {
+                //             let mut buffer_heapless_stirng: alloc::string::String =
+                //                 alloc::string::String::new();
+                //             write!(buffer_heapless_stirng, "{:#?}", packet).ok();
+                //         }
+                //     }
+                // }
             }
         }
 
@@ -225,13 +188,49 @@ pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'
     }
 }
 
-pub async fn sample_sensors(_ctx: sample_sensors::Context<'_>) {
+pub async fn sample_sensors(
+    mut ctx: sample_sensors::Context<'_>,
+    avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
+) {
+    ctx.local.bme280.init().await.ok();
+    ctx.local
+        .bme280
+        .set_sampling_configuration(
+            Configuration::default()
+                .with_temperature_oversampling(Oversampling::Oversample1)
+                .with_pressure_oversampling(Oversampling::Oversample1)
+                .with_humidity_oversampling(Oversampling::Oversample1)
+                .with_sensor_mode(SensorMode::Normal),
+        )
+        .await
+        .expect("Failed to configure BME280");
+
+    Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
+
+    // let avionics_arbiter = ctx.local.i2c_avionics_bus.read(Arbiter::new(avionics_i2c));
+    // let mut bme280 = BME280::new_primary(ArbiterDevice::new(avionics_arbiter));
+
+    // ctx.shared.software_delay.lock(|mut delay: &mut rp235x_hal::Timer<rp235x_hal::timer::CopyableTimer1>|{
+    //     bme280.init(delay);
+    // });
+
     loop {
+        if let Ok(Some(temperature)) = ctx.local.bme280.read_temperature().await {
+            info!("Temperature: {}", temperature);
+        }
+        if let Ok(Some(pressure)) = ctx.local.bme280.read_pressure().await {
+            info!("Pressure: {}", pressure);
+        }
+        if let Ok(Some(humidity)) = ctx.local.bme280.read_humidity().await {
+            info!("Humidity: {}", humidity);
+        }
         Mono::delay(250_u64.millis()).await;
     }
 }
 
 pub async fn inertial_nav(_ctx: inertial_nav::Context<'_>) {
-    //TODO: Implement the inertial navigation functionality
-    //! This would have crashed it lol
+    loop {
+        // info!("Inertial Navigation");
+        Mono::delay(250_u64.millis()).await;
+    }
 }

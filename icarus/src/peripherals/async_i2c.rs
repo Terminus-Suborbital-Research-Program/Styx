@@ -39,10 +39,6 @@ impl<I2C> AsyncI2c<I2C>
 where
     I2C: i2c::I2c + AsyncPeripheral,
 {
-    unsafe fn I2C0_IRQ() {
-        use rp235x_hal::async_utils::AsyncPeripheral;
-        MotorI2cBus::on_interrupt();
-    }
     /// Creates a new async I2C device
     pub fn new(device: I2C, timeout: u32) -> Self {
         Self { device, timeout }
@@ -87,13 +83,30 @@ where
         address: i2c::SevenBitAddress,
         operations: &mut [i2c::Operation<'_>],
     ) -> Result<(), Self::Error> {
-        match timeout_future(self.device.transaction(address, operations), 10).await {
+        match timeout_future(self.device.transaction(address, operations), self.timeout).await {
             Ok(transacted) => match transacted {
                 Ok(_) => Ok(()),
                 Err(e) => Err(AsyncI2cError::DeviceError(e)),
             },
 
             Err(_) => Err(AsyncI2cError::Timeout),
+        }
+    }
+}
+
+/// Re-impliment the regular i2c trait where D: embedded_hal::i2c::I2c
+impl<D> embedded_hal::i2c::I2c for AsyncI2c<D>
+where
+    D: embedded_hal::i2c::I2c + i2c::I2c,
+{
+    fn transaction(
+        &mut self,
+        address: u8,
+        operations: &mut [embedded_hal::i2c::Operation],
+    ) -> Result<(), Self::Error> {
+        match embedded_hal::i2c::I2c::transaction(&mut self.device, address, operations) {
+            Ok(()) => Ok(()),
+            Err(e) => Err(AsyncI2cError::DeviceError(e)),
         }
     }
 }
