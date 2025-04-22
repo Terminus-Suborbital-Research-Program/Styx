@@ -1,39 +1,40 @@
 #![no_std]
 #![cfg_attr(not(feature = "async"), deny(unstable_features))]
-// Turn off no_std if we turn on the "with_std" feature
-#![cfg_attr(
-    feature = "async",
-)]
+
 // TI INA260 Current Sensor
+#[cfg(feature = "defmt")]
+use defmt::info;
 #[cfg(feature = "sync")]
-use embedded_hal::i2c::{self, SevenBitAddress, TenBitAddress, I2c, Operation, ErrorType};
+use embedded_hal::i2c::{self, ErrorType, I2c, Operation, SevenBitAddress, TenBitAddress};
 #[cfg(feature = "async")]
 use embedded_hal_async::delay::DelayNs;
 #[cfg(feature = "async")]
-use embedded_hal_async::i2c::{I2c as AsyncI2c};
+use embedded_hal_async::i2c::I2c as AsyncI2c;
 
+#[cfg(feature = "sync")]
 pub struct INA260<I2C> {
     i2c: I2C,
     address: u8,
     _marker: core::marker::PhantomData<I2C>,
-    state: u16
+    state: u16,
 }
-impl<I2C: I2c> INA260<I2C>{
+#[cfg(feature = "sync")]
+impl<I2C: I2c> INA260<I2C> {
     /// Create a new INA260 instance
     ///
     /// # Arguments
     ///
     /// * `i2c` - The I2C peripheral to use
     /// * `address` - The I2C address of the INA260
-    pub fn new(i2c: I2C, address: u8) -> Self{
-        INA260 { 
-            i2c, 
+    pub fn new(i2c: I2C, address: u8) -> Self {
+        INA260 {
+            i2c,
             address,
             _marker: core::marker::PhantomData,
             state: OperMode::SCBVC.bits()
-                    | Averaging::AVG1.bits()
-                    | SCConvTime::MS1_1.bits()
-                    | BVConvTime::MS1_1.bits()
+                | Averaging::AVG1.bits()
+                | SCConvTime::MS1_1.bits()
+                | BVConvTime::MS1_1.bits(),
         }
     }
 
@@ -53,34 +54,34 @@ impl<I2C: I2c> INA260<I2C>{
     }
 }
 
-
 pub struct AsyncINA260<I2C, Delay> {
     i2c: I2C,
     address: u8,
     _marker: core::marker::PhantomData<I2C>,
     state: u16,
-    delay: Delay
+    delay: Delay,
 }
 impl<I2C: AsyncI2c, D> AsyncINA260<I2C, D>
-    where I2C: AsyncI2c,
-        D: DelayNs,
-        {
+where
+    I2C: AsyncI2c,
+    D: DelayNs,
+{
     /// Create a new INA260 instance
     ///
     /// # Arguments
     ///
     /// * `i2c` - The I2C peripheral to use
     /// * `address` - The I2C address of the INA260
-    pub fn new(i2c: I2C, address: u8, delay: D) -> Self{
-        AsyncINA260 { 
-            i2c, 
+    pub fn new(i2c: I2C, address: u8, delay: D) -> Self {
+        AsyncINA260 {
+            i2c,
             address,
             delay,
             _marker: core::marker::PhantomData,
             state: OperMode::SCBVC.bits()
-                    | Averaging::AVG1.bits()
-                    | SCConvTime::MS1_1.bits()
-                    | BVConvTime::MS1_1.bits()
+                | Averaging::AVG1.bits()
+                | SCConvTime::MS1_1.bits()
+                | BVConvTime::MS1_1.bits(),
         }
     }
 
@@ -89,31 +90,86 @@ impl<I2C: AsyncI2c, D> AsyncINA260<I2C, D>
         return result;
     }
 
-    pub async fn write_register(&mut self, register: Register, data: u8) -> Result<(), I2C::Error> {
+    async fn write_register(&mut self, register: Register, data: u8) -> Result<(), I2C::Error> {
         self.i2c.write(self.address, &[register.addr(), data]).await
     }
 
-    pub async fn read_register(&mut self, reg: Register) -> Result<u16, I2C::Error> {
+    async fn read_register(&mut self, reg: Register) -> Result<[u8; 2], I2C::Error> {
         let mut buf = [0; 2];
-        self.i2c.write_read(self.address, &[reg.addr()], &mut buf).await;
-        Ok(u16::from_be_bytes(buf))
+        let result = self
+            .i2c
+            .write_read(self.address, &[reg.addr()], &mut buf)
+            .await;
+        match result {
+            Ok(_) => {
+                return Ok(buf);
+            }
+            Err(e) => {
+                return Err(e);
+            }
+        }
+    }
+    pub async fn read_voltage(&mut self) -> Result<u16, I2C::Error> {
+        let buffer = self.read_register(Register::VOLTAGE).await;
+        match buffer {
+            Ok(buffer) => {
+                let voltage = (buffer[0] as u16) << 8 | buffer[1] as u16;
+                return Ok(voltage); // This value * 1.25 mV per bit = mV
+            }
+            Err(e) => {
+                return Err(e);
+            }
+        }
+    }
+    pub async fn read_current(&mut self) -> Result<i16, I2C::Error> {
+        let buffer = self.read_register(Register::CURRENT).await;
+        match buffer {
+            Ok(buffer) => {
+                let current = (buffer[0] as i16) << 8 | buffer[1] as i16;
+                return Ok(current); // This value * 1.25 mA per bit = mA
+            }
+            Err(e) => {
+                return Err(e);
+            }
+        }
+    }
+    pub async fn read_power(&mut self) -> Result<i16, I2C::Error> {
+        let buffer = self.read_register(Register::POWER).await;
+        match buffer {
+            Ok(buffer) => {
+                let power = (buffer[0] as i16) << 8 | buffer[1] as i16;
+                return Ok(power); // This value * 10 mW per bit = mW
+            }
+            Err(e) => {
+                return Err(e);
+            }
+        }
+    }
+    pub async fn read_manufacturer_id(&mut self) -> Result<u16, I2C::Error> {
+        let buffer = self.read_register(Register::MANUFACTURER_ID).await;
+        match buffer {
+            Ok(buffer) => {
+                let manufacturer_id = (buffer[0] as u16) << 8 | buffer[1] as u16;
+                return Ok(manufacturer_id); // This value * 1.25 mA per bit = mA
+            }
+            Err(e) => {
+                return Err(e);
+            }
+        }
+    }
+    pub async fn read_die_id(&mut self) -> Result<u16, I2C::Error> {
+        let buffer = self.read_register(Register::DIE_ID).await;
+        match buffer {
+            Ok(buffer) => {
+                let die_id = (buffer[0] as u16) << 8 | buffer[1] as u16;
+                return Ok(die_id); // This value * 1.25 mA per bit = mA
+            }
+            Err(e) => {
+                return Err(e);
+            }
+        }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #[derive(Debug)]
 pub enum Error<E> {

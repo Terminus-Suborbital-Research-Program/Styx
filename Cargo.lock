@@ -171,6 +171,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "bmi323"
+version = "0.1.0"
+dependencies = [
+ "defmt 1.0.1",
+ "embedded-hal 1.0.0",
+ "embedded-hal-async",
+]
+
+[[package]]
+name = "bmm350"
+version = "0.1.0"
+dependencies = [
+ "defmt 1.0.1",
+ "embedded-hal 1.0.0",
+ "embedded-hal-async",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -757,6 +775,7 @@ dependencies = [
  "bin-packets 0.1.2",
  "bincode",
  "bme280-rs",
+ "bmi323",
  "cortex-m",
  "cortex-m-rt",
  "defmt 0.3.100",
@@ -770,6 +789,7 @@ dependencies = [
  "futures",
  "heapless 0.8.0",
  "hifitime",
+ "ina260_terminus",
  "linked_list_allocator",
  "mcf8316c-rs",
  "minikalman",
@@ -791,6 +811,15 @@ name = "ident_case"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
+
+[[package]]
+name = "ina260_terminus"
+version = "0.1.0"
+dependencies = [
+ "defmt 1.0.1",
+ "embedded-hal 1.0.0",
+ "embedded-hal-async",
+]
 
 [[package]]
 name = "indexmap"

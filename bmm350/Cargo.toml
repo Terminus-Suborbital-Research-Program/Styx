@@ -1,9 +1,7 @@
 [package]
-name = "ina260_terminus"
+name = "bmm350"
 version = "0.1.0"
 edition = "2024"
-
-
 
 [dependencies]
 defmt = {version = "1.0.1", optional = true}

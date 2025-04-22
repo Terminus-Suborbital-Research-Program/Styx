@@ -1,7 +1,7 @@
 use bincode::de;
 use bincode::{config::standard, error::DecodeError};
 use bme280_rs::{AsyncBme280, Configuration, Oversampling, SensorMode};
-use defmt::{error, info, trace};
+use defmt::{error, info, trace, dbg};
 use embedded_hal::digital::StatefulOutputPin;
 use embedded_hal_async::i2c::{self, I2c};
 use embedded_hal_bus::{i2c::AtomicDevice, util::AtomicCell};
@@ -42,13 +42,13 @@ pub fn uart_interrupt(mut ctx: uart_interrupt::Context<'_>) {
 
 use rp235x_pac::interrupt;
 #[interrupt]
-unsafe fn I2C0_IRQ() {
-    MotorI2cBus::on_interrupt();
+unsafe fn I2C1_IRQ() {
+    AvionicsI2cBus::on_interrupt();
 }
 
 pub async fn motor_drivers(
     ctx: motor_drivers::Context<'_>,
-    motor_i2c: &'static Arbiter<MotorI2cBus>,
+    motor_i2c: &'static Arbiter<AvionicsI2cBus>,
 ) {
     info!("Motor Driver Task Started");
 
@@ -57,21 +57,17 @@ pub async fn motor_drivers(
     ctx.local.ina260_3.init().await.ok();
 
     loop {
-        ctx.local
-            .ina260_1
-            .read_register(INA260Register::VOLTAGE)
-            .await
-            .ok();
-        ctx.local
-            .ina260_2
-            .read_register(INA260Register::VOLTAGE)
-            .await
-            .ok();
-        ctx.local
-            .ina260_3
-            .read_register(INA260Register::VOLTAGE)
-            .await
-            .ok();
+        let id_1 = ctx.local.ina260_1.read_voltage().await.ok();
+
+        // info!("Chip ID 1: {}", id_1.unwrap());
+        // info!(
+        //     "Chip ID 2: {}",
+        //     ctx.local.ina260_2.read_voltage().await.ok().unwrap()
+        // );
+        // info!(
+        //     "Chip ID 3: {}",
+        //     ctx.local.ina260_3.read_voltage().await.ok().unwrap()
+        // );
         Mono::delay(100_u64.millis()).await;
     }
 }
@@ -205,16 +201,14 @@ pub async fn sample_sensors(
         .await
         .expect("Failed to configure BME280");
 
+      
+
     Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
-
-    // let avionics_arbiter = ctx.local.i2c_avionics_bus.read(Arbiter::new(avionics_i2c));
-    // let mut bme280 = BME280::new_primary(ArbiterDevice::new(avionics_arbiter));
-
-    // ctx.shared.software_delay.lock(|mut delay: &mut rp235x_hal::Timer<rp235x_hal::timer::CopyableTimer1>|{
-    //     bme280.init(delay);
-    // });
-
+    
+    
     loop {
+        ctx.local.bmi323.check_init_status().await;
+
         if let Ok(Some(temperature)) = ctx.local.bme280.read_temperature().await {
             info!("Temperature: {}", temperature);
         }
@@ -224,7 +218,7 @@ pub async fn sample_sensors(
         if let Ok(Some(humidity)) = ctx.local.bme280.read_humidity().await {
             info!("Humidity: {}", humidity);
         }
-        Mono::delay(250_u64.millis()).await;
+        Mono::delay(10_u64.millis()).await;
     }
 }
 

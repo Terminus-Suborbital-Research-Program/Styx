@@ -7,14 +7,14 @@ rustflags = [
     "-C", "target-cpu=cortex-m33",
 ]
 
-# "./picotool/build/picotool load -u -v -x -t elf" <- Old picotool loader
+# "picotool load -u -v -x -t elf" <- Old picotool loader
 runner = 'probe-rs run --chip rp235x'
 
 [build]
 target = "thumbv8m.main-none-eabihf" # Cortex-M33 (with FPU)
 
 [alias]
-flash-picotool = "build && ./picotool/build/picotool load -u -v -x -t elf"
+flash-picotool = "build && picotool load -u -f -v -x -t elf"
 
 [env]
 DEFMT_LOG = "info"

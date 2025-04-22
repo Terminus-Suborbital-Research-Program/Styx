@@ -60,7 +60,8 @@ mcf8316c-rs = { path = "../mcf8316c-rs" }
 
 # Sensors
 bme280-rs = {version="0.3.0", features=["async"]}
-ina260_terminus = {path = "../ina260", features=["async"]}
+ina260_terminus = {path = "../ina260", features=["async", "defmt"]}
+bmi323 = {path = "../bmi323", features=["async", "defmt"]}
 
 # Math
 nalgebra = { version = "*", default-features = false, features = [
