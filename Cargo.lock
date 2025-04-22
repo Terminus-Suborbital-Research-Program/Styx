@@ -823,6 +823,7 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 name = "ina260_terminus"
 version = "0.1.0"
 dependencies = [
+ "cast",
  "defmt 1.0.1",
  "embedded-hal 1.0.0",
  "embedded-hal-async",
