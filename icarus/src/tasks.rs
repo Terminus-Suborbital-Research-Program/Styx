@@ -1,7 +1,8 @@
 use bincode::de;
 use bincode::{config::standard, error::DecodeError};
 use bme280_rs::{AsyncBme280, Configuration, Oversampling, SensorMode};
-use defmt::{error, info, trace, dbg};
+use bmi323::BMI323Status;
+use defmt::{dbg, error, info, trace};
 use embedded_hal::digital::StatefulOutputPin;
 use embedded_hal_async::i2c::{self, I2c};
 use embedded_hal_bus::{i2c::AtomicDevice, util::AtomicCell};
@@ -10,6 +11,7 @@ use fugit::ExtU64;
 use futures::FutureExt as _;
 use ina260_terminus::{AsyncINA260, Register as INA260Register};
 use mcf8316c_rs::{controller::MotorController, data_word_to_u32, registers::write_sequence};
+use rp235x_pac::sysinfo::chip_id;
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
@@ -48,27 +50,64 @@ unsafe fn I2C1_IRQ() {
 
 pub async fn motor_drivers(
     ctx: motor_drivers::Context<'_>,
-    motor_i2c: &'static Arbiter<AvionicsI2cBus>,
+    motor_i2c: &'static Arbiter<MotorI2cBus>,
 ) {
     info!("Motor Driver Task Started");
+    let ina260_1_init = ctx.local.ina260_1.init().await;
+    match ina260_1_init {
+        Ok(_) => {
+            info!("INA260 1 Initialized");
+        }
+        Err(e) => {
+            error!("INA260 1 Initialization Error: {:?}", e);
+        }
+    }
+    let ina260_2_init = ctx.local.ina260_2.init().await;
+    match ina260_2_init {
+        Ok(_) => {
+            info!("INA260 2 Initialized");
+        }
+        Err(e) => {
+            error!("INA260 2 Initialization Error: {:?}", e);
+        }
+    }
 
-    ctx.local.ina260_1.init().await.ok();
-    ctx.local.ina260_2.init().await.ok();
-    ctx.local.ina260_3.init().await.ok();
-
+    let ina260_3_init = ctx.local.ina260_3.init().await;
+    match ina260_3_init {
+        Ok(_) => {
+            info!("INA260 3 Initialized");
+        }
+        Err(e) => {
+            error!("INA260 3 Initialization Error: {:?}", e);
+        }
+    }
     loop {
-        let id_1 = ctx.local.ina260_1.read_voltage().await.ok();
+        let chip_id_1 = ctx.local.ina260_1.rid().await.ok();
+        let voltage_1 = ctx.local.ina260_1.voltage().await.ok();
+        let current_1 = ctx.local.ina260_1.current().await.ok();
+        let power_1 = ctx.local.ina260_1.power().await.ok();
+        info!("Chip ID 1: {}", chip_id_1);
+        info!("V: {}", voltage_1);
+        info!("I: {}", current_1);
+        info!("P: {}", power_1);
 
-        // info!("Chip ID 1: {}", id_1.unwrap());
-        // info!(
-        //     "Chip ID 2: {}",
-        //     ctx.local.ina260_2.read_voltage().await.ok().unwrap()
-        // );
-        // info!(
-        //     "Chip ID 3: {}",
-        //     ctx.local.ina260_3.read_voltage().await.ok().unwrap()
-        // );
-        Mono::delay(100_u64.millis()).await;
+        let chip_id_2 = ctx.local.ina260_2.rid().await;
+        let voltage_2 = ctx.local.ina260_2.voltage().await.ok();
+        let current_2 = ctx.local.ina260_2.current().await.ok();
+        let power_2 = ctx.local.ina260_2.power().await.ok();
+        info!(
+            "Chip ID 2: {}, {}, {}, {}",
+            chip_id_2, voltage_2, current_2, power_2
+        );
+        let chip_id_3 = ctx.local.ina260_2.rid().await;
+        let voltage_3 = ctx.local.ina260_3.voltage().await.ok();
+        let current_3 = ctx.local.ina260_3.current().await.ok();
+        let power_3 = ctx.local.ina260_3.power().await.ok();
+        info!(
+            "Chip ID 3: {}, {}, {}, {}",
+            chip_id_3, voltage_3, current_3, power_3
+        );
+        Mono::delay(500_u64.millis()).await;
     }
 }
 
@@ -186,9 +225,10 @@ pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'
 
 pub async fn sample_sensors(
     mut ctx: sample_sensors::Context<'_>,
-    avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
-) {
-    ctx.local.bme280.init().await.ok();
+    avionics_i2c: &'static Arbiter<MotorI2cBus>,
+) -> ! {
+    let intialize_status = ctx.local.bme280.init().await;
+    info!("BME Initialize Status: {}", intialize_status);
     ctx.local
         .bme280
         .set_sampling_configuration(
@@ -201,14 +241,42 @@ pub async fn sample_sensors(
         .await
         .expect("Failed to configure BME280");
 
-      
+    let result = ctx.local.bme280.chip_id().await;
+    info!("Result: {}", result);
 
-    Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
-    
-    
+    Mono::delay(50_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
+
+    // let mut buf: [u8; 2] = [0; 2];
     loop {
-        ctx.local.bmi323.check_init_status().await;
+        //         let mut i2c_line = avionics_i2c.access().await;
+        // let imu_result = i2c_line.write_read(0x68, &[0x01], &mut buf).await;
+        // match imu_result {
+        //     Ok(_) => {
+        //         info!("Chip Id: {}", buf[0]);
+        //         info!("Chip Id: {}", buf[1]);
+        //         trace!("What's up");
+        //     }
+        //     Err(e) => {
+        //         error!("Error reading IMU: {:?}", e);
+        //     }
+        // }
 
+        // let result = ctx.local.bmi323.check_init_status().await;
+        // match result {
+        //     Ok(BMI323Status::INIT_OK) => {
+        //         info!("BMI323 is initialized");
+        //     }
+        //     Err(e) => {
+        //         error!("Error checking BMI323 init status: {:?}", e);
+        //     }
+        //     _ => {
+        //         info!("BMI323 is not initialized");
+        //     }
+        // }
+
+        // let result = ctx.local.bme280.chip_id().await;
+        // info!("Result: {}", result);
+        info!("Sample Sensors Running");
         if let Ok(Some(temperature)) = ctx.local.bme280.read_temperature().await {
             info!("Temperature: {}", temperature);
         }
@@ -218,7 +286,7 @@ pub async fn sample_sensors(
         if let Ok(Some(humidity)) = ctx.local.bme280.read_humidity().await {
             info!("Humidity: {}", humidity);
         }
-        Mono::delay(10_u64.millis()).await;
+        Mono::delay(100_u64.millis()).await;
     }
 }
 

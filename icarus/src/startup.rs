@@ -43,8 +43,8 @@ use crate::{DelayTimer, I2CMainBus};
 
 // Sensors
 use bme280_rs::{AsyncBme280, Bme280, Configuration, Oversampling, SensorMode};
-use ina260_terminus::{AsyncINA260, Register as INA260Register};
 use bmi323::AsyncBMI323;
+use ina260_terminus::{AsyncINA260, Register as INA260Register};
 
 // Logs our time for demft
 defmt::timestamp!("{=u64:us}", {
@@ -164,61 +164,57 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let motor_sda_pin: Pin<EscI2CSdaPin, FunctionI2C, PullUp> = bank0_pins.gpio18.reconfigure();
     let motor_scl_pin: Pin<EscI2CSclPin, FunctionI2C, PullUp> = bank0_pins.gpio19.reconfigure();
 
-    // let motor_i2c = I2C::new_controller(
-    //     ctx.device.I2C1,
-    //     motor_sda_pin,
-    //     motor_scl_pin,
-    //     RateExtU32::kHz(400),
-    //     &mut ctx.device.RESETS,
-    //     clocks.system_clock.freq(),
-    // );
-    // let async_motor_i2c = AsyncI2c::new(motor_i2c, 10);
-    // let motor_i2c_arbiter = ctx.local.i2c_motor_bus.write(Arbiter::new(async_motor_i2c));
-    // let motor_controller = MotorController::new(0x01, ArbiterDevice::new(motor_i2c_arbiter));
+    let motor_i2c = I2C::new_controller(
+        ctx.device.I2C1,
+        motor_sda_pin,
+        motor_scl_pin,
+        RateExtU32::kHz(400),
+        &mut ctx.device.RESETS,
+        clocks.system_clock.freq(),
+    );
+    let async_motor_i2c = AsyncI2c::new(motor_i2c, 10);
+    let motor_i2c_arbiter = ctx.local.i2c_motor_bus.write(Arbiter::new(async_motor_i2c));
+    let motor_controller = MotorController::new(0x01, ArbiterDevice::new(motor_i2c_arbiter));
 
     let avionics_sda_pin: Pin<AvionicsI2CSdaPin, FunctionI2C, PullUp> =
         bank0_pins.gpio6.reconfigure();
     let avionics_scl_pin: Pin<AvionicsI2CSclPin, FunctionI2C, PullUp> =
         bank0_pins.gpio7.reconfigure();
 
-    let avionics_i2c = I2C::new_controller(
-        ctx.device.I2C1,
-        avionics_sda_pin,
-        avionics_scl_pin,
-        RateExtU32::kHz(400),
-        &mut ctx.device.RESETS,
-        clocks.system_clock.freq(),
-    );
+    // let avionics_i2c = I2C::new_controller(
+    //     ctx.device.I2C1.clone(),
+    //     avionics_sda_pin,
+    //     avionics_scl_pin,
+    //     RateExtU32::kHz(400),
+    //     &mut ctx.device.RESETS,
+    //     clocks.system_clock.freq(),
+    // );
 
-    let async_avionics_i2c = AsyncI2c::new(avionics_i2c, 10_u32);
-    let avionics_i2c_arbiter = ctx
-        .local
-        .i2c_avionics_bus
-        .write(Arbiter::new(async_avionics_i2c));
+    // let async_avionics_i2c = AsyncI2c::new(avionics_i2c, 10_u32);
+    // let avionics_i2c_arbiter = ctx
+    //     .local
+    //     .i2c_avionics_bus
+    //     .write(Arbiter::new(async_avionics_i2c));
 
     // let mut delay_here = hal::Timer::new_timer1(pac.TIMER1, &mut pac.RESETS, &clocks);
 
     // Initialize Avionics Sensors
     let mut bme280 =
-        AsyncBme280::new_with_address(ArbiterDevice::new(avionics_i2c_arbiter), 0x77, Mono);
+        AsyncBme280::new_with_address(ArbiterDevice::new(motor_i2c_arbiter), 0x77, Mono);
 
-    let mut ina260_1 = AsyncINA260::new(ArbiterDevice::new(avionics_i2c_arbiter), 64_u8, Mono);
-    let mut ina260_2 = AsyncINA260::new(ArbiterDevice::new(avionics_i2c_arbiter), 65_u8, Mono);
-    let mut ina260_3 = AsyncINA260::new(ArbiterDevice::new(avionics_i2c_arbiter), 66_u8, Mono);
-    let mut bmi323 = AsyncBMI323::new_primary(
-        ArbiterDevice::new(avionics_i2c_arbiter),Mono,
-    );
-
+    let mut ina260_1 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0b1000000, Mono);
+    let mut ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0b1000001, Mono);
+    let mut ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0b1000010, Mono);
+    let mut bmi323 = AsyncBMI323::new_secondary(ArbiterDevice::new(motor_i2c_arbiter), Mono);
 
     info!("Peripherals initialized, spawning tasks...");
     // heartbeat::spawn().ok();
     radio_flush::spawn().ok();
     incoming_packet_handler::spawn().ok();
-    // motor_drivers::spawn(avionics_i2c_arbiter).ok();
-    sample_sensors::spawn(avionics_i2c_arbiter).ok();
-    inertial_nav::spawn().ok();
+    motor_drivers::spawn(motor_i2c_arbiter).ok();
+    // sample_sensors::spawn(motor_i2c_arbiter).ok();
+    // inertial_nav::spawn().ok();
     info!("Tasks spawned!");
-
     (
         Shared {
             radio_link,
@@ -232,7 +228,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             ina260_1,
             ina260_2,
             ina260_3,
-            bmi323
+            bmi323,
         },
     )
 }

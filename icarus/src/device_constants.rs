@@ -27,8 +27,6 @@ pub mod pins {
     /// Relay servo mosfet
     pub type RelayMosfetPin = Gpio0;
 
-
-
     // Mux pins are 14, 13, 11, 10 for S0, S1, S2, S3
 
     /// Mux S0
@@ -46,7 +44,7 @@ pub mod pins {
     pub type AvionicsI2CSdaPin = Gpio6;
     /// I2C SCL pin
     pub type AvionicsI2CSclPin = Gpio7;
-    
+
     /// ESC I2C SDA pin
     pub type EscI2CSdaPin = Gpio18;
     /// ESC I2C SCL pin

@@ -122,12 +122,12 @@ mod app {
     pub struct Local {
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
         // Avionics
-        pub bme280: AsyncBme280<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
-        pub bmi323: AsyncBMI323<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
-        // Motors/INAs 
-        pub ina260_1: AsyncINA260<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
-        pub ina260_2: AsyncINA260<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
-        pub ina260_3: AsyncINA260<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
+        pub bme280: AsyncBme280<ArbiterDevice<'static, MotorI2cBus>, Mono>,
+        pub bmi323: AsyncBMI323<ArbiterDevice<'static, MotorI2cBus>, Mono>,
+        // Motors/INAs
+        pub ina260_1: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
+        pub ina260_2: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
+        pub ina260_3: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
     }
 
     #[init(
@@ -136,7 +136,7 @@ mod app {
             // Here we use MaybeUninit to allow for initialization in init()
             // This enables its usage in driver initialization
             i2c_avionics_bus: MaybeUninit<Arbiter<AvionicsI2cBus>> = MaybeUninit::uninit(),
-            i2c_motor_bus: MaybeUninit<Arbiter<AvionicsI2cBus>> = MaybeUninit::uninit(),
+            i2c_motor_bus: MaybeUninit<Arbiter<MotorI2cBus>> = MaybeUninit::uninit(),
         ]
     )]
     fn init(ctx: init::Context) -> (Shared, Local) {
@@ -156,7 +156,7 @@ mod app {
         #[task(local = [ina260_1, ina260_2, ina260_3], priority = 3)]
         async fn motor_drivers(
             &mut ctx: motor_drivers::Context,
-            motor_i2c: &'static Arbiter<AvionicsI2cBus>,
+            motor_i2c: &'static Arbiter<MotorI2cBus>,
         );
 
         // Updates the radio module on the serial interrupt
@@ -170,7 +170,7 @@ mod app {
         #[task(local = [bme280, bmi323], priority = 3)]
         async fn sample_sensors(
             mut ctx: sample_sensors::Context,
-            avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
+            avionics_i2c: &'static Arbiter<MotorI2cBus>,
         );
 
         #[task(priority = 3)]
