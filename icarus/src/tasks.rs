@@ -57,7 +57,11 @@ pub async fn motor_drivers(
     esc_state_listener
         .wait_for_state_specific(bin_packets::IcarusPhase::OrientSolar)
         .await;
-    loop {}
+    info!("Motor Driver Task Started");
+
+    loop {
+        Mono::delay(500_u64.millis()).await;
+    }
 }
 
 pub async fn radio_flush(mut ctx: radio_flush::Context<'_>) {
@@ -189,6 +193,12 @@ pub async fn sample_sensors(
         .await
         .expect("Failed to configure BME280");
 
+    let result = ctx.local.bme280.chip_id().await;
+    info!("Result: {}", result);
+
+    Mono::delay(50_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
+
+    // let mut buf: [u8; 2] = [0; 2];
     ctx.local.ina260_1.init().await.ok();
     ctx.local.ina260_2.init().await.ok();
     ctx.local.ina260_3.init().await.ok();
@@ -200,9 +210,18 @@ pub async fn sample_sensors(
     // let mut buf: [u8; 2] = [0; 2];
     loop {
         ctx.local.bmi323.check_init_status().await;
-        ctx.local.ina260_1.power_split().await;
-        ctx.local.ina260_1.power_split().await;
-        ctx.local.ina260_1.power_split().await;
+        let chip_id_1 = ctx.local.ina260_1.rid().await.ok();
+        let voltage_1 = ctx.local.ina260_1.voltage().await.ok();
+        let current_1 = ctx.local.ina260_1.current().await.ok();
+        let power_1 = ctx.local.ina260_1.power().await.ok();
+        let chip_id_2 = ctx.local.ina260_2.rid().await;
+        let voltage_2 = ctx.local.ina260_2.voltage().await.ok();
+        let current_2 = ctx.local.ina260_2.current().await.ok();
+        let power_2 = ctx.local.ina260_2.power().await.ok();
+        let chip_id_3 = ctx.local.ina260_2.rid().await;
+        let voltage_3 = ctx.local.ina260_3.voltage().await.ok();
+        let current_3 = ctx.local.ina260_3.current().await.ok();
+        let power_3 = ctx.local.ina260_3.power().await.ok();
 
         if let Ok(Some(temperature)) = ctx.local.bme280.read_temperature().await {
             info!("Temperature: {}", temperature);

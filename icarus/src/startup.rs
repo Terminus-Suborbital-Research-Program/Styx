@@ -187,6 +187,28 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let motor_i2c_arbiter = ctx.local.i2c_motor_bus.write(Arbiter::new(async_motor_i2c));
     let motor_controller = MotorController::new(0x01, ArbiterDevice::new(motor_i2c_arbiter));
 
+    let avionics_sda_pin: Pin<AvionicsI2CSdaPin, FunctionI2C, PullUp> =
+        bank0_pins.gpio6.reconfigure();
+    let avionics_scl_pin: Pin<AvionicsI2CSclPin, FunctionI2C, PullUp> =
+        bank0_pins.gpio7.reconfigure();
+
+    // let avionics_i2c = I2C::new_controller(
+    //     ctx.device.I2C1.clone(),
+    //     avionics_sda_pin,
+    //     avionics_scl_pin,
+    //     RateExtU32::kHz(400),
+    //     &mut ctx.device.RESETS,
+    //     clocks.system_clock.freq(),
+    // );
+
+    // let async_avionics_i2c = AsyncI2c::new(avionics_i2c, 10_u32);
+    // let avionics_i2c_arbiter = ctx
+    //     .local
+    //     .i2c_avionics_bus
+    //     .write(Arbiter::new(async_avionics_i2c));
+
+    // let mut delay_here = hal::Timer::new_timer1(pac.TIMER1, &mut pac.RESETS, &clocks);
+
     // Initialize Avionics Sensors
     let mut bme280 =
         AsyncBme280::new_with_address(ArbiterDevice::new(motor_i2c_arbiter), 0x77, Mono);
