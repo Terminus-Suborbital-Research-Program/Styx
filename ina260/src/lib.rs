@@ -90,6 +90,7 @@ where
                 | SCConvTime::MS8_244.bits()
                 | BVConvTime::MS8_244.bits(),
         };
+        async_ina.i2c.write(async_ina.address, &[Register::CONFIG.addr(), 0x8000]);
         return async_ina;
     }
 
