@@ -1,7 +1,6 @@
 #![no_std]
 #![cfg_attr(not(feature = "async"), deny(unstable_features))]
 
-
 const PRIMARY_ADDRESS: u8 = 0x68;
 const SECONDARY_ADDRESS: u8 = 0x69;
 use defmt::Format;
@@ -14,38 +13,33 @@ use embedded_hal::i2c::{self, ErrorType, I2c, Operation, SevenBitAddress, TenBit
 #[cfg(feature = "async")]
 use embedded_hal_async::delay::DelayNs;
 #[cfg(feature = "async")]
-use embedded_hal_async::i2c::{I2c as AsyncI2c};
+use embedded_hal_async::i2c::I2c as AsyncI2c;
 
-#[cfg(feature = "sync")]
-pub struct BMI323<I2C> {
-    i2c: I2C,
-    address: u8,
-    _marker: core::marker::PhantomData<I2C>,
-    state: u16,
-}
-#[cfg(feature = "sync")]
-impl<I2C: I2c> BMI323<I2C> {
-    /// Create a new BMI323 instance
-    ///
-    /// # Arguments
-    ///
-    /// * `i2c` - The I2C peripheral to use
-    /// * `address` - The I2C address of the BMI323
-    pub fn new(i2c: I2C, address: u8) -> Self {
-        BMI323 {
-            
-        }
-    }
+// #[cfg(feature = "sync")]
+// pub struct BMI323<I2C> {
+//     i2c: I2C,
+//     address: u8,
+//     _marker: core::marker::PhantomData<I2C>,
+//     state: u16,
+// }
+// #[cfg(feature = "sync")]
+// impl<I2C: I2c> BMI323<I2C> {
+//     /// Create a new BMI323 instance
+//     ///
+//     /// # Arguments
+//     ///
+//     /// * `i2c` - The I2C peripheral to use
+//     /// * `address` - The I2C address of the BMI323
+//     pub fn new(i2c: I2C, address: u8) -> Self {
+//         BMI323 {}
+//     }
 
-    pub fn init(&mut self) -> Result<(), I2C::Error> {
-    }
+//     pub fn init(&mut self) -> Result<(), I2C::Error> {}
 
-    pub fn write_register(&mut self, register: Register, data: u8) -> Result<(), I2C::Error> {
-    }
+//     pub fn write_register(&mut self, register: Register, data: u8) -> Result<(), I2C::Error> {}
 
-    pub fn read_register(&mut self, reg: Register) -> Result<u16, I2C::Error> {
-    }
-}
+//     pub fn read_register(&mut self, reg: Register) -> Result<u16, I2C::Error> {}
+// }
 
 #[derive(Debug, Format)]
 pub struct AsyncBMI323<I2C, Delay> {
@@ -109,6 +103,7 @@ where
             .await;
         match result {
             Ok(_) => {
+                info!("BMI323 Chip ID: {:?}", buf);
                 return Ok(buf);
             }
             Err(e) => {
@@ -139,8 +134,7 @@ where
                 if buf[0] == 0 {
                     info!("BMI323 Power Ok: {:?}", buf[0]);
                     return Ok(BMI323Status::POWER_OK);
-                }
-                else{
+                } else {
                     info!("BMI323 Power Error: {:?}", buf[0]);
                     return Err(BMI323Status::POWER_ERROR);
                 }
@@ -149,7 +143,6 @@ where
                 info!("BMI323 I2C Error");
                 return Err(BMI323Status::I2C_Error);
             }
-
         }
     }
     pub async fn read_sensor_status(&mut self) -> Result<BMI323Status, BMI323Status> {
@@ -163,19 +156,17 @@ where
                 if buf[0] == 1 {
                     info!("BMI323 Initialized: {:?}", buf[0]);
                     return Ok(BMI323Status::INIT_OK);
-                }
-                else{
+                } else {
                     info!("BMI323 Initialization Error: {:?}", buf[0]);
                     return Err(BMI323Status::INIT_ERROR);
                 }
             }
-            Err(e) => {
-                return Err(BMI323Status::I2C_Error)
-            }
+            Err(e) => return Err(BMI323Status::I2C_Error),
         }
     }
     pub async fn check_init_status(&mut self) -> Result<BMI323Status, BMI323Status> {
         let chip_id = self.read_chip_id().await;
+
         match chip_id {
             Ok(result) => {
                 info!("BMI323 Chip ID: {:?}", result);
@@ -187,16 +178,14 @@ where
         let device_status = self.read_error_status().await;
         let sensor_status = self.read_sensor_status().await;
         match device_status {
-            Ok(_) => {
-                match sensor_status {
-                    Ok(_) => {
-                        return Ok(BMI323Status::INIT_OK);
-                    }
-                    Err(_) => {
-                        return Err(BMI323Status::INIT_ERROR);
-                    }
+            Ok(_) => match sensor_status {
+                Ok(_) => {
+                    return Ok(BMI323Status::INIT_OK);
                 }
-            }
+                Err(_) => {
+                    return Err(BMI323Status::INIT_ERROR);
+                }
+            },
             Err(_) => {
                 return Err(BMI323Status::I2C_Error);
             }
@@ -355,8 +344,6 @@ where
     }
 }
 
-
-
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone, Format)]
 pub enum Register {
@@ -402,26 +389,26 @@ pub enum Register {
     FEATURE_DATA_STATUS = 0x43,
     FEATURE_ENGINE_STATUS = 0x45,
     FEATURE_EVENT_EXT = 0x47,
-	IO_PDN_CTRL = 0x4F,
-	IO_SPI_IF = 0x50,
-	IO_PAD_STRENGTH = 0x51,
-	IO_I2C_IF = 0x52,
-	IO_ODR_DEVIATION = 0x53,
-	ACC_DP_OFF_X = 0x60,
-	ACC_DP_DGAIN_X = 0x61,
-	ACC_DP_OFF_Y = 0x62,
-	ACC_DP_DGAIN_Y = 0x63,
-	ACC_DP_OFF_Z = 0x64,
-	ACC_DP_DGAIN_Z = 0x65,
-	GYR_DP_OFF_X = 0x66,
-	GYR_DP_DGAIN_X = 0x67,
-	GYR_DP_OFF_Y = 0x68,
-	GYR_DP_DGAIN_Y = 0x69,
-	GYR_DP_OFF_Z = 0x6A,
-	GYR_DP_DGAIN_Z = 0x6B,
+    IO_PDN_CTRL = 0x4F,
+    IO_SPI_IF = 0x50,
+    IO_PAD_STRENGTH = 0x51,
+    IO_I2C_IF = 0x52,
+    IO_ODR_DEVIATION = 0x53,
+    ACC_DP_OFF_X = 0x60,
+    ACC_DP_DGAIN_X = 0x61,
+    ACC_DP_OFF_Y = 0x62,
+    ACC_DP_DGAIN_Y = 0x63,
+    ACC_DP_OFF_Z = 0x64,
+    ACC_DP_DGAIN_Z = 0x65,
+    GYR_DP_OFF_X = 0x66,
+    GYR_DP_DGAIN_X = 0x67,
+    GYR_DP_OFF_Y = 0x68,
+    GYR_DP_DGAIN_Y = 0x69,
+    GYR_DP_OFF_Z = 0x6A,
+    GYR_DP_DGAIN_Z = 0x6B,
     I3C_TC_SYNC_TPH = 0x70,
     I3C_TC_SYNC_TU = 0x71,
-    I3C_TC_SYNC_ODR = 0x72,    
+    I3C_TC_SYNC_ODR = 0x72,
     CMD = 0x7E,
     CFG_RES = 0x7F,
 }
