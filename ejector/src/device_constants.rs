@@ -1,3 +1,12 @@
-use rp235x_hal::gpio::{bank0::Gpio21, FunctionSio, Pin, PullUp, SioInput};
+use pins::EjectionPin;
+use rp235x_hal::gpio::{FunctionSio, Pin, PullDown, SioInput};
 
-pub type ListenPin = Pin<Gpio21, FunctionSio<SioInput>, PullUp>;
+pub mod pins {
+    use rp235x_hal::gpio::bank0::Gpio21;
+
+    /// Ejection detection pin
+    pub type EjectionPin = Gpio21;
+}
+
+/// Ejection detection pin
+pub type EjectionDetectionPin = Pin<EjectionPin, FunctionSio<SioInput>, PullDown>;
