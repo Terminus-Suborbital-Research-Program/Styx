@@ -33,8 +33,8 @@ usb-device = "0.3.2"
 usbd-serial = "0.2.2"
 fugit = "0.3.7"
 # logging
-defmt = "0.3"
-defmt-rtt = "0.4.1"
+defmt = "*"
+defmt-rtt = "*"
 heapless = "0.8.0"
 bincode = { version = "2.0.0-rc.3", features = [
     "derive",
@@ -62,7 +62,7 @@ nalgebra = { version = "*", default-features = false, features = [
     "libm-force",
 ] }
 # Time
-hifitime = { version = "3.2", default-features = false }
+hifitime = { version = "*", default-features = false }
 # WGS84
 wgs84 = { git = "https://github.com/MeechaelA/WGS84.git" }
 # Earth Atmosphere
