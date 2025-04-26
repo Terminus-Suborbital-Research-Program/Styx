@@ -12,14 +12,12 @@ use rp235x_hal::pwm::Slices;
 use rp235x_hal::uart::{DataBits, StopBits, UartConfig, UartPeripheral};
 use rp235x_hal::{Clock, Sio, Watchdog};
 use rtic_monotonics::Monotonic;
-use rtic_sync::make_channel;
 use usb_device::bus::UsbBusAllocator;
 use usb_device::device::{StringDescriptors, UsbDeviceBuilder, UsbVidPid};
 use usbd_serial::SerialPort;
 
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
-use crate::communications::serial_handler::{self, HeaplessString, MAX_USB_LINES};
-use crate::device_constants::ListenPin;
+use crate::device_constants::EjectionDetectionPin;
 use crate::hal;
 use crate::phases::EjectorStateMachine;
 use crate::{app::*, Mono};
@@ -35,15 +33,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         hal::sio::spinlock_reset();
     }
 
-    info!("Execution Starting");
-
-    // Channel for sending strings to the USB console
-    let (usb_console_line_sender, usb_console_line_receiver) =
-        make_channel!(HeaplessString, MAX_USB_LINES);
-
-    // Channel for incoming commands from the USB console
-    let (usb_console_command_sender, usb_console_command_receiver) =
-        make_channel!(HeaplessString, MAX_USB_LINES);
+    info!("Ejector startup");
 
     // Set up clocks
     let mut watchdog = Watchdog::new(ctx.device.WATCHDOG);
@@ -149,7 +139,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     ejector_servo.enable();
     ejector_servo.hold();
 
-    let gpio_detect: ListenPin = bank0_pins.gpio21.into_pull_up_input();
+    let gpio_detect: EjectionDetectionPin = bank0_pins.gpio21.into_pull_down_input();
 
     // Set up USB Device allocator
     let usb_bus = UsbBusAllocator::new(hal::usb::UsbBus::new(
@@ -178,10 +168,8 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     info!("Peripherals initialized, spawning tasks");
 
     // Serial Writer Structure
-    let serial_console_writer = serial_handler::SerialWriter::new(usb_console_line_sender);
     //radio_flush::spawn().ok();
     state_machine_update::spawn().ok();
-    hc12_programmer::spawn().ok();
     incoming_packet_handler::spawn().ok();
     radio_heartbeat::spawn().ok();
 
@@ -193,7 +181,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             ejector_servo,
             usb_device: usb_dev,
             usb_serial: serial,
-            serial_console_writer,
             clock_freq_hz: clock_freq.to_Hz(),
             state_machine: EjectorStateMachine::new(),
             blink_status_delay_millis: 1000,
