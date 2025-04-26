@@ -1,39 +1,36 @@
-#![no_std]
 #![cfg_attr(not(feature = "async"), deny(unstable_features))]
-// Turn off no_std if we turn on the "with_std" feature
-#![cfg_attr(
-    feature = "async",
-)]
+// Turn off no_std if we turn on the "std" feature
+#![cfg_attr(not(feature = "std"), no_std)]
 // TI INA260 Current Sensor
 #[cfg(feature = "sync")]
-use embedded_hal::i2c::{self, SevenBitAddress, TenBitAddress, I2c, Operation, ErrorType};
+use embedded_hal::i2c::{self, ErrorType, I2c, Operation, SevenBitAddress, TenBitAddress};
 #[cfg(feature = "async")]
 use embedded_hal_async::delay::DelayNs;
 #[cfg(feature = "async")]
-use embedded_hal_async::i2c::{I2c as AsyncI2c};
+use embedded_hal_async::i2c::I2c as AsyncI2c;
 
 pub struct INA260<I2C> {
     i2c: I2C,
     address: u8,
     _marker: core::marker::PhantomData<I2C>,
-    state: u16
+    state: u16,
 }
-impl<I2C: I2c> INA260<I2C>{
+impl<I2C: I2c> INA260<I2C> {
     /// Create a new INA260 instance
     ///
     /// # Arguments
     ///
     /// * `i2c` - The I2C peripheral to use
     /// * `address` - The I2C address of the INA260
-    pub fn new(i2c: I2C, address: u8) -> Self{
-        INA260 { 
-            i2c, 
+    pub fn new(i2c: I2C, address: u8) -> Self {
+        INA260 {
+            i2c,
             address,
             _marker: core::marker::PhantomData,
             state: OperMode::SCBVC.bits()
-                    | Averaging::AVG1.bits()
-                    | SCConvTime::MS1_1.bits()
-                    | BVConvTime::MS1_1.bits()
+                | Averaging::AVG1.bits()
+                | SCConvTime::MS1_1.bits()
+                | BVConvTime::MS1_1.bits(),
         }
     }
 
@@ -53,34 +50,36 @@ impl<I2C: I2c> INA260<I2C>{
     }
 }
 
-
 pub struct AsyncINA260<I2C, Delay> {
     i2c: I2C,
     address: u8,
     _marker: core::marker::PhantomData<I2C>,
     state: u16,
-    delay: Delay
+    delay: Delay,
 }
+
+#[cfg(feature = "async")]
 impl<I2C: AsyncI2c, D> AsyncINA260<I2C, D>
-    where I2C: AsyncI2c,
-        D: DelayNs,
-        {
+where
+    I2C: AsyncI2c,
+    D: DelayNs,
+{
     /// Create a new INA260 instance
     ///
     /// # Arguments
     ///
     /// * `i2c` - The I2C peripheral to use
     /// * `address` - The I2C address of the INA260
-    pub fn new(i2c: I2C, address: u8, delay: D) -> Self{
-        AsyncINA260 { 
-            i2c, 
+    pub fn new(i2c: I2C, address: u8, delay: D) -> Self {
+        AsyncINA260 {
+            i2c,
             address,
             delay,
             _marker: core::marker::PhantomData,
             state: OperMode::SCBVC.bits()
-                    | Averaging::AVG1.bits()
-                    | SCConvTime::MS1_1.bits()
-                    | BVConvTime::MS1_1.bits()
+                | Averaging::AVG1.bits()
+                | SCConvTime::MS1_1.bits()
+                | BVConvTime::MS1_1.bits(),
         }
     }
 
@@ -95,25 +94,12 @@ impl<I2C: AsyncI2c, D> AsyncINA260<I2C, D>
 
     pub async fn read_register(&mut self, reg: Register) -> Result<u16, I2C::Error> {
         let mut buf = [0; 2];
-        self.i2c.write_read(self.address, &[reg.addr()], &mut buf).await;
+        self.i2c
+            .write_read(self.address, &[reg.addr()], &mut buf)
+            .await;
         Ok(u16::from_be_bytes(buf))
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #[derive(Debug)]
 pub enum Error<E> {

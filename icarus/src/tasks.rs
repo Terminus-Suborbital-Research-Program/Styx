@@ -57,26 +57,26 @@ pub async fn motor_drivers(
         .await;
     info!("Motor Driver Task Started");
 
-    ctx.local.ina260_1.init().await.ok();
-    ctx.local.ina260_2.init().await.ok();
-    ctx.local.ina260_3.init().await.ok();
+    // ctx.local.ina260_1.init().await.ok();
+    // ctx.local.ina260_2.init().await.ok();
+    // ctx.local.ina260_3.init().await.ok();
 
     loop {
-        ctx.local
-            .ina260_1
-            .read_register(INA260Register::VOLTAGE)
-            .await
-            .ok();
-        ctx.local
-            .ina260_2
-            .read_register(INA260Register::VOLTAGE)
-            .await
-            .ok();
-        ctx.local
-            .ina260_3
-            .read_register(INA260Register::VOLTAGE)
-            .await
-            .ok();
+        // ctx.local
+        //     .ina260_1
+        //     .read_register(INA260Register::VOLTAGE)
+        //     .await
+        //     .ok();
+        // ctx.local
+        //     .ina260_2
+        //     .read_register(INA260Register::VOLTAGE)
+        //     .await
+        //     .ok();
+        // ctx.local
+        //     .ina260_3
+        //     .read_register(INA260Register::VOLTAGE)
+        //     .await
+        //     .ok();
         Mono::delay(100_u64.millis()).await;
     }
 }

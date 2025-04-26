@@ -220,7 +220,6 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     state_machine.add_channel(writer).ok();
     let esc_listener = StateMachineListener::new(reader);
 
-    let serial = SerialPort::new(usb_bus_ref);
     let mut ina260_1 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 32_u8, Mono);
     let mut ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 33_u8, Mono);
     let mut ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 34_u8, Mono);
