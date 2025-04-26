@@ -8,6 +8,7 @@ publish = false
 bincode = {version="2.0.0", features = ["derive"], default-features = false}
 defmt = "0.3.10"
 serde = { version = "1.0.219", features = ["derive"], default-features = false }
+fugit = {version = "*"}
 
 [features]
 default = []
