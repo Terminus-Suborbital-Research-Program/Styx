@@ -12,8 +12,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode, Format, Serialize, Deserialize)]
 pub enum JupiterPhase {
     PowerOn,
-    PowerOff, // Simulation only
-    EjectionPhase,
     MainCamStart,
     Launch,
     SecondaryCamStart,
