@@ -59,6 +59,7 @@ impl<I2C: I2c> INA260<I2C> {
 
 
 
+#[cfg(feature = "async")]
 pub struct AsyncINA260<I2C, Delay> {
     i2c: I2C,
     address: u8,
