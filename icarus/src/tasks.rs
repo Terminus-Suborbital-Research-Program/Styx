@@ -212,13 +212,6 @@ pub async fn sample_sensors(
 
     Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
 
-    // let avionics_arbiter = ctx.local.i2c_avionics_bus.read(Arbiter::new(avionics_i2c));
-    // let mut bme280 = BME280::new_primary(ArbiterDevice::new(avionics_arbiter));
-
-    // ctx.shared.software_delay.lock(|mut delay: &mut rp235x_hal::Timer<rp235x_hal::timer::CopyableTimer1>|{
-    //     bme280.init(delay);
-    // });
-
     loop {
         if let Ok(Some(temperature)) = ctx.local.bme280.read_temperature().await {
             info!("Temperature: {}", temperature);

@@ -11,7 +11,7 @@ use rtic_monotonics::Monotonic;
 
 use crate::{app::*, Mono};
 
-pub async fn incoming_packet_handler(ctx: incoming_packet_handler::Context<'_>) {
+pub async fn incoming_packet_handler(_ctx: incoming_packet_handler::Context<'_>) {
     Mono::delay(1000_u64.millis()).await;
 }
 
@@ -57,7 +57,7 @@ pub async fn radio_heartbeat(mut ctx: radio_heartbeat::Context<'_>) {
     }
 }
 
-pub fn uart_interrupt(ctx: uart_interrupt::Context<'_>) {
+pub fn uart_interrupt(_ctx: uart_interrupt::Context<'_>) {
     // ctx.shared.radio_link.lock(|radio| {
     //     radio.device.update().ok();
     // });
@@ -117,8 +117,4 @@ pub async fn state_machine_update(mut ctx: state_machine_update::Context<'_>) {
         // We should never wait less than 1ms, tbh
         Mono::delay(max(wait_time, 1).millis()).await;
     }
-}
-
-pub async fn hc12_programmer(ctx: hc12_programmer::Context<'_>) {
-    info!("Programming HC12. Don't do this!");
 }
