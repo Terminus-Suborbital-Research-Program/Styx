@@ -1,0 +1,12 @@
+services:
+  # main service. load local dockerfile
+  amalthea:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspace
+    user: terminus
+    command: bash -c "while true; do sleep 5000; done"
+    network_mode: host
+    privileged: true
