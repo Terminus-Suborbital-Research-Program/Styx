@@ -123,6 +123,7 @@ mod app {
         // pub usb_serial: SerialPort<'static, hal::usb::UsbBus>,
         pub clock_freq_hz: u32,
         pub state_machine: IcarusStateMachine,
+        pub master_data: MasterData,
     }
 
     #[local]

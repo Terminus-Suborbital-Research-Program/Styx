@@ -187,10 +187,10 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let motor_i2c_arbiter = ctx.local.i2c_motor_bus.write(Arbiter::new(async_motor_i2c));
     let motor_controller = MotorController::new(0x01, ArbiterDevice::new(motor_i2c_arbiter));
 
-    let avionics_sda_pin: Pin<AvionicsI2CSdaPin, FunctionI2C, PullUp> =
-        bank0_pins.gpio6.reconfigure();
-    let avionics_scl_pin: Pin<AvionicsI2CSclPin, FunctionI2C, PullUp> =
-        bank0_pins.gpio7.reconfigure();
+    // let avionics_sda_pin: Pin<AvionicsI2CSdaPin, FunctionI2C, PullUp> =
+    //     bank0_pins.gpio6.reconfigure();
+    // let avionics_scl_pin: Pin<AvionicsI2CSclPin, FunctionI2C, PullUp> =
+    //     bank0_pins.gpio7.reconfigure();
 
     // let avionics_i2c = I2C::new_controller(
     //     ctx.device.I2C1.clone(),
@@ -242,6 +242,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             locking_driver: locking_servo,
             clock_freq_hz: clock_freq.to_Hz(),
             state_machine,
+            master_data: master_data,
         },
         Local {
             led: led_pin,

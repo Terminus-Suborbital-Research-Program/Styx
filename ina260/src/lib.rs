@@ -3,7 +3,6 @@
 
 use core::error;
 use cast::{i32, u16, u32};
-use core::mem;
 
 // TI INA260 Current Sensor
 #[cfg(feature = "defmt")]
@@ -90,7 +89,6 @@ where
                 | SCConvTime::MS8_244.bits()
                 | BVConvTime::MS8_244.bits(),
         };
-        async_ina.i2c.write(async_ina.address, &[Register::CONFIG.addr(), 0x8000]);
         return async_ina;
     }
 
@@ -104,18 +102,9 @@ where
     }
 
     async fn read_register(&mut self, reg: Register) -> Result<[u8; 2], I2C::Error> {
-        let mut buf = mem::MaybeUninit::<[u8; 2]>::zeroed();
-        let mut buf = unsafe { buf.assume_init() };
-        let result = self.i2c.write_read(self.address, &[reg.addr()], &mut buf).await;
-        match result {
-            Ok(_) => {
-                Ok(buf)
-            }
-            Err(e) => {
-                error!("Error reading INA260 Register: {}", reg.addr());
-                return Err(e);
-            }
-        }
+        let mut buf = [0; 2];
+        self.i2c.write_read(self.address, &[reg.addr()], &mut buf).await;
+        Ok(buf)
     }
 
     /// Change the Mask/Enable mode of the INA260
@@ -273,9 +262,11 @@ where
         #[inline(always)]
         pub async fn voltage_raw(&mut self) -> Result<u16, I2C::Error> {
             let mut buffer = [0u8; 2];
+            let mut buffer = [0u8; 2];
             let result = self.i2c.write_read(self.address, &[Register::VOLTAGE.addr()], &mut buffer).await;
             match result {
                 Ok(_) => {
+                    Ok(u16::from_be_bytes(buffer))
                     Ok(u16::from_be_bytes(buffer))
                 }
                 Err(e) => {
@@ -286,20 +277,26 @@ where
         }
     
         /// Delivers the measured current in mV
+        /// Delivers the measured current in mV
         #[inline(always)]
         pub async fn voltage(&mut self) -> Result<u32, I2C::Error> {
             let result = self.voltage_raw().await;
             match result {
+            let result = self.voltage_raw().await;
+            match result {
                 Ok(raw) => {
+                    return Ok(u32(raw)*1250);
                     return Ok(u32(raw)*1250);
                 }
                 Err(e) => {
+                    error!("Error reading INA260 Voltage");
                     error!("Error reading INA260 Voltage");
                     return Err(e);
                 }
             }
         }
     
+        /// Delivers the measured voltage in as tuple of full volts and tenth millivolts
         /// Delivers the measured voltage in as tuple of full volts and tenth millivolts
         #[inline(always)]
         pub async fn voltage_split(&mut self) -> Result<(u8, u32), I2C::Error> {
@@ -314,6 +311,7 @@ where
                 }
                 Err(e) => {
                     error!("Error reading INA260 Voltage");
+                    error!("Error reading INA260 Voltage");
                     return Err(e);
                 }
             }
@@ -323,11 +321,15 @@ where
     #[inline(always)]
     pub async fn power_raw(&mut self) -> Result<u16, I2C::Error> {
         let result = self.read_register(Register::POWER).await;
+        let result = self.read_register(Register::POWER).await;
         match result {
+            Ok(buffer) => {
+                Ok(u16(buffer[0]) << 8 | u16(buffer[1]))
             Ok(buffer) => {
                 Ok(u16(buffer[0]) << 8 | u16(buffer[1]))
             }
             Err(e) => {
+                error!("Error reading INA260 Power");
                 error!("Error reading INA260 Power");
                 return Err(e);
             }
@@ -343,6 +345,7 @@ where
                 return Ok(u32(raw) * 10);
             }
             Err(e) => {
+                error!("Error reading INA260 Power");
                 error!("Error reading INA260 Power");
                 return Err(e);
             }
@@ -361,6 +364,7 @@ where
                 Ok((full as u8, rest))
             }
             Err(e) => {
+                error!("Error reading INA260 Power");
                 error!("Error reading INA260 Power");
                 return Err(e);
             }
