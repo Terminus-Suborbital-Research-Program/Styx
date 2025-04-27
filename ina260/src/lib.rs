@@ -267,7 +267,6 @@ where
             match result {
                 Ok(_) => {
                     Ok(u16::from_be_bytes(buffer))
-                    Ok(u16::from_be_bytes(buffer))
                 }
                 Err(e) => {
                     error!("Error reading INA260 Voltage");
@@ -280,8 +279,6 @@ where
         /// Delivers the measured current in mV
         #[inline(always)]
         pub async fn voltage(&mut self) -> Result<u32, I2C::Error> {
-            let result = self.voltage_raw().await;
-            match result {
             let result = self.voltage_raw().await;
             match result {
                 Ok(raw) => {
@@ -323,8 +320,6 @@ where
         let result = self.read_register(Register::POWER).await;
         let result = self.read_register(Register::POWER).await;
         match result {
-            Ok(buffer) => {
-                Ok(u16(buffer[0]) << 8 | u16(buffer[1]))
             Ok(buffer) => {
                 Ok(u16(buffer[0]) << 8 | u16(buffer[1]))
             }

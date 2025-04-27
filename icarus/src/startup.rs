@@ -50,7 +50,6 @@ use crate::{DelayTimer, I2CMainBus};
 // Sensors
 use bme280_rs::{AsyncBme280, Bme280, Configuration, Oversampling, SensorMode};
 use bmi323::AsyncBMI323;
-use bmi323::AsyncBMI323;
 use ina260_terminus::{AsyncINA260, Register as INA260Register};
 use bin_packets::MasterData;
 
