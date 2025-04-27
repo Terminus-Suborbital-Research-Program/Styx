@@ -74,8 +74,8 @@ pub type MotorI2cBus = AsyncI2c<
     I2C<
         I2C1,
         (
-            Pin<EscI2CSdaPin, FunctionI2C, PullUp>,
-            Pin<EscI2CSclPin, FunctionI2C, PullUp>,
+            Pin<EscI2CSdaPin, FunctionI2C, PullNone>,
+            Pin<EscI2CSclPin, FunctionI2C, PullNone>,
         ),
         Controller,
     >,

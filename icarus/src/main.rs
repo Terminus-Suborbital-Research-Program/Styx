@@ -32,6 +32,9 @@ use ina260_terminus::AsyncINA260;
 // Busses
 use rtic_sync::arbiter::i2c::ArbiterDevice;
 
+// Common Datatypes
+use bin_packets::MasterData;
+
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
 static mut HEAP_MEMORY: [u8; 1024 * 64] = [0; 1024 * 64];
@@ -116,6 +119,7 @@ mod app {
         pub radio_link: LinkLayerDevice<HC12<UART1Bus, GPIO10>>,
         // pub usb_serial: SerialPort<'static, hal::usb::UsbBus>,
         pub clock_freq_hz: u32,
+        pub master_data: MasterData,
     }
 
     #[local]

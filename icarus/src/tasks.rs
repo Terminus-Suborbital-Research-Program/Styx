@@ -82,32 +82,13 @@ pub async fn motor_drivers(
         }
     }
     loop {
-        let chip_id_1 = ctx.local.ina260_1.rid().await.ok();
-        let voltage_1 = ctx.local.ina260_1.voltage().await.ok();
-        let current_1 = ctx.local.ina260_1.current().await.ok();
-        let power_1 = ctx.local.ina260_1.power().await.ok();
-        info!("Chip ID 1: {}", chip_id_1);
-        info!("V: {}", voltage_1);
-        info!("I: {}", current_1);
-        info!("P: {}", power_1);
-
-        let chip_id_2 = ctx.local.ina260_2.rid().await;
-        let voltage_2 = ctx.local.ina260_2.voltage().await.ok();
-        let current_2 = ctx.local.ina260_2.current().await.ok();
-        let power_2 = ctx.local.ina260_2.power().await.ok();
-        info!(
-            "Chip ID 2: {}, {}, {}, {}",
-            chip_id_2, voltage_2, current_2, power_2
-        );
-        let chip_id_3 = ctx.local.ina260_2.rid().await;
-        let voltage_3 = ctx.local.ina260_3.voltage().await.ok();
-        let current_3 = ctx.local.ina260_3.current().await.ok();
-        let power_3 = ctx.local.ina260_3.power().await.ok();
-        info!(
-            "Chip ID 3: {}, {}, {}, {}",
-            chip_id_3, voltage_3, current_3, power_3
-        );
-        Mono::delay(500_u64.millis()).await;
+        let current_1 = ctx.local.ina260_1.current_split().await.ok();
+        let power_1 = ctx.local.ina260_1.power_split().await.ok();
+        let current_2 = ctx.local.ina260_2.current_split().await.ok();
+        let power_2 = ctx.local.ina260_2.power_split().await.ok();
+        let power_3 = ctx.local.ina260_3.power_split().await.ok();
+        let current_3 = ctx.local.ina260_3.current_split().await.ok();
+        Mono::delay(100_u64.millis()).await;
     }
 }
 

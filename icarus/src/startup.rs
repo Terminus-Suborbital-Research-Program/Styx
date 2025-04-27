@@ -45,6 +45,7 @@ use crate::{DelayTimer, I2CMainBus};
 use bme280_rs::{AsyncBme280, Bme280, Configuration, Oversampling, SensorMode};
 use bmi323::AsyncBMI323;
 use ina260_terminus::{AsyncINA260, Register as INA260Register};
+use bin_packets::MasterData;
 
 // Logs our time for demft
 defmt::timestamp!("{=u64:us}", {
@@ -159,16 +160,19 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let mut locking_servo = Servo::new(locking_channel_a, locking_channel_pin, locking_mosfet_pin);
     locking_servo.set_angle(HOLDING_ANGLE);
 
+
+    let mut master_data = MasterData::default();
+
     // Sensors
     // Init I2C pins
-    let motor_sda_pin: Pin<EscI2CSdaPin, FunctionI2C, PullUp> = bank0_pins.gpio18.reconfigure();
-    let motor_scl_pin: Pin<EscI2CSclPin, FunctionI2C, PullUp> = bank0_pins.gpio19.reconfigure();
+    let motor_sda_pin: Pin<EscI2CSdaPin, FunctionI2C, PullNone> = bank0_pins.gpio18.reconfigure();
+    let motor_scl_pin: Pin<EscI2CSclPin, FunctionI2C, PullNone> = bank0_pins.gpio19.reconfigure();
 
     let motor_i2c = I2C::new_controller(
         ctx.device.I2C1,
         motor_sda_pin,
         motor_scl_pin,
-        RateExtU32::kHz(400),
+        RateExtU32::kHz(200),
         &mut ctx.device.RESETS,
         clocks.system_clock.freq(),
     );
@@ -176,10 +180,10 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let motor_i2c_arbiter = ctx.local.i2c_motor_bus.write(Arbiter::new(async_motor_i2c));
     let motor_controller = MotorController::new(0x01, ArbiterDevice::new(motor_i2c_arbiter));
 
-    let avionics_sda_pin: Pin<AvionicsI2CSdaPin, FunctionI2C, PullUp> =
-        bank0_pins.gpio6.reconfigure();
-    let avionics_scl_pin: Pin<AvionicsI2CSclPin, FunctionI2C, PullUp> =
-        bank0_pins.gpio7.reconfigure();
+    // let avionics_sda_pin: Pin<AvionicsI2CSdaPin, FunctionI2C, PullUp> =
+    //     bank0_pins.gpio6.reconfigure();
+    // let avionics_scl_pin: Pin<AvionicsI2CSclPin, FunctionI2C, PullUp> =
+    //     bank0_pins.gpio7.reconfigure();
 
     // let avionics_i2c = I2C::new_controller(
     //     ctx.device.I2C1.clone(),
@@ -221,6 +225,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             ejector_driver: ejection_servo,
             locking_driver: locking_servo,
             clock_freq_hz: clock_freq.to_Hz(),
+            master_data: master_data,
         },
         Local {
             led: led_pin,

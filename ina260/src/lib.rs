@@ -3,6 +3,7 @@
 
 use core::error;
 use cast::{i32, u16, u32};
+use core::mem;
 
 // TI INA260 Current Sensor
 #[cfg(feature = "defmt")]
@@ -62,7 +63,7 @@ impl<I2C: I2c> INA260<I2C> {
 #[cfg(feature = "async")]
 pub struct AsyncINA260<I2C, Delay> {
     i2c: I2C,
-    address: u8,
+    pub address: u8,
     _marker: core::marker::PhantomData<I2C>,
     state: u16,
     delay: Delay,
@@ -79,16 +80,17 @@ where
     /// * `i2c` - The I2C peripheral to use
     /// * `address` - The I2C address of the INA260
     pub fn new(i2c: I2C, address: u8, delay: D) -> Self {
-        AsyncINA260 {
+        let mut async_ina = AsyncINA260 {
             i2c,
             address,
             delay,
             _marker: core::marker::PhantomData,
             state: OperMode::SCBVC.bits()
-                | Averaging::AVG1.bits()
-                | SCConvTime::MS1_1.bits()
-                | BVConvTime::MS1_1.bits(),
-        }
+                | Averaging::AVG512.bits()
+                | SCConvTime::MS8_244.bits()
+                | BVConvTime::MS8_244.bits(),
+        };
+        return async_ina;
     }
 
     pub async fn init(&mut self) -> Result<(), I2C::Error> {
@@ -101,9 +103,18 @@ where
     }
 
     async fn read_register(&mut self, reg: Register) -> Result<[u8; 2], I2C::Error> {
-        let mut buf = [0; 2];
-        self.i2c.write_read(self.address, &[reg.addr()], &mut buf).await;
-        Ok(buf)
+        let mut buf = mem::MaybeUninit::<[u8; 2]>::zeroed();
+        let mut buf = unsafe { buf.assume_init() };
+        let result = self.i2c.write_read(self.address, &[reg.addr()], &mut buf).await;
+        match result {
+            Ok(_) => {
+                Ok(buf)
+            }
+            Err(e) => {
+                error!("Error reading INA260 Register: {}", reg.addr());
+                return Err(e);
+            }
+        }
     }
 
     /// Change the Mask/Enable mode of the INA260
@@ -172,10 +183,9 @@ where
     /// Delivers the unique chip id
     #[inline(always)]
     pub async fn did(&mut self) -> Result<u16, I2C::Error> {
-        let mut buffer: [u8; 2] = [0; 2];
-        let die_id = self.i2c.write_read(self.address, &[Register::DIE_ID.addr()], &mut buffer).await;
-        match die_id {
-            Ok(_) => {
+        let die_id_result = self.read_register(Register::DIE_ID).await;
+        match die_id_result {
+            Ok(buffer) => {
                 Ok((u16(buffer[0]) << 8 | u16(buffer[1])) >> 4)
             }
             Err(e) => {
@@ -188,10 +198,9 @@ where
     /// Delivers the die revision id
     #[inline(always)]
     pub async fn rid(&mut self) -> Result<u16, I2C::Error> {
-        let mut buffer: [u8; 2] = [0; 2];
-        let die_id = self.i2c.write_read(self.address, &[Register::DIE_ID.addr()], &mut buffer).await;
-        match die_id {
-            Ok(_) => {
+        let result = self.read_register(Register::MANUFACTURER_ID).await;
+        match result {
+            Ok(buffer) => {
                 Ok(u16(buffer[1]) & 0b1111)
             }
             Err(e) => {
@@ -204,14 +213,13 @@ where
     /// Delivers the measured raw current in 1.25mA per bit
     #[inline(always)]
     pub async fn current_raw(&mut self) -> Result<i16, I2C::Error> {
-        let mut buffer: [u8; 2] = [0;2];
-        let result = self.i2c.write_read(self.address, &[Register::CURRENT.addr()], &mut buffer).await;
+        let result = self.read_register(Register::CURRENT).await;
         match result {
-            Ok(_) => {
+            Ok(buffer) => {
                 Ok((u16(buffer[0]) << 8 | u16(buffer[1])) as i16)
             }
             Err(e) => {
-                error!("Error reading INA260 Die ID");
+                error!("Error reading INA260 Current");
                 return Err(e);
             }
         }
@@ -220,8 +228,8 @@ where
     /// Delivers the measured current in uA
     #[inline(always)]
     pub async fn current(&mut self) -> Result<i32, I2C::Error> {
-        let raw = self.current_raw().await;
-        match raw {
+        let result = self.current_raw().await;
+        match result {
             Ok(raw) => {
                 if raw >= 0 {
                     return Ok(i32(raw) * 1250);
@@ -254,7 +262,7 @@ where
                 }
             }
             Err(e) => {
-                error!("Error reading INA260 Die ID");
+                error!("Error reading INA260 Current");
                 return Err(e);
             }
         }
@@ -263,11 +271,11 @@ where
         /// Delivers the measured raw voltage in 1.25mV per bit
         #[inline(always)]
         pub async fn voltage_raw(&mut self) -> Result<u16, I2C::Error> {
-            let mut buffer: [u8; 2] = [0;2];
+            let mut buffer = [0u8; 2];
             let result = self.i2c.write_read(self.address, &[Register::VOLTAGE.addr()], &mut buffer).await;
             match result {
                 Ok(_) => {
-                    Ok((u16(buffer[0]) << 8 | u16(buffer[1])))
+                    Ok(u16::from_be_bytes(buffer))
                 }
                 Err(e) => {
                     error!("Error reading INA260 Voltage");
@@ -276,22 +284,22 @@ where
             }
         }
     
-        /// Delivers the measured current in uA
+        /// Delivers the measured current in mV
         #[inline(always)]
         pub async fn voltage(&mut self) -> Result<u32, I2C::Error> {
-            let raw = self.voltage_raw().await;
-            match raw {
+            let result = self.voltage_raw().await;
+            match result {
                 Ok(raw) => {
-                    return Ok(u32(raw) * 1250);
+                    return Ok(u32(raw)*1250);
                 }
                 Err(e) => {
-                    error!("Error reading INA260 Die ID");
+                    error!("Error reading INA260 Voltage");
                     return Err(e);
                 }
             }
         }
     
-        /// Delivers the measured current in as tuple of full volts and tenth millivolts
+        /// Delivers the measured voltage in as tuple of full volts and tenth millivolts
         #[inline(always)]
         pub async fn voltage_split(&mut self) -> Result<(u8, u32), I2C::Error> {
             let raw_result = self.voltage_raw().await;
@@ -304,7 +312,7 @@ where
 
                 }
                 Err(e) => {
-                    error!("Error reading INA260 Die ID");
+                    error!("Error reading INA260 Voltage");
                     return Err(e);
                 }
             }
@@ -313,14 +321,13 @@ where
             /// Delivers the measured raw current in 1.25mA per bit
     #[inline(always)]
     pub async fn power_raw(&mut self) -> Result<u16, I2C::Error> {
-        let mut buffer: [u8; 2] = [0;2];
-        let result = self.i2c.write_read(self.address, &[Register::POWER.addr()], &mut buffer).await;
+        let result = self.read_register(Register::POWER).await;
         match result {
-            Ok(_) => {
-                Ok((u16(buffer[0]) << 8 | u16(buffer[1])))
+            Ok(buffer) => {
+                Ok(u16(buffer[0]) << 8 | u16(buffer[1]))
             }
             Err(e) => {
-                error!("Error reading INA260 Die ID");
+                error!("Error reading INA260 Power");
                 return Err(e);
             }
         }
@@ -335,7 +342,7 @@ where
                 return Ok(u32(raw) * 10);
             }
             Err(e) => {
-                error!("Error reading INA260 Die ID");
+                error!("Error reading INA260 Power");
                 return Err(e);
             }
         }
@@ -353,80 +360,11 @@ where
                 Ok((full as u8, rest))
             }
             Err(e) => {
-                error!("Error reading INA260 Die ID");
+                error!("Error reading INA260 Power");
                 return Err(e);
             }
         }
     }
-
-
-
-
-    // pub async fn read_voltage(&mut self) -> Result<u16, I2C::Error> {
-    //     let buffer = self.read_register(Register::VOLTAGE).await;
-    //     match buffer {
-    //         Ok(buffer) => {
-    //             let voltage = u16::from_be_bytes(buffer);
-    //             return Ok(voltage); // This value * 1.25 mV per bit = mV
-    //         }
-    //         Err(e) => {
-    //             error!("Error reading INA260 Voltage");
-    //             return Err(e);
-    //         }
-    //     }
-    // }
-    // pub async fn read_current(&mut self) -> Result<i16, I2C::Error> {
-    //     let buffer = self.read_register(Register::CURRENT).await;
-    //     match buffer {
-    //         Ok(buffer) => {
-    //             let current = i16::from_be_bytes(buffer);
-    //             return Ok(current); // This value * 1.25 mA per bit = mA
-    //         }
-    //         Err(e) => {
-    //             error!("Error reading INA260 Current");
-    //             return Err(e);
-    //         }
-    //     }
-    // }
-    // pub async fn read_power(&mut self) -> Result<i16, I2C::Error> {
-    //     let buffer = self.read_register(Register::POWER).await;
-    //     match buffer {
-    //         Ok(buffer) => {
-    //             let power = i16::from_be_bytes(buffer);
-    //             return Ok(power); // This value * 10 mW per bit = mW
-    //         }
-    //         Err(e) => {
-    //             error!("Error reading INA260 power");
-    //             return Err(e);
-    //         }
-    //     }
-    // }
-    // pub async fn read_manufacturer_id(&mut self) -> Result<u16, I2C::Error> {
-    //     let buffer = self.read_register(Register::MANUFACTURER_ID).await;
-    //     match buffer {
-    //         Ok(buffer) => {
-    //             let manufacturer_id = (buffer[0] << 8 | buffer[1]) as u16;
-    //             return Ok(manufacturer_id); // This value * 1.25 mA per bit = mA
-    //         }
-    //         Err(e) => {
-    //             error!("Error reading INA260 Manufacturer ID");
-    //             return Err(e);
-    //         }
-    //     }
-    // }
-    // pub async fn read_die_id(&mut self) -> Result<u16, I2C::Error> {
-    //     let buffer = self.read_register(Register::DIE_ID).await;
-    //     match buffer {
-    //         Ok(buffer) => {
-    //             let die_id = u16::from_be_bytes(buffer);
-    //             return Ok(die_id); // This value * 1.25 mA per bit = mA
-    //         }
-    //         Err(e) => {
-    //             error!("Error reading INA260 Die ID");
-    //             return Err(e);
-    //         }
-    //     }
-    // }
 }
 
 use defmt::Format;
