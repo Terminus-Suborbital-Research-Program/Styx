@@ -6,6 +6,9 @@ RUN apt-get update && \
     apt-get -y install git curl libudev-dev && \
     apt-get -y install build-essential pkg-config libusb-1.0-0-dev cmake sudo
 
+# Delete the user with UID 1000 if it exists (fixes a problem with the devcontainer)
+RUN userdel -r $(awk -F: '$3 == 1000 { print $1 }' /etc/passwd) || true
+
 ENV user="terminus"
 ENV home="/home/${user}"
 
