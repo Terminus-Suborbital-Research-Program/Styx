@@ -17,6 +17,7 @@ use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
 
 use crate::device_constants::AvionicsI2cBus;
+use crate::phases::StateMachineListener;
 use crate::{
     app::{incoming_packet_handler, *},
     communications::{
@@ -49,47 +50,14 @@ unsafe fn I2C1_IRQ() {
 }
 
 pub async fn motor_drivers(
-    ctx: motor_drivers::Context<'_>,
-    motor_i2c: &'static Arbiter<MotorI2cBus>,
+    mut ctx: motor_drivers::Context<'_>,
+    i2c: &'static Arbiter<MotorI2cBus>,
+    mut esc_state_listener: StateMachineListener,
 ) {
-    info!("Motor Driver Task Started");
-    let ina260_1_init = ctx.local.ina260_1.init().await;
-    match ina260_1_init {
-        Ok(_) => {
-            info!("INA260 1 Initialized");
-        }
-        Err(e) => {
-            error!("INA260 1 Initialization Error: {:?}", e);
-        }
-    }
-    let ina260_2_init = ctx.local.ina260_2.init().await;
-    match ina260_2_init {
-        Ok(_) => {
-            info!("INA260 2 Initialized");
-        }
-        Err(e) => {
-            error!("INA260 2 Initialization Error: {:?}", e);
-        }
-    }
-
-    let ina260_3_init = ctx.local.ina260_3.init().await;
-    match ina260_3_init {
-        Ok(_) => {
-            info!("INA260 3 Initialized");
-        }
-        Err(e) => {
-            error!("INA260 3 Initialization Error: {:?}", e);
-        }
-    }
-    loop {
-        let current_1 = ctx.local.ina260_1.current_split().await.ok();
-        let power_1 = ctx.local.ina260_1.power_split().await.ok();
-        let current_2 = ctx.local.ina260_2.current_split().await.ok();
-        let power_2 = ctx.local.ina260_2.power_split().await.ok();
-        let power_3 = ctx.local.ina260_3.power_split().await.ok();
-        let current_3 = ctx.local.ina260_3.current_split().await.ok();
-        Mono::delay(100_u64.millis()).await;
-    }
+    esc_state_listener
+        .wait_for_state_specific(bin_packets::IcarusPhase::OrientSolar)
+        .await;
+    loop {}
 }
 
 pub async fn radio_flush(mut ctx: radio_flush::Context<'_>) {

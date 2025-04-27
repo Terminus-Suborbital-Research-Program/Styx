@@ -103,6 +103,7 @@ version = "0.1.2"
 dependencies = [
  "bincode",
  "defmt 0.3.100",
+ "fugit",
  "serde",
 ]
 

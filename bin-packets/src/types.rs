@@ -214,11 +214,12 @@ pub struct MasterData{
     voltage_3: StaticBuffer<PowerData>,
 }
 
+#[derive(Default,Debug,Clone,Copy,Encode,Decode,Serialize,Deserialize)]
 pub struct StaticBuffer<T> {
     buffer: [T; BUFFER_LENGTH],
     index: usize,
 }
-impl StaticBuffer<T> {
+impl<T: Default + core::marker::Copy> StaticBuffer<T> {
     pub fn new() -> Self {
         Self {
             buffer: [T::default(); BUFFER_LENGTH],
@@ -229,7 +230,7 @@ impl StaticBuffer<T> {
         if self.index == BUFFER_LENGTH - 1 {
             // Shift all elements to the left, removing the first item
             for i in 0..BUFFER_LENGTH - 1 {
-                self.buffer[i] = self.buffer[i + 1];
+                self.buffer[i] = self.buffer[i + 1].clone();
             }
             self.index = BUFFER_LENGTH - 1;
             // Add the new data to the last position
@@ -249,9 +250,9 @@ impl StaticBuffer<T> {
         if self.index == 0 {
             None
         } else {
-            let data = self.buffer[self.index - 1];
+            let result = Some(self.buffer[self.index - 1].clone());
             self.index -= 1;
-            Some(data)
+            return result;
         }
     }
 }
