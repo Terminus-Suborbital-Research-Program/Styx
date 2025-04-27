@@ -3,7 +3,7 @@ use core::pin::Pin;
 use core::task::{Context, Poll};
 use embedded_hal::i2c::{Error, ErrorKind};
 use futures::future::{select, Either, FutureExt};
-
+use rp235x_pac::interrupt;
 use embedded_hal_async::i2c;
 use futures::pin_mut;
 use rp235x_hal::async_utils::AsyncPeripheral;
@@ -37,6 +37,10 @@ impl<I2C> AsyncI2c<I2C>
 where
     I2C: i2c::I2c + AsyncPeripheral,
 {
+    // unsafe fn I2C1_IRQ() {
+    //     use rp235x_hal::async_utils::AsyncPeripheral;
+    //     MotorI2cBus::on_interrupt();
+    // }
     /// Creates a new async I2C device
     pub fn new(device: I2C, timeout: u32) -> Self {
         Self { device, timeout }
