@@ -28,6 +28,7 @@ use icarus::{DelayTimer, I2CMainBus};
 
 // Sensors
 use bme280_rs::{AsyncBme280, Configuration, Oversampling, SensorMode};
+use bmi323::AsyncBMI323;
 use ina260_terminus::AsyncINA260;
 
 // Busses
@@ -68,11 +69,7 @@ rp235x_timer_monotonic!(Mono);
 #[cfg(feature = "rp2350")]
 pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef::secure_exe();
 
-#[rtic::app(
-    device = hal::pac,
-    dispatchers = [PIO2_IRQ_0, PIO2_IRQ_1, DMA_IRQ_0],
-    peripherals = true,
-)]
+#[rtic::app(device = hal::pac,dispatchers = [PIO2_IRQ_0, PIO2_IRQ_1, DMA_IRQ_0],peripherals = true,)]
 mod app {
     use crate::{
         actuators::servo::{EjectionServo, LockingServo},
@@ -145,7 +142,7 @@ mod app {
             // Task local initialized resources are static
             // Here we use MaybeUninit to allow for initialization in init()
             // This enables its usage in driver initialization
-            i2c_avionics_bus: MaybeUninit<Arbiter<AvionicsI2cBus>> = MaybeUninit::uninit(),
+            i2c_avionics_bus: MaybeUninit<Arbiter<MotorI2cBus>> = MaybeUninit::uninit(),
             i2c_motor_bus: MaybeUninit<Arbiter<MotorI2cBus>> = MaybeUninit::uninit(),
             esc_state_signal: MaybeUninit<Signal<IcarusPhase>> = MaybeUninit::uninit(),
         ]
@@ -179,10 +176,10 @@ mod app {
         #[task(shared = [radio_link], priority = 1)]
         async fn radio_flush(mut ctx: radio_flush::Context);
 
-        #[task(local = [bme280, bmi323], priority = 3)]
+        #[task(local = [bme280, bmi323, ina260_1, ina260_2, ina260_3], priority = 3)]
         async fn sample_sensors(
             mut ctx: sample_sensors::Context,
-            avionics_i2c: &'static Arbiter<MotorI2cBus>,
+            i2c: &'static Arbiter<MotorI2cBus>,
         );
 
         #[task(priority = 3)]

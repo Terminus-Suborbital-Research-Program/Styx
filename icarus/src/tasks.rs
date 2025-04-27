@@ -175,9 +175,8 @@ pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'
 pub async fn sample_sensors(
     mut ctx: sample_sensors::Context<'_>,
     avionics_i2c: &'static Arbiter<MotorI2cBus>,
-) -> ! {
-    let intialize_status = ctx.local.bme280.init().await;
-    info!("BME Initialize Status: {}", intialize_status);
+) {
+    ctx.local.bme280.init().await.ok();
     ctx.local
         .bme280
         .set_sampling_configuration(
@@ -190,42 +189,21 @@ pub async fn sample_sensors(
         .await
         .expect("Failed to configure BME280");
 
+    ctx.local.ina260_1.init().await.ok();
+    ctx.local.ina260_2.init().await.ok();
+    ctx.local.ina260_3.init().await.ok();
+
     let result = ctx.local.bme280.chip_id().await;
     info!("Result: {}", result);
 
     Mono::delay(50_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
-
     // let mut buf: [u8; 2] = [0; 2];
     loop {
-        //         let mut i2c_line = avionics_i2c.access().await;
-        // let imu_result = i2c_line.write_read(0x68, &[0x01], &mut buf).await;
-        // match imu_result {
-        //     Ok(_) => {
-        //         info!("Chip Id: {}", buf[0]);
-        //         info!("Chip Id: {}", buf[1]);
-        //         trace!("What's up");
-        //     }
-        //     Err(e) => {
-        //         error!("Error reading IMU: {:?}", e);
-        //     }
-        // }
+        ctx.local.bmi323.check_init_status().await;
+        ctx.local.ina260_1.power_split().await;
+        ctx.local.ina260_1.power_split().await;
+        ctx.local.ina260_1.power_split().await;
 
-        // let result = ctx.local.bmi323.check_init_status().await;
-        // match result {
-        //     Ok(BMI323Status::INIT_OK) => {
-        //         info!("BMI323 is initialized");
-        //     }
-        //     Err(e) => {
-        //         error!("Error checking BMI323 init status: {:?}", e);
-        //     }
-        //     _ => {
-        //         info!("BMI323 is not initialized");
-        //     }
-        // }
-
-        // let result = ctx.local.bme280.chip_id().await;
-        // info!("Result: {}", result);
-        info!("Sample Sensors Running");
         if let Ok(Some(temperature)) = ctx.local.bme280.read_temperature().await {
             info!("Temperature: {}", temperature);
         }
