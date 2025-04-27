@@ -1,3 +1,4 @@
+use bin_packets::{VoltageData, PowerData, CurrentData};
 use bincode::de;
 use bincode::{config::standard, error::DecodeError};
 use bme280_rs::{AsyncBme280, Configuration, Oversampling, SensorMode};
@@ -13,6 +14,7 @@ use ina260_terminus::{AsyncINA260, Register as INA260Register};
 use mcf8316c_rs::{controller::MotorController, data_word_to_u32, registers::write_sequence};
 use rp235x_pac::sysinfo::chip_id;
 use rtic::Mutex;
+use rtic_monotonics::rtic_time::monotonic::TimerQueueBasedInstant;
 use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
 
@@ -210,18 +212,16 @@ pub async fn sample_sensors(
     // let mut buf: [u8; 2] = [0; 2];
     loop {
         ctx.local.bmi323.check_init_status().await;
-        let chip_id_1 = ctx.local.ina260_1.rid().await.ok();
-        let voltage_1 = ctx.local.ina260_1.voltage().await.ok();
-        let current_1 = ctx.local.ina260_1.current().await.ok();
-        let power_1 = ctx.local.ina260_1.power().await.ok();
-        let chip_id_2 = ctx.local.ina260_2.rid().await;
-        let voltage_2 = ctx.local.ina260_2.voltage().await.ok();
-        let current_2 = ctx.local.ina260_2.current().await.ok();
-        let power_2 = ctx.local.ina260_2.power().await.ok();
-        let chip_id_3 = ctx.local.ina260_2.rid().await;
-        let voltage_3 = ctx.local.ina260_3.voltage().await.ok();
-        let current_3 = ctx.local.ina260_3.current().await.ok();
-        let power_3 = ctx.local.ina260_3.power().await.ok();
+        let ts = Mono::now().ticks();
+        let voltage_1 = ctx.local.ina260_1.voltage_split().await.ok();
+        let current_1 = ctx.local.ina260_1.current_split().await.ok();
+        let power_1 = ctx.local.ina260_1.power_split().await.ok();
+        let voltage_2 = ctx.local.ina260_2.voltage_split().await.ok();
+        let current_2 = ctx.local.ina260_2.current_split().await.ok();
+        let power_2 = ctx.local.ina260_2.power_split().await.ok();
+        let voltage_3 = ctx.local.ina260_3.voltage_split().await.ok();
+        let current_3 = ctx.local.ina260_3.current_split().await.ok();
+        let power_3 = ctx.local.ina260_3.power_split().await.ok();
 
         if let Ok(Some(temperature)) = ctx.local.bme280.read_temperature().await {
             info!("Temperature: {}", temperature);
@@ -232,6 +232,22 @@ pub async fn sample_sensors(
         if let Ok(Some(humidity)) = ctx.local.bme280.read_humidity().await {
             info!("Humidity: {}", humidity);
         }
+
+        let vs1 = VoltageData::new(ts, voltage_1);
+        let vs2 = VoltageData::new(ts, voltage_2);
+        let vs3 = VoltageData::new(ts, voltage_3);
+        let cur1 = CurrentData::new(ts, current_1);
+        let cur2 = CurrentData::new(ts, current_2);
+        let cur3 = CurrentData::new(ts, current_3);
+        let pow1 = PowerData::new(ts, power_1);
+        let pow2 = PowerData::new(ts, power_2);
+        let pow3 = PowerData::new(ts, power_3);
+
+        ctx.shared.master_data.lock(|master|{
+            master.voltage_1.push(vs1);
+            master.voltage_2.push(vs2);
+            master.voltage_3.push(vs3);
+        });
         Mono::delay(100_u64.millis()).await;
     }
 }

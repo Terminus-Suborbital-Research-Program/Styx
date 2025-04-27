@@ -177,7 +177,7 @@ mod app {
         #[task(shared = [radio_link], priority = 1)]
         async fn radio_flush(mut ctx: radio_flush::Context);
 
-        #[task(local = [bme280, bmi323, ina260_1, ina260_2, ina260_3], priority = 3)]
+        #[task(local = [bme280, bmi323, ina260_1, ina260_2, ina260_3], shared=[master_data], priority = 3)]
         async fn sample_sensors(
             mut ctx: sample_sensors::Context,
             i2c: &'static Arbiter<MotorI2cBus>,

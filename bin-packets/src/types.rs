@@ -188,30 +188,45 @@ const BUFFER_LENGTH: usize = 10;
 #[derive(Default,Debug,Clone,Copy,Encode,Decode,Serialize,Deserialize)]
 pub struct PowerData{
     time_stamp: u64,
-    power: (i8, u32),
+    power: Option<(u8, u32)>,
+}
+impl PowerData{
+    pub fn new(time_stamp: u64, power: Option<(u8, u32)>)->Self{
+        PowerData {time_stamp, power}
+    }
 }
 #[derive(Default,Debug,Clone,Copy,Encode,Decode,Serialize,Deserialize)]
 pub struct CurrentData{
     time_stamp: u64,
-    current: (i8, u32),
+    current: Option<(i8, u32)>,
+}
+impl CurrentData{
+    pub fn new(time_stamp: u64, current: Option<(i8, u32)>)->Self{
+        CurrentData{time_stamp, current}
+    }
 }
 #[derive(Default,Debug,Clone,Copy,Encode,Decode,Serialize,Deserialize)]
 pub struct VoltageData{
     time_stamp: u64,
-    voltage: (u8, u32),
+    voltage: Option<(u8, u32)>
+}
+impl VoltageData{
+    pub fn new(time_stamp: u64, voltage: Option<(u8, u32)>)->Self{
+        VoltageData {time_stamp, voltage}
+    }
 }
 
 #[derive(Default,Debug,Clone,Copy,Encode,Decode,Serialize,Deserialize)]
 pub struct MasterData{
-    power_1: StaticBuffer<PowerData>,
-    power_2: StaticBuffer<PowerData>,
-    power_3: StaticBuffer<PowerData>,
-    current_1: StaticBuffer<PowerData>,
-    current_2: StaticBuffer<PowerData>,
-    current_3: StaticBuffer<PowerData>,
-    voltage_1: StaticBuffer<PowerData>,
-    voltage_2: StaticBuffer<PowerData>,
-    voltage_3: StaticBuffer<PowerData>,
+    pub power_1: StaticBuffer<PowerData>,
+    pub power_2: StaticBuffer<PowerData>,
+    pub power_3: StaticBuffer<PowerData>,
+    pub current_1: StaticBuffer<CurrentData>,
+    pub current_2: StaticBuffer<CurrentData>,
+    pub current_3: StaticBuffer<CurrentData>,
+    pub voltage_1: StaticBuffer<VoltageData>,
+    pub voltage_2: StaticBuffer<VoltageData>,
+    pub voltage_3: StaticBuffer<VoltageData>,
 }
 
 #[derive(Default,Debug,Clone,Copy,Encode,Decode,Serialize,Deserialize)]
