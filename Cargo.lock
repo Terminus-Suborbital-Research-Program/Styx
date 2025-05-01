@@ -768,6 +768,7 @@ dependencies = [
  "embedded-time",
  "fugit",
  "futures",
+ "hc12-rs",
  "heapless 0.8.0",
  "hifitime",
  "ina260_terminus",
