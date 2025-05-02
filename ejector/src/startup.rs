@@ -76,14 +76,14 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         .gpio14
         .into_pull_type::<PullNone>()
         .into_push_pull_output();
-    cam_pin.set_low().unwrap();
+    cam_pin.set_high().unwrap();
 
     // These pins for rbf and cam are placeholder, change later
     let mut rbf_pin = bank0_pins
         .gpio2
         .into_pull_type::<PullNone>()
         .into_pull_up_input();
-    
+
     let mut rbf_status = false;
     match rbf_pin.is_low() {
         Ok(pin_inserted) => {
@@ -237,10 +237,10 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             radio: hc,
             ejection_pin: gpio_detect,
             rbf_status: rbf_status,
-
         },
-        Local { led: led_pin,
-            cams: cam_pin
-         },
+        Local {
+            led: led_pin,
+            cams: cam_pin,
+        },
     )
 }

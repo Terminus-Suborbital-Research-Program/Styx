@@ -127,7 +127,7 @@ mod app {
         async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context);
 
         // State machine update
-        #[task(shared = [state_machine,  blink_status_delay_millis, ejection_pin, rbf_status], priority = 1)]
+        #[task(shared = [state_machine,  blink_status_delay_millis, ejection_pin, rbf_status, ejector_servo], priority = 1)]
         async fn state_machine_update(mut ctx: state_machine_update::Context);
 
         // Heartbeats the main led
