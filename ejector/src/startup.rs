@@ -1,6 +1,6 @@
 use defmt::{info, warn};
 use embedded_hal::delay::DelayNs;
-use embedded_hal::digital::OutputPin;
+use embedded_hal::digital::{InputPin, OutputPin};
 use fugit::RateExtU32;
 use hc12_rs::configuration::baudrates::B9600;
 use hc12_rs::configuration::{Channel, HC12Configuration, Power};
@@ -70,6 +70,30 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     led_pin.set_low().unwrap();
     // Start the heartbeat task
     heartbeat::spawn().ok();
+
+    // Configure GPIOX as a cam output // Change later
+    let mut cam_pin = bank0_pins
+        .gpio14
+        .into_pull_type::<PullNone>()
+        .into_push_pull_output();
+    cam_pin.set_low().unwrap();
+
+    // These pins for rbf and cam are placeholder, change later
+    let mut rbf_pin = bank0_pins
+        .gpio2
+        .into_pull_type::<PullNone>()
+        .into_pull_up_input();
+    
+    let mut rbf_status = false;
+    match rbf_pin.is_low() {
+        Ok(pin_inserted) => {
+            rbf_status = pin_inserted;
+            info!("RBF Status {}", rbf_status);
+        }
+        Err(e) => {
+            info!("Could not read RBF Pin")
+        }
+    };
 
     // Get clock frequency
     let clock_freq = clocks.peripheral_clock.freq();
@@ -194,6 +218,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     //radio_flush::spawn().ok();
     state_machine_update::spawn().ok();
     incoming_packet_handler::spawn().ok();
+    start_cameras::spawn().ok();
     radio_heartbeat::spawn().ok();
 
     (
@@ -207,10 +232,15 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             clock_freq_hz: clock_freq.to_Hz(),
             state_machine: EjectorStateMachine::new(),
             blink_status_delay_millis: 1000,
+            ejector_time_millis: 0,
             suspend_packet_handler: false,
             radio: hc,
             ejection_pin: gpio_detect,
+            rbf_status: rbf_status,
+
         },
-        Local { led: led_pin },
+        Local { led: led_pin,
+            cams: cam_pin
+         },
     )
 }

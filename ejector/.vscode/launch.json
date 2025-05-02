@@ -4,7 +4,7 @@
       {
         "type": "probe-rs-debug",
         "request": "launch",
-        "preLaunchTask": "rust: cargo build",
+        "preLaunchTask": "Run Cargo",
         "name": "probe_rs Executable launch example",
         "cwd": "${workspaceFolder}",
         "runtimeExecutable": "probe-rs",

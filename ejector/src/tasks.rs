@@ -3,13 +3,15 @@ use core::cmp::max;
 use bin_packets::{phases::EjectorPhase, ApplicationPacket, LinkPacket};
 use bincode::config::standard;
 use defmt::info;
-use embedded_hal::digital::{InputPin, StatefulOutputPin};
+use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
 use embedded_io::Write;
 use fugit::ExtU64;
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 
 use crate::{app::*, Mono};
+
+const START_CAMERA_DELAY: u64 = 250_000; // 10k millis For testing, 250 for actual
 
 pub async fn incoming_packet_handler(_ctx: incoming_packet_handler::Context<'_>) {
     Mono::delay(1000_u64.millis()).await;
@@ -26,7 +28,31 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
                 .millis(),
         )
         .await;
+        
+        ctx.shared.ejector_time_millis.lock(|previous_time| 
+            {
+                *previous_time = Mono::now().duration_since_epoch().to_millis();
+            }
+            );
+        
+
     }
+}
+
+pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
+    let rbf_on_startup = ctx.shared.rbf_status.lock(|startup_status| *startup_status);
+    if !rbf_on_startup {
+        info!("Camera Timer Starting");
+        Mono::delay(
+            START_CAMERA_DELAY.millis()
+        )
+        .await;
+        info!("Cameras on");
+        ctx.local.cams.set_high();
+    } else {
+        info!("Cameras RBF Inhibited");
+    }
+    
 }
 
 pub async fn radio_heartbeat(mut ctx: radio_heartbeat::Context<'_>) {
@@ -64,6 +90,8 @@ pub fn uart_interrupt(_ctx: uart_interrupt::Context<'_>) {
 }
 
 pub async fn state_machine_update(mut ctx: state_machine_update::Context<'_>) {
+    let rbf_on_startup = ctx.shared.rbf_status.lock(|startup_status| *startup_status);
+
     loop {
         let wait_time = ctx
             .shared
@@ -93,9 +121,15 @@ pub async fn state_machine_update(mut ctx: state_machine_update::Context<'_>) {
 
             EjectorPhase::Ejection => {
                 // Eject the deployable
-                ctx.shared.ejector_servo.lock(|servo| {
-                    servo.eject();
-                });
+                if !rbf_on_startup {
+                    ctx.shared.ejector_servo.lock(|servo| {
+                        servo.eject();
+                    });
+                    info!("Servo eject")
+                } else {
+                    info!("RBF Mode: ejection inhibited")
+                }
+            
                 // 200ms delay
                 ctx.shared
                     .blink_status_delay_millis
