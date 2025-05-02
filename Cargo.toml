@@ -1,5 +1,5 @@
 [workspace]
-members = ["bin-packets", "ejector", "gs-cli", "icarus", "mcf8316c-rs"]
+members = ["bin-packets", "ejector", "icarus", "mcf8316c-rs"]
 resolver = "3"
 
 [profile.dev]
