@@ -110,7 +110,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     };
     // Transition to AT mode
     info!("Programming HC12...");
-    let radio = radio.into_at_mode().unwrap();
+    let radio = radio.into_at_mode().unwrap(); // Infallible
     timer_two.delay_ms(100);
     let radio = match radio.set_baudrate(B9600) {
         Ok(link) => {
@@ -143,7 +143,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             e.hc12
         }
     };
-    let hc = hc.into_fu3_mode().unwrap();
+    let hc = hc.into_fu3_mode().unwrap(); // Infallible
 
     // Servo
     let pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
