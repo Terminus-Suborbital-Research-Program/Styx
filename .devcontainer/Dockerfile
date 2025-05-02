@@ -1,43 +1,44 @@
 FROM ubuntu:noble
 
-RUN apt-get update
-RUN apt-get upgrade -y
-RUN apt-get install git curl libudev-dev -y
+# Same command so that old apt caches are not used
+RUN apt-get update && \
+    apt-get -y upgrade -y && \
+    apt-get -y install git curl libudev-dev && \
+    apt-get -y install build-essential pkg-config libusb-1.0-0-dev cmake sudo
+
+# Delete the user with UID 1000 if it exists (fixes a problem with the devcontainer)
+RUN userdel -r $(awk -F: '$3 == 1000 { print $1 }' /etc/passwd) || true
+
+ENV user="terminus"
+ENV home="/home/${user}"
+
+RUN useradd -m -b "/home" -U ${user} \
+    && usermod -a -G dialout ${user} \
+    && usermod -a -G sudo ${user} \
+    && chsh -s /usr/bin/bash ${user} \
+    && passwd -d ${user}
+
+USER ${user}
 
 # Install Rust
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup.sh && \
-    chmod +x rustup.sh && \
-    ./rustup.sh -y && \
-    rm rustup.sh
-ENV PATH="/root/.cargo/bin:${PATH}"
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="${home}/.cargo/bin:${PATH}"
 
 # Install rust targets and binaries
-RUN /root/.cargo/bin/rustup target add thumbv8m.main-none-eabihf
+RUN ${home}/.cargo/bin/rustup target add thumbv8m.main-none-eabihf
 RUN curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-RUN /root/.cargo/bin/cargo binstall cargo-make
-RUN /root/.cargo/bin/cargo binstall probe-rs-tools
+RUN ${home}/.cargo/bin/cargo binstall cargo-make
+RUN ${home}/.cargo/bin/cargo binstall probe-rs-tools
 
 # Install picotool
-RUN mkdir /picotool_install
-WORKDIR /picotool_install
-RUN git clone https://github.com/raspberrypi/pico-sdk.git
+RUN mkdir -p ${home}/picotool_install
+WORKDIR ${home}/picotool_install
+RUN git clone --recurse-submodules=lib/mbedtls https://github.com/raspberrypi/pico-sdk.git
 RUN git clone https://github.com/raspberrypi/picotool.git
-RUN cd pico-sdk && git submodule update --init lib/mbedtls && cd ../picotool
-RUN apt install build-essential pkg-config libusb-1.0-0-dev cmake -y
-RUN cd /picotool_install/picotool && mkdir build && cd build && PICO_SDK_PATH=/picotool_install/pico-sdk cmake .. && make install
+RUN cd picotool && mkdir -p build && cd build && PICO_SDK_PATH=${home}/picotool_install/pico-sdk cmake .. && sudo make install
+WORKDIR /workspace
 
-
-# Move cargo binaries to PATH
-RUN mv /root/.cargo/bin/* /usr/local/bin
+# Set the default rustup version to stable
 RUN rustup default stable
-RUN mkdir /working
-# Move $CARGO_HOME to /working and $RUSTUP_HOME to /working
-RUN mv /root/.cargo /working
-RUN mv /root/.rustup /working
-# Set $CARGO_HOME and $RUSTUP_HOME to /working
-ENV CARGO_HOME=/working/.cargo
-ENV RUSTUP_HOME=/working/.rustup
 # Set PATH to include /working/.cargo/bin
-ENV PATH="/working/.cargo/bin:${PATH}"
-
-WORKDIR /working
+ENV PATH="${home}/.cargo/bin:${PATH}"

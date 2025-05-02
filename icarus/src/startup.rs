@@ -2,6 +2,7 @@ use bin_packets::IcarusPhase;
 use cortex_m::delay::Delay;
 use defmt::error;
 use defmt::info;
+use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
 use fugit::RateExtU32;
 use fugit::RateExtU64;
@@ -34,13 +35,13 @@ use crate::actuators::servo::HOLDING_ANGLE;
 use crate::actuators::servo::{EjectionServoMosfet, LockingServoMosfet, Servo};
 
 use crate::app::*;
-use crate::communications::hc12::HC12;
 use crate::communications::link_layer::Device;
 use crate::communications::link_layer::LinkLayerDevice;
 use crate::device_constants::pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin};
 use crate::device_constants::pins::{EscI2CSclPin, EscI2CSdaPin};
+use crate::device_constants::INAData;
 use crate::device_constants::IcarusStateMachine;
-use crate::device_constants::MotorI2cBus;
+use crate::device_constants::{MotorI2cBus};
 use crate::hal;
 use crate::peripherals::async_i2c::AsyncI2c;
 use crate::phases::StateMachine;
@@ -50,9 +51,15 @@ use crate::ALLOCATOR;
 use crate::HEAP_MEMORY;
 use crate::{DelayTimer, I2CMainBus};
 
+use hc12_rs::configuration::baudrates::B9600;
+use hc12_rs::configuration::{Channel, HC12Configuration, Power};
+use hc12_rs::device::IntoATMode;
+use hc12_rs::IntoFU3Mode;
+
 // Sensors
 use bme280_rs::{AsyncBme280, Bme280, Configuration, Oversampling, SensorMode};
 use ina260_terminus::{AsyncINA260, Register as INA260Register};
+
 
 // Logs our time for demft
 defmt::timestamp!("{=u64:us}", {
@@ -133,13 +140,39 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             .unwrap();
     uart1_peripheral.enable_rx_interrupt(); // Make sure we can drive our interrupts
 
-    // Use pin 14 (GPIO10) as the HC12 configuration pin
-    let hc12_configure_pin = bank0_pins.gpio10.into_push_pull_output();
-    let hc12 = HC12::new(uart1_peripheral, hc12_configure_pin).unwrap();
-    let radio_link = LinkLayerDevice {
-        device: hc12,
-        me: Device::Ejector,
+    let programming = bank0_pins.gpio12.into_push_pull_output();
+    // Copy the timer
+    let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
+    let mut timer_two = timer.clone();
+
+    info!("UART1 configured, assembling HC-12");
+    let builder = hc12_rs::device::HC12Builder::<(), (), (), ()>::empty()
+        .uart(uart1_peripheral, B9600)
+        .programming_resources(programming, timer)
+        .fu3(HC12Configuration::default());
+
+    let radio = match builder.attempt_build() {
+        Ok(link) => {
+            info!("HC-12 init, link ready");
+            link
+        }
+        Err(e) => {
+            panic!("Failed to init HC-12: {}", e.0);
+        }
     };
+    // Transition to AT mode
+    info!("Programming HC12...");
+    let radio = radio.into_at_mode().unwrap();
+    info!("HC12 in AT Mode");
+    timer_two.delay_ms(100);
+    let radio = radio.set_baudrate(B9600).unwrap();
+    info!("HC12 baudrate set to 9600");
+    let radio = radio.set_channel(Channel::Channel1).unwrap();
+    info!("HC12 channel set to 1");
+    let hc = radio.set_power(Power::P8).unwrap();
+    info!("HC12 power set to P8");
+    let hc = hc.into_fu3_mode().unwrap();
+    info!("HC12 in FU3 Mode");
 
     // Servo
     let pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
@@ -224,22 +257,25 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let mut ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 33_u8, Mono);
     let mut ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 34_u8, Mono);
 
+    let mut ina_data = INAData::default();
+
     info!("Peripherals initialized, spawning tasks...");
     // heartbeat::spawn().ok();
     radio_flush::spawn().ok();
-    incoming_packet_handler::spawn().ok();
     motor_drivers::spawn(motor_i2c_arbiter, esc_listener).ok();
     sample_sensors::spawn(avionics_i2c_arbiter).ok();
     inertial_nav::spawn().ok();
+    radio_send::spawn().ok();
     info!("Tasks spawned!");
 
     (
         Shared {
-            radio_link,
+            ina_data: ina_data,
             ejector_driver: ejection_servo,
             locking_driver: locking_servo,
             clock_freq_hz: clock_freq.to_Hz(),
             state_machine,
+            radio: hc,
         },
         Local {
             led: led_pin,

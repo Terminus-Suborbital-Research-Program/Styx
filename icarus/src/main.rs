@@ -32,6 +32,7 @@ use ina260_terminus::AsyncINA260;
 
 // Busses
 use rtic_sync::arbiter::i2c::ArbiterDevice;
+use device_constants::INAData;
 
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
@@ -74,10 +75,11 @@ mod app {
     use crate::{
         actuators::servo::{EjectionServo, LockingServo},
         communications::{
-            hc12::{UART1Bus, GPIO10},
             link_layer::LinkLayerDevice,
         },
-        device_constants::{AvionicsI2cBus, IcarusStateMachine, MotorI2cBus, ReactionWheelMotor},
+        device_constants::{
+            AvionicsI2cBus, IcarusHC12, IcarusStateMachine, MotorI2cBus, ReactionWheelMotor,
+        },
         phases::StateMachineListener,
     };
 
@@ -97,8 +99,7 @@ mod app {
         signal::{Signal, SignalReader},
     };
     use usb_device::class_prelude::*;
-
-    use hc12::HC12;
+    use hc12_rs::HC12;
 
     // use usbd_serial::SerialPort;
 
@@ -118,10 +119,11 @@ mod app {
         //uart0_buffer: heapless::String<HEAPLESS_STRING_ALLOC_LENGTH>,
         pub ejector_driver: EjectionServo,
         pub locking_driver: LockingServo,
-        pub radio_link: LinkLayerDevice<HC12<UART1Bus, GPIO10>>,
         // pub usb_serial: SerialPort<'static, hal::usb::UsbBus>,
         pub clock_freq_hz: u32,
+        pub radio: IcarusHC12,
         pub state_machine: IcarusStateMachine,
+        pub ina_data: INAData
     }
 
     #[local]
@@ -153,11 +155,11 @@ mod app {
         async fn heartbeat(ctx: heartbeat::Context);
 
         // Takes care of incoming packets
-        #[task(shared = [radio_link], priority = 1)]
-        async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context);
+        #[task(shared = [radio, ina_data], priority = 1)]
+        async fn radio_send(mut ctx: radio_send::Context);
 
         // Handler for the I2C electronic speed controllers
-        #[task(priority = 3, shared = [state_machine])]
+        #[task(priority = 3, shared = [state_machine, ina_data], local=[ina260_1, ina260_2, ina260_3])]
         async fn motor_drivers(
             &mut ctx: motor_drivers::Context,
             i2c: &'static Arbiter<MotorI2cBus>,
@@ -165,11 +167,11 @@ mod app {
         );
 
         // Updates the radio module on the serial interrupt
-        #[task(binds = UART1_IRQ, shared = [radio_link])]
+        #[task(binds = UART1_IRQ, shared = [radio])]
         fn uart_interrupt(mut ctx: uart_interrupt::Context);
 
         // Radio Flush Task
-        #[task(shared = [radio_link], priority = 1)]
+        #[task(shared = [radio], priority = 1)]
         async fn radio_flush(mut ctx: radio_flush::Context);
 
         #[task(local = [bme280], priority = 3)]

@@ -4,7 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bincode = "2.0.0"
+bincode = {version = "2.0.0-rc.3", features = [
+    "derive",
+    "alloc",
+]}
 serialport = "4.7.0"
-bin-packets = {git = "https://github.com/Terminus-Suborbital-Research-Program/bin-packets.git"}
+bin-packets = {path="../bin-packets"}
 clap = { version = "4.5.31", features = ["derive"] }

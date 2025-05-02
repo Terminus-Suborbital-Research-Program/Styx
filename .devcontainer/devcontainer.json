@@ -1,7 +1,12 @@
 {
-    "build": {
-        "dockerfile": "Dockerfile"
-    },
+    "name": "AMALTHEA",
+    "dockerComposeFile": [
+        "docker-compose.yml"
+    ],
+    "service": "amalthea",
+
+    "workspaceFolder": "/workspace",
+    "remoteUser": "terminus",
 
     "customizations": {
         "vscode": {
@@ -11,7 +16,5 @@
             ]
         }
     },
-    "runArgs": [
-        "--privileged", "-v", "/dev:/dev"
-    ]
+    "updateRemoteUserUID": true
 }
