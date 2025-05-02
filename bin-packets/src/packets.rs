@@ -19,17 +19,16 @@ pub enum ApplicationPacket {
     IcarusStatus(IcarusStatus),
     EjectorStatus(EjectorStatus),
     JupiterStatus(JupiterStatus),
-    PowerData{
+    PowerData {
         time_stamp: u64,
-        power: Option<(u8, u32)>   
+        power: Option<(u8, u32)>,
     },
-    CurrentData{
+    CurrentData {
         time_stamp: u64,
-        power: Option<(i8, u32)>   
+        power: Option<(i8, u32)>,
     },
-    VoltageData{
+    VoltageData {
         time_stamp: u64,
-        power: Option<(u8, u32)>   
-    }
-    
+        power: Option<(u8, u32)>,
+    },
 }

@@ -116,5 +116,8 @@ pub async fn state_machine_update(mut ctx: state_machine_update::Context<'_>) {
 
         // We should never wait less than 1ms, tbh
         Mono::delay(max(wait_time, 1).millis()).await;
+
+        // TODO: Remove
+        Mono::delay(1000_u64.millis()).await;
     }
 }

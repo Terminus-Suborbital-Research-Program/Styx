@@ -114,12 +114,12 @@ pub type IcarusHC12 = HC12<
 pub type ReactionWheelMotor = ();
 
 // CONSTANTS FOR ALL
-const HISTORY_BUFFER_LENGTH: usize = 10; 
+const HISTORY_BUFFER_LENGTH: usize = 10;
 
 // Sensor Data Types
 // use bin_packets::types::{PowerData, CurrentData, VoltageData};
 #[derive(Debug, Default)]
-pub struct INAData{
+pub struct INAData {
     pub p1_buffer: heapless::HistoryBuffer<bin_packets::ApplicationPacket, HISTORY_BUFFER_LENGTH>,
     pub p2_buffer: heapless::HistoryBuffer<bin_packets::ApplicationPacket, HISTORY_BUFFER_LENGTH>,
     pub p3_buffer: heapless::HistoryBuffer<bin_packets::ApplicationPacket, HISTORY_BUFFER_LENGTH>,

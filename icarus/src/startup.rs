@@ -41,7 +41,7 @@ use crate::device_constants::pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin};
 use crate::device_constants::pins::{EscI2CSclPin, EscI2CSdaPin};
 use crate::device_constants::INAData;
 use crate::device_constants::IcarusStateMachine;
-use crate::device_constants::{MotorI2cBus};
+use crate::device_constants::MotorI2cBus;
 use crate::hal;
 use crate::peripherals::async_i2c::AsyncI2c;
 use crate::phases::StateMachine;
@@ -59,7 +59,6 @@ use hc12_rs::IntoFU3Mode;
 // Sensors
 use bme280_rs::{AsyncBme280, Bme280, Configuration, Oversampling, SensorMode};
 use ina260_terminus::{AsyncINA260, Register as INA260Register};
-
 
 // Logs our time for demft
 defmt::timestamp!("{=u64:us}", {

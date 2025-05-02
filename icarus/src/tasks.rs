@@ -18,7 +18,7 @@ use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
 use crate::device_constants::AvionicsI2cBus;
 use crate::phases::StateMachineListener;
 use crate::{
-    app::{*},
+    app::*,
     device_constants::MotorI2cBus,
     peripherals::async_i2c::{self, AsyncI2cError},
     Mono,
@@ -33,25 +33,23 @@ pub async fn heartbeat(ctx: heartbeat::Context<'_>) {
 }
 
 pub fn uart_interrupt(mut ctx: uart_interrupt::Context<'_>) {
-    ctx.shared.radio.lock(|radio| {
-        radio.device.update().ok();
-    });
+    // ctx.shared.radio.lock(|radio| {
+    //     radio.device.update().ok();
+    // });
 }
 
-pub async fn radio_flush(mut ctx: radio_flush::Context<'_>) {
-}
+pub async fn radio_flush(mut ctx: radio_flush::Context<'_>) {}
 
 pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
-    loop{
-        ctx.shared.ina_data.lock(|ina_data|{
-            ctx.shared.radio.lock(|radio|{
+    loop {
+        ctx.shared.ina_data.lock(|ina_data| {
+            ctx.shared.radio.lock(|radio| {
                 // GET PACKETS FROM INA DATA AND SEND
             });
         });
 
-        Mono::delay(100_u64.millis()).await;        
+        Mono::delay(100_u64.millis()).await;
     }
-
 }
 
 use rp235x_pac::interrupt;
@@ -70,9 +68,9 @@ pub async fn motor_drivers(
         .await;
     info!("Motor Driver Task Started");
 
-    ctx.local.ina260_1.init().await.ok();
-    ctx.local.ina260_2.init().await.ok();
-    ctx.local.ina260_3.init().await.ok();
+    // ctx.local.ina260_1.init().await.ok();
+    // ctx.local.ina260_2.init().await.ok();
+    // ctx.local.ina260_3.init().await.ok();
 
     loop {
         let ts = Mono::now().ticks();
@@ -86,17 +84,44 @@ pub async fn motor_drivers(
         let current_3 = ctx.local.ina260_3.current_split().await.ok();
         let power_3 = ctx.local.ina260_3.power_split().await.ok();
 
-        let vs1 = ApplicationPacket::VoltageData{time_stamp: ts, power: voltage_1};
-        let vs2 = ApplicationPacket::VoltageData{time_stamp: ts, power: voltage_2};
-        let vs3 = ApplicationPacket::VoltageData{time_stamp: ts, power: voltage_3};
-        let cur1 = ApplicationPacket::CurrentData{time_stamp: ts, power: current_1};
-        let cur2 = ApplicationPacket::CurrentData{time_stamp: ts, power: current_2};
-        let cur3 = ApplicationPacket::CurrentData{time_stamp: ts, power: current_3};
-        let pow1 = ApplicationPacket::PowerData{time_stamp: ts, power: power_1};
-        let pow2 = ApplicationPacket::PowerData{time_stamp: ts, power: power_2};
-        let pow3 = ApplicationPacket::PowerData{time_stamp: ts, power: power_3};
+        let vs1 = ApplicationPacket::VoltageData {
+            time_stamp: ts,
+            power: voltage_1,
+        };
+        let vs2 = ApplicationPacket::VoltageData {
+            time_stamp: ts,
+            power: voltage_2,
+        };
+        let vs3 = ApplicationPacket::VoltageData {
+            time_stamp: ts,
+            power: voltage_3,
+        };
+        let cur1 = ApplicationPacket::CurrentData {
+            time_stamp: ts,
+            power: current_1,
+        };
+        let cur2 = ApplicationPacket::CurrentData {
+            time_stamp: ts,
+            power: current_2,
+        };
+        let cur3 = ApplicationPacket::CurrentData {
+            time_stamp: ts,
+            power: current_3,
+        };
+        let pow1 = ApplicationPacket::PowerData {
+            time_stamp: ts,
+            power: power_1,
+        };
+        let pow2 = ApplicationPacket::PowerData {
+            time_stamp: ts,
+            power: power_2,
+        };
+        let pow3 = ApplicationPacket::PowerData {
+            time_stamp: ts,
+            power: power_3,
+        };
 
-        ctx.shared.ina_data.lock(|ina_data|{
+        ctx.shared.ina_data.lock(|ina_data| {
             ina_data.v1_buffer.write(vs1);
             ina_data.v2_buffer.write(vs2);
             ina_data.v3_buffer.write(vs3);
@@ -110,8 +135,6 @@ pub async fn motor_drivers(
         Mono::delay(100_u64.millis()).await;
     }
 }
-
-
 
 pub async fn sample_sensors(
     mut ctx: sample_sensors::Context<'_>,

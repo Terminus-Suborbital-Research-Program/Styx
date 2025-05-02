@@ -4,14 +4,17 @@ version = "0.1.0"
 edition = "2024"
 
 
-
 [dependencies]
-defmt = {version = "1.0.1", optional = true}
+defmt = { version = "1.0.1", optional = true }
 embedded-hal = "1.0.0"
-embedded-hal-async = { version = "1.0.0", features = ["defmt-03"] , optional=true}
-cast = {version = "*", default-features = false}
+embedded-hal-async = { version = "1.0.0", features = [
+    "defmt-03",
+], optional = true }
+cast = { version = "*", default-features = false }
 [features]
-default = ["async"]
+default = ["async", "defmt"]
 with_defmt = ["defmt"]
 sync = []
 async = ["embedded-hal-async"]
+std = []
+defmt = ["dep:defmt"]

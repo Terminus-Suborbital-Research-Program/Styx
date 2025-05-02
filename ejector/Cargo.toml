@@ -2,46 +2,42 @@
 name = "ejector"
 version = "0.1.1"
 edition = "2021"
-build="build.rs"
+build = "build.rs"
 
 [dependencies]
 # HAL for the RP350X architecture
-rp235x-hal = {version="0.2.0", features = ["binary-info", "critical-section-impl", "rt", "defmt", "rtic-monotonic"], optional = true}
-# Embedded-hal for io traits
-embedded-hal-nb = "1.0.0"
-# Cortex-M peripherals
-cortex-m = "0.7.7"
-# Startup/Runtime for Cortex-M microcontrollers
-cortex-m-rt = "0.7.5"
+rp235x-hal = { version = "*", features = [
+    "binary-info",
+    "critical-section-impl",
+    "rt",
+    "defmt",
+    "rtic-monotonic",
+], optional = true }
 # Rust safe bindings to register-level control
-embedded-hal = "1.0.0"
-embedded-io = "0.6.1"
-# Simple panic handler
-panic-halt = "1.0.0"
+embedded-hal = "*"
+embedded-io = "*"
 # RTIC for real-time operations
-rtic = {version = "2.1.2"}
+rtic = { version = "2.1.2" }
 rtic-monotonics = "2.0.3"
 rtic-sync = "1.3.0"
 # USB Device Support
 usb-device = "0.3.2"
 usbd-serial = "0.2.2"
-# Time
-embedded-time = "0.12.1"
 fugit = "0.3.7"
 
 # HC-12
-hc12-rs = {git = "https://github.com/thelenlucas/hc12-rs.git", tag = "v0.0.1"}
+hc12-rs = { git = "https://github.com/thelenlucas/hc12-rs.git", tag = "v0.0.1" }
 
 # logging
-defmt = "0.3"
-defmt-rtt = "0.4.1"
-heapless = "0.8.0"
-bincode = {version="2.0.0-rc.3", features = ["derive"], default-features = false}
+defmt = "*"
+defmt-rtt = "*"
+heapless = "*"
+bincode = { version = "2.0.0-rc.3", features = [
+    "derive",
+], default-features = false }
 
 # Packets
 bin-packets = { path = "../bin-packets" }
-panic-probe = "0.3.2"
-rtt-target = { version = "0.6.1", features = ["defmt"] }
 
 [dev-dependencies]
 embedded-test = { version = "0.6.0", features = ["defmt", "panic-handler"] }
@@ -62,5 +58,5 @@ default = ["rp2350"]
 rp2350 = [
     "dep:rp235x-hal",
     "rtic-monotonics/rp235x",
-    "rtic/thumbv8main-backend"
+    "rtic/thumbv8main-backend",
 ]

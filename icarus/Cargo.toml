@@ -23,23 +23,18 @@ embedded-io = "0.6.1"
 
 # Cortex-M peripherals
 cortex-m = "0.7.7"
-# Startup/Runtime for Cortex-M microcontrollers
-cortex-m-rt = "0.7.5"
 # RTIC for real-time operations
 rtic = { version = "2.1.2" }
 rtic-monotonics = "2.0.3"
-rtic-monotonic = { version = "1.0.0", optional = true }
 
 rtic-sync = "*"
 # USB Device Support
 usb-device = "0.3.2"
 usbd-serial = "0.2.2"
-# Time
-embedded-time = "0.12.1"
 fugit = "0.3.7"
 # logging
-defmt = "0.3"
-defmt-rtt = "0.4.1"
+defmt = "*"
+defmt-rtt = "*"
 heapless = "0.8.0"
 bincode = { version = "2.0.0-rc.3", features = [
     "derive",
@@ -59,11 +54,11 @@ rp235x-pac = "0.1.0"
 mcf8316c-rs = { path = "../mcf8316c-rs" }
 
 # Sensors
-bme280-rs = {version="0.3.0", features=["async"]}
-ina260_terminus = {path = "../ina260", features=["async", "defmt"]}
+bme280-rs = { version = "0.3.0", features = ["async"] }
+ina260_terminus = { path = "../ina260", features = ["async", "defmt"] }
 
 # Communications
-hc12-rs = {git = "https://github.com/thelenlucas/hc12-rs.git", tag = "v0.0.1"}
+hc12-rs = { git = "https://github.com/thelenlucas/hc12-rs.git", tag = "v0.0.1" }
 
 # Math
 nalgebra = { version = "*", default-features = false, features = [
