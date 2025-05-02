@@ -1,4 +1,4 @@
-use defmt::info;
+use defmt::{info, warn};
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
 use fugit::RateExtU32;
@@ -111,16 +111,39 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     // Transition to AT mode
     info!("Programming HC12...");
     let radio = radio.into_at_mode().unwrap();
-    info!("HC12 in AT Mode");
     timer_two.delay_ms(100);
-    let radio = radio.set_baudrate(B9600).unwrap();
-    info!("HC12 baudrate set to 9600");
-    let radio = radio.set_channel(Channel::Channel1).unwrap();
-    info!("HC12 channel set to 1");
-    let hc = radio.set_power(Power::P8).unwrap();
-    info!("HC12 power set to P8");
+    let radio = match radio.set_baudrate(B9600) {
+        Ok(link) => {
+            info!("HC12 baudrate set to 9600");
+            link
+        }
+        Err(e) => {
+            warn!("Failed to set HC12 baudrate: {:?}", e.error);
+            e.hc12
+        }
+    };
+
+    let radio = match radio.set_channel(Channel::Channel1) {
+        Ok(link) => {
+            info!("HC12 channel set to 1");
+            link
+        }
+        Err(e) => {
+            warn!("Failed to set HC12 channel: {:?}", e.error);
+            e.hc12
+        }
+    };
+    let hc = match radio.set_power(Power::P8) {
+        Ok(link) => {
+            info!("HC12 power set to P8");
+            link
+        }
+        Err(e) => {
+            warn!("Failed to set HC12 power: {:?}", e.error);
+            e.hc12
+        }
+    };
     let hc = hc.into_fu3_mode().unwrap();
-    info!("HC12 in FU3 Mode");
 
     // Servo
     let pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
