@@ -1,3 +1,4 @@
+use bin_packets::ApplicationPacket;
 use bincode::de;
 use bincode::{config::standard, error::DecodeError};
 use bme280_rs::{AsyncBme280, Configuration, Oversampling, SensorMode};
@@ -5,7 +6,7 @@ use defmt::{error, info, trace};
 use embedded_hal::digital::StatefulOutputPin;
 use embedded_hal_async::i2c::{self, I2c};
 use embedded_hal_bus::{i2c::AtomicDevice, util::AtomicCell};
-use embedded_io::Read;
+use embedded_io::{Read, Write};
 use fugit::ExtU64;
 use futures::FutureExt as _;
 use ina260_terminus::{AsyncINA260, Register as INA260Register};
@@ -17,11 +18,7 @@ use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
 use crate::device_constants::AvionicsI2cBus;
 use crate::phases::StateMachineListener;
 use crate::{
-    app::{incoming_packet_handler, *},
-    communications::{
-        hc12::BaudRate,
-        link_layer::{LinkLayerPayload, LinkPacket},
-    },
+    app::{*},
     device_constants::MotorI2cBus,
     peripherals::async_i2c::{self, AsyncI2cError},
     Mono,
@@ -36,9 +33,25 @@ pub async fn heartbeat(ctx: heartbeat::Context<'_>) {
 }
 
 pub fn uart_interrupt(mut ctx: uart_interrupt::Context<'_>) {
-    ctx.shared.radio_link.lock(|radio| {
+    ctx.shared.radio.lock(|radio| {
         radio.device.update().ok();
     });
+}
+
+pub async fn radio_flush(mut ctx: radio_flush::Context<'_>) {
+}
+
+pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
+    loop{
+        ctx.shared.ina_data.lock(|ina_data|{
+            ctx.shared.radio.lock(|radio|{
+                // GET PACKETS FROM INA DATA AND SEND
+            });
+        });
+
+        Mono::delay(100_u64.millis()).await;        
+    }
+
 }
 
 use rp235x_pac::interrupt;
@@ -62,136 +75,43 @@ pub async fn motor_drivers(
     ctx.local.ina260_3.init().await.ok();
 
     loop {
-        ctx.local
-            .ina260_1
-            .read_register(INA260Register::VOLTAGE)
-            .await
-            .ok();
-        ctx.local
-            .ina260_2
-            .read_register(INA260Register::VOLTAGE)
-            .await
-            .ok();
-        ctx.local
-            .ina260_3
-            .read_register(INA260Register::VOLTAGE)
-            .await
-            .ok();
+        let ts = Mono::now().ticks();
+        let voltage_1 = ctx.local.ina260_1.voltage_split().await.ok();
+        let current_1 = ctx.local.ina260_1.current_split().await.ok();
+        let power_1 = ctx.local.ina260_1.power_split().await.ok();
+        let voltage_2 = ctx.local.ina260_2.voltage_split().await.ok();
+        let current_2 = ctx.local.ina260_2.current_split().await.ok();
+        let power_2 = ctx.local.ina260_2.power_split().await.ok();
+        let voltage_3 = ctx.local.ina260_3.voltage_split().await.ok();
+        let current_3 = ctx.local.ina260_3.current_split().await.ok();
+        let power_3 = ctx.local.ina260_3.power_split().await.ok();
+
+        let vs1 = ApplicationPacket::VoltageData{time_stamp: ts, power: voltage_1};
+        let vs2 = ApplicationPacket::VoltageData{time_stamp: ts, power: voltage_2};
+        let vs3 = ApplicationPacket::VoltageData{time_stamp: ts, power: voltage_3};
+        let cur1 = ApplicationPacket::CurrentData{time_stamp: ts, power: current_1};
+        let cur2 = ApplicationPacket::CurrentData{time_stamp: ts, power: current_2};
+        let cur3 = ApplicationPacket::CurrentData{time_stamp: ts, power: current_3};
+        let pow1 = ApplicationPacket::PowerData{time_stamp: ts, power: power_1};
+        let pow2 = ApplicationPacket::PowerData{time_stamp: ts, power: power_2};
+        let pow3 = ApplicationPacket::PowerData{time_stamp: ts, power: power_3};
+
+        ctx.shared.ina_data.lock(|ina_data|{
+            ina_data.v1_buffer.write(vs1);
+            ina_data.v2_buffer.write(vs2);
+            ina_data.v3_buffer.write(vs3);
+            ina_data.i1_buffer.write(cur1);
+            ina_data.i2_buffer.write(cur2);
+            ina_data.i3_buffer.write(cur3);
+            ina_data.p1_buffer.write(pow1);
+            ina_data.p2_buffer.write(pow2);
+            ina_data.p3_buffer.write(pow3);
+        });
         Mono::delay(100_u64.millis()).await;
     }
 }
 
-pub async fn radio_flush(mut ctx: radio_flush::Context<'_>) {
-    let mut on_board_baudrate: BaudRate = BaudRate::B9600;
-    let bytes_to_flush = 16;
 
-    loop {
-        ctx.shared.radio_link.lock(|radio| {
-            radio.device.flush(bytes_to_flush).ok();
-            on_board_baudrate = radio.device.get_baudrate();
-        });
-
-        // Need to wait wait the in-air baudrate, or the on-board baudrate
-        // whichever is slower
-
-        let mut slower =
-            core::cmp::min(on_board_baudrate.to_u32(), on_board_baudrate.to_in_air_bd());
-
-        // slower is bps, so /1000 to get ms
-        slower /= 1000;
-
-        // Delay for that times the number of bytes flushed
-        Mono::delay((slower as u64 * bytes_to_flush as u64).millis()).await;
-    }
-}
-
-pub async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context<'_>) {
-    loop {
-        let buffer = ctx
-            .shared
-            .radio_link
-            .lock(|radio| radio.device.clone_buffer());
-
-        let decode: Result<(LinkPacket, usize), bincode::error::DecodeError> =
-            bincode::decode_from_slice(&buffer, standard());
-
-        match decode {
-            Err(e) => match e {
-                #[allow(unused_variables)]
-                DecodeError::UnexpectedVariant {
-                    type_name,
-                    allowed,
-                    found,
-                } => {
-                    // Clear the buffer
-                    ctx.shared.radio_link.lock(|radio| radio.device.clear());
-                }
-
-                #[allow(unused_variables)]
-                DecodeError::UnexpectedEnd { additional } => {
-                    // Nothing to do here
-                }
-
-                // These decoding errors cause us to pop the front of the buffer to remove the character
-                #[allow(unused_variables)]
-                DecodeError::InvalidIntegerType { expected, found } => {
-                    let mut buffer = [0u8; 1];
-                    ctx.shared
-                        .radio_link
-                        .lock(|radio| radio.device.read(&mut buffer).ok());
-                }
-
-                _ => {
-                    // Something else, log it. Bincode doen't impliment defmt::Debug unfortunately
-                    error!("Decoding error: {:?}", defmt::Debug2Format(&e));
-                }
-            },
-
-            Ok(packet_wrapper) => {
-                let packet = packet_wrapper.0;
-                let read = packet_wrapper.1;
-                // Drop the read bytes
-                ctx.shared
-                    .radio_link
-                    .lock(|radio| radio.device.drop_bytes(read));
-
-                // Uncomment the below if you think you made a mistake in handling
-
-                // let mut buffer_heapless_stirng: alloc::string::String =
-                //     alloc::string::String::new();
-                // write!(buffer_heapless_stirng, "{:#?}", packet).ok();
-                // for char in buffer_heapless_stirng.chars() {
-                //     print!(ctx, "{}", char);
-                //     Mono::delay(1_u64.millis()).await;
-                // }
-                // println!(ctx, "\n");
-
-                // Check the checksum, if it fails, the packet is bad, we should continue
-                // and clear the buffer
-                // if !packet.verify_checksum() {
-                //     ctx.shared.radio_link.lock(|radio| radio.device.clear());
-                //     continue;
-                // }
-
-                // if let LinkLayerPayload::Payload(app_packet) = packet.payload {
-                //     match app_packet {
-                //         bin_packets::ApplicationPacket::Command(command) => match command {
-                //             _ => {}
-                //         },
-
-                //         _ => {
-                //             let mut buffer_heapless_stirng: alloc::string::String =
-                //                 alloc::string::String::new();
-                //             write!(buffer_heapless_stirng, "{:#?}", packet).ok();
-                //         }
-                //     }
-                // }
-            }
-        }
-
-        Mono::delay(10_u64.millis()).await;
-    }
-}
 
 pub async fn sample_sensors(
     mut ctx: sample_sensors::Context<'_>,
@@ -213,15 +133,15 @@ pub async fn sample_sensors(
     Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
 
     loop {
-        if let Ok(Some(temperature)) = ctx.local.bme280.read_temperature().await {
-            info!("Temperature: {}", temperature);
-        }
-        if let Ok(Some(pressure)) = ctx.local.bme280.read_pressure().await {
-            info!("Pressure: {}", pressure);
-        }
-        if let Ok(Some(humidity)) = ctx.local.bme280.read_humidity().await {
-            info!("Humidity: {}", humidity);
-        }
+        // if let Ok(Some(temperature)) = ctx.local.bme280.read_temperature().await {
+        //     info!("Temperature: {}", temperature);
+        // }
+        // if let Ok(Some(pressure)) = ctx.local.bme280.read_pressure().await {
+        //     info!("Pressure: {}", pressure);
+        // }
+        // if let Ok(Some(humidity)) = ctx.local.bme280.read_humidity().await {
+        //     info!("Humidity: {}", humidity);
+        // }
         Mono::delay(250_u64.millis()).await;
     }
 }

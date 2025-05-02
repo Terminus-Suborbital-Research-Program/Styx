@@ -84,5 +84,49 @@ pub type MotorI2cBus = AsyncI2c<
     >,
 >;
 
+use crate::hal::timer::CopyableTimer1;
+use hc12_rs::configuration::baudrates::B9600;
+use hc12_rs::ProgrammingPair;
+use hc12_rs::FU3;
+use hc12_rs::HC12;
+use rp235x_hal::gpio::bank0::{Gpio12, Gpio8, Gpio9};
+use rp235x_hal::gpio::FunctionUart;
+use rp235x_hal::pac::UART1;
+use rp235x_hal::uart::Enabled;
+use rp235x_hal::uart::UartPeripheral;
+use rp235x_hal::Timer;
+
+pub type IcarusHC12 = HC12<
+    UartPeripheral<
+        Enabled,
+        UART1,
+        (
+            Pin<Gpio8, FunctionUart, PullDown>,
+            Pin<Gpio9, FunctionUart, PullDown>,
+        ),
+    >,
+    ProgrammingPair<Pin<Gpio12, FunctionSio<SioOutput>, PullDown>, Timer<CopyableTimer1>>,
+    FU3<B9600>,
+    B9600,
+>;
+
 /// A motor controller on a shared bus
 pub type ReactionWheelMotor = ();
+
+// CONSTANTS FOR ALL
+const HISTORY_BUFFER_LENGTH: usize = 10; 
+
+// Sensor Data Types
+// use bin_packets::types::{PowerData, CurrentData, VoltageData};
+#[derive(Debug, Default)]
+pub struct INAData{
+    pub p1_buffer: heapless::HistoryBuffer<bin_packets::ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+    pub p2_buffer: heapless::HistoryBuffer<bin_packets::ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+    pub p3_buffer: heapless::HistoryBuffer<bin_packets::ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+    pub v1_buffer: heapless::HistoryBuffer<bin_packets::ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+    pub v2_buffer: heapless::HistoryBuffer<bin_packets::ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+    pub v3_buffer: heapless::HistoryBuffer<bin_packets::ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+    pub i1_buffer: heapless::HistoryBuffer<bin_packets::ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+    pub i2_buffer: heapless::HistoryBuffer<bin_packets::ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+    pub i3_buffer: heapless::HistoryBuffer<bin_packets::ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+}
