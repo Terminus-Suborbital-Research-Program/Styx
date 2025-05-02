@@ -1,4 +1,4 @@
-#![cfg_attr(not(feature = "async"), deny(unstable_features))]
+#![no_std]
 
 use cast::{i32, u16, u32};
 
@@ -61,7 +61,6 @@ pub struct AsyncINA260<I2C, Delay> {
     pub address: u8,
     _marker: core::marker::PhantomData<I2C>,
     state: u16,
-    delay: Delay,
     delay: Delay,
 }
 

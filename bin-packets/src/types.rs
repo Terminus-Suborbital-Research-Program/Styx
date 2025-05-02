@@ -101,8 +101,6 @@ impl DurationMillis {
     }
 }
 
-
-
 const BUFFER_LENGTH: usize = 10;
 // // Sensor Data Structs
 // #[derive(Default,Debug,Clone,Copy,Encode,Decode,Serialize,Deserialize)]

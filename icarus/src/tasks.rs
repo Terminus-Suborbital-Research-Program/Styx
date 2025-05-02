@@ -33,9 +33,9 @@ pub async fn heartbeat(ctx: heartbeat::Context<'_>) {
 }
 
 pub fn uart_interrupt(mut ctx: uart_interrupt::Context<'_>) {
-    ctx.shared.radio.lock(|radio| {
-        radio.device.update().ok();
-    });
+    // ctx.shared.radio.lock(|radio| {
+    //     radio.device.update().ok();
+    // });
 }
 
 pub async fn radio_flush(mut ctx: radio_flush::Context<'_>) {}

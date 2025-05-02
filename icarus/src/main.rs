@@ -31,8 +31,8 @@ use bme280_rs::{AsyncBme280, Configuration, Oversampling, SensorMode};
 use ina260_terminus::AsyncINA260;
 
 // Busses
-use rtic_sync::arbiter::i2c::ArbiterDevice;
 use device_constants::INAData;
+use rtic_sync::arbiter::i2c::ArbiterDevice;
 
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
@@ -74,9 +74,7 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 mod app {
     use crate::{
         actuators::servo::{EjectionServo, LockingServo},
-        communications::{
-            link_layer::LinkLayerDevice,
-        },
+        communications::link_layer::LinkLayerDevice,
         device_constants::{
             AvionicsI2cBus, IcarusHC12, IcarusStateMachine, MotorI2cBus, ReactionWheelMotor,
         },
@@ -94,12 +92,12 @@ mod app {
     use rp235x_hal::{timer::CopyableTimer1, uart::UartPeripheral};
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
+    use hc12_rs::HC12;
     use rtic_sync::{
         arbiter::Arbiter,
         signal::{Signal, SignalReader},
     };
     use usb_device::class_prelude::*;
-    use hc12_rs::HC12;
 
     // use usbd_serial::SerialPort;
 
@@ -123,7 +121,7 @@ mod app {
         pub clock_freq_hz: u32,
         pub radio: IcarusHC12,
         pub state_machine: IcarusStateMachine,
-        pub ina_data: INAData
+        pub ina_data: INAData,
     }
 
     #[local]

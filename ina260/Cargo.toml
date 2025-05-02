@@ -12,8 +12,9 @@ embedded-hal-async = { version = "1.0.0", features = [
 ], optional = true }
 cast = { version = "*", default-features = false }
 [features]
-default = ["async"]
+default = ["async", "defmt"]
 with_defmt = ["defmt"]
 sync = []
 async = ["embedded-hal-async"]
 std = []
+defmt = ["dep:defmt"]
