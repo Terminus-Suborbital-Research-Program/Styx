@@ -101,39 +101,6 @@ impl DurationMillis {
     }
 }
 
-const BUFFER_LENGTH: usize = 10;
-// // Sensor Data Structs
-// #[derive(Default,Debug,Clone,Copy,Encode,Decode,Serialize,Deserialize)]
-// pub struct PowerData{
-//     time_stamp: u64,
-//     power: Option<(u8, u32)>,
-// }
-// impl PowerData{
-//     pub fn new(time_stamp: u64, power: Option<(u8, u32)>)->Self{
-//         PowerData {time_stamp, power}
-//     }
-// }
-// #[derive(Default,Debug,Clone,Copy,Encode,Decode,Serialize,Deserialize)]
-// pub struct CurrentData{
-//     time_stamp: u64,
-//     current: Option<(i8, u32)>,
-// }
-// impl CurrentData{
-//     pub fn new(time_stamp: u64, current: Option<(i8, u32)>)->Self{
-//         CurrentData{time_stamp, current}
-//     }
-// }
-// #[derive(Default,Debug,Clone,Copy,Encode,Decode,Serialize,Deserialize)]
-// pub struct VoltageData{
-//     time_stamp: u64,
-//     voltage: Option<(u8, u32)>
-// }
-// impl VoltageData{
-//     pub fn new(time_stamp: u64, voltage: Option<(u8, u32)>)->Self{
-//         VoltageData {time_stamp, voltage}
-//     }
-// }
-
 #[cfg(test)]
 mod timestamp_tests {
     use super::*;

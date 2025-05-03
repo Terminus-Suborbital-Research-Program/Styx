@@ -27,6 +27,7 @@
             cargo-make
             lazygit
             clippy
+            rust-analyzer
           ];
 
           RUST_SRC_PATH = rustPlatform.rustLibSrc;
@@ -39,6 +40,12 @@
             '';
         };
 
+        programs.vscode = {
+          enable = true;
+          extensions = with pkgs.vscodeExtensions; [
+            rust-lang.rust-analyzer
+          ];
+        };
       }
     );
 }

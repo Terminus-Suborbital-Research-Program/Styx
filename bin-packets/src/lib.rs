@@ -2,6 +2,7 @@
 
 pub mod commands;
 pub mod data;
+pub mod device;
 pub mod devices;
 pub mod link;
 pub mod packets;
