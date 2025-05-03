@@ -76,7 +76,8 @@ mod app {
         actuators::servo::{EjectionServo, LockingServo},
         communications::link_layer::LinkLayerDevice,
         device_constants::{
-            AvionicsI2cBus, IcarusHC12, IcarusStateMachine, MotorI2cBus, ReactionWheelMotor,
+            AvionicsI2cBus, IcarusHC12, IcarusRadio, IcarusStateMachine, MotorI2cBus,
+            ReactionWheelMotor,
         },
         phases::StateMachineListener,
     };
@@ -119,7 +120,7 @@ mod app {
         pub locking_driver: LockingServo,
         // pub usb_serial: SerialPort<'static, hal::usb::UsbBus>,
         pub clock_freq_hz: u32,
-        pub radio: IcarusHC12,
+        pub radio: IcarusRadio,
         pub state_machine: IcarusStateMachine,
         pub ina_data: INAData,
     }

@@ -3,5 +3,6 @@
     "rust-analyzer.checkOnSave.allTargets": false,
     "cortex-debug.gdbPath": "gdb-multiarch",
     "cortex-debug.armToolchainPath": "",
-    "rust-analyzer.checkOnSave": true
+    "rust-analyzer.checkOnSave": true,
+    "nixEnvPicker.envFile": "${workspaceFolder}${/}../flake.nix"
 }

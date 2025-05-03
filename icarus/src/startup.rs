@@ -40,6 +40,7 @@ use crate::communications::link_layer::LinkLayerDevice;
 use crate::device_constants::pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin};
 use crate::device_constants::pins::{EscI2CSclPin, EscI2CSdaPin};
 use crate::device_constants::INAData;
+use crate::device_constants::IcarusRadio;
 use crate::device_constants::IcarusStateMachine;
 use crate::device_constants::MotorI2cBus;
 use crate::hal;
@@ -173,6 +174,8 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let hc = hc.into_fu3_mode().unwrap();
     info!("HC12 in FU3 Mode");
 
+    let interface: IcarusRadio = bin_packets::device::PacketDevice::new(hc);
+
     // Servo
     let pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
     let mut ejection_pwm = pwm_slices.pwm0;
@@ -274,7 +277,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             locking_driver: locking_servo,
             clock_freq_hz: clock_freq.to_Hz(),
             state_machine,
-            radio: hc,
+            radio: interface,
         },
         Local {
             led: led_pin,
