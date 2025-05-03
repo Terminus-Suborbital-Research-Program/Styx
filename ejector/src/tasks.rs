@@ -1,10 +1,8 @@
 use core::cmp::max;
 
-use bin_packets::{packets::ApplicationPacket, phases::EjectorPhase};
-use bincode::config::standard;
+use bin_packets::{devices::DeviceIdentifier, packets::status::Status, phases::EjectorPhase};
 use defmt::info;
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
-use embedded_io::Write;
 use fugit::ExtU64;
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
@@ -13,31 +11,25 @@ use crate::{app::*, Mono};
 
 const START_CAMERA_DELAY: u64 = 1000; // 10k millis For testing, 250 for actual
 
-pub async fn incoming_packet_handler(_ctx: incoming_packet_handler::Context<'_>) {
-    Mono::delay(1000_u64.millis()).await;
-}
-
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
-    let hello = "Hello from Ejector!".as_bytes();
-
+    let mut sequence_number = 0;
     loop {
         _ = ctx.local.led.toggle();
 
-        ctx.shared.downlink.lock(|uart| {
-            uart.write_all(hello).ok();
-        });
+        let status = Status::new(DeviceIdentifier::Icarus, now_timestamp(), sequence_number);
 
-        Mono::delay(
-            ctx.shared
-                .blink_status_delay_millis
-                .lock(|delay| *delay)
-                .millis(),
-        )
-        .await;
+        let res = ctx
+            .shared
+            .downlink
+            .lock(|downlink| downlink.write_into(status).err());
 
-        ctx.shared.ejector_time_millis.lock(|previous_time| {
-            *previous_time = Mono::now().duration_since_epoch().to_millis();
-        });
+        if let Some(err) = res {
+            info!("Error sending heartbeat: {:?}", err);
+        }
+
+        sequence_number = sequence_number.wrapping_add(1);
+
+        Mono::delay(300_u64.millis()).await;
     }
 }
 
@@ -47,9 +39,9 @@ pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
         info!("Camera Timer Starting");
         Mono::delay(START_CAMERA_DELAY.millis()).await;
         info!("Cameras on");
-        ctx.local.cams.set_low();
+        ctx.local.cams.set_low().unwrap();
         loop {
-            ctx.local.cams_led.toggle();
+            ctx.local.cams_led.toggle().unwrap();
             Mono::delay(1000.millis()).await;
         }
     } else {
@@ -57,17 +49,37 @@ pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
     }
 }
 
-pub async fn radio_heartbeat(mut ctx: radio_heartbeat::Context<'_>) {
-    let mut packet_num = 0;
+pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
     loop {
+        match ctx.shared.radio.lock(|radio| radio.read_packet()) {
+            Ok(potential) => {
+                if let Some(packet) = potential {
+                    info!("Read packet: {:?}", packet);
+                    // Write down range
+                    info!(
+                        "Write results: {:?}",
+                        ctx.shared
+                            .downlink
+                            .lock(|downlink| { downlink.write_into(packet).err() })
+                    );
+                }
+            }
+
+            Err(e) => {
+                info!("Error reading packet: {:?}", e);
+            }
+        }
+
         Mono::delay(1000_u64.millis()).await;
     }
 }
 
-pub fn uart_interrupt(_ctx: uart_interrupt::Context<'_>) {
-    // ctx.shared.radio_link.lock(|radio| {
-    //     radio.device.update().ok();
-    // });
+pub fn uart_interrupt(mut ctx: uart_interrupt::Context<'_>) {
+    ctx.shared.radio.lock(|radio| {
+        if let Err(e) = radio.update() {
+            info!("Error updating radio: {:?}", e);
+        }
+    });
 }
 
 pub async fn state_machine_update(mut ctx: state_machine_update::Context<'_>) {

@@ -1,3 +1,4 @@
+use bin_packets::device::PacketDevice;
 use defmt::{info, warn};
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::{InputPin, OutputPin};
@@ -17,7 +18,8 @@ use usb_device::device::{StringDescriptors, UsbDeviceBuilder, UsbVidPid};
 use usbd_serial::SerialPort;
 
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
-use crate::device_constants::{EjectionDetectionPin, JupiterUart};
+use crate::device_constants::packets::{JupiterInterface, RadioInterface};
+use crate::device_constants::{EjectionDetectionPin, JupiterUart, RadioUart};
 use crate::hal;
 use crate::phases::EjectorStateMachine;
 use crate::{app::*, Mono};
@@ -112,22 +114,22 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         bank0_pins.gpio8.into_function(),
         bank0_pins.gpio9.into_function(),
     );
-    let mut uart1_peripheral =
+    let mut radio_uart: RadioUart =
         UartPeripheral::new(ctx.device.UART1, uart1_pins, &mut ctx.device.RESETS)
             .enable(
                 UartConfig::new(9600_u32.Hz(), DataBits::Eight, None, StopBits::One),
                 clocks.peripheral_clock.freq(),
             )
             .unwrap();
-    uart1_peripheral.enable_rx_interrupt(); // Make sure we can drive our interrupts
-                                            // GPIO10 is the programming pin for HC-12
+    radio_uart.enable_rx_interrupt(); // Make sure we can drive our interrupts
+                                      // GPIO10 is the programming pin for HC-12
     let programming = bank0_pins.gpio12.into_push_pull_output();
     // Copy the timer
     let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
     let mut timer_two = timer;
 
     // Jupiter downlink UART
-    let jupiter_downlink: JupiterUart = UartPeripheral::new(
+    let jupiter_uart: JupiterUart = UartPeripheral::new(
         ctx.device.UART0,
         (
             bank0_pins.gpio16.into_function(),
@@ -141,8 +143,11 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     )
     .unwrap();
 
+    // Packet interface to relay packets down
+    let jupiter_downlink: JupiterInterface = PacketDevice::new(jupiter_uart);
+
     let builder = hc12_rs::device::HC12Builder::<(), (), (), ()>::empty()
-        .uart(uart1_peripheral, B9600)
+        .uart(radio_uart, B9600)
         .programming_resources(programming, timer)
         .fu3(HC12Configuration::default());
 
@@ -190,7 +195,8 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             e.hc12
         }
     };
-    let hc = hc.into_fu3_mode().unwrap(); // Infallible
+    let hc: EjectorHC12 = hc.into_fu3_mode().unwrap(); // Infallible
+    let radio: RadioInterface = PacketDevice::new(hc);
 
     // Servo
     let pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
@@ -238,11 +244,8 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     info!("Peripherals initialized, spawning tasks");
 
     // Serial Writer Structure
-    //radio_flush::spawn().ok();
     state_machine_update::spawn().ok();
-    incoming_packet_handler::spawn().ok();
-
-    radio_heartbeat::spawn().ok();
+    radio_read::spawn().ok();
 
     (
         Shared {
@@ -257,7 +260,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             blink_status_delay_millis: 1000,
             ejector_time_millis: 0,
             suspend_packet_handler: false,
-            radio: hc,
+            radio,
             ejection_pin: gpio_detect,
             rbf_status,
             downlink: jupiter_downlink,

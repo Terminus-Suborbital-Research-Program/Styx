@@ -60,7 +60,10 @@ impl<D: ErrorType, const N: usize> PacketDevice<D, N> {
                     return Ok(None);
                 }
                 Err(e) => {
-                    // Decode error, return the error
+                    // Decode error, return the error, after popping off the first byte
+                    if self.buffer.len() > 0 {
+                        self.buffer.remove(0);
+                    }
                     return Err(InterfaceError::DecodeError(e));
                 }
             };
