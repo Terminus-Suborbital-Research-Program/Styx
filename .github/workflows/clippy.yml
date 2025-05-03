@@ -36,10 +36,15 @@ jobs:
         run: rustup target add thumbv8m.main-none-eabihf
       - name: Apply Clippy fixes
         run: cargo make clippy --fix --allow-dirty
-      - name: Commit & push Clippy fixes
-        uses: actions4git/add-commit-push@v1.0.0
-        with:
-          author_name: github-actions
-          author_email: github-actions@github.com
-          message: "chore: apply clippy fixes"
-          branch: ${{ github.head_ref }}
+      - name: Commit & push Clippy fixes (if any)
+        run: |
+          # only commit if there's something to commit
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+            git add -A
+            git commit -m "chore: apply clippy fixes"
+            git push origin ${{ github.head_ref }}
+          else
+            echo "✅ No Clippy fixes to apply"
+          fi
