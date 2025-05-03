@@ -102,15 +102,19 @@ mod app {
         pub clock_freq_hz: u32,
         pub state_machine: EjectorStateMachine,
         pub blink_status_delay_millis: u64,
+        pub ejector_time_millis: u64,
         pub suspend_packet_handler: bool,
         pub radio: EjectorHC12,
         pub ejection_pin: EjectionDetectionPin,
+        pub rbf_status: bool,
         pub downlink: JupiterUart,
     }
 
     #[local]
     pub struct Local {
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
+        // This pin is definitely wrong, talk to brooks and also find out if pulldown
+        pub cams: gpio::Pin<gpio::bank0::Gpio14, FunctionSio<SioOutput>, PullNone>,
     }
 
     #[init]
@@ -124,11 +128,11 @@ mod app {
         async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context);
 
         // State machine update
-        #[task(shared = [state_machine, ejector_servo, blink_status_delay_millis, ejection_pin], priority = 1)]
+        #[task(shared = [state_machine,  blink_status_delay_millis, ejection_pin, rbf_status, ejector_servo], priority = 1)]
         async fn state_machine_update(mut ctx: state_machine_update::Context);
 
         // Heartbeats the main led
-        #[task(local = [led], shared = [blink_status_delay_millis, radio, downlink], priority = 2)]
+        #[task(local = [led], shared = [blink_status_delay_millis, radio, downlink, ejector_time_millis], priority = 2)]
         async fn heartbeat(mut ctx: heartbeat::Context);
 
         // Heartbeats the radio
@@ -142,5 +146,8 @@ mod app {
         // // Radio Flush Task
         // #[task(priority = 1)]
         // async fn radio_flush(mut ctx: radio_flush::Context);
+
+        #[task(local = [cams], shared = [ejector_time_millis, rbf_status], priority = 2)]
+        async fn start_cameras(mut ctx: start_cameras::Context);
     }
 }
