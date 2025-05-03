@@ -32,6 +32,8 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
             warn!("Failed to send heartbeat: {:?}", err);
         }
 
+        sequence_number = sequence_number.wrapping_add(1);
+
         Mono::delay(300_u64.millis()).await;
     }
 }
