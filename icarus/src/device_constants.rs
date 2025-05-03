@@ -1,6 +1,5 @@
 use bin_packets::device::PacketDevice;
 use embedded_hal_bus::i2c::AtomicDevice;
-use mcf8316c_rs::controller::MotorController;
 use pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin, LedPin};
 use rp235x_hal::{
     gpio::{FunctionI2C, FunctionSio, Pin, PullDown, PullNone, PullUp, SioOutput},
