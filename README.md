@@ -1,4 +1,4 @@
-![status](https://github.com/Terminus-Suborbital-Research-Program/AMALTHEA/actions/workflows/test.yml/badge.svg)
+![status](https://github.com/Terminus-Suborbital-Research-Program/AMALTHEA/actions/workflows/rust.yml/badge.svg)
 # AMALTHEA
 Software systems, tools, and libraries for the 2025 AMALTHEA Rocksat-X mission by the University of Alabama in Huntsville. The AMALTHEA mission consists of several components. The ones listed under this repositoy include binaries for:
 
