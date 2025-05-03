@@ -1,9 +1,7 @@
-use embedded_hal_bus::i2c::AtomicDevice;
-use mcf8316c_rs::controller::MotorController;
+use bin_packets::device::PacketDevice;
 use pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin, LedPin};
 use rp235x_hal::{
-    async_utils::AsyncPeripheral,
-    gpio::{FunctionI2C, FunctionSio, Pin, PullDown, PullNone, PullUp, SioInput, SioOutput},
+    gpio::{FunctionI2C, FunctionSio, Pin, PullDown, PullNone, PullUp, SioOutput},
     i2c::Controller,
     pac::{I2C0, I2C1},
     I2C,

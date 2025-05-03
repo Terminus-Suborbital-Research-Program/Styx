@@ -1,12 +1,10 @@
 use bin_packets::IcarusPhase;
-use cortex_m::delay::Delay;
 use defmt::error;
 use defmt::info;
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
 use fugit::RateExtU32;
 use fugit::RateExtU64;
-use mcf8316c_rs::controller::MotorController;
 use rp235x_hal::clocks::init_clocks_and_plls;
 use rp235x_hal::gpio::FunctionI2C;
 use rp235x_hal::gpio::Pin;
@@ -24,10 +22,7 @@ use rp235x_hal::I2C;
 use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::i2c::ArbiterDevice;
 use rtic_sync::arbiter::Arbiter;
-use rtic_sync::make_signal;
 use rtic_sync::signal::Signal;
-use usb_device::bus::UsbBusAllocator;
-use usbd_serial::SerialPort;
 // use usb_device::bus::UsbBusAllocator;
 // use usbd_serial::SerialPort;
 
@@ -35,13 +30,10 @@ use crate::actuators::servo::HOLDING_ANGLE;
 use crate::actuators::servo::{EjectionServoMosfet, LockingServoMosfet, Servo};
 
 use crate::app::*;
-use crate::communications::link_layer::Device;
-use crate::communications::link_layer::LinkLayerDevice;
 use crate::device_constants::pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin};
 use crate::device_constants::pins::{EscI2CSclPin, EscI2CSdaPin};
 use crate::device_constants::INAData;
 use crate::device_constants::IcarusStateMachine;
-use crate::device_constants::MotorI2cBus;
 use crate::hal;
 use crate::peripherals::async_i2c::AsyncI2c;
 use crate::phases::StateMachine;
@@ -49,7 +41,6 @@ use crate::phases::StateMachineListener;
 use crate::Mono;
 use crate::ALLOCATOR;
 use crate::HEAP_MEMORY;
-use crate::{DelayTimer, I2CMainBus};
 
 use hc12_rs::configuration::baudrates::B9600;
 use hc12_rs::configuration::{Channel, HC12Configuration, Power};
@@ -57,8 +48,8 @@ use hc12_rs::device::IntoATMode;
 use hc12_rs::IntoFU3Mode;
 
 // Sensors
-use bme280_rs::{AsyncBme280, Bme280, Configuration, Oversampling, SensorMode};
-use ina260_terminus::{AsyncINA260, Register as INA260Register};
+use bme280_rs::AsyncBme280;
+use ina260_terminus::AsyncINA260;
 
 // Logs our time for demft
 defmt::timestamp!("{=u64:us}", {
@@ -142,7 +133,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let programming = bank0_pins.gpio12.into_push_pull_output();
     // Copy the timer
     let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
-    let mut timer_two = timer.clone();
+    let mut timer_two = timer;
 
     info!("UART1 configured, assembling HC-12");
     let builder = hc12_rs::device::HC12Builder::<(), (), (), ()>::empty()
@@ -214,7 +205,6 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     );
     let async_motor_i2c = AsyncI2c::new(motor_i2c, 10);
     let motor_i2c_arbiter = ctx.local.i2c_motor_bus.write(Arbiter::new(async_motor_i2c));
-    let motor_controller = MotorController::new(0x01, ArbiterDevice::new(motor_i2c_arbiter));
 
     let avionics_sda_pin: Pin<AvionicsI2CSdaPin, FunctionI2C, PullUp> =
         bank0_pins.gpio16.reconfigure();
@@ -239,7 +229,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     // let mut delay_here = hal::Timer::new_timer1(pac.TIMER1, &mut pac.RESETS, &clocks);
 
     // Initialize Avionics Sensors
-    let mut bme280 =
+    let bme280 =
         AsyncBme280::new_with_address(ArbiterDevice::new(avionics_i2c_arbiter), 0x77, Mono);
 
     // State machine
@@ -252,11 +242,11 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     state_machine.add_channel(writer).ok();
     let esc_listener = StateMachineListener::new(reader);
 
-    let mut ina260_1 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 32_u8, Mono);
-    let mut ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 33_u8, Mono);
-    let mut ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 34_u8, Mono);
+    let ina260_1 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 32_u8, Mono);
+    let ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 33_u8, Mono);
+    let ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 34_u8, Mono);
 
-    let mut ina_data = INAData::default();
+    let ina_data = INAData::default();
 
     info!("Peripherals initialized, spawning tasks...");
     // heartbeat::spawn().ok();
@@ -269,7 +259,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     (
         Shared {
-            ina_data: ina_data,
+            ina_data,
             ejector_driver: ejection_servo,
             locking_driver: locking_servo,
             clock_freq_hz: clock_freq.to_Hz(),
@@ -278,7 +268,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         },
         Local {
             led: led_pin,
-            bme280: bme280,
+            bme280,
             ina260_1,
             ina260_2,
             ina260_3,

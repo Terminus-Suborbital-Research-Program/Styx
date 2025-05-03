@@ -1,8 +1,0 @@
-[package]
-name = "mcf8316c-rs"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-defmt = "1.0.1"
-embedded-hal-async = { version = "1.0.0", features = ["defmt-03"] }

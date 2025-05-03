@@ -83,7 +83,7 @@ impl<D: Write, const N: usize> PacketDevice<D, N> {
         // Write to device
         self.device
             .write_all(&buf[..bytes])
-            .map_err(|e| InterfaceError::DeviceError(e))?;
+            .map_err(InterfaceError::DeviceError)?;
         Ok(())
     }
 }
@@ -95,7 +95,7 @@ impl<D: Read, const N: usize> PacketDevice<D, N> {
         let bytes = self
             .device
             .read(&mut buf)
-            .map_err(|e| InterfaceError::DeviceError(e))?;
+            .map_err(InterfaceError::DeviceError)?;
 
         // Append to buffer
         match self.buffer.extend_from_slice(&buf[..bytes]) {

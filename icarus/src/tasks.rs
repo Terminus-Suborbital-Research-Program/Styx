@@ -1,28 +1,17 @@
 use bin_packets::ApplicationPacket;
-use bincode::de;
-use bincode::{config::standard, error::DecodeError};
-use bme280_rs::{AsyncBme280, Configuration, Oversampling, SensorMode};
-use defmt::{error, info, trace};
+use bme280_rs::{Configuration, Oversampling, SensorMode};
+use defmt::info;
 use embedded_hal::digital::StatefulOutputPin;
-use embedded_hal_async::i2c::{self, I2c};
-use embedded_hal_bus::{i2c::AtomicDevice, util::AtomicCell};
-use embedded_io::{Read, Write};
+use embedded_hal_async::i2c::I2c;
+use embedded_io::Write;
 use fugit::ExtU64;
-use futures::FutureExt as _;
-use ina260_terminus::{AsyncINA260, Register as INA260Register};
-use mcf8316c_rs::{controller::MotorController, data_word_to_u32, registers::write_sequence};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
-use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
+use rtic_sync::arbiter::Arbiter;
 
 use crate::device_constants::AvionicsI2cBus;
 use crate::phases::StateMachineListener;
-use crate::{
-    app::*,
-    device_constants::MotorI2cBus,
-    peripherals::async_i2c::{self, AsyncI2cError},
-    Mono,
-};
+use crate::{app::*, device_constants::MotorI2cBus, Mono};
 
 pub async fn heartbeat(ctx: heartbeat::Context<'_>) {
     loop {
@@ -32,13 +21,13 @@ pub async fn heartbeat(ctx: heartbeat::Context<'_>) {
     }
 }
 
-pub fn uart_interrupt(mut ctx: uart_interrupt::Context<'_>) {
+pub fn uart_interrupt(ctx: uart_interrupt::Context<'_>) {
     // ctx.shared.radio.lock(|radio| {
     //     radio.device.update().ok();
     // });
 }
 
-pub async fn radio_flush(mut ctx: radio_flush::Context<'_>) {}
+pub async fn radio_flush(ctx: radio_flush::Context<'_>) {}
 
 pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
     loop {
@@ -137,7 +126,7 @@ pub async fn motor_drivers(
 }
 
 pub async fn sample_sensors(
-    mut ctx: sample_sensors::Context<'_>,
+    ctx: sample_sensors::Context<'_>,
     avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
 ) {
     ctx.local.bme280.init().await.ok();
