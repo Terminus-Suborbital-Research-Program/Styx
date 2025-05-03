@@ -261,8 +261,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             ejection_pin: gpio_detect,
             rbf_status,
             downlink: jupiter_downlink,
-            rbf_status: rbf_status,
-            downlink: jupiter_downlink,
         },
         Local {
             led: led_pin,

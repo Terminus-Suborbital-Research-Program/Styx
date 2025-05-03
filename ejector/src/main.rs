@@ -146,7 +146,7 @@ mod app {
         // // Radio Flush Task
         // #[task(priority = 1)]
         // async fn radio_flush(mut ctx: radio_flush::Context);
-        // 
+        //
         #[task(local = [cams, cams_led], shared = [ejector_time_millis, rbf_status], priority = 2)]
         async fn start_cameras(mut ctx: start_cameras::Context);
     }
