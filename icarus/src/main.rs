@@ -161,10 +161,6 @@ mod app {
         #[task(binds = UART1_IRQ, shared = [radio])]
         fn uart_interrupt(mut ctx: uart_interrupt::Context);
 
-        // Radio Flush Task
-        #[task(shared = [radio], priority = 1)]
-        async fn radio_flush(mut ctx: radio_flush::Context);
-
         #[task(local = [bme280], priority = 3)]
         async fn sample_sensors(
             mut ctx: sample_sensors::Context,

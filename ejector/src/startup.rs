@@ -99,7 +99,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             info!("RBF Status {}", rbf_status);
         }
         Err(e) => {
-            info!("Could not read RBF Pin")
+            info!("Could not read RBF Pin: {:?}", e);
         }
     };
 
