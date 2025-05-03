@@ -73,7 +73,11 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 mod app {
     use crate::{
         actuators::servo::{EjectionServo, LockingServo},
-        device_constants::{AvionicsI2cBus, IcarusRadio, IcarusStateMachine, MotorI2cBus},
+        communications::link_layer::LinkLayerDevice,
+        device_constants::{
+            AvionicsI2cBus, IcarusHC12, IcarusRadio, IcarusStateMachine, MotorI2cBus,
+            ReactionWheelMotor,
+        },
         phases::StateMachineListener,
     };
 
@@ -108,7 +112,7 @@ mod app {
         pub locking_driver: LockingServo,
         // pub usb_serial: SerialPort<'static, hal::usb::UsbBus>,
         pub clock_freq_hz: u32,
-        pub radio: IcarusHC12,
+        pub radio: IcarusRadio,
         pub state_machine: IcarusStateMachine,
         pub ina_data: INAData,
     }
