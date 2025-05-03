@@ -44,7 +44,7 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
     dispatchers = [PIO2_IRQ_0, PIO2_IRQ_1, DMA_IRQ_0],
 )]
 mod app {
-    use crate::device_constants::{EjectionDetectionPin, JupiterUart};
+    use crate::device_constants::{CamLED, Camera, EjectionDetectionPin, Heartbeat, JupiterUart};
     use crate::{actuators::servo::EjectorServo, phases::EjectorStateMachine};
 
     use super::*;
@@ -112,9 +112,9 @@ mod app {
 
     #[local]
     pub struct Local {
-        pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
-        // This pin is definitely wrong, talk to brooks and also find out if pulldown
-        pub cams: gpio::Pin<gpio::bank0::Gpio14, FunctionSio<SioOutput>, PullNone>,
+        pub led: Heartbeat,
+        pub cams: Camera,
+        pub cams_led: CamLED,
     }
 
     #[init]
@@ -146,8 +146,8 @@ mod app {
         // // Radio Flush Task
         // #[task(priority = 1)]
         // async fn radio_flush(mut ctx: radio_flush::Context);
-
-        #[task(local = [cams], shared = [ejector_time_millis, rbf_status], priority = 2)]
+        // 
+        #[task(local = [cams, cams_led], shared = [ejector_time_millis, rbf_status], priority = 2)]
         async fn start_cameras(mut ctx: start_cameras::Context);
     }
 }

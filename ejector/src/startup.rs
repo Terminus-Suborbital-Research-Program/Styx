@@ -79,7 +79,13 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         .into_push_pull_output();
     cam_pin.set_high().unwrap();
 
-    // These pins for rbf and cam are placeholder, change later
+    let mut cam_led_pin = bank0_pins
+        .gpio13
+        .into_pull_type::<PullNone>()
+        .into_push_pull_output();
+    cam_led_pin.set_high().unwrap();
+
+    // These pins for rbf and cam    are placeholder, change later
     let mut rbf_pin = bank0_pins
         .gpio2
         .into_pull_type::<PullNone>()
@@ -95,6 +101,9 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             info!("Could not read RBF Pin")
         }
     };
+
+    // Start Camera Task
+    start_cameras::spawn().ok();
 
     // Get clock frequency
     let clock_freq = clocks.peripheral_clock.freq();
@@ -233,7 +242,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     //radio_flush::spawn().ok();
     state_machine_update::spawn().ok();
     incoming_packet_handler::spawn().ok();
-    start_cameras::spawn().ok();
+
     radio_heartbeat::spawn().ok();
 
     (
@@ -252,11 +261,12 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             radio: hc,
             ejection_pin: gpio_detect,
             rbf_status: rbf_status,
+            downlink: jupiter_downlink,
         },
         Local {
             led: led_pin,
             cams: cam_pin,
-            downlink: jupiter_downlink,
+            cams_led: cam_led_pin,
         },
     )
 }
