@@ -17,7 +17,8 @@ use usb_device::device::{StringDescriptors, UsbDeviceBuilder, UsbVidPid};
 use usbd_serial::SerialPort;
 
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
-use crate::device_constants::EjectionDetectionPin;
+use crate::device_constants::pins::JupiterTxPin;
+use crate::device_constants::{EjectionDetectionPin, JupiterUart};
 use crate::hal;
 use crate::phases::EjectorStateMachine;
 use crate::{app::*, Mono};
@@ -93,7 +94,21 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
     let mut timer_two = timer.clone();
 
-    info!("UART1 configured, assembling HC-12");
+    // Jupiter downlink UART
+    let jupiter_downlink: JupiterUart = UartPeripheral::new(
+        ctx.device.UART0,
+        (
+            bank0_pins.gpio16.into_function(),
+            bank0_pins.gpio17.into_function(),
+        ),
+        &mut ctx.device.RESETS,
+    )
+    .enable(
+        UartConfig::new(115200_u32.Hz(), DataBits::Eight, None, StopBits::One),
+        clocks.peripheral_clock.freq(),
+    )
+    .unwrap();
+
     let builder = hc12_rs::device::HC12Builder::<(), (), (), ()>::empty()
         .uart(uart1_peripheral, B9600)
         .programming_resources(programming, timer)
@@ -210,6 +225,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             suspend_packet_handler: false,
             radio: hc,
             ejection_pin: gpio_detect,
+            downlink: jupiter_downlink,
         },
         Local { led: led_pin },
     )

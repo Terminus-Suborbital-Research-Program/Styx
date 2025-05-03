@@ -16,8 +16,14 @@ pub async fn incoming_packet_handler(_ctx: incoming_packet_handler::Context<'_>)
 }
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
+    let mut hello = "Hello from Ejector!".as_bytes();
+
     loop {
         _ = ctx.local.led.toggle();
+
+        ctx.shared.downlink.lock(|uart| {
+            uart.write_all(hello).ok();
+        });
 
         Mono::delay(
             ctx.shared
@@ -72,8 +78,6 @@ pub async fn state_machine_update(mut ctx: state_machine_update::Context<'_>) {
 
         let gp_state = ctx.shared.ejection_pin.lock(|pin| pin.is_high().unwrap());
 
-        info!("Ejection pin is high: {}", gp_state);
-
         match ctx
             .shared
             .state_machine
@@ -84,6 +88,12 @@ pub async fn state_machine_update(mut ctx: state_machine_update::Context<'_>) {
                 ctx.shared.ejector_servo.lock(|servo| {
                     servo.hold();
                 });
+
+                if gp_state {
+                    ctx.shared.state_machine.lock(|machine| {
+                        machine.set_phase(EjectorPhase::Ejection);
+                    })
+                }
 
                 // 1000ms delay
                 ctx.shared
@@ -116,8 +126,5 @@ pub async fn state_machine_update(mut ctx: state_machine_update::Context<'_>) {
 
         // We should never wait less than 1ms, tbh
         Mono::delay(max(wait_time, 1).millis()).await;
-
-        // TODO: Remove
-        Mono::delay(1000_u64.millis()).await;
     }
 }

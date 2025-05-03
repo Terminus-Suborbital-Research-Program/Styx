@@ -44,7 +44,7 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
     dispatchers = [PIO2_IRQ_0, PIO2_IRQ_1, DMA_IRQ_0],
 )]
 mod app {
-    use crate::device_constants::EjectionDetectionPin;
+    use crate::device_constants::{EjectionDetectionPin, JupiterUart};
     use crate::{actuators::servo::EjectorServo, phases::EjectorStateMachine};
 
     use super::*;
@@ -105,6 +105,7 @@ mod app {
         pub suspend_packet_handler: bool,
         pub radio: EjectorHC12,
         pub ejection_pin: EjectionDetectionPin,
+        pub downlink: JupiterUart,
     }
 
     #[local]
@@ -127,7 +128,7 @@ mod app {
         async fn state_machine_update(mut ctx: state_machine_update::Context);
 
         // Heartbeats the main led
-        #[task(local = [led], shared = [blink_status_delay_millis, radio], priority = 2)]
+        #[task(local = [led], shared = [blink_status_delay_millis, radio, downlink], priority = 2)]
         async fn heartbeat(mut ctx: heartbeat::Context);
 
         // Heartbeats the radio
