@@ -11,7 +11,7 @@ use rtic_monotonics::Monotonic;
 
 use crate::{app::*, Mono};
 
-const START_CAMERA_DELAY: u64 = 250_000; // 10k millis For testing, 250 for actual
+const START_CAMERA_DELAY: u64 = 1000; // 10k millis For testing, 250 for actual
 
 pub async fn incoming_packet_handler(_ctx: incoming_packet_handler::Context<'_>) {
     Mono::delay(1000_u64.millis()).await;
@@ -48,6 +48,10 @@ pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
         Mono::delay(START_CAMERA_DELAY.millis()).await;
         info!("Cameras on");
         ctx.local.cams.set_low();
+        loop {
+            ctx.local.cams_led.toggle();
+            Mono::delay(1000.millis()).await;
+        }
     } else {
         info!("Cameras RBF Inhibited");
     }
