@@ -1,0 +1,45 @@
+name: Clippy Lint
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: davidB/rust-cargo-make@v1.12.1
+      - uses: actions/checkout@v4
+      - name: Install target
+        run: rustup target add thumbv8m.main-none-eabihf
+      - name: Test
+        run: cargo make test --verbose
+
+  clippy-fix:
+    # only run on PRs
+    if: github.event_name == 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      # checkout the PR branch with credentials so we can push back
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0           # fetch full history
+          persist-credentials: true
+      - uses: davidB/rust-cargo-make@v1.13.0
+      - name: Install target
+        run: rustup target add thumbv8m.main-none-eabihf
+      - name: Apply Clippy fixes
+        run: cargo make clippy --fix --allow-dirty
+      - name: Commit & push Clippy fixes
+        uses: actions4git/add-commit-push@v1.0.0
+        with:
+          author_name: github-actions
+          author_email: github-actions@github.com
+          message: "chore: apply clippy fixes"
+          branch: ${{ github.head_ref }}
