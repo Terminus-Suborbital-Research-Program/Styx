@@ -1,4 +1,4 @@
-use bin_packets::IcarusPhase;
+use bin_packets::phases::IcarusPhase;
 use defmt::error;
 use defmt::info;
 use embedded_hal::delay::DelayNs;
@@ -53,9 +53,7 @@ use bme280_rs::AsyncBme280;
 use ina260_terminus::AsyncINA260;
 
 // Logs our time for demft
-defmt::timestamp!("{=u64:us}", {
-    Mono::now().duration_since_epoch().to_nanos()
-});
+defmt::timestamp!("{=u64:us}", { epoch_ns() });
 
 pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     // Reset the spinlocks - this is skipped by soft-reset

@@ -7,7 +7,7 @@ use bincode::{
 };
 use embedded_io::{Read, Write};
 
-use bin_packets::ApplicationPacket;
+use bin_packets::packets::ApplicationPacket;
 
 #[derive(Debug, Clone, Copy, Encode, Decode)]
 #[allow(non_camel_case_types)]

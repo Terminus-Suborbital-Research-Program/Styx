@@ -9,8 +9,6 @@ fn main() {
     let out = PathBuf::from(std::env::var_os("OUT_DIR").unwrap());
     println!("cargo:rustc-link-search={}", out.display());
 
-    println!("cargo::rustc-link-arg-tests=-Tembedded-test.x");
-
     // The file `memory.x` is loaded by cortex-m-rt's `link.x` script, which
     // is what we specify in `.cargo/config.toml` for Arm builds
     #[cfg(feature = "rp2350")]

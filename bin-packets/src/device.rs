@@ -5,16 +5,17 @@ use bincode::{
 use embedded_io::{Error, ErrorType, Read, Write};
 use heapless::Vec;
 
-use crate::ApplicationPacket;
+use crate::packets::ApplicationPacket;
 
-#[derive(Debug)]
+#[derive(Debug, defmt::Format)]
 pub enum InterfaceError<E: Error> {
     /// Underlying device error
     DeviceError(E),
     /// Decoding error
-    DecodeError(DecodeError),
+    DecodeError(#[defmt(Debug2Format)] DecodeError),
     /// Encoding error
-    EncodeError(EncodeError),
+    #[defmt(Display2Format)]
+    EncodeError(#[defmt(Debug2Format)] EncodeError),
     /// Buffer overflow
     BufferFull,
 }

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     phases::EjectorPhase,
-    types::{DurationMillis, UnixTimestampMillis},
+    time::{DurationMillis, Timestamp},
 };
 
 use super::JupiterTelemetry;
@@ -22,7 +22,7 @@ pub struct EjectorStatus {
 #[derive(Debug, Clone, Copy, Encode, Decode, Format, Serialize, Deserialize)]
 pub struct IcarusStatus {
     pub time_in_phase: DurationMillis,
-    pub timestamp: UnixTimestampMillis,
+    pub timestamp: Timestamp,
     pub packet_number: u16,
 }
 
@@ -30,7 +30,7 @@ pub struct IcarusStatus {
 #[derive(Debug, Clone, Copy, Encode, Decode, Format, Serialize, Deserialize)]
 pub struct JupiterStatus {
     pub time_in_phase: DurationMillis,
-    pub timestamp: UnixTimestampMillis,
+    pub timestamp: Timestamp,
     pub packet_number: u16,
     pub telemetry: JupiterTelemetry,
 }
@@ -38,6 +38,6 @@ pub struct JupiterStatus {
 /// Status packet for Relay
 #[derive(Debug, Clone, Copy, Encode, Decode, Format)]
 pub struct RelayStatus {
-    pub timestamp: UnixTimestampMillis,
+    pub timestamp: Timestamp,
     pub packet_number: u16,
 }

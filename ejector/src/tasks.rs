@@ -1,6 +1,6 @@
 use core::cmp::max;
 
-use bin_packets::{phases::EjectorPhase, ApplicationPacket, LinkPacket};
+use bin_packets::{packets::ApplicationPacket, phases::EjectorPhase};
 use bincode::config::standard;
 use defmt::info;
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
@@ -56,27 +56,6 @@ pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
 pub async fn radio_heartbeat(mut ctx: radio_heartbeat::Context<'_>) {
     let mut packet_num = 0;
     loop {
-        let packet = ApplicationPacket::EjectorStatus(bin_packets::EjectorStatus {
-            phase: EjectorPhase::Hold,
-            time_in_phase: 100,
-            timestamp: 300,
-            packet_number: packet_num,
-        });
-
-        let packet = LinkPacket::new(
-            bin_packets::DeviceIdentifier::Ejector,
-            bin_packets::DeviceIdentifier::Broadcast,
-            packet,
-        );
-        packet_num += 1;
-
-        ctx.shared.radio.lock(|radio| {
-            let mut buf = [0u8; 64];
-            let bytes = bincode::encode_into_slice(packet, &mut buf, standard()).unwrap();
-
-            radio.write_all(&buf[0..bytes]).ok();
-        });
-
         Mono::delay(1000_u64.millis()).await;
     }
 }

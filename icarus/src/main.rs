@@ -83,7 +83,7 @@ mod app {
 
     use super::*;
 
-    use bin_packets::IcarusPhase;
+    use bin_packets::{phases::IcarusPhase, time::Timestamp};
 
     use hal::gpio::{self, FunctionSio, PullNone, SioOutput};
     use rp235x_hal::uart::UartPeripheral;
@@ -142,7 +142,7 @@ mod app {
 
     extern "Rust" {
         // Heartbeats the main led
-        #[task(local = [led], priority = 2)]
+        #[task(local = [led], shared = [radio], priority = 2)]
         async fn heartbeat(ctx: heartbeat::Context);
 
         // Takes care of incoming packets
@@ -173,5 +173,15 @@ mod app {
 
         #[task(priority = 3)]
         async fn inertial_nav(mut ctx: inertial_nav::Context);
+    }
+
+    /// Returns the current time in nanoseconds since power-on
+    pub fn epoch_ns() -> u64 {
+        Mono::now().duration_since_epoch().to_nanos()
+    }
+
+    /// Returns the current time as a timestamp
+    pub fn now_timestamp() -> Timestamp {
+        Timestamp::new(epoch_ns())
     }
 }
