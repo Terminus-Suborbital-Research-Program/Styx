@@ -1,14 +1,14 @@
 use bincode::{Decode, Encode};
 use defmt::Format;
 
-use crate::types::{DurationMillis, UnixTimestampMillis};
+use crate::time::{DurationMillis, Timestamp};
 
 /// Data packet for GUARD Geiger counter
 #[derive(Debug, Clone, Copy, Encode, Decode, Format)]
 pub struct GeigerData {
     pub counts: u32,
     pub over: DurationMillis,
-    pub timestamp: UnixTimestampMillis,
+    pub timestamp: Timestamp,
     pub packet_number: u16,
 }
 
@@ -17,7 +17,7 @@ pub struct GeigerData {
 pub struct PeltierData {
     pub power: f32,
     pub temp_cold_c: f32,
-    pub timestamp: UnixTimestampMillis,
+    pub timestamp: Timestamp,
     pub packet_number: u16,
 }
 
@@ -25,6 +25,6 @@ pub struct PeltierData {
 #[derive(Debug, Clone, Copy, Encode, Decode, Format)]
 pub struct SolarData {
     pub power: f32,
-    pub timestamp: UnixTimestampMillis,
+    pub timestamp: Timestamp,
     pub packet_number: u16,
 }

@@ -42,11 +42,6 @@ bin-packets = { path = "../bin-packets" }
 [dev-dependencies]
 embedded-test = { version = "0.6.0", features = ["defmt", "panic-handler"] }
 
-[[test]]
-name = "hc12_tests"
-harness = false
-test = false
-
 [[bin]]
 name = "ejector"
 path = "src/main.rs"

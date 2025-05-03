@@ -1,4 +1,4 @@
-use bin_packets::device::PacketDevice;
+use bin_packets::{device::PacketDevice, packets::ApplicationPacket};
 use embedded_hal_bus::i2c::AtomicDevice;
 use pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin, LedPin};
 use rp235x_hal::{
@@ -122,13 +122,13 @@ const HISTORY_BUFFER_LENGTH: usize = 10;
 // use bin_packets::types::{PowerData, CurrentData, VoltageData};
 #[derive(Debug, Default)]
 pub struct INAData {
-    pub p1_buffer: heapless::HistoryBuffer<bin_packets::ApplicationPacket, HISTORY_BUFFER_LENGTH>,
-    pub p2_buffer: heapless::HistoryBuffer<bin_packets::ApplicationPacket, HISTORY_BUFFER_LENGTH>,
-    pub p3_buffer: heapless::HistoryBuffer<bin_packets::ApplicationPacket, HISTORY_BUFFER_LENGTH>,
-    pub v1_buffer: heapless::HistoryBuffer<bin_packets::ApplicationPacket, HISTORY_BUFFER_LENGTH>,
-    pub v2_buffer: heapless::HistoryBuffer<bin_packets::ApplicationPacket, HISTORY_BUFFER_LENGTH>,
-    pub v3_buffer: heapless::HistoryBuffer<bin_packets::ApplicationPacket, HISTORY_BUFFER_LENGTH>,
-    pub i1_buffer: heapless::HistoryBuffer<bin_packets::ApplicationPacket, HISTORY_BUFFER_LENGTH>,
-    pub i2_buffer: heapless::HistoryBuffer<bin_packets::ApplicationPacket, HISTORY_BUFFER_LENGTH>,
-    pub i3_buffer: heapless::HistoryBuffer<bin_packets::ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+    pub p1_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+    pub p2_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+    pub p3_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+    pub v1_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+    pub v2_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+    pub v3_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+    pub i1_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+    pub i2_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+    pub i3_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
 }

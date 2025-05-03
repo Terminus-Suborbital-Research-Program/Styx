@@ -1,6 +1,9 @@
-use bin_packets::ApplicationPacket;
+use bin_packets::devices::DeviceIdentifier;
+use bin_packets::packets::status::Status;
+use bin_packets::packets::ApplicationPacket;
+use bin_packets::phases::IcarusPhase;
 use bme280_rs::{Configuration, Oversampling, SensorMode};
-use defmt::info;
+use defmt::{info, warn};
 use embedded_hal::digital::StatefulOutputPin;
 use embedded_hal_async::i2c::I2c;
 use embedded_io::Write;
@@ -13,9 +16,23 @@ use crate::device_constants::AvionicsI2cBus;
 use crate::phases::StateMachineListener;
 use crate::{app::*, device_constants::MotorI2cBus, Mono};
 
-pub async fn heartbeat(ctx: heartbeat::Context<'_>) {
+pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
+    let mut sequence_number = 0;
     loop {
         _ = ctx.local.led.toggle();
+
+        let status = Status::new(DeviceIdentifier::Icarus, now_timestamp(), sequence_number);
+
+        let packet_send = ctx
+            .shared
+            .radio
+            .lock(|radio| radio.write_into(status).err());
+
+        if let Some(err) = packet_send {
+            warn!("Failed to send heartbeat: {:?}", err);
+        }
+
+        sequence_number = sequence_number.wrapping_add(1);
 
         Mono::delay(300_u64.millis()).await;
     }
@@ -53,7 +70,7 @@ pub async fn motor_drivers(
     mut esc_state_listener: StateMachineListener,
 ) {
     esc_state_listener
-        .wait_for_state_specific(bin_packets::IcarusPhase::OrientSolar)
+        .wait_for_state_specific(IcarusPhase::OrientSolar)
         .await;
     info!("Motor Driver Task Started");
 

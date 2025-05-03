@@ -1,4 +1,4 @@
-use bin_packets::IcarusPhase;
+use bin_packets::phases::IcarusPhase;
 use heapless::Vec;
 use rtic_sync::signal::{SignalReader, SignalWriter};
 
