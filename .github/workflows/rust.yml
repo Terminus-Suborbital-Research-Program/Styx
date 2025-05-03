@@ -1,4 +1,4 @@
-name: Clippy Lint
+name: Rust build + Chores
 
 on:
   push:
