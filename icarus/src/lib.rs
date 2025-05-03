@@ -1,5 +1,4 @@
 #![no_std]
-use embedded_hal_async::delay::DelayNs;
 use rp235x_hal::{gpio, pac::I2C1, uart::UartPeripheral, I2C};
 
 pub type UART0Bus = UartPeripheral<

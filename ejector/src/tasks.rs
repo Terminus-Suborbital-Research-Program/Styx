@@ -18,7 +18,7 @@ pub async fn incoming_packet_handler(_ctx: incoming_packet_handler::Context<'_>)
 }
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
-    let mut hello = "Hello from Ejector!".as_bytes();
+    let hello = "Hello from Ejector!".as_bytes();
 
     loop {
         _ = ctx.local.led.toggle();

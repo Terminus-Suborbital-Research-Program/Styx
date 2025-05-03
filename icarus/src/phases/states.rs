@@ -1,10 +1,16 @@
 use bin_packets::IcarusPhase;
 use heapless::Vec;
-use rtic_sync::signal::{Signal, SignalReader, SignalWriter};
+use rtic_sync::signal::{SignalReader, SignalWriter};
 
 pub struct StateMachine<const N: usize> {
     state: IcarusPhase,
     channels: Vec<SignalWriter<'static, IcarusPhase>, N>,
+}
+
+impl<const N: usize> Default for StateMachine<N> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<const N: usize> StateMachine<N> {

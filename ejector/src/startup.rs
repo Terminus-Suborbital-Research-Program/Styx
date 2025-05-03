@@ -17,7 +17,6 @@ use usb_device::device::{StringDescriptors, UsbDeviceBuilder, UsbVidPid};
 use usbd_serial::SerialPort;
 
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
-use crate::device_constants::pins::JupiterTxPin;
 use crate::device_constants::{EjectionDetectionPin, JupiterUart};
 use crate::hal;
 use crate::phases::EjectorStateMachine;
@@ -116,7 +115,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     let programming = bank0_pins.gpio12.into_push_pull_output();
     // Copy the timer
     let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
-    let mut timer_two = timer.clone();
+    let mut timer_two = timer;
 
     // Jupiter downlink UART
     let jupiter_downlink: JupiterUart = UartPeripheral::new(
@@ -251,12 +250,12 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             suspend_packet_handler: false,
             radio: hc,
             ejection_pin: gpio_detect,
-            rbf_status: rbf_status,
+            rbf_status,
+            downlink: jupiter_downlink,
         },
         Local {
             led: led_pin,
             cams: cam_pin,
-            downlink: jupiter_downlink,
         },
     )
 }
