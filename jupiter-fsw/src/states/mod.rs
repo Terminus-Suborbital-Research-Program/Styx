@@ -1,9 +1,6 @@
-use std::sync::{Arc, RwLock};
-
+use crate::tasks::SharedPinStates;
 use bin_packets::phases::JupiterPhase;
 use traits::ValidState;
-
-use crate::tasks::PinStates;
 
 mod battery_power;
 mod ejection;
@@ -18,12 +15,12 @@ pub use power_on::*;
 /// State machine for JUPITER
 pub struct JupiterStateMachine {
     state: Box<dyn ValidState>,
-    pins: Arc<RwLock<PinStates>>,
+    pins: SharedPinStates,
 }
 
 impl JupiterStateMachine {
     /// Create a new state machine from a pin provider
-    pub fn new(pins: Arc<RwLock<PinStates>>) -> Self {
+    pub fn new(pins: SharedPinStates) -> Self {
         Self {
             state: Box::new(PowerOn::default()),
             pins,
@@ -32,7 +29,7 @@ impl JupiterStateMachine {
 
     /// Update the state machine
     pub fn update(&mut self) {
-        let p = self.pins.read().unwrap().clone();
+        let p = self.pins.read();
         self.state = self.state.next(p.into());
     }
 

@@ -6,8 +6,7 @@ use crate::states::shutdown::Shutdown;
 use super::traits::{StateContext, ValidState};
 
 #[derive(Debug, Clone, Default)]
-pub struct BatteryPower {
-}
+pub struct BatteryPower {}
 
 // For this - we're going to pull low at estimated T+600 seconds always, it's not informed by a pin
 // the latch is triggered on entering this state, not by this state
