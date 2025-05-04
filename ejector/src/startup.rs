@@ -144,7 +144,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             )
             .unwrap();
     radio_uart.enable_rx_interrupt(); // Make sure we can drive our interrupts
-    let hc_programming_pin: RadioProgrammingPin = bank0_pins.gpio21.into_push_pull_output();
+    let hc_programming_pin: RadioProgrammingPin = bank0_pins.gpio20.into_push_pull_output();
     let builder = hc12_rs::device::HC12Builder::<(), (), (), ()>::empty()
         .uart(radio_uart, B9600)
         .programming_resources(hc_programming_pin, timer)
@@ -162,7 +162,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     // Transition to AT mode
     info!("Programming HC12...");
     let radio = radio.into_at_mode().unwrap(); // Infallible
-    timer_two.delay_ms(100);
+    timer_two.delay_ms(300);
     let radio = match radio.set_baudrate(B9600) {
         Ok(link) => {
             info!("HC12 baudrate set to 9600");
@@ -173,7 +173,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             e.hc12
         }
     };
-
+    timer_two.delay_ms(300);
     let radio = match radio.set_channel(Channel::Channel1) {
         Ok(link) => {
             info!("HC12 channel set to 1");
@@ -184,6 +184,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             e.hc12
         }
     };
+    timer_two.delay_ms(300);
     let hc = match radio.set_power(Power::P8) {
         Ok(link) => {
             info!("HC12 power set to P8");
