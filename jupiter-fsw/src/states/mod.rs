@@ -6,6 +6,7 @@ use traits::ValidState;
 use crate::tasks::PinStates;
 
 mod battery_power;
+mod ejection;
 mod main_cam;
 mod power_on;
 mod shutdown;
