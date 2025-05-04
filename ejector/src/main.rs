@@ -45,13 +45,13 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 )]
 mod app {
     use crate::device_constants::packets::{JupiterInterface, RadioInterface};
-    use crate::device_constants::{CamLED, Camera, EjectionDetectionPin, Heartbeat, JupiterUart};
+    use crate::device_constants::{CamLED, Camera, EjectionDetectionPin, Heartbeat};
     use crate::{actuators::servo::EjectorServo, phases::EjectorStateMachine};
 
     use super::*;
 
     use bin_packets::time::Timestamp;
-    use hal::gpio::{self, FunctionSio, PullNone, SioOutput};
+    use hal::gpio::{self};
     use rp235x_hal::uart::UartPeripheral;
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
@@ -65,33 +65,6 @@ mod app {
             gpio::Pin<gpio::bank0::Gpio0, gpio::FunctionUart, gpio::PullDown>,
             gpio::Pin<gpio::bank0::Gpio1, gpio::FunctionUart, gpio::PullDown>,
         ),
-    >;
-
-    use crate::hal::timer::CopyableTimer1;
-    use hal::gpio::Pin;
-    use hal::pac::UART1;
-    use hal::uart::Enabled;
-    use hal::Timer;
-    use hc12_rs::configuration::baudrates::B9600;
-    use hc12_rs::ProgrammingPair;
-    use hc12_rs::FU3;
-    use hc12_rs::HC12;
-    use rp235x_hal::gpio::bank0::{Gpio12, Gpio8, Gpio9};
-    use rp235x_hal::gpio::FunctionUart;
-    use rp235x_hal::gpio::PullDown;
-
-    pub type EjectorHC12 = HC12<
-        UartPeripheral<
-            Enabled,
-            UART1,
-            (
-                Pin<Gpio8, FunctionUart, PullDown>,
-                Pin<Gpio9, FunctionUart, PullDown>,
-            ),
-        >,
-        ProgrammingPair<Pin<Gpio12, FunctionSio<SioOutput>, PullDown>, Timer<CopyableTimer1>>,
-        FU3<B9600>,
-        B9600,
     >;
 
     pub static mut USB_BUS: Option<UsbBusAllocator<hal::usb::UsbBus>> = None;

@@ -19,7 +19,8 @@ use usbd_serial::SerialPort;
 
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
 use crate::device_constants::packets::{JupiterInterface, RadioInterface};
-use crate::device_constants::{EjectionDetectionPin, JupiterUart, RadioUart};
+use crate::device_constants::pins::RadioProgrammingPin;
+use crate::device_constants::{EjectionDetectionPin, EjectorHC12, JupiterUart, RadioUart};
 use crate::hal;
 use crate::phases::EjectorStateMachine;
 use crate::{app::*, Mono};
@@ -109,22 +110,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     // Get clock frequency
     let clock_freq = clocks.peripheral_clock.freq();
 
-    // Pin setup for UART1
-    let uart1_pins = (
-        bank0_pins.gpio8.into_function(),
-        bank0_pins.gpio9.into_function(),
-    );
-    let mut radio_uart: RadioUart =
-        UartPeripheral::new(ctx.device.UART1, uart1_pins, &mut ctx.device.RESETS)
-            .enable(
-                UartConfig::new(9600_u32.Hz(), DataBits::Eight, None, StopBits::One),
-                clocks.peripheral_clock.freq(),
-            )
-            .unwrap();
-    radio_uart.enable_rx_interrupt(); // Make sure we can drive our interrupts
-                                      // GPIO10 is the programming pin for HC-12
-    let programming = bank0_pins.gpio12.into_push_pull_output();
-    // Copy the timer
     let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
     let mut timer_two = timer;
 
@@ -146,9 +131,23 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     // Packet interface to relay packets down
     let jupiter_downlink: JupiterInterface = PacketDevice::new(jupiter_uart);
 
+    // Pin setup for UART1
+    let uart1_pins = (
+        bank0_pins.gpio8.into_function(),
+        bank0_pins.gpio9.into_function(),
+    );
+    let mut radio_uart: RadioUart =
+        UartPeripheral::new(ctx.device.UART1, uart1_pins, &mut ctx.device.RESETS)
+            .enable(
+                UartConfig::new(9600_u32.Hz(), DataBits::Eight, None, StopBits::One),
+                clocks.peripheral_clock.freq(),
+            )
+            .unwrap();
+    radio_uart.enable_rx_interrupt(); // Make sure we can drive our interrupts
+    let hc_programming_pin: RadioProgrammingPin = bank0_pins.gpio21.into_push_pull_output();
     let builder = hc12_rs::device::HC12Builder::<(), (), (), ()>::empty()
         .uart(radio_uart, B9600)
-        .programming_resources(programming, timer)
+        .programming_resources(hc_programming_pin, timer)
         .fu3(HC12Configuration::default());
 
     let radio = match builder.attempt_build() {
@@ -215,7 +214,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     ejector_servo.enable();
     ejector_servo.hold();
 
-    let gpio_detect: EjectionDetectionPin = bank0_pins.gpio21.into_pull_down_input();
+    let gpio_detect: EjectionDetectionPin = bank0_pins.gpio10.into_pull_down_input();
 
     // Set up USB Device allocator
     let usb_bus = UsbBusAllocator::new(hal::usb::UsbBus::new(

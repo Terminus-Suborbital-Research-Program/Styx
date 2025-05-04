@@ -13,7 +13,7 @@ use rp235x_hal::{
 
 pub mod pins {
     use rp235x_hal::gpio::{
-        bank0::{Gpio12, Gpio13, Gpio14, Gpio15, Gpio16, Gpio17, Gpio21, Gpio25, Gpio8, Gpio9},
+        bank0::{Gpio10, Gpio13, Gpio14, Gpio16, Gpio17, Gpio21, Gpio25, Gpio8, Gpio9},
         FunctionSio, FunctionUart, Pin, PullDown, SioOutput,
     };
 
@@ -30,7 +30,7 @@ pub mod pins {
     pub type CamLEDPin = Gpio13;
 
     /// Ejection detection pin
-    pub type EjectionPin = Gpio21;
+    pub type EjectionPin = Gpio10;
 
     /// UART RX
     pub type JupiterRxPin = Pin<Gpio16, FunctionUart, PullDown>;
@@ -42,7 +42,7 @@ pub mod pins {
     /// Radio TX
     pub type RadioTxPin = Pin<Gpio9, FunctionUart, PullDown>;
     /// Radio Programming Pin
-    pub type RadioProgrammingPin = Pin<Gpio12, FunctionSio<SioOutput>, PullDown>;
+    pub type RadioProgrammingPin = Pin<Gpio21, FunctionSio<SioOutput>, PullDown>;
 }
 
 // Heartbeat LED
