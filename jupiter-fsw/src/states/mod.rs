@@ -8,6 +8,8 @@ use crate::tasks::PinStates;
 mod main_cam;
 mod power_on;
 mod skirt_seperation;
+mod battery_power;
+mod shutdown;
 
 pub mod traits;
 pub use power_on::*;
