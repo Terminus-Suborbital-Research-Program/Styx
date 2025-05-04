@@ -2,7 +2,7 @@ use core::cmp::max;
 
 use bin_packets::device::PacketIO;
 use bin_packets::{devices::DeviceIdentifier, packets::status::Status, phases::EjectorPhase};
-use defmt::info;
+use defmt::{info, warn};
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
 use fugit::ExtU64;
 use rtic::Mutex;
@@ -15,7 +15,7 @@ const START_CAMERA_DELAY: u64 = 1000; // 10k millis For testing, 250 for actual
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     let mut sequence_number = 0;
     loop {
-        _ = ctx.local.led.toggle();
+        ctx.shared.led.lock(|led| led.toggle().unwrap());
 
         let status = Status::new(DeviceIdentifier::Icarus, now_timestamp(), sequence_number);
 
@@ -36,7 +36,7 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 
 pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
     let rbf_on_startup = ctx.shared.rbf_status.lock(|startup_status| *startup_status);
-    if !rbf_on_startup {
+    if (!rbf_on_startup) {
         info!("Camera Timer Starting");
         Mono::delay(START_CAMERA_DELAY.millis()).await;
         info!("Cameras on");
@@ -52,26 +52,30 @@ pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
 
 pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
     loop {
-        match ctx.shared.radio.lock(|radio| radio.read_packet()) {
-            Ok(potential) => {
-                if let Some(packet) = potential {
+        // Drain all available packets, one per lock to allow interruptions
+        loop {
+            match ctx.shared.radio.lock(|radio| radio.read_packet()) {
+                Ok(Some(packet)) => {
+                    ctx.shared.led.lock(|led| led.toggle().unwrap());
                     info!("Read packet: {:?}", packet);
                     // Write down range
-                    info!(
-                        "Write results: {:?}",
-                        ctx.shared
-                            .downlink
-                            .lock(|downlink| { downlink.write_into(packet).err() })
-                    );
+                    if let Err(e) = ctx
+                        .shared
+                        .downlink
+                        .lock(|downlink| downlink.write_into(packet))
+                    {
+                        warn!("Error writing packet: {:?}", e);
+                    }
                 }
-            }
-
-            Err(e) => {
-                info!("Error reading packet: {:?}", e);
+                Ok(None) => break,
+                Err(e) => {
+                    info!("Error reading packet: {:?}", e);
+                    break;
+                }
             }
         }
 
-        Mono::delay(1000_u64.millis()).await;
+        Mono::delay(10_u64.millis()).await;
     }
 }
 
