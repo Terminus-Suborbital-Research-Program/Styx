@@ -7,6 +7,11 @@ args = ["fmt"]
 command = "cargo"
 args = ["build"]
 
+[tasks.clippy]
+install_crate = "clippy"
+command = "cargo"
+args = ["clippy", "--fix", "--no-deps", "--allow-dirty", "--target", "thumbv8m.main-none-eabihf"]
+
 [tasks.build_release]
 command = "cargo"
 args = ["build", "--release"]

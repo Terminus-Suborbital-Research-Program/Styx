@@ -3,6 +3,11 @@ install_crate = "rustfmt"
 command = "cargo"
 args = ["fmt"]
 
+[tasks.clippy]
+install_crate = "clippy"
+command = "cargo"
+args = ["clippy", "--fix", "--no-deps", "--allow-dirty"]
+
 [tasks.build]
 command = "cargo"
 args = ["build"]

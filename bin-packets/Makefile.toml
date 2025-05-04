@@ -14,3 +14,8 @@ args = ["test"]
 [tasks.docs]
 command = "cargo"
 args = ["doc"]
+
+[tasks.clippy]
+install_crate = "clippy"
+command = "cargo"
+args = ["clippy", "--fix", "--no-deps", "--allow-dirty"]

@@ -42,11 +42,6 @@ bin-packets = { path = "../bin-packets" }
 [dev-dependencies]
 embedded-test = { version = "0.6.0", features = ["defmt", "panic-handler"] }
 
-[[bin]]
-name = "ejector"
-path = "src/main.rs"
-test = false
-
 # Target features
 [features]
 default = ["rp2350"]
