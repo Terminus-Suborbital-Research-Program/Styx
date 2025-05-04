@@ -6,7 +6,7 @@ use std::{
 use i2cdev::{core::I2CDevice as _, linux::LinuxI2CDevice};
 use log::{info, warn};
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct PinStates {
     gse_1: bool,
     te_1: bool,

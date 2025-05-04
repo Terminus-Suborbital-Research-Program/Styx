@@ -12,21 +12,33 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
     steps:
       - uses: davidB/rust-cargo-make@v1.12.1
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
       - name: Install target
         run: rustup target add thumbv8m.main-none-eabihf
       - name: Test
         run: cargo make test --verbose
 
   clippy-fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     # only run on PRs
     if: github.event_name == 'pull_request'
     needs: build
-    runs-on: ubuntu-latest
     steps:
       # checkout the PR branch with credentials so we can push back
+      - name: Install deps
+        run: sudo apt-get install -y libudev-dev pkg-config
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0           # fetch full history
@@ -38,15 +50,6 @@ jobs:
         run: cargo make format
       - name: Apply Clippy fixes
         run: cargo make clippy --fix --allow-dirty
-      - name: Commit & push Clippy fixes (if any)
-        run: |
-          # only commit if there's something to commit
-          if [ -n "$(git status --porcelain)" ]; then
-            git config user.name "github-actions"
-            git config user.email "github-actions@github.com"
-            git add -A
-            git commit -m "chore: apply clippy fixes"
-            git push origin ${{ github.head_ref }}
-          else
-            echo "✅ No Clippy fixes to apply"
-          fi
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: apply format + clippy fixes"
