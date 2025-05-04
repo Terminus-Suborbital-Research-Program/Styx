@@ -1,8 +1,8 @@
 use bin_packets::phases::JupiterPhase;
 use log::info;
 
-use crate::timing::t_time_estimate;
 use crate::states::battery_power::BatteryPower;
+use crate::timing::t_time_estimate;
 
 use super::traits::{StateContext, ValidState};
 
@@ -37,7 +37,6 @@ impl ValidState for SkirtSeperation {
             info!("Skirt Seperation complete, ejecting");
             Box::new(BatteryPower::default())
             // Box::new(Self::enter())
-
         } else {
             Box::new(self.clone())
         }

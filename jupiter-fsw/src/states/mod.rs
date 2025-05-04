@@ -5,11 +5,11 @@ use traits::ValidState;
 
 use crate::tasks::PinStates;
 
+mod battery_power;
 mod main_cam;
 mod power_on;
-mod skirt_seperation;
-mod battery_power;
 mod shutdown;
+mod skirt_seperation;
 
 pub mod traits;
 pub use power_on::*;

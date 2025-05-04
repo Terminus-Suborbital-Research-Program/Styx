@@ -1,12 +1,12 @@
 use bin_packets::phases::JupiterPhase;
 use log::info;
 
-use crate::timing::t_time_estimate;
 use crate::states::shutdown::Shutdown;
+use crate::timing::t_time_estimate;
 
 use super::traits::{StateContext, ValidState};
 
-// This the CONOPS say battery transition  in 3 seconds from TE2 warning, 
+// This the CONOPS say battery transition  in 3 seconds from TE2 warning,
 static DELAY_TO_BATTERY_LATCH: i32 = 3;
 
 #[derive(Debug, Clone, Default)]
@@ -22,14 +22,10 @@ impl BatteryPower {
     }
 
     fn te2_not_received(&self) -> bool {
-        if self.te_recieved_at > 0 {
-            false
-        } else {
-            true
-        }
+        self.te_recieved_at <= 0
     }
 
-    fn get_te2_status(&self, ctx: StateContext) -> Box<dyn ValidState>  {
+    fn get_te2_status(&self, ctx: StateContext) -> Box<dyn ValidState> {
         if ctx.pins.te_2_high() {
             info!("Power off warning, activate battery latch in 3 seconds");
             Box::new(Self::enter())
@@ -52,14 +48,11 @@ impl ValidState for BatteryPower {
     fn next(&self, ctx: StateContext) -> Box<dyn ValidState> {
         if self.te2_not_received() {
             self.get_te2_status(ctx)
+        } else if self.te_recieved_at + DELAY_TO_BATTERY_LATCH < ctx.t_time {
+            info!("Battery Latch Activated!");
+            Box::new(Shutdown::enter())
         } else {
-            if self.te_recieved_at + DELAY_TO_BATTERY_LATCH < ctx.t_time {
-                info!("Battery Latch Activated!");
-                Box::new(Shutdown::enter())
-            } else {
-                Box::new(self.clone())
-            }
+            Box::new(self.clone())
         }
-        
     }
 }

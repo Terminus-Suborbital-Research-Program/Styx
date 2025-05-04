@@ -4,8 +4,8 @@ use std::{
     time::Duration,
 };
 
-use bin_packets::device::PacketIO;
 use bin_packets::device::PacketDevice;
+use bin_packets::device::PacketIO;
 use constants::{EJECTION_IND_PIN, RBF_PIN};
 use env_logger::Env;
 
