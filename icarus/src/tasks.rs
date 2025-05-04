@@ -29,8 +29,6 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 
         if let Some(err) = packet_send {
             warn!("Failed to send heartbeat: {:?}", err);
-        } else {
-            info!("Heartbeat: {:?}", status);
         }
 
         sequence_number = sequence_number.wrapping_add(1);

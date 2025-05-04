@@ -5,7 +5,7 @@ use defmt::warn;
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
 use fugit::RateExtU32;
-use rp235x_hal::clocks::init_clocks_and_plls;
+use rp235x_hal::clocks;
 use rp235x_hal::gpio::FunctionI2C;
 use rp235x_hal::gpio::FunctionPwm;
 use rp235x_hal::gpio::Pin;
@@ -39,6 +39,8 @@ use crate::device_constants::servos::RelayMosfet;
 use crate::device_constants::servos::RelayServo;
 use crate::device_constants::servos::RelayServoPwmPin;
 use crate::device_constants::servos::RelayServoSlice;
+use crate::device_constants::servos::FLAP_SERVO_LOCKED;
+use crate::device_constants::servos::RELAY_SERVO_LOCKED;
 use crate::device_constants::INAData;
 use crate::device_constants::IcarusRadio;
 use crate::device_constants::IcarusStateMachine;
@@ -47,8 +49,6 @@ use crate::peripherals::async_i2c::AsyncI2c;
 use crate::phases::StateMachine;
 use crate::phases::StateMachineListener;
 use crate::Mono;
-use crate::ALLOCATOR;
-use crate::HEAP_MEMORY;
 
 use hc12_rs::configuration::baudrates::B9600;
 use hc12_rs::configuration::{Channel, HC12Configuration, Power};
@@ -68,34 +68,19 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         hal::sio::spinlock_reset();
     }
 
-    // Set up the global allocator, have to do unsafe shit
-    #[allow(static_mut_refs)]
-    unsafe {
-        ALLOCATOR
-            .lock()
-            .init(HEAP_MEMORY.as_ptr() as *mut u8, HEAP_MEMORY.len());
-    }
-
     // Set up clocks
     let mut watchdog = Watchdog::new(ctx.device.WATCHDOG);
 
-    let clocks = init_clocks_and_plls(
-        XTAL_FREQ_HZ,
+    let clocks = clocks::init_clocks_and_plls(
+        12_000_000u32,
         ctx.device.XOSC,
         ctx.device.CLOCKS,
         ctx.device.PLL_SYS,
         ctx.device.PLL_USB,
         &mut ctx.device.RESETS,
         &mut watchdog,
-    );
-
-    let clocks = match clocks {
-        Ok(clocks) => clocks,
-        Err(err) => {
-            error!("Failed to initialize clocks: {:?}", err);
-            panic!();
-        }
-    };
+    )
+    .unwrap();
 
     info!("Good morning sunshine! Icarus is awake!");
 
@@ -208,14 +193,20 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     flap_channel.set_enabled(true);
     let flap_pin: FlapServoPwmPin =
         flap_channel.output_to(pins.gpio1.into_function::<FunctionPwm>());
-    let flap_servo: FlapServo = Servo::new(flap_channel, flap_pin, flap_mosfet);
+    let mut flap_servo: FlapServo = Servo::new(flap_channel, flap_pin, flap_mosfet);
 
     // Relay servo
     let mut relay_channel = relay_slice.channel_a;
     relay_channel.set_enabled(true);
     let relay_pin: RelayServoPwmPin =
         relay_channel.output_to(pins.gpio2.into_function::<FunctionPwm>());
-    let relay_servo: RelayServo = Servo::new(relay_channel, relay_pin, relay_mosfet);
+    let mut relay_servo: RelayServo = Servo::new(relay_channel, relay_pin, relay_mosfet);
+
+    // Lock initially
+    flap_servo.set_angle(FLAP_SERVO_LOCKED);
+    relay_servo.set_angle(RELAY_SERVO_LOCKED);
+    flap_servo.enable();
+    relay_servo.enable();
 
     // Sensors
     // Init I2C pins

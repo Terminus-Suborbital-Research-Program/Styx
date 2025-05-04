@@ -17,7 +17,7 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     loop {
         ctx.shared.led.lock(|led| led.toggle().unwrap());
 
-        let status = Status::new(DeviceIdentifier::Icarus, now_timestamp(), sequence_number);
+        let status = Status::new(DeviceIdentifier::Ejector, now_timestamp(), sequence_number);
 
         let res = ctx
             .shared
@@ -57,7 +57,7 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
             match ctx.shared.radio.lock(|radio| radio.read_packet()) {
                 Ok(Some(packet)) => {
                     ctx.shared.led.lock(|led| led.toggle().unwrap());
-                    info!("Read packet: {:?}", packet);
+                    info!("Got a packet form icarus! Packet: {:?}", packet);
                     // Write down range
                     if let Err(e) = ctx
                         .shared

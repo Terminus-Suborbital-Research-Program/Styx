@@ -14,13 +14,6 @@ pub mod utilities;
 
 use defmt_rtt as _; // global logger
 
-// We require an allocator for some heap stuff - unfortunatly bincode serde
-// doesn't have support for heapless vectors yet
-extern crate alloc;
-
-// Allocator
-use linked_list_allocator::LockedHeap;
-
 use crate::tasks::*;
 use core::mem::MaybeUninit;
 
@@ -31,10 +24,6 @@ use ina260_terminus::AsyncINA260;
 // Busses
 use device_constants::INAData;
 use rtic_sync::arbiter::i2c::ArbiterDevice;
-
-#[global_allocator]
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
-static mut HEAP_MEMORY: [u8; 1024 * 64] = [0; 1024 * 64];
 
 /// Lets us know when we panic
 #[panic_handler]

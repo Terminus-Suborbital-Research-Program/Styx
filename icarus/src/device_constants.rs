@@ -90,6 +90,16 @@ pub mod servos {
     pub type FlapServo = Servo<Channel<FlapServoSlice, B>, FlapServoPwmPin, FlapMosfet>;
     /// Relay Servo
     pub type RelayServo = Servo<Channel<RelayServoSlice, A>, RelayServoPwmPin, RelayMosfet>;
+
+    /// Flap servo locked
+    pub static FLAP_SERVO_LOCKED: u16 = 90;
+    /// Flap servo unlocked
+    pub static FLAP_SERVO_UNLOCKED: u16 = 180;
+
+    /// Relay servo locked
+    pub static RELAY_SERVO_LOCKED: u16 = 90;
+    /// Relay servo unlocked
+    pub static RELAY_SERVO_UNLOCKED: u16 = 180;
 }
 
 /// Software-controlled LED
