@@ -1,5 +1,6 @@
 use core::cmp::max;
 
+use bin_packets::device::PacketIO;
 use bin_packets::{devices::DeviceIdentifier, packets::status::Status, phases::EjectorPhase};
 use defmt::info;
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};

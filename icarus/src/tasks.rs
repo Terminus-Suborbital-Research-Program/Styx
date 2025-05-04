@@ -1,3 +1,4 @@
+use bin_packets::device::PacketIO;
 use bin_packets::devices::DeviceIdentifier;
 use bin_packets::packets::status::Status;
 use bin_packets::packets::ApplicationPacket;
