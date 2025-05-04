@@ -4,7 +4,6 @@
 
 // Our Modules
 pub mod actuators;
-pub mod communications;
 pub mod device_constants;
 pub mod peripherals;
 pub mod phases;

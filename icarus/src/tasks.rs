@@ -6,8 +6,6 @@ use bin_packets::phases::IcarusPhase;
 use bme280_rs::{Configuration, Oversampling, SensorMode};
 use defmt::{info, warn};
 use embedded_hal::digital::StatefulOutputPin;
-use embedded_hal_async::i2c::I2c;
-use embedded_io::Write;
 use fugit::ExtU64;
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
@@ -41,16 +39,16 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     }
 }
 
-pub fn uart_interrupt(ctx: uart_interrupt::Context<'_>) {
-    // ctx.shared.radio.lock(|radio| {
-    //     radio.device.update().ok();
-    // });
+pub fn uart_interrupt(mut ctx: uart_interrupt::Context<'_>) {
+    ctx.shared.radio.lock(|radio| {
+        radio.update().ok();
+    });
 }
 
 pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
     loop {
-        ctx.shared.ina_data.lock(|ina_data| {
-            ctx.shared.radio.lock(|radio| {
+        ctx.shared.ina_data.lock(|_ina_data| {
+            ctx.shared.radio.lock(|_radio| {
                 // GET PACKETS FROM INA DATA AND SEND
             });
         });
@@ -67,7 +65,7 @@ unsafe fn I2C0_IRQ() {
 
 pub async fn motor_drivers(
     mut ctx: motor_drivers::Context<'_>,
-    i2c: &'static Arbiter<MotorI2cBus>,
+    _i2c: &'static Arbiter<MotorI2cBus>,
     mut esc_state_listener: StateMachineListener,
 ) {
     esc_state_listener
@@ -145,7 +143,7 @@ pub async fn motor_drivers(
 
 pub async fn sample_sensors(
     ctx: sample_sensors::Context<'_>,
-    avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
+    _avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
 ) {
     ctx.local.bme280.init().await.ok();
     ctx.local

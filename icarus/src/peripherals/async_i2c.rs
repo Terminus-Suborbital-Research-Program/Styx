@@ -1,6 +1,5 @@
 use core::future::Future;
 use core::task::{Context, Poll};
-use embedded_hal::i2c::Error;
 use futures::future::{select, Either, FutureExt};
 
 use embedded_hal_async::i2c;

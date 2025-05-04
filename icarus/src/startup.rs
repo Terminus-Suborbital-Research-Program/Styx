@@ -5,7 +5,6 @@ use defmt::warn;
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
 use fugit::RateExtU32;
-use fugit::RateExtU64;
 use rp235x_hal::clocks::init_clocks_and_plls;
 use rp235x_hal::gpio::FunctionI2C;
 use rp235x_hal::gpio::FunctionPwm;

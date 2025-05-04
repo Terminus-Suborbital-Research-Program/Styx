@@ -36,7 +36,7 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 
 pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
     let rbf_on_startup = ctx.shared.rbf_status.lock(|startup_status| *startup_status);
-    if (!rbf_on_startup) {
+    if !rbf_on_startup {
         info!("Camera Timer Starting");
         Mono::delay(START_CAMERA_DELAY.millis()).await;
         info!("Cameras on");

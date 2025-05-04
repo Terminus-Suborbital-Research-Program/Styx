@@ -25,7 +25,7 @@ impl<const N: usize> StateMachine<N> {
         self.state
     }
 
-    fn set_state(&mut self, state: IcarusPhase) {
+    pub fn set_state(&mut self, state: IcarusPhase) {
         self.state = state;
 
         // Notify
