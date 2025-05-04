@@ -37,6 +37,7 @@
               export PATH=$PATH:''${RUSTUP_HOME:-~/.rustup}/toolchains/$RUSTC_VERSION-x86_64-unknown-linux-gnu/bin/
               rustup default stable
               rustup target add thumbv8m.main-none-eabihf
+              rustup target add thumbv6m-none-eabi
             '';
         };
 

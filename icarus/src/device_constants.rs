@@ -1,8 +1,7 @@
 use bin_packets::{device::PacketDevice, packets::ApplicationPacket};
-use embedded_hal_bus::i2c::AtomicDevice;
 use pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin, LedPin};
 use rp235x_hal::{
-    gpio::{FunctionI2C, FunctionSio, Pin, PullDown, PullNone, PullUp, SioOutput},
+    gpio::{bank0::Gpio10, FunctionI2C, FunctionSio, Pin, PullDown, PullNone, PullUp, SioOutput},
     i2c::Controller,
     pac::{I2C0, I2C1},
     I2C,
@@ -104,7 +103,7 @@ pub type IcarusHC12 = HC12<
             Pin<Gpio9, FunctionUart, PullDown>,
         ),
     >,
-    ProgrammingPair<Pin<Gpio12, FunctionSio<SioOutput>, PullDown>, Timer<CopyableTimer1>>,
+    ProgrammingPair<Pin<Gpio10, FunctionSio<SioOutput>, PullDown>, Timer<CopyableTimer1>>,
     FU3<B9600>,
     B9600,
 >;

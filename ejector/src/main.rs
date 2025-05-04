@@ -44,12 +44,14 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
     dispatchers = [PIO2_IRQ_0, PIO2_IRQ_1, DMA_IRQ_0],
 )]
 mod app {
-    use crate::device_constants::{CamLED, Camera, EjectionDetectionPin, Heartbeat, JupiterUart};
+    use crate::device_constants::packets::{JupiterInterface, RadioInterface};
+    use crate::device_constants::{CamLED, Camera, EjectionDetectionPin, Heartbeat};
     use crate::{actuators::servo::EjectorServo, phases::EjectorStateMachine};
 
     use super::*;
 
-    use hal::gpio::{self, FunctionSio, PullNone, SioOutput};
+    use bin_packets::time::Timestamp;
+    use hal::gpio::{self};
     use rp235x_hal::uart::UartPeripheral;
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
@@ -65,33 +67,6 @@ mod app {
         ),
     >;
 
-    use crate::hal::timer::CopyableTimer1;
-    use hal::gpio::Pin;
-    use hal::pac::UART1;
-    use hal::uart::Enabled;
-    use hal::Timer;
-    use hc12_rs::configuration::baudrates::B9600;
-    use hc12_rs::ProgrammingPair;
-    use hc12_rs::FU3;
-    use hc12_rs::HC12;
-    use rp235x_hal::gpio::bank0::{Gpio12, Gpio8, Gpio9};
-    use rp235x_hal::gpio::FunctionUart;
-    use rp235x_hal::gpio::PullDown;
-
-    pub type EjectorHC12 = HC12<
-        UartPeripheral<
-            Enabled,
-            UART1,
-            (
-                Pin<Gpio8, FunctionUart, PullDown>,
-                Pin<Gpio9, FunctionUart, PullDown>,
-            ),
-        >,
-        ProgrammingPair<Pin<Gpio12, FunctionSio<SioOutput>, PullDown>, Timer<CopyableTimer1>>,
-        FU3<B9600>,
-        B9600,
-    >;
-
     pub static mut USB_BUS: Option<UsbBusAllocator<hal::usb::UsbBus>> = None;
 
     #[shared]
@@ -104,10 +79,10 @@ mod app {
         pub blink_status_delay_millis: u64,
         pub ejector_time_millis: u64,
         pub suspend_packet_handler: bool,
-        pub radio: EjectorHC12,
+        pub radio: RadioInterface,
         pub ejection_pin: EjectionDetectionPin,
         pub rbf_status: bool,
-        pub downlink: JupiterUart,
+        pub downlink: JupiterInterface,
     }
 
     #[local]
@@ -123,10 +98,6 @@ mod app {
     }
 
     extern "Rust" {
-        // Takes care of receiving incoming packets
-        #[task(shared = [state_machine, suspend_packet_handler], priority = 1)]
-        async fn incoming_packet_handler(mut ctx: incoming_packet_handler::Context);
-
         // State machine update
         #[task(shared = [state_machine,  blink_status_delay_millis, ejection_pin, rbf_status, ejector_servo], priority = 1)]
         async fn state_machine_update(mut ctx: state_machine_update::Context);
@@ -135,19 +106,25 @@ mod app {
         #[task(local = [led], shared = [blink_status_delay_millis, radio, downlink, ejector_time_millis], priority = 2)]
         async fn heartbeat(mut ctx: heartbeat::Context);
 
-        // Heartbeats the radio
-        #[task(shared = [radio], priority = 2)]
-        async fn radio_heartbeat(mut ctx: radio_heartbeat::Context);
+        // Reads incoming packets from the radio
+        #[task(shared = [radio, downlink], priority = 2)]
+        async fn radio_read(mut ctx: radio_read::Context);
 
         // Updates the radio module on the serial interrupt
-        #[task(binds = UART1_IRQ)]
+        #[task(binds = UART1_IRQ, shared = [radio])]
         fn uart_interrupt(mut ctx: uart_interrupt::Context);
 
-        // // Radio Flush Task
-        // #[task(priority = 1)]
-        // async fn radio_flush(mut ctx: radio_flush::Context);
-        //
         #[task(local = [cams, cams_led], shared = [ejector_time_millis, rbf_status], priority = 2)]
         async fn start_cameras(mut ctx: start_cameras::Context);
+    }
+
+    /// Returns the current time in nanoseconds since power-on
+    pub fn epoch_ns() -> u64 {
+        Mono::now().duration_since_epoch().to_nanos()
+    }
+
+    /// Returns the current time as a timestamp
+    pub fn now_timestamp() -> Timestamp {
+        Timestamp::new(epoch_ns())
     }
 }

@@ -2,7 +2,7 @@ use bincode::{
     config::standard,
     error::{DecodeError, EncodeError},
 };
-use embedded_io::{Error, ErrorType, Read, Write};
+use embedded_io::{Error, ErrorType, Read, ReadReady, Write};
 use heapless::Vec;
 
 use crate::packets::ApplicationPacket;
@@ -60,7 +60,10 @@ impl<D: ErrorType, const N: usize> PacketDevice<D, N> {
                     return Ok(None);
                 }
                 Err(e) => {
-                    // Decode error, return the error
+                    // Decode error, return the error, after popping off the first byte
+                    if self.buffer.len() > 0 {
+                        self.buffer.remove(0);
+                    }
                     return Err(InterfaceError::DecodeError(e));
                 }
             };
@@ -97,19 +100,27 @@ impl<D: Write, const N: usize> PacketDevice<D, N> {
     }
 }
 
-impl<D: Read, const N: usize> PacketDevice<D, N> {
+impl<D: Read + ReadReady, const N: usize> PacketDevice<D, N> {
     /// Update with the latest data from the device
     pub fn update(&mut self) -> Result<(), InterfaceError<D::Error>> {
-        let mut buf = [0u8; N];
-        let bytes = self
+        if self
             .device
-            .read(&mut buf)
-            .map_err(InterfaceError::DeviceError)?;
+            .read_ready()
+            .map_err(InterfaceError::DeviceError)?
+        {
+            let mut buf = [0u8; N];
+            let bytes = self
+                .device
+                .read(&mut buf)
+                .map_err(InterfaceError::DeviceError)?;
 
-        // Append to buffer
-        match self.buffer.extend_from_slice(&buf[..bytes]) {
-            Ok(()) => Ok(()),
-            Err(_) => Err(InterfaceError::BufferFull),
+            // Append to buffer
+            match self.buffer.extend_from_slice(&buf[..bytes]) {
+                Ok(()) => Ok(()),
+                Err(_) => Err(InterfaceError::BufferFull),
+            }
+        } else {
+            Ok(())
         }
     }
 }

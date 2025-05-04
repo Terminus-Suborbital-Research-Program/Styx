@@ -1,6 +1,7 @@
 use bin_packets::phases::IcarusPhase;
 use defmt::error;
 use defmt::info;
+use defmt::warn;
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
 use fugit::RateExtU32;
@@ -129,7 +130,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             .unwrap();
     uart1_peripheral.enable_rx_interrupt(); // Make sure we can drive our interrupts
 
-    let programming = bank0_pins.gpio12.into_push_pull_output();
+    let programming = bank0_pins.gpio10.into_push_pull_output();
     // Copy the timer
     let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
     let mut timer_two = timer;
@@ -151,17 +152,40 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     };
     // Transition to AT mode
     info!("Programming HC12...");
-    let radio = radio.into_at_mode().unwrap();
-    info!("HC12 in AT Mode");
+    let radio = radio.into_at_mode().unwrap(); // Infallible
     timer_two.delay_ms(100);
-    let radio = radio.set_baudrate(B9600).unwrap();
-    info!("HC12 baudrate set to 9600");
-    let radio = radio.set_channel(Channel::Channel1).unwrap();
-    info!("HC12 channel set to 1");
-    let hc = radio.set_power(Power::P8).unwrap();
-    info!("HC12 power set to P8");
-    let hc = hc.into_fu3_mode().unwrap();
-    info!("HC12 in FU3 Mode");
+    let radio = match radio.set_baudrate(B9600) {
+        Ok(link) => {
+            info!("HC12 baudrate set to 9600");
+            link
+        }
+        Err(e) => {
+            warn!("Failed to set HC12 baudrate: {:?}", e.error);
+            e.hc12
+        }
+    };
+
+    let radio = match radio.set_channel(Channel::Channel1) {
+        Ok(link) => {
+            info!("HC12 channel set to 1");
+            link
+        }
+        Err(e) => {
+            warn!("Failed to set HC12 channel: {:?}", e.error);
+            e.hc12
+        }
+    };
+    let radio = match radio.set_power(Power::P8) {
+        Ok(link) => {
+            info!("HC12 power set to P8");
+            link
+        }
+        Err(e) => {
+            warn!("Failed to set HC12 power: {:?}", e.error);
+            e.hc12
+        }
+    };
+    let hc = radio.into_fu3_mode().unwrap(); // Infallible
 
     let interface: IcarusRadio = bin_packets::device::PacketDevice::new(hc);
 
@@ -250,8 +274,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let ina_data = INAData::default();
 
     info!("Peripherals initialized, spawning tasks...");
-    // heartbeat::spawn().ok();
-    radio_flush::spawn().ok();
+    heartbeat::spawn().ok();
     motor_drivers::spawn(motor_i2c_arbiter, esc_listener).ok();
     sample_sensors::spawn(avionics_i2c_arbiter).ok();
     inertial_nav::spawn().ok();

@@ -30,6 +30,8 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 
         if let Some(err) = packet_send {
             warn!("Failed to send heartbeat: {:?}", err);
+        } else {
+            info!("Heartbeat: {:?}", status);
         }
 
         sequence_number = sequence_number.wrapping_add(1);
@@ -43,8 +45,6 @@ pub fn uart_interrupt(ctx: uart_interrupt::Context<'_>) {
     //     radio.device.update().ok();
     // });
 }
-
-pub async fn radio_flush(ctx: radio_flush::Context<'_>) {}
 
 pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
     loop {
