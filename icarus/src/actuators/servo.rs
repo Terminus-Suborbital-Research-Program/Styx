@@ -1,31 +1,4 @@
 use embedded_hal::{digital::OutputPin, pwm::SetDutyCycle};
-use rp235x_hal::{
-    gpio,
-    pwm::{Channel, FreeRunning, Slice, A},
-};
-
-/// Ejector servo types
-pub type EjectionServoPin = gpio::bank0::Gpio0;
-pub type EjectionServoPwm = rp235x_hal::pwm::Pwm0;
-pub type EjectionServoSlice = Slice<EjectionServoPwm, FreeRunning>;
-pub type EjectionServoMosfet =
-    gpio::Pin<gpio::bank0::Gpio1, gpio::FunctionSioOutput, gpio::PullDown>;
-pub type EjectionServo = Servo<
-    Channel<EjectionServoSlice, A>,
-    gpio::Pin<EjectionServoPin, gpio::FunctionPwm, gpio::PullDown>,
-    EjectionServoMosfet,
->;
-// Locking servo on ejector TURN NEGATIVE TO UNLOCK
-pub type LockingServoPin = gpio::bank0::Gpio2; // Physical pin 6
-pub type LockingServoPwm = rp235x_hal::pwm::Pwm1;
-pub type LockingServoSlice = Slice<LockingServoPwm, FreeRunning>;
-pub type LockingServo = Servo<
-    Channel<LockingServoSlice, A>,
-    gpio::Pin<LockingServoPin, gpio::FunctionPwm, gpio::PullDown>,
-    LockingServoMosfet,
->;
-pub type LockingServoMosfet =
-    gpio::Pin<gpio::bank0::Gpio3, gpio::FunctionSioOutput, gpio::PullDown>;
 
 // For the servo
 static MAX_DUTY: u32 = 8200;
