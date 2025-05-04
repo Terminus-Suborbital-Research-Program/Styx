@@ -82,12 +82,8 @@ fn start_iteration() {
     );
 
     // Execute the query
-    match connection.execute(&query) {
-        Err(e) => {
-            info!("Failed to set new iteration: {:?}", e);
-        }
-
-        _ => {}
+    if let Err(e) = connection.execute(&query) {
+        info!("Failed to set new iteration: {:?}", e);
     }
 }
 

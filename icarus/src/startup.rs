@@ -1,5 +1,4 @@
 use bin_packets::phases::IcarusPhase;
-use defmt::error;
 use defmt::info;
 use defmt::warn;
 use embedded_hal::delay::DelayNs;

@@ -6,6 +6,7 @@ use std::{
 use i2cdev::{core::I2CDevice as _, linux::LinuxI2CDevice};
 use log::{info, warn};
 
+#[derive(Default)]
 pub struct PinStates {
     gse_1: bool,
     te_1: bool,
@@ -76,23 +77,6 @@ impl PinStates {
         self.te_rb
     }
     /////////////
-}
-
-impl Default for PinStates {
-    fn default() -> Self {
-        PinStates {
-            gse_1: false,
-            te_1: false,
-            te_2: false,
-
-            //unused, future proofing
-            gse_2: false,
-            te_3: false,
-            te_ra: false,
-            te_rb: false,
-            /////////////
-        }
-    }
 }
 
 // Divirging function to handle reading from the pins

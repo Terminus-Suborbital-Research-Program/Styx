@@ -49,12 +49,10 @@ impl JupiterStateMachine {
             JupiterPhase::Launch => {
                 if pins.te_1_high() {
                     JupiterPhase::SkirtEjection
+                } else if self.phase_start_time.elapsed().as_secs() > 70 {
+                    JupiterPhase::SecondaryCamStart
                 } else {
-                    if self.phase_start_time.elapsed().as_secs() > 70 {
-                        JupiterPhase::SecondaryCamStart
-                    } else {
-                        JupiterPhase::Launch
-                    }
+                    JupiterPhase::Launch
                 }
             }
 
