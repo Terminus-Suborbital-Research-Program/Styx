@@ -14,6 +14,7 @@ use crate::packets::ApplicationPacket;
 use std::fmt::Debug;
 
 #[cfg_attr(not(feature = "std"), derive(defmt::Format))]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub enum InterfaceError<E> {
     /// Underlying device error
     DeviceError(E),
