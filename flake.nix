@@ -29,6 +29,7 @@
             clippy
             rust-analyzer
             libudev-zero
+            ansible
             pkg-config
           ];
 

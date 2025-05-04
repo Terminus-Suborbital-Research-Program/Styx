@@ -71,8 +71,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         .into_pull_type::<PullNone>()
         .into_push_pull_output();
     led_pin.set_low().unwrap();
-    // Start the heartbeat task
-    heartbeat::spawn().ok();
 
     // Configure GPIOX as a cam output // Change later
     let mut cam_pin = bank0_pins
@@ -103,9 +101,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             info!("Could not read RBF Pin: {:?}", e);
         }
     };
-
-    // Start Camera Task
-    start_cameras::spawn().ok();
 
     // Get clock frequency
     let clock_freq = clocks.peripheral_clock.freq();
@@ -243,16 +238,14 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     info!("Peripherals initialized, spawning tasks");
 
-    // Serial Writer Structure
-    state_machine_update::spawn().ok();
+    // Tasks
+    heartbeat::spawn().ok();
+    ejector_sequencer::spawn().ok();
     radio_read::spawn().ok();
+    start_cameras::spawn().ok();
 
     (
         Shared {
-            //uart0: uart0_peripheral,
-            //uart0_buffer,
-            //radio_link,
-            ejector_servo,
             usb_device: usb_dev,
             usb_serial: serial,
             clock_freq_hz: clock_freq.to_Hz(),
@@ -261,12 +254,13 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             ejector_time_millis: 0,
             suspend_packet_handler: false,
             radio,
-            ejection_pin: gpio_detect,
             rbf_status,
             downlink: jupiter_downlink,
             led: led_pin,
         },
         Local {
+            ejector_servo,
+            ejection_pin: gpio_detect,
             cams: cam_pin,
             cams_led: cam_led_pin,
         },

@@ -71,7 +71,6 @@ mod app {
 
     #[shared]
     pub struct Shared {
-        pub ejector_servo: EjectorServo,
         pub usb_serial: SerialPort<'static, hal::usb::UsbBus>,
         pub usb_device: UsbDevice<'static, hal::usb::UsbBus>,
         pub clock_freq_hz: u32,
@@ -80,7 +79,6 @@ mod app {
         pub ejector_time_millis: u64,
         pub suspend_packet_handler: bool,
         pub radio: RadioInterface,
-        pub ejection_pin: EjectionDetectionPin,
         pub rbf_status: bool,
         pub downlink: JupiterInterface,
         pub led: Heartbeat,
@@ -88,8 +86,10 @@ mod app {
 
     #[local]
     pub struct Local {
+        pub ejector_servo: EjectorServo,
         pub cams: Camera,
         pub cams_led: CamLED,
+        pub ejection_pin: EjectionDetectionPin,
     }
 
     #[init]
@@ -98,9 +98,9 @@ mod app {
     }
 
     extern "Rust" {
-        // State machine update
-        #[task(shared = [state_machine,  blink_status_delay_millis, ejection_pin, rbf_status, ejector_servo], priority = 1)]
-        async fn state_machine_update(mut ctx: state_machine_update::Context);
+        // Sequences the ejection
+        #[task(local = [ejection_pin, ejector_servo], shared = [rbf_status], priority = 1)]
+        async fn ejector_sequencer(mut ctx: ejector_sequencer::Context);
 
         // Heartbeats the main led
         #[task(shared = [blink_status_delay_millis, radio, downlink, ejector_time_millis, led], priority = 2)]
