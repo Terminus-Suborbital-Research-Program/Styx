@@ -26,7 +26,7 @@ impl Shutdown {
 
 impl ValidState for Shutdown {
     fn phase(&self) -> JupiterPhase {
-        JupiterPhase::BatteryPower
+        JupiterPhase::Shutdown
     }
 
     fn next(&self, ctx: StateContext) -> Box<dyn ValidState> {
