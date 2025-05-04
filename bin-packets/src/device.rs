@@ -164,7 +164,7 @@ mod no_std {
                         return Ok(None);
                     }
                     Err(e) => {
-                        if self.buffer.len() > 0 {
+                        if !self.buffer.is_empty() {
                             self.buffer.remove(0);
                         }
                         return Err(InterfaceError::DecodeError(e));
@@ -239,7 +239,7 @@ mod no_std {
                         return Ok(None);
                     }
                     Err(e) => {
-                        if self.buffer.len() > 0 {
+                        if !self.buffer.is_empty() {
                             self.buffer.remove(0);
                         }
                         return Err(InterfaceError::DecodeError(e));

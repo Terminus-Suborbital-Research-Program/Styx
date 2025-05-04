@@ -4,5 +4,4 @@ pub type PWM2a = rp235x_hal::pwm::Channel<
     rp235x_hal::pwm::A,
 >;
 
-pub mod motor;
 pub mod servo;

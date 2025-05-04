@@ -4,7 +4,6 @@
 
 // Our Modules
 pub mod actuators;
-pub mod communications;
 pub mod device_constants;
 pub mod peripherals;
 pub mod phases;
@@ -14,13 +13,6 @@ pub mod tasks;
 pub mod utilities;
 
 use defmt_rtt as _; // global logger
-
-// We require an allocator for some heap stuff - unfortunatly bincode serde
-// doesn't have support for heapless vectors yet
-extern crate alloc;
-
-// Allocator
-use linked_list_allocator::LockedHeap;
 
 use crate::tasks::*;
 use core::mem::MaybeUninit;
@@ -32,10 +24,6 @@ use ina260_terminus::AsyncINA260;
 // Busses
 use device_constants::INAData;
 use rtic_sync::arbiter::i2c::ArbiterDevice;
-
-#[global_allocator]
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
-static mut HEAP_MEMORY: [u8; 1024 * 64] = [0; 1024 * 64];
 
 /// Lets us know when we panic
 #[panic_handler]
@@ -72,11 +60,9 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 )]
 mod app {
     use crate::{
-        actuators::servo::{EjectionServo, LockingServo},
-        communications::link_layer::LinkLayerDevice,
         device_constants::{
-            AvionicsI2cBus, IcarusHC12, IcarusRadio, IcarusStateMachine, MotorI2cBus,
-            ReactionWheelMotor,
+            servos::{FlapServo, RelayServo},
+            AvionicsI2cBus, IcarusRadio, IcarusStateMachine, MotorI2cBus,
         },
         phases::StateMachineListener,
     };
@@ -90,9 +76,6 @@ mod app {
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
     use rtic_sync::{arbiter::Arbiter, signal::Signal};
-    use usb_device::class_prelude::*;
-
-    // use usbd_serial::SerialPort;
 
     pub type UART0Bus = UartPeripheral<
         rp235x_hal::uart::Enabled,
@@ -108,8 +91,8 @@ mod app {
     pub struct Shared {
         //uart0: UART0Bus,
         //uart0_buffer: heapless::String<HEAPLESS_STRING_ALLOC_LENGTH>,
-        pub ejector_driver: EjectionServo,
-        pub locking_driver: LockingServo,
+        pub flap_servo: FlapServo,
+        pub relay_servo: RelayServo,
         // pub usb_serial: SerialPort<'static, hal::usb::UsbBus>,
         pub clock_freq_hz: u32,
         pub radio: IcarusRadio,

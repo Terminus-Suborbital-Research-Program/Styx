@@ -18,15 +18,15 @@ pub mod pins {
     /// RBF Inhibit pin
     pub type RBFPin = Gpio4;
 
-    /// Flap servo PWM
-    pub type RelayServoPWMPin = Gpio1;
-    /// Flap servo PWM
-    pub type FlapServoPWMPin = Gpio3;
-
     /// Flab servo mosfet
-    pub type FlapMosfetPin = Gpio2;
+    pub type FlapMosfetPin = Gpio3;
     /// Relay servo mosfet
-    pub type RelayMosfetPin = Gpio0;
+    pub type RelayMosfetPin = Gpio4;
+
+    /// Flap servo PWM
+    pub type FlapServoPWMGpio = Gpio1;
+    /// Flap servo PWM
+    pub type RelayServoPWMGpio = Gpio2;
 
     /// I2C SDA pin
     pub type AvionicsI2CSdaPin = Gpio16;
@@ -53,6 +53,53 @@ pub mod pins {
 
     /// Software controlled LED
     pub type LedPin = Gpio27;
+}
+
+/// Servo items
+pub mod servos {
+    use rp235x_hal::{
+        gpio::{FunctionPwm, FunctionSio, Pin, PullDown, SioOutput},
+        pwm::{Channel, FreeRunning, Pwm0, Pwm1, Slice, A, B},
+    };
+
+    use crate::actuators::servo::Servo;
+
+    use super::pins::{FlapMosfetPin, FlapServoPWMGpio, RelayMosfetPin, RelayServoPWMGpio};
+
+    /// Flap mosfet pin
+    pub type FlapMosfet = Pin<FlapMosfetPin, FunctionSio<SioOutput>, PullDown>;
+    /// Relay mosfet pin
+    pub type RelayMosfet = Pin<RelayMosfetPin, FunctionSio<SioOutput>, PullDown>;
+
+    /// Flap servo PWM pin
+    pub type FlapServoPwmPin = Pin<FlapServoPWMGpio, FunctionPwm, PullDown>;
+    /// Relay servo PWM pin
+    pub type RelayServoPwmPin = Pin<RelayServoPWMGpio, FunctionPwm, PullDown>;
+
+    /// Flap servo PWM
+    pub type FlapServoPwm = Pwm0;
+    /// Relay servo PWM
+    pub type RelayServoPwm = Pwm1;
+
+    /// Flap servo slice
+    pub type FlapServoSlice = Slice<FlapServoPwm, FreeRunning>;
+    /// Relay servo slice
+    pub type RelayServoSlice = Slice<RelayServoPwm, FreeRunning>;
+
+    /// Flap Servo
+    pub type FlapServo = Servo<Channel<FlapServoSlice, B>, FlapServoPwmPin, FlapMosfet>;
+    /// Relay Servo
+    pub type RelayServo = Servo<Channel<RelayServoSlice, A>, RelayServoPwmPin, RelayMosfet>;
+
+    /// Flap servo locked
+    pub static FLAP_SERVO_LOCKED: u16 = 90;
+    /// Flap servo unlocked
+    pub static FLAP_SERVO_UNLOCKED: u16 = 180;
+
+    /// Relay servo locked
+    pub static RELAY_SERVO_LOCKED: u16 = 90;
+    /// Relay servo unlocked
+    pub static RELAY_SERVO_UNLOCKED: u16 = 180;
 }
 
 /// Software-controlled LED
@@ -87,7 +134,7 @@ use hc12_rs::configuration::baudrates::B9600;
 use hc12_rs::ProgrammingPair;
 use hc12_rs::FU3;
 use hc12_rs::HC12;
-use rp235x_hal::gpio::bank0::{Gpio12, Gpio8, Gpio9};
+use rp235x_hal::gpio::bank0::{Gpio8, Gpio9};
 use rp235x_hal::gpio::FunctionUart;
 use rp235x_hal::pac::UART1;
 use rp235x_hal::uart::Enabled;

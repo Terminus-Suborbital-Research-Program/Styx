@@ -38,13 +38,10 @@ defmt-rtt = "*"
 heapless = "0.8.0"
 bincode = { version = "2.0.0-rc.3", features = [
     "derive",
-    "alloc",
 ], default-features = false }
 
 # Packets
 bin-packets = { path = "../bin-packets" }
-# Allocator - required to get serde to work
-linked_list_allocator = "0.10.5"
 futures = { version = "0.3.31", default-features = false, features = [
     "async-await",
 ] }

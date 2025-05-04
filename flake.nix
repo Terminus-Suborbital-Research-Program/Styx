@@ -28,6 +28,8 @@
             lazygit
             clippy
             rust-analyzer
+            libudev-zero
+            pkg-config
           ];
 
           RUST_SRC_PATH = rustPlatform.rustLibSrc;

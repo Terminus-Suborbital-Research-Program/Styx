@@ -14,6 +14,11 @@ command = "echo"
 command = "cargo"
 args = ["doc"]
 
+[tasks.clippy]
+install_crate = "clippy"
+command = "cargo"
+args = ["clippy", "--fix", "--no-deps", "--allow-dirty", "--target", "thumbv8m.main-none-eabihf", "--bin", "icarus"]
+
 [tasks.flash_debug_usb]
 #command = "pwd"
 command = "picotool"

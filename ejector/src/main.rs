@@ -83,11 +83,11 @@ mod app {
         pub ejection_pin: EjectionDetectionPin,
         pub rbf_status: bool,
         pub downlink: JupiterInterface,
+        pub led: Heartbeat,
     }
 
     #[local]
     pub struct Local {
-        pub led: Heartbeat,
         pub cams: Camera,
         pub cams_led: CamLED,
     }
@@ -103,11 +103,11 @@ mod app {
         async fn state_machine_update(mut ctx: state_machine_update::Context);
 
         // Heartbeats the main led
-        #[task(local = [led], shared = [blink_status_delay_millis, radio, downlink, ejector_time_millis], priority = 2)]
+        #[task(shared = [blink_status_delay_millis, radio, downlink, ejector_time_millis, led], priority = 2)]
         async fn heartbeat(mut ctx: heartbeat::Context);
 
         // Reads incoming packets from the radio
-        #[task(shared = [radio, downlink], priority = 2)]
+        #[task(shared = [radio, downlink, led], priority = 2)]
         async fn radio_read(mut ctx: radio_read::Context);
 
         // Updates the radio module on the serial interrupt

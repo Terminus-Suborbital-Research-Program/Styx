@@ -106,7 +106,8 @@ where
         let mut buf = [0; 2];
         self.i2c
             .write_read(self.address, &[reg.addr()], &mut buf)
-            .await;
+            .await
+            .ok();
         Ok(buf)
     }
 
