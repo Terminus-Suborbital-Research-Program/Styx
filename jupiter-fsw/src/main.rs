@@ -17,7 +17,6 @@ use states::JupiterStateMachine;
 use tasks::{PinStates, pin_states_thread};
 
 mod constants;
-mod db;
 mod gpio;
 mod palantir;
 mod rbf;
@@ -25,7 +24,6 @@ mod states;
 mod tasks;
 mod timing;
 
-use crate::db::db_init;
 use log::info;
 
 static SERIAL_PORT: &str = "/dev/serial0";
@@ -60,18 +58,18 @@ fn main() {
         pin_states_thread(atmega, state_writer);
     });
 
-    db_init();
-
     thread::spawn(move || ping_thread());
-
-    info!("Current Iteration: {}", db::current_iteration_num());
 
     loop {
         interface.update().ok();
 
         state_machine.update();
 
-        info!("T+: {}", timing::t_time_estimate());
+        info!(
+            "T{}: {:#?}",
+            timing::t_time_estimate(),
+            state_machine.phase()
+        );
         sleep(Duration::from_millis(1000));
     }
 }
