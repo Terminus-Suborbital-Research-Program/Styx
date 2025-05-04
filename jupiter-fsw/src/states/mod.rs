@@ -1,7 +1,4 @@
-use std::{
-    sync::{Arc, RwLock},
-    time::Instant,
-};
+use std::sync::{Arc, RwLock};
 
 use bin_packets::phases::JupiterPhase;
 use traits::ValidState;

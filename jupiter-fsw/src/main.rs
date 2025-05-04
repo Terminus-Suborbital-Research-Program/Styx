@@ -5,7 +5,7 @@ use std::{
 };
 
 use bin_packets::device::PacketIO;
-use bin_packets::{device::PacketDevice, phases::JupiterPhase};
+use bin_packets::device::PacketDevice;
 use constants::{EJECTION_IND_PIN, RBF_PIN};
 use env_logger::Env;
 
