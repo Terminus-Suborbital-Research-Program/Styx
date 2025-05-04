@@ -28,6 +28,10 @@ jobs:
         run: cargo make test --verbose
 
   clippy-fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     # only run on PRs
     if: github.event_name == 'pull_request'
     needs: build
