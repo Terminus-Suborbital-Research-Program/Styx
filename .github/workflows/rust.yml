@@ -12,6 +12,10 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
     steps:
       - uses: davidB/rust-cargo-make@v1.12.1
       - uses: actions/checkout@v4
@@ -43,15 +47,6 @@ jobs:
         run: cargo make format
       - name: Apply Clippy fixes
         run: cargo make clippy --fix --allow-dirty
-      - name: Commit & push Clippy fixes (if any)
-        run: |
-          # only commit if there's something to commit
-          if [ -n "$(git status --porcelain)" ]; then
-            git config user.name "github-actions"
-            git config user.email "github-actions@github.com"
-            git add -A
-            git commit -m "chore: apply clippy fixes"
-            git push origin ${{ github.head_ref }}
-          else
-            echo "✅ No Clippy fixes to apply"
-          fi
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: apply format + clippy fixes"
