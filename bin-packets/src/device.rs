@@ -18,9 +18,9 @@ pub enum InterfaceError<E> {
     /// Underlying device error
     DeviceError(E),
     /// Decoding error
-    DecodeError(#[defmt(Debug2Format)] DecodeError),
+    DecodeError(#[cfg_attr(not(feature = "std"), defmt(Debug2Format))] DecodeError),
     /// Encoding error
-    EncodeError(#[defmt(Debug2Format)] EncodeError),
+    EncodeError(#[cfg_attr(not(feature = "std"), defmt(Debug2Format))] EncodeError),
     /// Buffer overflow
     BufferFull,
 }
