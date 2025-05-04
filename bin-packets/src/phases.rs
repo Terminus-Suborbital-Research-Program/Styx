@@ -15,7 +15,7 @@ pub enum JupiterPhase {
     MainCamStart,
     Launch,
     SecondaryCamStart,
-    SkirtEjection,
+    SkirtSeperation,
     BatteryPower,
     Shutdown,
 }

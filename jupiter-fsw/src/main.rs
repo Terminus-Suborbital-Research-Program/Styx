@@ -23,6 +23,7 @@ mod palantir;
 mod rbf;
 mod states;
 mod tasks;
+mod timing;
 
 use crate::db::db_init;
 use log::info;
@@ -33,12 +34,15 @@ fn main() {
     let env = Env::default().filter_or("LOG_LEVEL", "info");
     env_logger::init_from_env(env);
 
+    // Immediantly access POWER_ON_TIME to evaluate the lazy_static
+    let _ = timing::POWER_ON_TIME;
+
     let port = serialport::new(SERIAL_PORT, 115200)
         .timeout(Duration::from_millis(10))
         .open()
         .unwrap();
     let mut interface = PacketDevice::new(port);
-    let rbf_pin: RbfPin = ReadPin::from(Pin::new(RBF_PIN)).into();
+    let _rbf_pin: RbfPin = ReadPin::from(Pin::new(RBF_PIN)).into();
     let ejection_pin: WritePin = Pin::new(EJECTION_IND_PIN).into();
     ejection_pin.write(true).unwrap();
 
@@ -48,9 +52,9 @@ fn main() {
     let states = Arc::new(RwLock::new(PinStates::default()));
 
     let state_writer = Arc::clone(&states);
-    let pin_state_state_machine = Arc::clone(&states);
+    let pin_arc = Arc::clone(&states);
 
-    let mut state_machine = JupiterStateMachine::new(pin_state_state_machine);
+    let mut state_machine = JupiterStateMachine::new(pin_arc);
 
     thread::spawn(move || {
         pin_states_thread(atmega, state_writer);
@@ -65,58 +69,9 @@ fn main() {
     loop {
         interface.update().ok();
 
-        info!("Top packet: {:?}", interface.read_packet());
+        state_machine.update();
 
-        let transition = state_machine.update();
-
-        if transition.is_some() {
-            let new_state = transition.unwrap();
-            info!("New State: {:?}", new_state);
-
-            match new_state {
-                JupiterPhase::PowerOn => {
-                    info!("Yippee!");
-                }
-
-                JupiterPhase::MainCamStart => {
-                    if !rbf_pin.is_inserted() {
-                        info!("Main cam starting...");
-                    } else {
-                        info!("RBF inserted, inhibiting video, to save space.");
-                    }
-                }
-
-                JupiterPhase::Launch => {
-                    info!("Hold on to your hats!");
-                }
-
-                JupiterPhase::SecondaryCamStart => {
-                    if !rbf_pin.is_inserted() {
-                        info!("Secondary cam starting...");
-                    } else {
-                        info!("RBF inserted, inhibiting ESP-32 startup.");
-                    }
-                }
-
-                JupiterPhase::SkirtEjection => {
-                    if !rbf_pin.is_inserted() {
-                        info!("GET OUTTA HERE!");
-                        ejection_pin.write(true).unwrap();
-                    } else {
-                        info!("No actions to take.");
-                    }
-                }
-
-                JupiterPhase::BatteryPower => {
-                    info!("Battery power on.");
-                }
-
-                JupiterPhase::Shutdown => {
-                    info!("Shutting down...");
-                }
-            }
-        }
-
+        info!("T+: {}", timing::t_time_estimate());
         sleep(Duration::from_millis(1000));
     }
 }
