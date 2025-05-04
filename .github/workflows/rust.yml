@@ -35,7 +35,6 @@ jobs:
     # only run on PRs
     if: github.event_name == 'pull_request'
     needs: build
-    runs-on: ubuntu-latest
     steps:
       # checkout the PR branch with credentials so we can push back
       - name: Install deps
