@@ -72,7 +72,10 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 )]
 mod app {
     use crate::{
-        device_constants::{servos::{FlapServo, RelayServo}, AvionicsI2cBus, IcarusRadio, IcarusStateMachine, MotorI2cBus},
+        device_constants::{
+            servos::{FlapServo, RelayServo},
+            AvionicsI2cBus, IcarusRadio, IcarusStateMachine, MotorI2cBus,
+        },
         phases::StateMachineListener,
     };
 

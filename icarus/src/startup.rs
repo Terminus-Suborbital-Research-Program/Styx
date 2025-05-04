@@ -21,7 +21,6 @@ use rp235x_hal::Clock;
 use rp235x_hal::Sio;
 use rp235x_hal::Watchdog;
 use rp235x_hal::I2C;
-use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::i2c::ArbiterDevice;
 use rtic_sync::arbiter::Arbiter;
 use rtic_sync::signal::Signal;
@@ -29,14 +28,12 @@ use rtic_sync::signal::Signal;
 // use usbd_serial::SerialPort;
 
 use crate::actuators::servo::Servo;
-use crate::actuators::servo::HOLDING_ANGLE;
 
 use crate::app::*;
 use crate::device_constants::pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin};
 use crate::device_constants::pins::{EscI2CSclPin, EscI2CSdaPin};
 use crate::device_constants::servos::FlapMosfet;
 use crate::device_constants::servos::FlapServo;
-use crate::device_constants::servos::FlapServoPwm;
 use crate::device_constants::servos::FlapServoPwmPin;
 use crate::device_constants::servos::FlapServoSlice;
 use crate::device_constants::servos::RelayMosfet;
@@ -210,13 +207,15 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     // Flap servo
     let mut flap_channel = flap_slice.channel_b;
     flap_channel.set_enabled(true);
-    let flap_pin: FlapServoPwmPin = flap_channel.output_to(pins.gpio1.into_function::<FunctionPwm>());
+    let flap_pin: FlapServoPwmPin =
+        flap_channel.output_to(pins.gpio1.into_function::<FunctionPwm>());
     let flap_servo: FlapServo = Servo::new(flap_channel, flap_pin, flap_mosfet);
-    
+
     // Relay servo
     let mut relay_channel = relay_slice.channel_a;
     relay_channel.set_enabled(true);
-    let relay_pin: RelayServoPwmPin = relay_channel.output_to(pins.gpio2.into_function::<FunctionPwm>());
+    let relay_pin: RelayServoPwmPin =
+        relay_channel.output_to(pins.gpio2.into_function::<FunctionPwm>());
     let relay_servo: RelayServo = Servo::new(relay_channel, relay_pin, relay_mosfet);
 
     // Sensors
