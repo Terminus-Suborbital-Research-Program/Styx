@@ -30,10 +30,7 @@ use rtic_sync::arbiter::i2c::ArbiterDevice;
 fn panic(info: &core::panic::PanicInfo) -> ! {
     defmt::error!("Panic: {}", info);
     loop {
-        // Halt the CPU
-        unsafe {
-            hal::sio::spinlock_reset();
-        }
+        cortex_m::asm::wfi();
     }
 }
 

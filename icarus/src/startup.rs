@@ -70,17 +70,6 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     // Set up clocks
     let mut watchdog = Watchdog::new(ctx.device.WATCHDOG);
 
-    let clocks = clocks::init_clocks_and_plls(
-        12_000_000u32,
-        ctx.device.XOSC,
-        ctx.device.CLOCKS,
-        ctx.device.PLL_SYS,
-        ctx.device.PLL_USB,
-        &mut ctx.device.RESETS,
-        &mut watchdog,
-    )
-    .unwrap();
-
     info!("Good morning sunshine! Icarus is awake!");
 
     Mono::start(ctx.device.TIMER0, &ctx.device.RESETS);
@@ -95,6 +84,35 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         sio.gpio_bank0,
         &mut ctx.device.RESETS,
     );
+    let mut debug_pin = pins.gpio11.into_push_pull_output();
+    debug_pin.set_high().unwrap();
+    let clocks = match
+        clocks::init_clocks_and_plls(
+        12_000_000u32,
+        ctx.device.XOSC,
+        ctx.device.CLOCKS,
+        ctx.device.PLL_SYS,
+        ctx.device.PLL_USB,
+        &mut ctx.device.RESETS,
+        &mut watchdog,
+    ) {
+        Ok(clocks) => clocks,
+        Err(e) => {
+            // Debug pin
+            if match e {
+                clocks::InitError::XoscErr(_) => false,
+                clocks::InitError::PllError(_) => false,
+                clocks::InitError::ClockError(_) => false,
+            } {
+                debug_pin.set_high().unwrap();
+            } else {
+                debug_pin.set_low().unwrap();
+            }
+            warn!("Failed to init clocks: {:?}", e);
+            loop {}
+            panic!("Failed to init clocks");
+        }
+    };
 
     // Configure GPIO25 as an output
     let mut led_pin = pins

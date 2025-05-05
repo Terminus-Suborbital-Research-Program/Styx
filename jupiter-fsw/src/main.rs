@@ -1,5 +1,4 @@
 use std::{
-    sync::{Arc, RwLock},
     thread::{self, sleep},
     time::Duration,
 };
