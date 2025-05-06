@@ -15,30 +15,20 @@ rp235x-hal = { version = "0.3.0", features = [
     "dcp-fast-f64",
 ], optional = true } # Embedded-hal for io traits
 
-embedded-hal-bus = { version = "0.3.0", features = ["async", "defmt-03"] }
 # Rust safe bindings to register-level control
 embedded-hal = "1.0.0"
 embedded-hal-async = "1.0"
-embedded-io = "0.6.1"
 
-# Cortex-M peripherals
-cortex-m = "0.7.7"
 # RTIC for real-time operations
 rtic = { version = "2.1.2" }
 rtic-monotonics = "2.0.3"
 
 rtic-sync = "*"
-# USB Device Support
-usb-device = "0.3.2"
-usbd-serial = "0.2.2"
 fugit = "0.3.7"
 # logging
 defmt = "*"
 defmt-rtt = "*"
 heapless = "0.8.0"
-bincode = { version = "2.0.0-rc.3", features = [
-    "derive",
-], default-features = false }
 
 # Packets
 bin-packets = { path = "../bin-packets" }
@@ -60,10 +50,6 @@ hc12-rs = { git = "https://github.com/thelenlucas/hc12-rs.git", tag = "v0.0.1" }
 nalgebra = { version = "*", default-features = false, features = [
     "libm-force",
 ] }
-minikalman = { version = "0.6.0", features = [
-    "nalgebra",
-    "libm",
-] } #https://docs.rs/minikalman/latest/minikalman/
 
 # WGS84
 wgs84 = { git = "https://github.com/MeechaelA/WGS84.git" }
