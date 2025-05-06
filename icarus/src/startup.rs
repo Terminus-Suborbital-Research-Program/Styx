@@ -86,8 +86,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     );
     let mut debug_pin = pins.gpio11.into_push_pull_output();
     debug_pin.set_high().unwrap();
-    let clocks = match
-        clocks::init_clocks_and_plls(
+    let clocks = match clocks::init_clocks_and_plls(
         12_000_000u32,
         ctx.device.XOSC,
         ctx.device.CLOCKS,

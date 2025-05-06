@@ -1,5 +1,5 @@
 use bin_packets::device::PacketIO;
-use bin_packets::{devices::DeviceIdentifier, packets::status::Status, phases::EjectorPhase};
+use bin_packets::{devices::DeviceIdentifier, packets::status::Status};
 use defmt::{info, warn};
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
 use fugit::ExtU64;
