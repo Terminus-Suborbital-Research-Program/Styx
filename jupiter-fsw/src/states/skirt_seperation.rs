@@ -1,7 +1,7 @@
 use bin_packets::phases::JupiterPhase;
 use log::info;
 
-use crate::states::battery_power::BatteryPower;
+use crate::states::ejection::Ejection;
 use crate::timing::t_time_estimate;
 
 use super::traits::{StateContext, ValidState};
@@ -35,8 +35,7 @@ impl ValidState for SkirtSeperation {
     fn next(&self, ctx: StateContext) -> Box<dyn ValidState> {
         if self.te_recieved_at + DELAY_TO_EJECT_SEC < ctx.t_time {
             info!("Skirt Seperation complete, ejecting");
-            Box::new(BatteryPower::default())
-            // Box::new(Self::enter())
+            Box::new(Ejection::default())
         } else {
             Box::new(self.clone())
         }

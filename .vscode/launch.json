@@ -1,0 +1,67 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "probe-rs-debug",
+      "request": "launch",
+      "preLaunchTask": "Build targets",
+      "name": "Launch Ejector",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "probe-rs",
+      "runtimeArgs": [
+        "dap-server"
+      ],
+      "chip": "RP235x",
+      "flashingConfig": {
+        "flashingEnabled": true,
+        "haltAfterReset": false,
+        "formatOptions": {
+          "binaryFormat": "elf"
+        }
+      },
+      "coreConfigs": [
+        {
+          "coreIndex": 0,
+          "programBinary": "${workspaceFolder}/target/thumbv8m.main-none-eabihf/debug/ejector",
+          "rttEnabled": true
+        }
+      ],
+      "env": {
+        "RUST_LOG": "info"
+      },
+      // Info, Debug
+      "consoleLogLevel": "Console"
+    },
+    {
+      "type": "probe-rs-debug",
+      "request": "launch",
+      "preLaunchTask": "Build targets",
+      "name": "Launch Icarus",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "probe-rs",
+      "runtimeArgs": [
+        "dap-server"
+      ],
+      "chip": "RP235x",
+      "flashingConfig": {
+        "flashingEnabled": true,
+        "haltAfterReset": false,
+        "formatOptions": {
+          "binaryFormat": "elf"
+        }
+      },
+      "coreConfigs": [
+        {
+          "coreIndex": 0,
+          "programBinary": "${workspaceFolder}/target/thumbv8m.main-none-eabihf/debug/icarus",
+          "rttEnabled": true
+        }
+      ],
+      "env": {
+        "RUST_LOG": "info"
+      },
+      // Info, Debug
+      "consoleLogLevel": "Console"
+    }
+  ]
+}

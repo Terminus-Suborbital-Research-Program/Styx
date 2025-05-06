@@ -1,7 +1,5 @@
-use core::cmp::max;
-
 use bin_packets::device::PacketIO;
-use bin_packets::{devices::DeviceIdentifier, packets::status::Status, phases::EjectorPhase};
+use bin_packets::{devices::DeviceIdentifier, packets::status::Status};
 use defmt::{info, warn};
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
 use fugit::ExtU64;
@@ -87,70 +85,36 @@ pub fn uart_interrupt(mut ctx: uart_interrupt::Context<'_>) {
     });
 }
 
-pub async fn state_machine_update(mut ctx: state_machine_update::Context<'_>) {
+pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
     let rbf_on_startup = ctx.shared.rbf_status.lock(|startup_status| *startup_status);
+    let servo = ctx.local.ejector_servo;
+    // Latch ejector servos closed
+    servo.enable();
+    servo.hold();
 
-    loop {
-        let wait_time = ctx
-            .shared
-            .state_machine
-            .lock(|state_machine| state_machine.transition());
+    let ejection_pin = ctx.local.ejection_pin;
 
-        let gp_state = ctx.shared.ejection_pin.lock(|pin| pin.is_high().unwrap());
-
-        match ctx
-            .shared
-            .state_machine
-            .lock(|state_machine| state_machine.phase())
-        {
-            EjectorPhase::Standby => {
-                // Hold the deployable
-                ctx.shared.ejector_servo.lock(|servo| {
-                    servo.hold();
-                });
-
-                if gp_state {
-                    ctx.shared.state_machine.lock(|machine| {
-                        machine.set_phase(EjectorPhase::Ejection);
-                    })
-                }
-
-                // 1000ms delay
-                ctx.shared
-                    .blink_status_delay_millis
-                    .lock(|delay| *delay = 1000);
-            }
-
-            EjectorPhase::Ejection => {
-                // Eject the deployable
-                if !rbf_on_startup {
-                    ctx.shared.ejector_servo.lock(|servo| {
-                        servo.eject();
-                    });
-                    info!("Servo eject")
-                } else {
-                    info!("RBF Mode: ejection inhibited")
-                }
-
-                // 200ms delay
-                ctx.shared
-                    .blink_status_delay_millis
-                    .lock(|delay| *delay = 200);
-            }
-
-            EjectorPhase::Hold => {
-                // Hold the deployable
-                ctx.shared.ejector_servo.lock(|servo| {
-                    servo.hold();
-                });
-                // 5000ms delay
-                ctx.shared
-                    .blink_status_delay_millis
-                    .lock(|delay| *delay = 5000);
-            }
-        }
-
-        // We should never wait less than 1ms, tbh
-        Mono::delay(max(wait_time, 1).millis()).await;
+    // Wait until ejection pin reads high
+    while !ejection_pin.is_high().unwrap_or(false) {
+        Mono::delay(10_u64.millis()).await;
     }
+
+    info!("Ejection signal high!");
+
+    // If rbf was inserted on startup, exit immediately
+    if rbf_on_startup {
+        info!("RBF Inserted: Ejector disabled");
+        return;
+    }
+
+    // Eject, wait 5 seconds, then retract
+    info!("Ejecting!");
+    servo.eject();
+    Mono::delay(5000_u64.millis()).await;
+    servo.hold();
+
+    // Give three seconds to retract, then disable to save power
+    Mono::delay(3000_u64.millis()).await;
+    servo.disable();
+    info!("Ejector disabled, servo disabled. Ejector sequencing complete.");
 }

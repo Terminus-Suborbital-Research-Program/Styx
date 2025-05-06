@@ -1,5 +1,4 @@
 use std::{
-    sync::{Arc, RwLock},
     thread::{self, sleep},
     time::Duration,
 };
@@ -14,10 +13,9 @@ use i2cdev::{core::I2CDevice, linux::LinuxI2CDevice};
 use palantir::ping_thread;
 use rbf::RbfPin;
 use states::JupiterStateMachine;
-use tasks::{PinStates, pin_states_thread};
+use tasks::{SharedPinStates, pin_states_thread};
 
 mod constants;
-mod db;
 mod gpio;
 mod palantir;
 mod rbf;
@@ -25,7 +23,6 @@ mod states;
 mod tasks;
 mod timing;
 
-use crate::db::db_init;
 use log::info;
 
 static SERIAL_PORT: &str = "/dev/serial0";
@@ -42,36 +39,34 @@ fn main() {
         .open()
         .unwrap();
     let mut interface = PacketDevice::new(port);
-    let _rbf_pin: RbfPin = ReadPin::from(Pin::new(RBF_PIN)).into();
+    let rbf_pin: RbfPin = ReadPin::from(Pin::new(RBF_PIN)).into();
     let ejection_pin: WritePin = Pin::new(EJECTION_IND_PIN).into();
     ejection_pin.write(true).unwrap();
 
     let mut atmega = LinuxI2CDevice::new("/dev/i2c-1", 0x26u16).unwrap();
 
     info!("I2c Read: {:?}", atmega.smbus_read_byte());
-    let states = Arc::new(RwLock::new(PinStates::default()));
+    let states = SharedPinStates::new();
 
-    let state_writer = Arc::clone(&states);
-    let pin_arc = Arc::clone(&states);
+    let state_writer = states.clone();
+    let pin_arc = states.clone();
 
     let mut state_machine = JupiterStateMachine::new(pin_arc);
 
-    thread::spawn(move || {
-        pin_states_thread(atmega, state_writer);
-    });
-
-    db_init();
+    thread::spawn(move || pin_states_thread(atmega, state_writer));
 
     thread::spawn(move || ping_thread());
-
-    info!("Current Iteration: {}", db::current_iteration_num());
 
     loop {
         interface.update().ok();
 
         state_machine.update();
 
-        info!("T+: {}", timing::t_time_estimate());
+        info!(
+            "T{}: {:#?}",
+            timing::t_time_estimate(),
+            state_machine.phase()
+        );
         sleep(Duration::from_millis(1000));
     }
 }
