@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use bin_packets::LinkPacket;
+use bin_packets::packets::ApplicationPacket;
 use bincode::{config::standard, decode_from_slice};
 use clap::{Parser, Subcommand};
 use serialport::SerialPortType;
@@ -71,13 +71,10 @@ fn listen(port: &str) -> ! {
         }
 
         while !incoming_chars.is_empty() {
-            match decode_from_slice::<LinkPacket, _>(&incoming_chars, standard()) {
+            match decode_from_slice::<ApplicationPacket, _>(&incoming_chars, standard()) {
                 Ok((packet, consumed)) => {
                     println!("{:?}", packet);
                     incoming_chars = incoming_chars.split_off(consumed);
-                    if let Err(e) = packet.verify_checksum() {
-                        println!("{:?}", e);
-                    }
                 }
                 #[allow(unused_variables)]
                 Err(bincode::error::DecodeError::UnexpectedEnd { additional }) => {

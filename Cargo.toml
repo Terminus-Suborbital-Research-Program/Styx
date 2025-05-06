@@ -1,5 +1,5 @@
 [workspace]
-members = ["bin-packets", "ejector", "icarus", "ina260", "jupiter-fsw"]
+members = ["bin-packets", "ejector", "icarus", "ina260", "jupiter-fsw", "gs-cli"]
 resolver = "3"
 
 [profile.dev]
