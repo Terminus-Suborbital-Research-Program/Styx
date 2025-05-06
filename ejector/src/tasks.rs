@@ -1,6 +1,6 @@
 use bin_packets::device::PacketIO;
 use bin_packets::{devices::DeviceIdentifier, packets::status::Status};
-use defmt::{info, warn};
+use defmt::{info, trace, warn};
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
 use fugit::ExtU64;
 use rtic::Mutex;
@@ -52,33 +52,27 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
     loop {
         // Drain all available packets, one per lock to allow interruptions
         loop {
-            match ctx.shared.radio.lock(|radio| radio.read_packet()) {
-                Ok(Some(packet)) => {
-                    ctx.shared.led.lock(|led| led.toggle().unwrap());
-                    info!("Got a packet form icarus! Packet: {:?}", packet);
-                    // Write down range
-                    if let Err(e) = ctx
-                        .shared
-                        .downlink
-                        .lock(|downlink| downlink.write_into(packet))
-                    {
-                        warn!("Error writing packet: {:?}", e);
-                    }
-                }
-                Ok(None) => break,
-                Err(e) => {
-                    info!("Error reading packet: {:?}", e);
-                    break;
+            while let Some(packet) = ctx.shared.radio.lock(|radio| radio.read_packet()) {
+                ctx.shared.led.lock(|led| led.toggle().unwrap());
+                info!("Got a packet form icarus! Packet: {:?}", packet);
+                // Write down range
+                if let Err(e) = ctx
+                    .shared
+                    .downlink
+                    .lock(|downlink| downlink.write_into(packet))
+                {
+                    warn!("Error writing packet: {:?}", e);
                 }
             }
+            Mono::delay(1000_u64.millis()).await;
         }
 
-        Mono::delay(10_u64.millis()).await;
     }
 }
 
 pub fn uart_interrupt(mut ctx: uart_interrupt::Context<'_>) {
     ctx.shared.radio.lock(|radio| {
+        trace!("UART interrupt");
         if let Err(e) = radio.update() {
             info!("Error updating radio: {:?}", e);
         }
@@ -96,7 +90,7 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
 
     // Wait until ejection pin reads high
     while !ejection_pin.is_high().unwrap_or(false) {
-        Mono::delay(10_u64.millis()).await;
+        Mono::delay(100_u64.millis()).await;
     }
 
     info!("Ejection signal high!");
