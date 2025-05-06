@@ -5,18 +5,13 @@ edition = "2024"
 
 [dependencies]
 bin-packets = { path = "../bin-packets", features = ["std"] }
-bincode = "2.0.1"
-embedded-io-adapters = { version = "0.6.1", features = ["std"] }
 env_logger = "0.11.7"
 get_if_addrs = "0.5.3"
 gpio = "0.4.1"
 i2cdev = "0.6.1"
 lazy_static = "1.5.0"
 log = { version = "0.4.26", features = ["std"] }
-logger = "0.4.0"
-nix = "0.29.0"
 rppal = "0.22.1"
-serde = "1.0.219"
 serde_json = "1.0.140"
 serialport = "4.7.1"
 ureq = { version = "3.0.10", features = ["json"] }
