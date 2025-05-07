@@ -314,7 +314,6 @@ where
     #[inline(always)]
     pub async fn power_raw(&mut self) -> Result<u16, I2C::Error> {
         let result = self.read_register(Register::POWER).await;
-        let result = self.read_register(Register::POWER).await;
         match result {
             Ok(buffer) => Ok(u16(buffer[0]) << 8 | u16(buffer[1])),
             Err(e) => {

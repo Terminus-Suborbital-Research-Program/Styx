@@ -13,7 +13,12 @@ use rtic_sync::arbiter::Arbiter;
 
 use crate::device_constants::AvionicsI2cBus;
 use crate::phases::StateMachineListener;
-use crate::{app::*, device_constants::MotorI2cBus, Mono};
+use crate::{
+    app::*,
+    device_constants::MotorI2cBus,
+    peripherals::async_i2c::{self, AsyncI2cError},
+    Mono,
+};
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     let mut sequence_number = 0;
@@ -40,17 +45,29 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 pub fn uart_interrupt(mut ctx: uart_interrupt::Context<'_>) {
     ctx.shared.radio.lock(|radio| {
         radio.update().ok();
+        // radio.update().ok();
     });
 }
 
 pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
     loop {
-        ctx.shared.ina_data.lock(|_ina_data| {
-            ctx.shared.radio.lock(|_radio| {
+        ctx.shared.ina_data.lock(|ina_data| {
+            ctx.shared.radio.lock(|radio| {
                 // GET PACKETS FROM INA DATA AND SEND
+                let packet = ina_data.i1_buffer.first();
+                match packet {
+                    Some(packet_info) => {
+                        info!("Data Write: {:?}", packet_info);
+                        radio.write(packet_info.clone());
+                    }
+                    None => {
+                        info!("No Packet To Send")
+                    }
+                }
             });
         });
 
+        Mono::delay(100_u64.millis()).await;
         Mono::delay(100_u64.millis()).await;
     }
 }
@@ -66,9 +83,9 @@ pub async fn motor_drivers(
     _i2c: &'static Arbiter<MotorI2cBus>,
     mut esc_state_listener: StateMachineListener,
 ) {
-    esc_state_listener
-        .wait_for_state_specific(IcarusPhase::OrientSolar)
-        .await;
+    // esc_state_listener
+    //     .wait_for_state_specific(bin_packets::IcarusPhase::OrientSolar)
+    //     .await;
     info!("Motor Driver Task Started");
 
     // ctx.local.ina260_1.init().await.ok();
