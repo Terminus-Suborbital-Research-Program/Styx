@@ -2,7 +2,6 @@ use bin_packets::device::PacketIO;
 use bin_packets::devices::DeviceIdentifier;
 use bin_packets::packets::status::Status;
 use bin_packets::packets::ApplicationPacket;
-use bin_packets::phases::IcarusPhase;
 use bme280_rs::{Configuration, Oversampling, SensorMode};
 use defmt::{info, warn};
 use embedded_hal::digital::StatefulOutputPin;
@@ -16,7 +15,6 @@ use crate::phases::StateMachineListener;
 use crate::{
     app::*,
     device_constants::MotorI2cBus,
-    peripherals::async_i2c::{self, AsyncI2cError},
     Mono,
 };
 
@@ -57,12 +55,12 @@ pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
                 match packet {
                     Some(packet_info) => {
                         info!("Data Write: {:?}", packet_info);
-                        let radio_write_result = radio.write(packet_info.clone());
-                        match radio_write_result{
-                            Ok(radio_result)=>{
-                                // !TODO 
+                        let radio_write_result = radio.write(*packet_info);
+                        match radio_write_result {
+                            Ok(radio_result) => {
+                                // !TODO
                             }
-                            Err(_)=>{
+                            Err(_) => {
                                 // !TODO
                             }
                         }
@@ -88,7 +86,7 @@ unsafe fn I2C0_IRQ() {
 pub async fn motor_drivers(
     mut ctx: motor_drivers::Context<'_>,
     _i2c: &'static Arbiter<MotorI2cBus>,
-    mut esc_state_listener: StateMachineListener,
+    esc_state_listener: StateMachineListener,
 ) {
     info!("Motor Driver Task Started");
 
