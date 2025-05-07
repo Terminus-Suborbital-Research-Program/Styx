@@ -32,6 +32,7 @@
             ansible
             pkg-config
             picotool
+            cargo-machete
           ];
 
           RUST_SRC_PATH = rustPlatform.rustLibSrc;

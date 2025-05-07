@@ -18,18 +18,10 @@ use std::fmt::Debug;
 pub enum InterfaceError<E> {
     /// Underlying device error
     DeviceError(E),
-    /// Decoding error
-    DecodeError(#[cfg_attr(not(feature = "std"), defmt(Debug2Format))] DecodeError),
     /// Encoding error
     EncodeError(#[cfg_attr(not(feature = "std"), defmt(Debug2Format))] EncodeError),
     /// Buffer overflow
     BufferFull,
-}
-
-impl<E> From<DecodeError> for InterfaceError<E> {
-    fn from(err: DecodeError) -> Self {
-        InterfaceError::DecodeError(err)
-    }
 }
 
 impl<E> From<EncodeError> for InterfaceError<E> {
@@ -53,13 +45,15 @@ pub trait PacketIO {
         packet: T,
     ) -> Result<(), InterfaceError<Self::Error>>;
     fn update(&mut self) -> Result<(), InterfaceError<Self::Error>>;
-    fn read_packet(&mut self) -> Result<Option<ApplicationPacket>, InterfaceError<Self::Error>>;
+    fn read_packet(&mut self) -> Option<ApplicationPacket>;
 }
 
 #[cfg(feature = "std")]
 pub use std_impl::*;
 #[cfg(feature = "std")]
 mod std_impl {
+    use embedded_io::{ReadReady, WriteReady};
+
     use super::*;
     use std::io::{Read, Write};
 
@@ -100,33 +94,30 @@ mod std_impl {
 
         fn update(&mut self) -> Result<(), InterfaceError<Self::Error>> {
             let mut buf = [0u8; 1024];
-            match self.device.read(&mut buf) {
-                Ok(0) => {}
-                Ok(bytes) => {
-                    self.buffer.extend_from_slice(&buf[..bytes]);
-                }
-                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
-                Err(e) => return Err(InterfaceError::DeviceError(e)),
-            }
+            self.device
+                .read(&mut buf)
+                .map_err(InterfaceError::DeviceError)?;
+            self.buffer.extend_from_slice(&buf);
             Ok(())
         }
 
-        fn read_packet(
-            &mut self,
-        ) -> Result<Option<ApplicationPacket>, InterfaceError<Self::Error>> {
-            let (packet, bytes): (ApplicationPacket, usize) =
+        fn read_packet(&mut self) -> Option<ApplicationPacket> {
+            while !self.buffer.is_empty() {
                 match bincode::decode_from_slice(&self.buffer, standard()) {
-                    Ok(info) => info,
-                    Err(DecodeError::UnexpectedEnd { .. }) => return Ok(None),
-                    Err(e) => {
-                        if !self.buffer.is_empty() {
-                            self.buffer.remove(0);
-                        }
-                        return Err(InterfaceError::DecodeError(e));
+                    Ok((packet, bytes)) => {
+                        self.buffer.drain(..bytes);
+                        return Some(packet);
                     }
-                };
-            self.buffer.drain(0..bytes);
-            Ok(Some(packet))
+                    #[allow(unused_variables)]
+                    Err(DecodeError::UnexpectedEnd { additional }) => {
+                        break;
+                    }
+                    Err(_e) => {
+                        self.buffer.remove(0);
+                    }
+                }
+            }
+            None
         }
     }
 }
@@ -153,29 +144,28 @@ mod no_std {
             }
         }
 
-        pub fn read_packet(
-            &mut self,
-        ) -> Result<Option<ApplicationPacket>, InterfaceError<D::Error>> {
-            let (packet, bytes): (ApplicationPacket, usize) =
+        pub fn read_packet(&mut self) -> Option<ApplicationPacket> {
+            loop {
                 match bincode::decode_from_slice(&self.buffer, standard()) {
-                    Ok(info) => info,
+                    Ok((packet, bytes)) => {
+                        self.buffer.rotate_left(bytes);
+                        self.buffer.truncate(self.buffer.len() - bytes);
+                        return Some(packet);
+                    }
                     #[allow(unused_variables)]
                     Err(DecodeError::UnexpectedEnd { additional }) => {
-                        return Ok(None);
+                        break;
                     }
-                    Err(e) => {
+                    Err(_e) => {
                         if !self.buffer.is_empty() {
                             self.buffer.remove(0);
+                        } else {
+                            break;
                         }
-                        return Err(InterfaceError::DecodeError(e));
                     }
-                };
-
-            for _ in 0..bytes {
-                self.buffer.remove(0);
+                }
             }
-
-            Ok(Some(packet))
+            None
         }
     }
 
@@ -228,29 +218,28 @@ mod no_std {
             }
         }
 
-        fn read_packet(
-            &mut self,
-        ) -> Result<Option<ApplicationPacket>, InterfaceError<Self::Error>> {
-            let (packet, bytes): (ApplicationPacket, usize) =
+        fn read_packet(&mut self) -> Option<ApplicationPacket> {
+            loop {
                 match bincode::decode_from_slice(&self.buffer, standard()) {
-                    Ok(info) => info,
+                    Ok((packet, bytes)) => {
+                        self.buffer.rotate_left(bytes);
+                        self.buffer.truncate(self.buffer.len() - bytes);
+                        return Some(packet);
+                    }
                     #[allow(unused_variables)]
                     Err(DecodeError::UnexpectedEnd { additional }) => {
-                        return Ok(None);
+                        break;
                     }
-                    Err(e) => {
+                    Err(_e) => {
                         if !self.buffer.is_empty() {
                             self.buffer.remove(0);
+                        } else {
+                            break;
                         }
-                        return Err(InterfaceError::DecodeError(e));
                     }
-                };
-
-            for _ in 0..bytes {
-                self.buffer.remove(0);
+                }
             }
-
-            Ok(Some(packet))
+            None
         }
     }
 }

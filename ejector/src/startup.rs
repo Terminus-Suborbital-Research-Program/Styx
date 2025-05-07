@@ -210,7 +210,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     ejector_servo.enable();
     ejector_servo.hold();
 
-    let gpio_detect: EjectionDetectionPin = bank0_pins.gpio10.into_pull_down_input();
+    let gpio_detect: EjectionDetectionPin = bank0_pins.gpio21.reconfigure();
 
     // Set up USB Device allocator
     let usb_bus = UsbBusAllocator::new(hal::usb::UsbBus::new(

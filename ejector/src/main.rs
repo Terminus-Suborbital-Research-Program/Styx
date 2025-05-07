@@ -107,7 +107,7 @@ mod app {
         async fn heartbeat(mut ctx: heartbeat::Context);
 
         // Reads incoming packets from the radio
-        #[task(shared = [radio, downlink, led], priority = 2)]
+        #[task(shared = [radio, downlink, led], priority = 1)]
         async fn radio_read(mut ctx: radio_read::Context);
 
         // Updates the radio module on the serial interrupt

@@ -13,7 +13,7 @@ use rp235x_hal::{
 
 pub mod pins {
     use rp235x_hal::gpio::{
-        bank0::{Gpio10, Gpio13, Gpio14, Gpio16, Gpio17, Gpio20, Gpio25, Gpio8, Gpio9},
+        bank0::{Gpio13, Gpio14, Gpio16, Gpio17, Gpio20, Gpio21, Gpio25, Gpio8, Gpio9},
         FunctionSio, FunctionUart, Pin, PullDown, SioOutput,
     };
 
@@ -30,7 +30,7 @@ pub mod pins {
     pub type CamLEDPin = Gpio13;
 
     /// Ejection detection pin
-    pub type EjectionPin = Gpio10;
+    pub type EjectionPin = Gpio21;
 
     /// UART RX
     pub type JupiterRxPin = Pin<Gpio16, FunctionUart, PullDown>;
