@@ -45,7 +45,6 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 pub fn uart_interrupt(mut ctx: uart_interrupt::Context<'_>) {
     ctx.shared.radio.lock(|radio| {
         radio.update().ok();
-        // radio.update().ok();
     });
 }
 
@@ -58,7 +57,15 @@ pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
                 match packet {
                     Some(packet_info) => {
                         info!("Data Write: {:?}", packet_info);
-                        radio.write(packet_info.clone());
+                        let radio_write_result = radio.write(packet_info.clone());
+                        match radio_write_result{
+                            Ok(radio_result)=>{
+                                // !TODO 
+                            }
+                            Err(_)=>{
+                                // !TODO
+                            }
+                        }
                     }
                     None => {
                         info!("No Packet To Send")
@@ -83,14 +90,11 @@ pub async fn motor_drivers(
     _i2c: &'static Arbiter<MotorI2cBus>,
     mut esc_state_listener: StateMachineListener,
 ) {
-    // esc_state_listener
-    //     .wait_for_state_specific(bin_packets::IcarusPhase::OrientSolar)
-    //     .await;
     info!("Motor Driver Task Started");
 
-    // ctx.local.ina260_1.init().await.ok();
-    // ctx.local.ina260_2.init().await.ok();
-    // ctx.local.ina260_3.init().await.ok();
+    ctx.local.ina260_1.init().await.ok();
+    ctx.local.ina260_2.init().await.ok();
+    ctx.local.ina260_3.init().await.ok();
 
     loop {
         let ts = Mono::now().ticks();
