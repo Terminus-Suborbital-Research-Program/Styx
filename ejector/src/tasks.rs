@@ -66,7 +66,6 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
             }
             Mono::delay(1000_u64.millis()).await;
         }
-
     }
 }
 

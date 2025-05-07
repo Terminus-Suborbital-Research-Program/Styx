@@ -76,7 +76,7 @@ mod std_impl {
 
     impl<D> PacketIO for PacketDevice<D>
     where
-        D: Read + Write + ReadReady,
+        D: Read + Write,
     {
         type Error = std::io::Error;
 
@@ -93,22 +93,11 @@ mod std_impl {
         }
 
         fn update(&mut self) -> Result<(), InterfaceError<Self::Error>> {
-            if !self
-                .device
-                .read_ready()
-                .map_err(InterfaceError::DeviceError)?
-            {
-                return Ok(());
-            }
             let mut buf = [0u8; 1024];
-            match self.device.read(&mut buf) {
-                Ok(0) => {}
-                Ok(bytes) => {
-                    self.buffer.extend_from_slice(&buf[..bytes]);
-                }
-                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
-                Err(e) => return Err(InterfaceError::DeviceError(e)),
-            }
+            self.device
+                .read(&mut buf)
+                .map_err(InterfaceError::DeviceError)?;
+            self.buffer.extend_from_slice(&buf);
             Ok(())
         }
 
