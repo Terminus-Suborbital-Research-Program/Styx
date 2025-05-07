@@ -73,7 +73,6 @@ pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
         });
 
         Mono::delay(100_u64.millis()).await;
-        Mono::delay(100_u64.millis()).await;
     }
 }
 
