@@ -2,7 +2,6 @@ use bin_packets::device::PacketIO;
 use bin_packets::devices::DeviceIdentifier;
 use bin_packets::packets::status::Status;
 use bin_packets::packets::ApplicationPacket;
-use bin_packets::phases::IcarusPhase;
 use bme280_rs::{Configuration, Oversampling, SensorMode};
 use defmt::{info, warn};
 use embedded_hal::digital::StatefulOutputPin;
@@ -13,7 +12,11 @@ use rtic_sync::arbiter::Arbiter;
 
 use crate::device_constants::AvionicsI2cBus;
 use crate::phases::StateMachineListener;
-use crate::{app::*, device_constants::MotorI2cBus, Mono};
+use crate::{
+    app::*,
+    device_constants::MotorI2cBus,
+    Mono,
+};
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     let mut sequence_number = 0;
@@ -45,9 +48,27 @@ pub fn uart_interrupt(mut ctx: uart_interrupt::Context<'_>) {
 
 pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
     loop {
-        ctx.shared.ina_data.lock(|_ina_data| {
-            ctx.shared.radio.lock(|_radio| {
+        ctx.shared.ina_data.lock(|ina_data| {
+            ctx.shared.radio.lock(|radio| {
                 // GET PACKETS FROM INA DATA AND SEND
+                let packet = ina_data.i1_buffer.first();
+                match packet {
+                    Some(packet_info) => {
+                        info!("Data Write: {:?}", packet_info);
+                        let radio_write_result = radio.write(*packet_info);
+                        match radio_write_result {
+                            Ok(radio_result) => {
+                                // !TODO
+                            }
+                            Err(_) => {
+                                // !TODO
+                            }
+                        }
+                    }
+                    None => {
+                        info!("No Packet To Send")
+                    }
+                }
             });
         });
 
@@ -64,16 +85,13 @@ unsafe fn I2C0_IRQ() {
 pub async fn motor_drivers(
     mut ctx: motor_drivers::Context<'_>,
     _i2c: &'static Arbiter<MotorI2cBus>,
-    mut esc_state_listener: StateMachineListener,
+    esc_state_listener: StateMachineListener,
 ) {
-    esc_state_listener
-        .wait_for_state_specific(IcarusPhase::OrientSolar)
-        .await;
     info!("Motor Driver Task Started");
 
-    // ctx.local.ina260_1.init().await.ok();
-    // ctx.local.ina260_2.init().await.ok();
-    // ctx.local.ina260_3.init().await.ok();
+    ctx.local.ina260_1.init().await.ok();
+    ctx.local.ina260_2.init().await.ok();
+    ctx.local.ina260_3.init().await.ok();
 
     loop {
         let ts = Mono::now().ticks();

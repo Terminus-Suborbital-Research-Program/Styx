@@ -274,20 +274,20 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     state_machine.add_channel(writer).ok();
     let esc_listener = StateMachineListener::new(reader);
 
-    let ina260_1 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 32_u8, Mono);
-    let ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 33_u8, Mono);
-    let ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 34_u8, Mono);
+    let ina260_1 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x40, Mono);
+    let ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x41, Mono);
+    let ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x42, Mono);
 
     let ina_data = INAData::default();
 
     info!("Peripherals initialized, spawning tasks...");
-    heartbeat::spawn().ok();
+    // heartbeat::spawn().ok();
+    // radio_flush::spawn().ok();
     motor_drivers::spawn(motor_i2c_arbiter, esc_listener).ok();
     sample_sensors::spawn(avionics_i2c_arbiter).ok();
     inertial_nav::spawn().ok();
     radio_send::spawn().ok();
     info!("Tasks spawned!");
-
     (
         Shared {
             ina_data,
