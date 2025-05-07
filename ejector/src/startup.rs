@@ -1,7 +1,7 @@
 use bin_packets::device::PacketDevice;
 use defmt::{info, warn};
 use embedded_hal::delay::DelayNs;
-use embedded_hal::digital::{InputPin, OutputPin};
+use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
 use fugit::RateExtU32;
 use hc12_rs::configuration::baudrates::B9600;
 use hc12_rs::configuration::{Channel, HC12Configuration, Power};
@@ -210,7 +210,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     ejector_servo.enable();
     ejector_servo.hold();
 
-    let gpio_detect: EjectionDetectionPin = bank0_pins.gpio10.into_pull_down_input();
+    let gpio_detect: EjectionDetectionPin = bank0_pins.gpio21.reconfigure();
 
     // Set up USB Device allocator
     let usb_bus = UsbBusAllocator::new(hal::usb::UsbBus::new(
