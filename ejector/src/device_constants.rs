@@ -4,7 +4,7 @@ use pins::{
     RadioProgrammingPin, RadioRxPin, RadioTxPin,
 };
 use rp235x_hal::{
-    gpio::{FunctionSio, Pin, PullDown, PullNone, PullUp, SioInput, SioOutput},
+    gpio::{FunctionSio, Pin, PullDown, PullNone, SioInput, SioOutput},
     pac::{UART0, UART1},
     timer::CopyableTimer1,
     uart::{Enabled, UartPeripheral},
@@ -13,7 +13,7 @@ use rp235x_hal::{
 
 pub mod pins {
     use rp235x_hal::gpio::{
-        bank0::{Gpio10, Gpio13, Gpio14, Gpio16, Gpio17, Gpio20, Gpio21, Gpio25, Gpio8, Gpio9},
+        bank0::{Gpio13, Gpio14, Gpio16, Gpio17, Gpio20, Gpio21, Gpio25, Gpio8, Gpio9},
         FunctionSio, FunctionUart, Pin, PullDown, SioOutput,
     };
 
