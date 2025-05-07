@@ -13,11 +13,7 @@ use rtic_sync::arbiter::Arbiter;
 use crate::device_constants::servos::{FlapServo, FLAP_SERVO_LOCKED, FLAP_SERVO_UNLOCKED};
 use crate::device_constants::AvionicsI2cBus;
 use crate::phases::StateMachineListener;
-use crate::{
-    app::*,
-    device_constants::MotorI2cBus,
-    Mono,
-};
+use crate::{app::*, device_constants::MotorI2cBus, Mono};
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     let mut sequence_number = 0;
