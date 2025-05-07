@@ -1,5 +1,4 @@
 {
-    "rust-analyzer.cargo.target": "thumbv8m.main-none-eabihf",
     "rust-analyzer.checkOnSave.allTargets": false,
     "cortex-debug.gdbPath": "gdb-multiarch",
     "cortex-debug.armToolchainPath": ""
