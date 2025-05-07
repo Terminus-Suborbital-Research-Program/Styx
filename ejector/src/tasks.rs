@@ -54,7 +54,7 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
         loop {
             while let Some(packet) = ctx.shared.radio.lock(|radio| radio.read_packet()) {
                 ctx.shared.led.lock(|led| led.toggle().unwrap());
-                info!("Got a packet form icarus! Packet: {:?}", packet);
+                trace!("Got a packet form icarus! Packet: {:?}", packet);
                 // Write down range
                 if let Err(e) = ctx
                     .shared
@@ -72,7 +72,6 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
 
 pub fn uart_interrupt(mut ctx: uart_interrupt::Context<'_>) {
     ctx.shared.radio.lock(|radio| {
-        trace!("UART interrupt");
         if let Err(e) = radio.update() {
             info!("Error updating radio: {:?}", e);
         }
