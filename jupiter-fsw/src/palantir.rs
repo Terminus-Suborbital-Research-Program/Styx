@@ -32,13 +32,13 @@ pub fn ping_thread() -> ! {
 
                                 let response = client
                                     .post(url)
-                                    .header("Authorization", &format!("Bearer {}", token))
+                                    .header("Authorization", &format!("Bearer {token}"))
                                     .send_json(&body);
 
                                 match response {
                                     Ok(_) => {}
                                     Err(e) => {
-                                        warn!("Error pushing IP to palantir: {:?}", e);
+                                        warn!("Error pushing IP to palantir: {e:?}");
                                     }
                                 }
                             }

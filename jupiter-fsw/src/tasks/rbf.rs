@@ -18,7 +18,7 @@ pub fn rbf_monitor_thread(rbf_pin: InputPin, rbf_status: Arc<RwLock<bool>>) -> !
                     *status_writer = true;
                 }
                 Err(e) => {
-                    warn!("Error getting writer! Error: {:?}", e);
+                    warn!("Error getting writer! Error: {e:?}");
                 }
             }
             previous_status = true
@@ -28,7 +28,7 @@ pub fn rbf_monitor_thread(rbf_pin: InputPin, rbf_status: Arc<RwLock<bool>>) -> !
                     *status_writer = false;
                 }
                 Err(e) => {
-                    warn!("Error getting writer! Error: {:?}", e);
+                    warn!("Error getting writer! Error: {e:?}");
                 }
             }
             previous_status = false

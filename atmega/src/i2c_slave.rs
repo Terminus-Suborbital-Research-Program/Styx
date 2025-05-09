@@ -3,7 +3,7 @@ use core::sync::atomic::{AtomicBool, Ordering};
 
 use arduino_hal::port::{
     mode::{Floating, Input},
-    Pin, D0, D1, D20, D21,
+    Pin, D20, D21,
 };
 
 use arduino_hal::pac::TWI;
@@ -66,7 +66,7 @@ impl<'a> I2cSlave<'a> {
     }
 
     /// Returns the init of this [`I2C_Slave`].
-    pub fn init(&mut self, gca: bool) -> () {
+    pub fn init(&mut self, gca: bool) {
         // Set slave address
         self.twi.twar.write(|w| w.twa().bits(self.addr));
 
@@ -77,11 +77,11 @@ impl<'a> I2cSlave<'a> {
 
         self.twi.twcr.reset();
 
-        ()
+        
     }
 
     /// Set TWCR registers enabling TWI to respond [`I2cSlave`].
-    fn arm(&self) -> () {
+    fn arm(&self) {
         // Arm TWI
         self.twi.twcr.write(|w| {
             w.twsta()
@@ -118,10 +118,10 @@ impl<'a> I2cSlave<'a> {
 
         self.arm();
 
-        let result: Result<usize, I2CSlaveError>;
+        
 
         // TODO loop may be reworked into something different
-        result = loop {
+        let result: Result<usize, I2CSlaveError> = loop {
             if self.int_flag.load(Ordering::SeqCst) {
                 // Clearing prescaler bits according to datasheet to read
                 // status codes correctly
@@ -279,10 +279,10 @@ impl<'a> I2cSlave<'a> {
 
         self.arm();
 
-        let result: Result<(), I2CSlaveError>;
+        
 
         // Read I2C in blocking mode
-        result = loop {
+        let result: Result<(), I2CSlaveError> = loop {
             if self.int_flag.load(Ordering::SeqCst) {
                 // Clearing prescaler bits according to datasheet to read
                 // status codes correctly
