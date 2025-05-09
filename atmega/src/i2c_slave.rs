@@ -122,7 +122,7 @@ impl<'a> I2cSlave<'a> {
 
         // TODO loop may be reworked into something different
         let result: Result<usize, I2CSlaveError> = loop {
-            if self.int_flag.load(Ordering::SeqCst) {
+            if self.int_flag.load(core::sync::atomic::Ordering::SeqCst) {
                 // Clearing prescaler bits according to datasheet to read
                 // status codes correctly
                 self.twi.twsr.write(|w| w.twps().bits(0));
