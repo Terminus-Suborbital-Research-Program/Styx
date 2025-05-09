@@ -3,58 +3,51 @@
 #![no_main]
 #![feature(abi_avr_interrupt)]
 
-
-use core::{
-    ptr::write_bytes,
-    sync::atomic::{AtomicBool, Ordering},
-};
+use core::sync::atomic::{AtomicBool, Ordering};
 
 use atmega_hal::{
     port::{
-        self, 
-        mode::{Floating, Input, Output},
-        Dynamic, Pin, PA0,
+        mode::{Floating, Input},
+        Pin,
     },
-    prelude::_embedded_hal_serial_Read,
     usart::{Baudrate, Usart},
-    Pins,
     clock::MHz16,
 };
+use arduino_hal::hal::port::Dynamic;
 
-use embedded_hal::{delay::DelayNs, digital::InputPin};
-
-use bin_packets::{data::PinState, ApplicationPacket, CommandPacket};
-use bincode::{
-    config::standard, 
-    decode_from_slice, 
-    encode_into_slice, 
-    error::{DecodeError, EncodeError},
-};
 
 use i2c_slave::*;
 use panic_halt as _;
-use ufmt::{uwrite, uwriteln};
+use ufmt::uwriteln;
 
 type CoreClock = MHz16;
-type Delay = atmega_hal::delay::Delay<CoreClock>;
 use heapless::Vec;
 
-
 mod i2c_slave;
-
 static TWI_INT_FLAG: AtomicBool = AtomicBool::new(false);
 
-// I2C interrupt handler
-#[avr_device::interrupt(atmega2560)]
-fn TWI() {
-    avr_device::interrupt::free(|_| {
-        TWI_INT_FLAG.store(true, Ordering::SeqCst);
-    });
-}
+// // I2C interrupt handler
+// #[arduino_hal::interrupt(atmega2560)]
+// fn TWI() {
+//     avr_device::interrupt::free(|_| {
+//         TWI_INT_FLAG.store(true, Ordering::SeqCst);
+//     });
+// }
 
 trait Read {
     fn new(pin_set: &[Pin<Input<Floating>, Dynamic>; 7]) -> Self ;
     fn update(&mut self, pin_set: &[Pin<Input<Floating>, Dynamic>; 7]);
+}
+
+#[derive(Debug, Clone, Copy)]
+struct PinState {
+    gse_1: bool,
+    gse_2: bool,
+    te_ra: bool,
+    te_rb: bool,
+    te_1: bool,
+    te_2: bool,
+    te_3: bool,
 }
 
 impl Read for PinState {
@@ -84,43 +77,44 @@ impl Read for PinState {
     }
 }
 
+use arduino_hal as atmega_hal;
 
-#[avr_device::entry]
+#[arduino_hal::entry]
 fn main() -> ! {
     let dp = atmega_hal::Peripherals::take().unwrap();
     let pins = atmega_hal::pins!(dp);
 
     let mut serial = Usart::new(
         dp.USART0,
-        pins.pe0,
-        pins.pe1.into_output(),
+        pins.d0,
+        pins.d1.into_output(),
         Baudrate::<crate::CoreClock>::new(57600),
     );
 
-    let mut led = pins.pb7.into_output();
+    let mut led = pins.d13.into_output();
 
-    let mut battery_latch = pins.pa7.into_output();
+    let mut battery_latch = pins.d29.into_output();
 
     let pin_set = [
-        pins.pa0.into_floating_input().downgrade(),
-        pins.pa1.into_floating_input().downgrade(),
-        pins.pa2.into_floating_input().downgrade(),
-        pins.pa3.into_floating_input().downgrade(),
-        pins.pa4.into_floating_input().downgrade(),
-        pins.pa5.into_floating_input().downgrade(),
-        pins.pa6.into_floating_input().downgrade(),
+        pins.d22.into_floating_input().downgrade(),
+        pins.d23.into_floating_input().downgrade(),
+        pins.d24.into_floating_input().downgrade(),
+        pins.d25.into_floating_input().downgrade(),
+        pins.d26.into_floating_input().downgrade(),
+        pins.d27.into_floating_input().downgrade(),
+        pins.d28.into_floating_input().downgrade(),
     ];
 
     // Using external pullup resistors, so pins configured as floating inputWs
-    let sda = pins.pd1.into_floating_input();
-    let scl = pins.pd0.into_floating_input();
+    let sda = pins.d20.into_floating_input();
+    let scl = pins.d21.into_floating_input();
     
     let slave_address: u8 = 0x26;
 
     let mut i2c_slave: I2cSlave = I2cSlave::new(dp.TWI, slave_address, sda, scl, &TWI_INT_FLAG);
 
     // Enable global interrupt
-    unsafe { avr_device::interrupt::enable() };
+    //unsafe { avr_device::interrupt::enable() };
     // Value recieved from I2C Master
     let mut buf: [u8; 20];
 
