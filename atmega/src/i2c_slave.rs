@@ -1,20 +1,12 @@
 #![warn(clippy::todo, clippy::unimplemented)]
 use core::sync::atomic::{AtomicBool, Ordering};
-/* 
-use arduino_hal::{
-    hal::port::{PC4, PC5},
-    port::{
-        mode::{Floating, Input},
-        Pin,
-    },
+
+use arduino_hal::port::{
+    mode::{Floating, Input},
+    Pin, D20, D21,
 };
-*/
-use atmega_hal::{port::{PD1, PD0},port::{mode::{Floating, Input},
-Pin}, Pins};
 
-
-
-use avr_device::atmega2560::TWI;
+use arduino_hal::pac::TWI;
 use ufmt::{uDebug, uwrite};
 
 pub enum I2CSlaveError {
@@ -24,13 +16,13 @@ pub enum I2CSlaveError {
     NotImplemented,
     NotExpectedTransactionDirection,
     ArbitrationLost,
-    InactiveBus
+    InactiveBus,
 }
 
 impl uDebug for I2CSlaveError {
     fn fmt<W>(&self, f: &mut ufmt::Formatter<'_, W>) -> Result<(), W::Error>
     where
-        W: atmega_hal::prelude::_ufmt_uWrite + ?Sized,
+        W: arduino_hal::prelude::_ufmt_uWrite + ?Sized,
     {
         match self {
             I2CSlaveError::BufferOverflow => uwrite!(f, "BufferOverflow"),
@@ -51,8 +43,8 @@ impl uDebug for I2CSlaveError {
 pub struct I2cSlave<'a> {
     twi: TWI,
     addr: u8,
-    sda: Pin<Input<Floating>, PD1>,
-    scl: Pin<Input<Floating>, PD0>,
+    sda: Pin<Input<Floating>, D20>,
+    scl: Pin<Input<Floating>, D21>,
     int_flag: &'a AtomicBool,
 }
 
@@ -60,8 +52,8 @@ impl<'a> I2cSlave<'a> {
     pub fn new(
         twi: TWI,
         addr: u8,
-        sda: Pin<Input<Floating>, PD1>,
-        scl: Pin<Input<Floating>, PD0>,
+        sda: Pin<Input<Floating>, D20>,
+        scl: Pin<Input<Floating>, D21>,
         int_flag: &'a AtomicBool,
     ) -> Self {
         Self {
@@ -74,9 +66,9 @@ impl<'a> I2cSlave<'a> {
     }
 
     /// Returns the init of this [`I2C_Slave`].
-    pub fn init(&mut self, gca: bool) -> () {
+    pub fn init(&mut self, gca: bool) {
         // Set slave address
-        self.twi.twar.write(|w| w.twa().bits(self.addr)); 
+        self.twi.twar.write(|w| w.twa().bits(self.addr));
 
         // Enable GCA call
         if gca {
@@ -85,11 +77,11 @@ impl<'a> I2cSlave<'a> {
 
         self.twi.twcr.reset();
 
-        ()
+        
     }
 
     /// Set TWCR registers enabling TWI to respond [`I2cSlave`].
-    fn arm(&self) -> () {
+    fn arm(&self) {
         // Arm TWI
         self.twi.twcr.write(|w| {
             w.twsta()
@@ -112,8 +104,8 @@ impl<'a> I2cSlave<'a> {
         self,
     ) -> (
         TWI,
-        Pin<Input<Floating>, PD1>,
-        Pin<Input<Floating>, PD0>,
+        Pin<Input<Floating>, D20>,
+        Pin<Input<Floating>, D21>,
         &'a AtomicBool,
     ) {
         (self.twi, self.sda, self.scl, self.int_flag)
@@ -126,10 +118,10 @@ impl<'a> I2cSlave<'a> {
 
         self.arm();
 
-        let result: Result<usize, I2CSlaveError>;
+        
 
         // TODO loop may be reworked into something different
-        result = loop {
+        let result: Result<usize, I2CSlaveError> = loop {
             if self.int_flag.load(Ordering::SeqCst) {
                 // Clearing prescaler bits according to datasheet to read
                 // status codes correctly
@@ -287,10 +279,10 @@ impl<'a> I2cSlave<'a> {
 
         self.arm();
 
-        let result: Result<(), I2CSlaveError>;
+        
 
         // Read I2C in blocking mode
-        result = loop {
+        let result: Result<(), I2CSlaveError> = loop {
             if self.int_flag.load(Ordering::SeqCst) {
                 // Clearing prescaler bits according to datasheet to read
                 // status codes correctly
@@ -496,7 +488,7 @@ impl<'a> I2cSlave<'a> {
                         break Err(I2CSlaveError::UnknownState(status));
                     }
                 }
-            }  else {
+            } else {
                 return Err(I2CSlaveError::InactiveBus);
             }
         };

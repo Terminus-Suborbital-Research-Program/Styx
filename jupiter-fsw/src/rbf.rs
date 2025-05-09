@@ -27,7 +27,7 @@ impl From<ReadPin> for RbfPin {
         let boot = match pin.read() {
             Ok(s) => s,
             Err(e) => {
-                warn!("Failed to read RBF pin: {:?}", e);
+                warn!("Failed to read RBF pin: {e:?}");
                 true
             }
         };
