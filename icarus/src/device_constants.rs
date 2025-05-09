@@ -19,14 +19,14 @@ pub mod pins {
     pub type RBFPin = Gpio4;
 
     /// Flab servo mosfet
-    pub type FlapMosfetPin = Gpio3;
+    pub type FlapMosfetPin = Gpio2;
     /// Relay servo mosfet
-    pub type RelayMosfetPin = Gpio4;
+    pub type RelayMosfetPin = Gpio0;
 
     /// Flap servo PWM
-    pub type FlapServoPWMGpio = Gpio1;
+    pub type FlapServoPWMGpio = Gpio3;
     /// Flap servo PWM
-    pub type RelayServoPWMGpio = Gpio2;
+    pub type RelayServoPWMGpio = Gpio1;
 
     /// I2C SDA pin
     pub type AvionicsI2CSdaPin = Gpio16;
@@ -71,15 +71,16 @@ pub mod servos {
     /// Relay mosfet pin
     pub type RelayMosfet = Pin<RelayMosfetPin, FunctionSio<SioOutput>, PullDown>;
 
+    pub static PWM_DIV_INT: u8 = 64;
     /// Flap servo PWM pin
     pub type FlapServoPwmPin = Pin<FlapServoPWMGpio, FunctionPwm, PullDown>;
     /// Relay servo PWM pin
     pub type RelayServoPwmPin = Pin<RelayServoPWMGpio, FunctionPwm, PullDown>;
 
     /// Flap servo PWM
-    pub type FlapServoPwm = Pwm0;
+    pub type FlapServoPwm = Pwm1;
     /// Relay servo PWM
-    pub type RelayServoPwm = Pwm1;
+    pub type RelayServoPwm = Pwm0;
 
     /// Flap servo slice
     pub type FlapServoSlice = Slice<FlapServoPwm, FreeRunning>;
@@ -89,15 +90,15 @@ pub mod servos {
     /// Flap Servo
     pub type FlapServo = Servo<Channel<FlapServoSlice, B>, FlapServoPwmPin, FlapMosfet>;
     /// Relay Servo
-    pub type RelayServo = Servo<Channel<RelayServoSlice, A>, RelayServoPwmPin, RelayMosfet>;
+    pub type RelayServo = Servo<Channel<RelayServoSlice, B>, RelayServoPwmPin, RelayMosfet>;
 
     /// Flap servo locked
-    pub static FLAP_SERVO_LOCKED: u16 = 90;
+    pub static FLAP_SERVO_LOCKED: u16 = 0;
     /// Flap servo unlocked
     pub static FLAP_SERVO_UNLOCKED: u16 = 180;
 
     /// Relay servo locked
-    pub static RELAY_SERVO_LOCKED: u16 = 90;
+    pub static RELAY_SERVO_LOCKED: u16 = 0;
     /// Relay servo unlocked
     pub static RELAY_SERVO_UNLOCKED: u16 = 180;
 }

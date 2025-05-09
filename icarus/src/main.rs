@@ -86,8 +86,6 @@ mod app {
     pub struct Shared {
         //uart0: UART0Bus,
         //uart0_buffer: heapless::String<HEAPLESS_STRING_ALLOC_LENGTH>,
-        pub flap_servo: FlapServo,
-        pub relay_servo: RelayServo,
         // pub usb_serial: SerialPort<'static, hal::usb::UsbBus>,
         pub clock_freq_hz: u32,
         pub radio: IcarusRadio,
@@ -97,6 +95,8 @@ mod app {
 
     #[local]
     pub struct Local {
+        pub flap_servo: FlapServo,
+        pub relay_servo: RelayServo,
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
         pub bme280: AsyncBme280<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub ina260_1: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
@@ -126,6 +126,12 @@ mod app {
         // Takes care of incoming packets
         #[task(shared = [radio, ina_data], priority = 1)]
         async fn radio_send(mut ctx: radio_send::Context);
+
+        // Handler for the I2C electronic speed controllers
+        #[task(priority = 3, local=[flap_servo, relay_servo])]
+        async fn mode_sequencer(
+            &mut ctx: mode_sequencer::Context,
+        );
 
         // Handler for the I2C electronic speed controllers
         #[task(priority = 3, shared = [state_machine, ina_data], local=[ina260_1, ina260_2, ina260_3])]
