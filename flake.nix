@@ -33,6 +33,7 @@
             pkg-config
             picotool
             cargo-machete
+            pkgsCross.avr.buildPackages.gcc # For building for the ATMEGA
           ];
 
           RUST_SRC_PATH = rustPlatform.rustLibSrc;
