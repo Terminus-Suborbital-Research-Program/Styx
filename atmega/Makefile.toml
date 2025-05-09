@@ -24,11 +24,10 @@ args    = ["build", "--release",
            "-Z", "build-std=${BUILDSTD}"]
 
 [tasks.clippy]
-extend  = "avr-env"
 install_crate = "clippy"
 command = "cargo"
 args    = ["clippy", "--fix", "--allow-dirty",
-           "--target", "${TARGET}"]
+           "--target", "${TARGET}", "-Z", "build-std=${BUILDSTD}"]
 
 [tasks.test]
 command = "echo"
