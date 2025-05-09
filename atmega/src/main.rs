@@ -1,20 +1,18 @@
-
 #![no_std]
 #![no_main]
 #![feature(abi_avr_interrupt)]
 
-use core::sync::atomic::{AtomicBool, Ordering};
+use core::sync::atomic::AtomicBool;
 
+use arduino_hal::hal::port::Dynamic;
 use atmega_hal::{
+    clock::MHz16,
     port::{
         mode::{Floating, Input},
         Pin,
     },
     usart::{Baudrate, Usart},
-    clock::MHz16,
 };
-use arduino_hal::hal::port::Dynamic;
-
 
 use i2c_slave::*;
 use panic_halt as _;
@@ -35,7 +33,7 @@ static TWI_INT_FLAG: AtomicBool = AtomicBool::new(false);
 // }
 
 trait Read {
-    fn new(pin_set: &[Pin<Input<Floating>, Dynamic>; 7]) -> Self ;
+    fn new(pin_set: &[Pin<Input<Floating>, Dynamic>; 7]) -> Self;
     fn update(&mut self, pin_set: &[Pin<Input<Floating>, Dynamic>; 7]);
 }
 
@@ -67,7 +65,7 @@ impl Read for PinState {
 
     fn update(&mut self, pin_set: &[Pin<Input<Floating>, Dynamic>; 7]) {
         let state: Vec<bool, 7> = pin_set.iter().map(|pin| pin.is_high()).collect();
-        self.gse_1 =  state[0];
+        self.gse_1 = state[0];
         self.gse_2 = state[1];
         self.te_ra = state[2];
         self.te_rb = state[3];
@@ -108,7 +106,7 @@ fn main() -> ! {
     // Using external pullup resistors, so pins configured as floating inputWs
     let sda = pins.d20.into_floating_input();
     let scl = pins.d21.into_floating_input();
-    
+
     let slave_address: u8 = 0x26;
 
     let mut i2c_slave: I2cSlave = I2cSlave::new(dp.TWI, slave_address, sda, scl, &TWI_INT_FLAG);
@@ -123,11 +121,9 @@ fn main() -> ! {
 
     led.set_low();
 
-
     // Check in and out of loop
-    
-    let mut read_buf: [u8; 20] = [0u8; 20];
 
+    let read_buf: [u8; 20] = [0u8; 20];
 
     let mut byte = 0b0000_0000u8;
 
@@ -137,7 +133,6 @@ fn main() -> ! {
     let mut read_buf: [u8; 1] = [0u8; 1];
 
     loop {
-
         pin_state.update(&pin_set);
 
         // byte &= !0b0000_0011;
@@ -145,11 +140,11 @@ fn main() -> ! {
 
         if pin_state.gse_1 {
             // byte |=  0b0000_0001;
-            byte |=  setter;
+            byte |= setter;
         }
         if pin_state.gse_2 {
             // byte |=  0b0000_0010;
-            byte |=  setter << 1;
+            byte |= setter << 1;
         }
         if pin_state.te_ra {
             // byte |= 0b0000_0100;
@@ -171,14 +166,14 @@ fn main() -> ! {
             // byte |= 0b0100_0000;
             byte |= setter << 6;
         }
-        
+
         write_buf[0] = byte;
 
         match i2c_slave.respond(&write_buf) {
             Ok(bytes_sent) => {
-                uwriteln!(serial,"{} bytes sent", bytes_sent).ok();
+                uwriteln!(serial, "{} bytes sent", bytes_sent).ok();
             }
-                    
+
             Err(err) => {
                 uwriteln!(serial, "response_error").ok();
             }
@@ -186,7 +181,7 @@ fn main() -> ! {
 
         match i2c_slave.receive(&mut read_buf) {
             Ok(bytes_read) => {
-                uwriteln!(serial,"Succesful read").ok();
+                uwriteln!(serial, "Succesful read").ok();
                 if read_buf[0] == 1 {
                     battery_latch.set_high();
                 } else {
@@ -197,7 +192,7 @@ fn main() -> ! {
                 uwriteln!(serial, "Error: {:?}", err).ok();
             }
         }
-        
+
         read_buf.fill(0);
     }
 }

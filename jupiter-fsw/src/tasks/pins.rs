@@ -133,7 +133,7 @@ pub fn pin_states_thread(mut atmega: LinuxI2CDevice, pin_states: SharedPinStates
         let bytes = match atmega.smbus_read_byte() {
             Ok(b) => b,
             Err(e) => {
-                warn!("Error reading ATMEGA: {:?}", e);
+                warn!("Error reading ATMEGA: {e:?}");
                 0
             }
         };
@@ -142,7 +142,7 @@ pub fn pin_states_thread(mut atmega: LinuxI2CDevice, pin_states: SharedPinStates
         pin_states.update(bytes);
         // log current state
         let states = pin_states.read();
-        info!("Pin states: {:?}", states);
+        info!("Pin states: {states:?}");
 
         std::thread::sleep(Duration::from_millis(1000));
     }

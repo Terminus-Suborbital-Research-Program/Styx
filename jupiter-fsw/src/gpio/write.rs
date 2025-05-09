@@ -31,12 +31,12 @@ impl WritePin {
             .stderr(Stdio::piped())
             .spawn()
             .map_err(|e| {
-                warn!("Failed to spawn command: {}", e);
+                warn!("Failed to spawn command: {e}");
                 super::PinError::IoError(e)
             })?;
 
         cmd.wait().map_err(|e| {
-            warn!("Failed to wait for command: {}", e);
+            warn!("Failed to wait for command: {e}");
             super::PinError::IoError(e)
         })?;
 
