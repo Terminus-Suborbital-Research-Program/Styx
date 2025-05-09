@@ -1,9 +1,12 @@
 [workspace]
-members = ["bin-packets", "ejector", "icarus", "ina260", "jupiter-fsw", "gs-cli", "bmi323"]
+members = ["bin-packets", "ejector", "icarus", "ina260", "jupiter-fsw", "gs-cli", "atmega"]
 resolver = "3"
 
+[profile.dev.package."atmega"]
+opt-level = "s"
+
 [profile.dev]
-lto = false
+lto = true
 
 [profile.release]
 lto = true
