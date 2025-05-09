@@ -2,7 +2,7 @@
 #![no_main]
 #![feature(abi_avr_interrupt)]
 
-use core::sync::atomic::AtomicBool;
+use core::sync::atomic::{AtomicBool, Ordering};
 
 use arduino_hal::hal::port::Dynamic;
 use atmega_hal::{
@@ -25,12 +25,12 @@ mod i2c_slave;
 static TWI_INT_FLAG: AtomicBool = AtomicBool::new(false);
 
 // // I2C interrupt handler
-// #[arduino_hal::interrupt(atmega2560)]
-// fn TWI() {
-//     avr_device::interrupt::free(|_| {
-//         TWI_INT_FLAG.store(true, Ordering::SeqCst);
-//     });
-// }
+#[avr_device::interrupt(atmega2560)]
+fn TWI() {
+    avr_device::interrupt::free(|_| {
+        TWI_INT_FLAG.store(true, Ordering::SeqCst);
+    });
+}
 
 trait Read {
     fn new(pin_set: &[Pin<Input<Floating>, Dynamic>; 7]) -> Self;
@@ -112,7 +112,7 @@ fn main() -> ! {
     let mut i2c_slave: I2cSlave = I2cSlave::new(dp.TWI, slave_address, sda, scl, &TWI_INT_FLAG);
 
     // Enable global interrupt
-    //unsafe { avr_device::interrupt::enable() };
+    unsafe { avr_device::interrupt::enable() };
     // Value recieved from I2C Master
     let mut buf: [u8; 20];
 
