@@ -1,56 +1,23 @@
 [package]
-name = "ATMega"
+name = "atmega"
 version = "0.1.0"
-authors = ["Ethan <erp0011@uah.edu>"]
+authors = ["Lucas Thelen <thelenlucas028@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
-#ATMega_Interrupts
 
 [[bin]]
-name = "ATMega" 
+name = "atmega"
 test = false
 bench = false
-# "0.2.0"
-#ATMega_Interrupts
+
 [dependencies]
-panic-halt = "1.0.0"
+panic-halt = "0.2.0"
 ufmt = "0.2.0"
 nb = "1.1.0"
 embedded-hal = "1.0"
-avr-device = { version = "0.7", features = ["rt", "atmega2560"] }
-bincode = {version="2.0.0-rc.3", features = ["derive"], default-features = false}
 heapless = "0.8.0"
-bincode_derive = "=2.0.0-rc.3"
-bin-packets = {git = "https://github.com/Terminus-Suborbital-Research-Program/bin-packets.git", branch = "bin_packets_avr"}
-# bin-packets = {git = "https://github.com/Terminus-Suborbital-Research-Program/bin-packets.git"}
 
-[dependencies.embedded-hal-v0]
-version = "0.2.3"
-package = "embedded-hal"
-
-[dependencies.either]
-version = "1.6.1"
-default-features = false
-
-[dependencies.atmega-hal]
+[dependencies.arduino-hal]
 git = "https://github.com/rahix/avr-hal"
-features = ["atmega2560"]
-
-# The latest releases of `proc-macro2` do not support the rust toolchain that
-# we use.  Thus, we must fix this dependency to an older version where our
-# toolchain is still supported.  See https://github.com/Rahix/avr-hal/issues/537
-[build-dependencies.proc-macro2]
-version = "=1.0.79"
-
-# Configure the build for minimal size - AVRs have very little program memory
-[profile.dev]
-panic = "abort"
-lto = true
-opt-level = "s"
-
-[profile.release]
-panic = "abort"
-codegen-units = 1
-debug = true
-lto = true
-opt-level = "s"
+rev = "fafaf587a32a4500239fd073f89d1b9c36b48092"
+features = ["arduino-mega2560"]

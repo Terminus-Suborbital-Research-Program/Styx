@@ -1,0 +1,8 @@
+[general]
+board = "mega2560"
+# After flashing, open the serial console at 57600 baud.
+open-console = true
+serial-baudrate = 57600
+
+# For documentation about this file, check here:
+# https://github.com/Rahix/avr-hal/blob/main/ravedude/README.md#ravedudetoml-format
