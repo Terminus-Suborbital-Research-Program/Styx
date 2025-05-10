@@ -50,7 +50,6 @@ fn main() {
 
     let mut state_machine = JupiterStateMachine::new(pins);
 
-
     thread::spawn(move || ping_thread());
 
     loop {

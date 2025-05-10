@@ -16,8 +16,8 @@ impl ValidState for MainCam {
 
     fn next(&self, ctx: StateContext) -> Box<dyn ValidState> {
         match ctx.pins.read().te1() {
-            PinState::High =>  Box::new(SkirtSeperation::enter()),
-            PinState::Low => Box::new(Self::default())
+            PinState::High => Box::new(SkirtSeperation::enter()),
+            PinState::Low => Box::new(Self::default()),
         }
     }
 }
