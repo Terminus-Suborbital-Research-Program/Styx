@@ -83,7 +83,7 @@ impl TryFrom<u8> for IndicatorStates {
     type Error = MalformedIndicatorError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
-        let gse1 = (value >> 0) & 0b1 != 0;
+        let gse1 = value & 0b1 != 0;
         let gse2 = (value >> 1) & 0b1 != 0;
         let te_ra = (value >> 2) & 0b1 != 0;
         let te_rb = (value >> 3) & 0b1 != 0;
@@ -111,7 +111,7 @@ impl TryFrom<u8> for IndicatorStates {
 impl From<IndicatorStates> for u8 {
     fn from(value: IndicatorStates) -> Self {
         let mut result = 0;
-        result |= (value.gse1 as u8) << 0;
+        result |= ((value.gse1 as u8));
         result |= (value.gse2 as u8) << 1;
         result |= (value.te_ra as u8) << 2;
         result |= (value.te_rb as u8) << 3;
@@ -152,9 +152,9 @@ impl From<PinState> for Set {
     }
 }
 
-impl Into<PinState> for Set {
-    fn into(self) -> PinState {
-        self.state
+impl From<Set> for PinState {
+    fn from(val: Set) -> Self {
+        val.state
     }
 }
 
@@ -181,6 +181,12 @@ impl IndicatorBuilder<Set, Set, Set, Set, Set, Set, Set> {
             te2: self.te2.into(),
             te3: self.te3.into(),
         }
+    }
+}
+
+impl Default for IndicatorBuilder<Unset, Unset, Unset, Unset, Unset, Unset, Unset> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -351,16 +357,16 @@ impl From<IndicatorStates> for StatesContainer {
     }
 }
 
-impl Into<IndicatorStates> for StatesContainer {
-    fn into(self) -> IndicatorStates {
+impl From<StatesContainer> for IndicatorStates {
+    fn from(val: StatesContainer) -> Self {
         IndicatorStates {
-            gse1: self.gse1.into(),
-            gse2: self.gse2.into(),
-            te_ra: self.te_ra.into(),
-            te_rb: self.te_rb.into(),
-            te1: self.te1.into(),
-            te2: self.te2.into(),
-            te3: self.te3.into(),
+            gse1: val.gse1.into(),
+            gse2: val.gse2.into(),
+            te_ra: val.te_ra.into(),
+            te_rb: val.te_rb.into(),
+            te1: val.te1.into(),
+            te2: val.te2.into(),
+            te3: val.te3.into(),
         }
     }
 }

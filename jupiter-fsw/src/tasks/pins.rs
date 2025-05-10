@@ -31,7 +31,7 @@ impl IndicatorsReader {
     }
 
     pub fn read(&self) -> IndicatorStates {
-        self.pin_states.lock().unwrap().clone()
+        *self.pin_states.lock().unwrap()
     }
 }
 
@@ -81,12 +81,12 @@ fn pin_states_thread(mut atmega: Atmega, pins: Arc<Mutex<IndicatorStates>>) -> !
         match atmega.pins() {
             Ok(new_pins) => {
                 let mut pin_states = pins.lock().unwrap();
-                debug!("New pin states: {:?}", new_pins);
+                debug!("New pin states: {new_pins:?}");
                 *pin_states = new_pins;
             }
 
             Err(e) => {
-                warn!("Error reading pins: {:?}", e);
+                warn!("Error reading pins: {e:?}");
             }
         }
 
