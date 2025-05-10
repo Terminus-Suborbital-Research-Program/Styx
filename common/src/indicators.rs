@@ -68,7 +68,7 @@ pub struct MalformedIndicatorError {
 impl TryFrom<u8> for IndicatorStates {
     type Error = MalformedIndicatorError;
 
-    fn try_from(value: u8) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
         let gse1 = (value >> 0) & 0b1 != 0;
         let gse2 = (value >> 1) & 0b1 != 0;
         let te_ra = (value >> 2) & 0b1 != 0;
@@ -356,7 +356,7 @@ impl Encode for IndicatorStates {
     fn encode<E: bincode::enc::Encoder>(
         &self,
         encoder: &mut E,
-    ) -> std::result::Result<(), bincode::error::EncodeError> {
+    ) -> Result<(), bincode::error::EncodeError> {
         let container: StatesContainer = (*self).into();
 
         container.encode(encoder)
@@ -367,7 +367,7 @@ impl Encode for IndicatorStates {
 impl<Context> Decode<Context> for IndicatorStates {
     fn decode<D: bincode::de::Decoder<Context = Context>>(
         decoder: &mut D,
-    ) -> std::result::Result<Self, bincode::error::DecodeError> {
+    ) -> Result<Self, bincode::error::DecodeError> {
         let container: StatesContainer = StatesContainer::decode(decoder)?;
 
         Ok(container.into())
@@ -378,7 +378,7 @@ impl<Context> Decode<Context> for IndicatorStates {
 impl<'de, Context> BorrowDecode<'de, Context> for IndicatorStates {
     fn borrow_decode<D: bincode::de::BorrowDecoder<'de, Context = Context>>(
         decoder: &mut D,
-    ) -> std::result::Result<Self, bincode::error::DecodeError> {
+    ) -> Result<Self, bincode::error::DecodeError> {
         let container: StatesContainer = StatesContainer::borrow_decode(decoder)?;
         Ok(container.into())
     }
