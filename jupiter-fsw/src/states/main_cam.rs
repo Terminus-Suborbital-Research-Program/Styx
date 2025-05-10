@@ -1,4 +1,5 @@
 use bin_packets::phases::JupiterPhase;
+use embedded_hal::digital::PinState;
 
 use super::{
     skirt_seperation::SkirtSeperation,
@@ -14,10 +15,9 @@ impl ValidState for MainCam {
     }
 
     fn next(&self, ctx: StateContext) -> Box<dyn ValidState> {
-        if ctx.pins.te_1_high() {
-            Box::new(SkirtSeperation::enter())
-        } else {
-            Box::new(Self::default())
+        match ctx.pins.read().te1() {
+            PinState::High =>  Box::new(SkirtSeperation::enter()),
+            PinState::Low => Box::new(Self::default())
         }
     }
 }

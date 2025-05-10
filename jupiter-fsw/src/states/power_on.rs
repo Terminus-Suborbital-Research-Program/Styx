@@ -1,4 +1,5 @@
 use bin_packets::phases::JupiterPhase;
+use embedded_hal::digital::PinState;
 use log::{info, warn};
 
 use crate::states::main_cam::MainCam;
@@ -16,7 +17,7 @@ impl ValidState for PowerOn {
     }
 
     fn next(&self, ctx: StateContext) -> Box<dyn ValidState> {
-        if ctx.pins.te_1_high() {
+        if ctx.pins.read().te1() == PinState::High {
             // Crap, we have late power on for some reason
             warn!("Late power on: TE1 is high. Emergency transition to MainCamStart");
             return Box::new(MainCam::default());
