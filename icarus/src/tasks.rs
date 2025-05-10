@@ -79,6 +79,29 @@ unsafe fn I2C0_IRQ() {
     MotorI2cBus::on_interrupt();
 }
 
+/// Sequencer function for the relay deployable
+pub async fn relay_sequencer(ctx: relay_sequencer::Context<'_>) {
+    ctx.local.relay_servo.set_angle(70);
+
+    // Give some time to space away from the deployable
+    Mono::delay(20u64.secs()).await;
+
+    // Loop open and close for 10 seconds
+    let end_time = Mono::now() + 10u64.secs();
+
+    while Mono::now() < end_time {
+        ctx.local.relay_servo.set_angle(0);
+        info!("Opened relay servo");
+        Mono::delay(3000_u64.millis()).await;
+
+        ctx.local.relay_servo.set_angle(90);
+        info!("Closed relay servo");
+        Mono::delay(3000_u64.millis()).await;
+    }
+
+    info!("Relay iteration finished");
+}
+
 /// Sequencer function for the deployable flaps
 pub async fn flap_sequencer(ctx: flap_sequencer::Context<'_>) {
     ctx.local.flap_servo.set_angle(FLAP_SERVO_LOCKED);

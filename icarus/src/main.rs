@@ -127,7 +127,10 @@ mod app {
         #[task(shared = [radio, ina_data], priority = 1)]
         async fn radio_send(mut ctx: radio_send::Context);
 
-        #[task(priority = 3, local=[flap_servo, relay_servo])]
+        #[task(priority = 3, local=[relay_servo])]
+        async fn relay_sequencer(&mut ctx: relay_sequencer::Context);
+
+        #[task(priority = 3, local=[flap_servo])]
         async fn flap_sequencer(&mut ctx: flap_sequencer::Context);
 
         // Handler for the I2C electronic speed controllers

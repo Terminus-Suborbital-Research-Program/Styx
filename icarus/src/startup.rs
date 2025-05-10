@@ -271,6 +271,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     // heartbeat::spawn().ok();
     // radio_flush::spawn().ok();
     flap_sequencer::spawn().ok();
+    relay_sequencer::spawn().ok();
     // motor_drivers::spawn(motor_i2c_arbiter, esc_listener).ok();
     // sample_sensors::spawn(avionics_i2c_arbiter).ok();
     // inertial_nav::spawn().ok();
