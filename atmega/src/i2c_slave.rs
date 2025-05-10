@@ -100,6 +100,7 @@ impl<'a> I2cSlave<'a> {
     }
 
     /// release moved values
+    #[allow(dead_code)]
     pub fn split(
         self,
     ) -> (

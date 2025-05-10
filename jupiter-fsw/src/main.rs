@@ -13,7 +13,7 @@ use i2cdev::{core::I2CDevice, linux::LinuxI2CDevice};
 use palantir::ping_thread;
 use rbf::RbfPin;
 use states::JupiterStateMachine;
-use tasks::{SharedPinStates, pin_states_thread};
+use tasks::IndicatorsReader;
 
 mod constants;
 mod gpio;
@@ -46,14 +46,10 @@ fn main() {
     let mut atmega = LinuxI2CDevice::new("/dev/i2c-1", 0x26u16).unwrap();
 
     info!("I2c Read: {:?}", atmega.smbus_read_byte());
-    let states = SharedPinStates::new();
+    let pins = IndicatorsReader::new(atmega);
 
-    let state_writer = states.clone();
-    let pin_arc = states.clone();
+    let mut state_machine = JupiterStateMachine::new(pins);
 
-    let mut state_machine = JupiterStateMachine::new(pin_arc);
-
-    thread::spawn(move || pin_states_thread(atmega, state_writer));
 
     thread::spawn(move || ping_thread());
 

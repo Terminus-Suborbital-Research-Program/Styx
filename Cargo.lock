@@ -101,7 +101,7 @@ version = "0.1.0"
 dependencies = [
  "arduino-hal",
  "avr-device",
- "embedded-hal 1.0.0",
+ "common",
  "heapless",
  "nb 1.1.0",
  "panic-halt",
@@ -333,6 +333,15 @@ name = "colorchoice"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
+
+[[package]]
+name = "common"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "defmt 1.0.1",
+ "embedded-hal 1.0.0",
+]
 
 [[package]]
 name = "cookie"
@@ -1168,6 +1177,8 @@ name = "jupiter-fsw"
 version = "0.1.0"
 dependencies = [
  "bin-packets",
+ "common",
+ "embedded-hal 1.0.0",
  "env_logger",
  "get_if_addrs",
  "gpio",
