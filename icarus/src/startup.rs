@@ -209,7 +209,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     // Lock initially
     // flap_servo.set_angle(FLAP_SERVO_LOCKED);
-    relay_servo.set_angle(RELAY_SERVO_UNLOCKED);
+    relay_servo.set_angle(70);
     // flap_servo.enable();
     relay_servo.enable();
 
@@ -270,7 +270,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     info!("Peripherals initialized, spawning tasks...");
     // heartbeat::spawn().ok();
     // radio_flush::spawn().ok();
-    mode_sequencer::spawn().ok();
+    flap_sequencer::spawn().ok();
     // motor_drivers::spawn(motor_i2c_arbiter, esc_listener).ok();
     // sample_sensors::spawn(avionics_i2c_arbiter).ok();
     // inertial_nav::spawn().ok();

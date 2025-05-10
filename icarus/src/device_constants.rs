@@ -93,7 +93,7 @@ pub mod servos {
     pub type RelayServo = Servo<Channel<RelayServoSlice, B>, RelayServoPwmPin, RelayMosfet>;
 
     /// Flap servo locked
-    pub static FLAP_SERVO_LOCKED: u16 = 0;
+    pub static FLAP_SERVO_LOCKED: u16 = 50;
     /// Flap servo unlocked
     pub static FLAP_SERVO_UNLOCKED: u16 = 70;
 
