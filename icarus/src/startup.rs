@@ -17,7 +17,7 @@ use rtic_sync::{
 // use usb_device::bus::UsbBusAllocator;
 // use usbd_serial::SerialPort;
 
-use crate::{actuators::servo::Servo, device_constants::servos::RELAY_SERVO_UNLOCKED};
+use crate::actuators::servo::Servo;
 
 use crate::{
     app::*,
@@ -119,7 +119,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             .unwrap();
     uart1_peripheral.enable_rx_interrupt(); // Make sure we can drive our interrupts
 
-    let programming = pins.gpio10.into_push_pull_output();
+    let programming = pins.gpio5.into_push_pull_output();
     // Copy the timer
     let timer = rp235x_hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
     let mut timer_two = timer;
@@ -198,7 +198,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     flap_channel.set_enabled(true);
     let flap_pin: FlapServoPwmPin =
         flap_channel.output_to(pins.gpio3.into_function::<FunctionPwm>());
-    let mut flap_servo: FlapServo = Servo::new(flap_channel, flap_pin, flap_mosfet);
+    let flap_servo: FlapServo = Servo::new(flap_channel, flap_pin, flap_mosfet);
 
     // Relay servo
     let mut relay_channel = relay_slice.channel_b;

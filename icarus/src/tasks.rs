@@ -5,12 +5,12 @@ use bin_packets::packets::ApplicationPacket;
 use bme280_rs::{Configuration, Oversampling, SensorMode};
 use defmt::{info, warn};
 use embedded_hal::digital::StatefulOutputPin;
-use fugit::{ExtU64, Instant};
+use fugit::ExtU64;
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
 
-use crate::device_constants::servos::{FlapServo, FLAP_SERVO_LOCKED, FLAP_SERVO_UNLOCKED};
+use crate::device_constants::servos::{FLAP_SERVO_LOCKED, FLAP_SERVO_UNLOCKED};
 use crate::device_constants::AvionicsI2cBus;
 use crate::phases::StateMachineListener;
 use crate::{app::*, device_constants::MotorI2cBus, Mono};

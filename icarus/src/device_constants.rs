@@ -1,7 +1,7 @@
 use bin_packets::{device::PacketDevice, packets::ApplicationPacket};
 use pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin, LedPin};
 use rp235x_hal::{
-    gpio::{bank0::Gpio10, FunctionI2C, FunctionSio, Pin, PullDown, PullNone, PullUp, SioOutput},
+    gpio::{bank0::Gpio5, FunctionI2C, FunctionSio, Pin, PullDown, PullNone, PullUp, SioOutput},
     i2c::Controller,
     pac::{I2C0, I2C1},
     I2C,
@@ -59,7 +59,7 @@ pub mod pins {
 pub mod servos {
     use rp235x_hal::{
         gpio::{FunctionPwm, FunctionSio, Pin, PullDown, SioOutput},
-        pwm::{Channel, FreeRunning, Pwm0, Pwm1, Slice, A, B},
+        pwm::{Channel, FreeRunning, Pwm0, Pwm1, Slice, B},
     };
 
     use crate::actuators::servo::Servo;
@@ -151,7 +151,7 @@ pub type IcarusHC12 = HC12<
             Pin<Gpio9, FunctionUart, PullDown>,
         ),
     >,
-    ProgrammingPair<Pin<Gpio10, FunctionSio<SioOutput>, PullDown>, Timer<CopyableTimer1>>,
+    ProgrammingPair<Pin<Gpio5, FunctionSio<SioOutput>, PullDown>, Timer<CopyableTimer1>>,
     FU3<B9600>,
     B9600,
 >;
