@@ -95,12 +95,12 @@ pub mod servos {
     /// Flap servo locked
     pub static FLAP_SERVO_LOCKED: u16 = 0;
     /// Flap servo unlocked
-    pub static FLAP_SERVO_UNLOCKED: u16 = 180;
+    pub static FLAP_SERVO_UNLOCKED: u16 = 70;
 
     /// Relay servo locked
-    pub static RELAY_SERVO_LOCKED: u16 = 0;
+    pub static RELAY_SERVO_LOCKED: u16 = 90;
     /// Relay servo unlocked
-    pub static RELAY_SERVO_UNLOCKED: u16 = 180;
+    pub static RELAY_SERVO_UNLOCKED: u16 = 90;
 }
 
 /// Software-controlled LED

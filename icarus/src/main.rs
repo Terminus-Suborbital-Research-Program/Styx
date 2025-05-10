@@ -129,9 +129,7 @@ mod app {
 
         // Handler for the I2C electronic speed controllers
         #[task(priority = 3, local=[flap_servo, relay_servo])]
-        async fn mode_sequencer(
-            &mut ctx: mode_sequencer::Context,
-        );
+        async fn mode_sequencer(&mut ctx: mode_sequencer::Context);
 
         // Handler for the I2C electronic speed controllers
         #[task(priority = 3, shared = [state_machine, ina_data], local=[ina260_1, ina260_2, ina260_3])]

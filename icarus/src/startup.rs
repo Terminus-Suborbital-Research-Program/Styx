@@ -1,60 +1,43 @@
 use bin_packets::phases::IcarusPhase;
-use defmt::info;
-use defmt::warn;
-use embedded_hal::delay::DelayNs;
-use embedded_hal::digital::OutputPin;
-use embedded_hal::pwm::SetDutyCycle;
+use defmt::{info, warn};
+use embedded_hal::{delay::DelayNs, digital::OutputPin};
 use fugit::RateExtU32;
-use rp235x_hal::clocks;
-use rp235x_hal::gpio::FunctionI2C;
-use rp235x_hal::gpio::FunctionPwm;
-use rp235x_hal::gpio::Pin;
-use rp235x_hal::gpio::PullNone;
-use rp235x_hal::gpio::PullUp;
-use rp235x_hal::pwm::Slices;
-use rp235x_hal::uart::DataBits;
-use rp235x_hal::uart::StopBits;
-use rp235x_hal::uart::UartConfig;
-use rp235x_hal::uart::UartPeripheral;
-use rp235x_hal::Clock;
-use rp235x_hal::Sio;
-use rp235x_hal::Watchdog;
-use rp235x_hal::I2C;
-use rtic_sync::arbiter::i2c::ArbiterDevice;
-use rtic_sync::arbiter::Arbiter;
-use rtic_sync::signal::Signal;
+use hc12_rs::IntoFU3Mode;
+use rp235x_hal::{
+    clocks,
+    gpio::{FunctionI2C, FunctionPwm, Pin, PullNone, PullUp},
+    pwm::Slices,
+    uart::{DataBits, StopBits, UartConfig, UartPeripheral},
+    Clock, Sio, Watchdog, I2C,
+};
+use rtic_sync::{
+    arbiter::{i2c::ArbiterDevice, Arbiter},
+    signal::Signal,
+};
 // use usb_device::bus::UsbBusAllocator;
 // use usbd_serial::SerialPort;
 
-use crate::actuators::servo::Servo;
+use crate::{actuators::servo::Servo, device_constants::servos::RELAY_SERVO_UNLOCKED};
 
-use crate::app::*;
-use crate::device_constants::pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin};
-use crate::device_constants::pins::{EscI2CSclPin, EscI2CSdaPin};
-use crate::device_constants::servos::FlapMosfet;
-use crate::device_constants::servos::FlapServo;
-use crate::device_constants::servos::FlapServoPwmPin;
-use crate::device_constants::servos::FlapServoSlice;
-use crate::device_constants::servos::RelayMosfet;
-use crate::device_constants::servos::RelayServo;
-use crate::device_constants::servos::RelayServoPwmPin;
-use crate::device_constants::servos::RelayServoSlice;
-use crate::device_constants::servos::FLAP_SERVO_LOCKED;
-use crate::device_constants::servos::FLAP_SERVO_UNLOCKED;
-use crate::device_constants::servos::RELAY_SERVO_LOCKED;
-use crate::device_constants::INAData;
-use crate::device_constants::IcarusRadio;
-use crate::device_constants::IcarusStateMachine;
-use crate::hal;
-use crate::peripherals::async_i2c::AsyncI2c;
-use crate::phases::StateMachine;
-use crate::phases::StateMachineListener;
-use crate::Mono;
+use crate::{
+    app::*,
+    device_constants::{
+        pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin},
+        servos::{
+            FlapMosfet, FlapServo, FlapServoPwmPin, FlapServoSlice, RelayMosfet, RelayServo,
+            RelayServoPwmPin, RelayServoSlice,
+        },
+        INAData, IcarusRadio, IcarusStateMachine,
+    },
+    peripherals::async_i2c::AsyncI2c,
+    phases::{StateMachine, StateMachineListener},
+    Mono,
+};
 
-use hc12_rs::configuration::baudrates::B9600;
-use hc12_rs::configuration::{Channel, HC12Configuration, Power};
-use hc12_rs::device::IntoATMode;
-use hc12_rs::IntoFU3Mode;
+use hc12_rs::{
+    configuration::{baudrates::B9600, Channel, HC12Configuration, Power},
+    device::IntoATMode,
+};
 
 // Sensors
 use bme280_rs::AsyncBme280;
@@ -66,7 +49,7 @@ defmt::timestamp!("{=u64:us}", { epoch_ns() });
 pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     // Reset the spinlocks - this is skipped by soft-reset
     unsafe {
-        hal::sio::spinlock_reset();
+        rp235x_hal::sio::spinlock_reset();
     }
 
     // Set up clocks
@@ -80,7 +63,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let sio = Sio::new(ctx.device.SIO);
 
     // Set the pins to their default state
-    let pins = hal::gpio::Pins::new(
+    let pins = rp235x_hal::gpio::Pins::new(
         ctx.device.IO_BANK0,
         ctx.device.PADS_BANK0,
         sio.gpio_bank0,
@@ -138,7 +121,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     let programming = pins.gpio10.into_push_pull_output();
     // Copy the timer
-    let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
+    let timer = rp235x_hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
     let mut timer_two = timer;
 
     info!("UART1 configured, assembling HC-12");
@@ -217,7 +200,6 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         flap_channel.output_to(pins.gpio3.into_function::<FunctionPwm>());
     let mut flap_servo: FlapServo = Servo::new(flap_channel, flap_pin, flap_mosfet);
 
-
     // Relay servo
     let mut relay_channel = relay_slice.channel_b;
     relay_channel.set_enabled(true);
@@ -227,9 +209,9 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     // Lock initially
     // flap_servo.set_angle(FLAP_SERVO_LOCKED);
-    // relay_servo.set_angle(RELAY_SERVO_LOCKED);
+    relay_servo.set_angle(RELAY_SERVO_UNLOCKED);
     // flap_servo.enable();
-    // relay_servo.enable();
+    relay_servo.enable();
 
     // Sensors
     // Init I2C pins
@@ -264,8 +246,6 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         .local
         .i2c_avionics_bus
         .write(Arbiter::new(async_avionics_i2c));
-
-    // let mut delay_here = hal::Timer::new_timer1(pac.TIMER1, &mut pac.RESETS, &clocks);
 
     // Initialize Avionics Sensors
     let bme280 =
