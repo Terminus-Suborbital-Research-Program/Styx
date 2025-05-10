@@ -1,4 +1,4 @@
 [tasks.clippy]
 install_crate = "clippy"
 command = "cargo"
-args = ["clippy", "--fix", "--no-deps", "--allow-dirty", "--lib", "common"]
+args = ["clippy", "--fix", "--no-deps", "--allow-dirty", "--lib"]
