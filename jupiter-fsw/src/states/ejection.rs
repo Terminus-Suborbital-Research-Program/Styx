@@ -1,4 +1,5 @@
 use bin_packets::phases::JupiterPhase;
+use embedded_hal::digital::PinState;
 use log::warn;
 
 use crate::states::battery_power::BatteryPower;
@@ -14,15 +15,15 @@ impl ValidState for Ejection {
     }
 
     fn next(&self, ctx: super::traits::StateContext) -> Box<dyn ValidState> {
-        match ctx.pins.te_2_high() {
-            true => {
+        match ctx.pins.read().te1() {
+            PinState::High => {
                 // Low power warning, go to battery power
                 log::info!("Received LV shutoff signal, triggering battery power");
                 warn!("ATMEGA latch not implemented yet");
                 Box::new(BatteryPower::default())
             }
 
-            false => {
+            PinState::Low => {
                 // No change
                 Box::new(Self {})
             }

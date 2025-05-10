@@ -1187,6 +1187,8 @@ name = "jupiter-fsw"
 version = "0.1.0"
 dependencies = [
  "bin-packets",
+ "common",
+ "embedded-hal 1.0.0",
  "env_logger",
  "get_if_addrs",
  "gpio",

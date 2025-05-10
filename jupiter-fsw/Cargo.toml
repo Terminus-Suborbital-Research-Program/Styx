@@ -15,3 +15,5 @@ rppal = "0.22.1"
 serde_json = "1.0.140"
 serialport = "4.7.1"
 ureq = { version = "3.0.10", features = ["json"] }
+common = { path = "../common" }
+embedded-hal = "1.0.0"

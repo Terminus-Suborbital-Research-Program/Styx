@@ -1,15 +1,15 @@
 use bin_packets::phases::JupiterPhase;
 
-use crate::{tasks::PinStates, timing::t_time_estimate};
+use crate::{tasks::IndicatorsReader, timing::t_time_estimate};
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct StateContext {
-    pub pins: PinStates,
+    pub pins: IndicatorsReader,
     pub t_time: i32,
 }
 
 impl StateContext {
-    pub fn new(pins: PinStates) -> Self {
+    pub fn new(pins: IndicatorsReader) -> Self {
         Self {
             pins,
             t_time: t_time_estimate(),
@@ -17,8 +17,8 @@ impl StateContext {
     }
 }
 
-impl From<PinStates> for StateContext {
-    fn from(pins: PinStates) -> Self {
+impl From<IndicatorsReader> for StateContext {
+    fn from(pins: IndicatorsReader) -> Self {
         Self::new(pins)
     }
 }

@@ -54,6 +54,20 @@ impl IndicatorStates {
     pub fn encode_i2c(&self) -> u8 {
         self.into()
     }
+
+    /// No pins are high - not default because we don't want this being used nilly-willy, but it's good to have
+    /// on occasion to prevent panic
+    pub fn none() -> Self {
+        IndicatorBuilder::new()
+            .gse1(false)
+            .gse2(false)
+            .te_ra(false)
+            .te_rb(false)
+            .te1(false)
+            .te2(false)
+            .te3(false)
+            .build()
+    }
 }
 
 /// Malformed indicator error
