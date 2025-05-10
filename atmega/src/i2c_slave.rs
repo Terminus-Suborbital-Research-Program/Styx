@@ -76,8 +76,6 @@ impl<'a> I2cSlave<'a> {
         }
 
         self.twi.twcr.reset();
-
-        
     }
 
     /// Set TWCR registers enabling TWI to respond [`I2cSlave`].
@@ -118,8 +116,6 @@ impl<'a> I2cSlave<'a> {
         let mut status: u8;
 
         self.arm();
-
-        
 
         // TODO loop may be reworked into something different
         let result: Result<usize, I2CSlaveError> = loop {
@@ -279,8 +275,6 @@ impl<'a> I2cSlave<'a> {
         let mut status: u8;
 
         self.arm();
-
-        
 
         // Read I2C in blocking mode
         let result: Result<(), I2CSlaveError> = loop {

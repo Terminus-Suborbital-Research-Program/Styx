@@ -111,7 +111,7 @@ impl TryFrom<u8> for IndicatorStates {
 impl From<IndicatorStates> for u8 {
     fn from(value: IndicatorStates) -> Self {
         let mut result = 0;
-        result |= ((value.gse1 as u8));
+        result |= value.gse1 as u8;
         result |= (value.gse2 as u8) << 1;
         result |= (value.te_ra as u8) << 2;
         result |= (value.te_rb as u8) << 3;
