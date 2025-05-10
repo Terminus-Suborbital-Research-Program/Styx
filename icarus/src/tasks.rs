@@ -5,11 +5,12 @@ use bin_packets::packets::ApplicationPacket;
 use bme280_rs::{Configuration, Oversampling, SensorMode};
 use defmt::{info, warn};
 use embedded_hal::digital::StatefulOutputPin;
-use fugit::ExtU64;
+use fugit::{ExtU64, Instant};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
 
+use crate::device_constants::servos::{FlapServo, FLAP_SERVO_LOCKED, FLAP_SERVO_UNLOCKED};
 use crate::device_constants::AvionicsI2cBus;
 use crate::phases::StateMachineListener;
 use crate::{app::*, device_constants::MotorI2cBus, Mono};
@@ -76,6 +77,62 @@ use rp235x_pac::interrupt;
 #[interrupt]
 unsafe fn I2C0_IRQ() {
     MotorI2cBus::on_interrupt();
+}
+
+
+async fn flap_servo_on(mut servo: &mut FlapServo){
+    servo.enable();   
+}
+async fn flap_servo_open(mut servo: &mut FlapServo){
+    servo.set_angle(70);   
+}
+async fn flap_servo_close(mut servo: &mut FlapServo){
+    servo.set_angle(0);   
+}
+use rp235x_hal::clocks;
+pub async fn mode_sequencer(mut ctx: mode_sequencer::Context<'_>){
+    let mut status = 0;
+    let mut iteration = 0;
+    let clk_spd = 12_000_000u32;
+    let mut mode_start = Mono::now();    
+    
+    mode_start += 5000.millis();
+    Mono::delay_until(mode_start).await;    
+
+    match Mono::timeout_at(mode_start, flap_servo_on(ctx.local.flap_servo)).await{
+        Ok(_)=>{
+            info!("Timeout Ok");
+        }
+        Err(_)=>{
+            info!("Timeout Error");
+        }
+    };
+
+    loop{
+        let mut flap_servo_timer_close = Mono::now();
+        let flap_servo_timeout_close = flap_servo_timer_close + 10000.millis();
+        Mono::delay_until(flap_servo_timeout_close).await;
+        match Mono::timeout_at(flap_servo_timeout_close+500.millis(), flap_servo_close(ctx.local.flap_servo)).await{
+            Ok(_)=>{
+                info!("Closing Servo");
+            }
+            Err(_)=>{
+                info!("Error Closing Servo");
+            }
+        };
+        let mut flap_servo_timer_open = Mono::now();
+        let flap_servo_timeout_open = flap_servo_timer_open + 10000.millis();
+        Mono::delay_until(flap_servo_timeout_open).await;
+        match Mono::timeout_at(flap_servo_timeout_open+500.millis(), flap_servo_open(ctx.local.flap_servo)).await{
+            Ok(_)=>{
+                info!("Opening Servo");
+            }
+            Err(_)=>{
+                info!("Error Opening Servo");
+            }
+        };
+        Mono::delay(100_u64.millis()).await;
+    }
 }
 
 pub async fn motor_drivers(
