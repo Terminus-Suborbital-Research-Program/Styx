@@ -4,22 +4,17 @@
 
 use core::sync::atomic::{AtomicBool, Ordering};
 
-use arduino_hal::hal::port::Dynamic;
 use atmega_hal::{
     clock::MHz16,
-    port::{
-        mode::{Floating, Input},
-        Pin,
-    },
     usart::{Baudrate, Usart},
 };
 
+use common::indicators::IndicatorBuilder;
 use i2c_slave::*;
 use panic_halt as _;
 use ufmt::uwriteln;
 
 type CoreClock = MHz16;
-use heapless::Vec;
 
 mod i2c_slave;
 static TWI_INT_FLAG: AtomicBool = AtomicBool::new(false);
@@ -30,49 +25,6 @@ fn TWI() {
     avr_device::interrupt::free(|_| {
         TWI_INT_FLAG.store(true, Ordering::SeqCst);
     });
-}
-
-trait Read {
-    fn new(pin_set: &[Pin<Input<Floating>, Dynamic>; 7]) -> Self;
-    fn update(&mut self, pin_set: &[Pin<Input<Floating>, Dynamic>; 7]);
-}
-
-#[derive(Debug, Clone, Copy)]
-struct PinState {
-    gse_1: bool,
-    gse_2: bool,
-    te_ra: bool,
-    te_rb: bool,
-    te_1: bool,
-    te_2: bool,
-    te_3: bool,
-}
-
-impl Read for PinState {
-    fn new(pin_set: &[Pin<Input<Floating>, Dynamic>; 7]) -> Self {
-        let state: Vec<bool, 7> = pin_set.iter().map(|pin| pin.is_high()).collect();
-
-        PinState {
-            gse_1: state[0],
-            gse_2: state[1],
-            te_ra: state[2],
-            te_rb: state[3],
-            te_1: state[4],
-            te_2: state[5],
-            te_3: state[6],
-        }
-    }
-
-    fn update(&mut self, pin_set: &[Pin<Input<Floating>, Dynamic>; 7]) {
-        let state: Vec<bool, 7> = pin_set.iter().map(|pin| pin.is_high()).collect();
-        self.gse_1 = state[0];
-        self.gse_2 = state[1];
-        self.te_ra = state[2];
-        self.te_rb = state[3];
-        self.te_1 = state[4];
-        self.te_2 = state[5];
-        self.te_3 = state[6];
-    }
 }
 
 use arduino_hal as atmega_hal;
@@ -93,15 +45,13 @@ fn main() -> ! {
 
     let mut battery_latch = pins.d29.into_output();
 
-    let pin_set = [
-        pins.d22.into_floating_input().downgrade(),
-        pins.d23.into_floating_input().downgrade(),
-        pins.d24.into_floating_input().downgrade(),
-        pins.d25.into_floating_input().downgrade(),
-        pins.d26.into_floating_input().downgrade(),
-        pins.d27.into_floating_input().downgrade(),
-        pins.d28.into_floating_input().downgrade(),
-    ];
+    let gse1 = pins.d22.into_floating_input().downgrade();
+    let gse2 = pins.d23.into_floating_input().downgrade();
+    let te_ra = pins.d24.into_floating_input().downgrade();
+    let te_rb = pins.d25.into_floating_input().downgrade();
+    let te_1 = pins.d26.into_floating_input().downgrade();
+    let te_2 = pins.d27.into_floating_input().downgrade();
+    let te_3 = pins.d28.into_floating_input().downgrade();
 
     // Using external pullup resistors, so pins configured as floating inputWs
     let sda = pins.d20.into_floating_input();
@@ -113,8 +63,6 @@ fn main() -> ! {
 
     // Enable global interrupt
     unsafe { avr_device::interrupt::enable() };
-    // Value recieved from I2C Master
-    let mut buf: [u8; 20];
 
     uwriteln!(&mut serial, "Initialized with addr: 0x{:X}", slave_address).ok();
     i2c_slave.init(false);
@@ -123,51 +71,21 @@ fn main() -> ! {
 
     // Check in and out of loop
 
-    let read_buf: [u8; 20] = [0u8; 20];
-
-    let mut byte = 0b0000_0000u8;
-
-    let setter = 0b0000_0001;
-    let mut pin_state = PinState::new(&pin_set);
     let mut write_buf: [u8; 1] = [0u8; 1];
     let mut read_buf: [u8; 1] = [0u8; 1];
 
     loop {
-        pin_state.update(&pin_set);
+        let pins = IndicatorBuilder::new()
+            .gse1(gse1.is_high())
+            .gse2(gse2.is_high())
+            .te_ra(te_ra.is_high())
+            .te_rb(te_rb.is_high())
+            .te1(te_1.is_high())
+            .te2(te_2.is_high())
+            .te3(te_3.is_high())
+            .build();
 
-        // byte &= !0b0000_0011;
-        // byte &= 0b1111_1100;
-
-        if pin_state.gse_1 {
-            // byte |=  0b0000_0001;
-            byte |= setter;
-        }
-        if pin_state.gse_2 {
-            // byte |=  0b0000_0010;
-            byte |= setter << 1;
-        }
-        if pin_state.te_ra {
-            // byte |= 0b0000_0100;
-            byte |= setter << 2;
-        }
-        if pin_state.te_rb {
-            // byte |= 0b0000_1000;
-            byte |= setter << 3;
-        }
-        if pin_state.te_1 {
-            // byte |= 0b0001_0000;
-            byte |= setter << 4;
-        }
-        if pin_state.te_2 {
-            // byte |= 0b0010_0000;
-            byte |= setter << 5;
-        }
-        if pin_state.te_3 {
-            // byte |= 0b0100_0000;
-            byte |= setter << 6;
-        }
-
-        write_buf[0] = byte;
+        write_buf[0] = pins.into();
 
         match i2c_slave.respond(&write_buf) {
             Ok(bytes_sent) => {
@@ -175,12 +93,12 @@ fn main() -> ! {
             }
 
             Err(err) => {
-                uwriteln!(serial, "response_error").ok();
+                uwriteln!(serial, "Response Error: {:?}", err).ok();
             }
         }
 
         match i2c_slave.receive(&mut read_buf) {
-            Ok(bytes_read) => {
+            Ok(_) => {
                 uwriteln!(serial, "Succesful read").ok();
                 if read_buf[0] == 1 {
                     battery_latch.set_high();
