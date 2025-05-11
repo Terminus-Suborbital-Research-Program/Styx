@@ -25,7 +25,8 @@
             rust-analyzer
             probe-rs-tools
             cargo-make
-            lazygit
+            ravedude
+	    lazygit
             clippy
             rust-analyzer
             libudev-zero

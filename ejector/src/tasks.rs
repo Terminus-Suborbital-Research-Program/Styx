@@ -86,7 +86,7 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
 
     let ejection_pin = ctx.local.ejection_pin;
 
-    // Wait until ejection pin reads high
+    // // Wait until ejection pin reads high
     while !ejection_pin.is_high().unwrap_or(false) {
         Mono::delay(100_u64.millis()).await;
     }

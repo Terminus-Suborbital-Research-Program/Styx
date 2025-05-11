@@ -23,11 +23,21 @@ args    = ["build", "--release",
            "--target", "${TARGET}",
            "-Z", "build-std=${BUILDSTD}"]
 
+[tasks.check]
+command = "cargo"
+args    = ["check",
+           "--target", "${TARGET}",
+           "-Z", "build-std=${BUILDSTD}"]
+
 [tasks.clippy]
 install_crate = "clippy"
 command = "cargo"
 args    = ["clippy", "--fix", "--allow-dirty",
            "--target", "${TARGET}", "-Z", "build-std=${BUILDSTD}"]
+
+[tasks.ravedude]
+extend = "build"
+command = "cargo"
 
 [tasks.test]
 command = "echo"
