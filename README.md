@@ -15,8 +15,6 @@ In addition, `bin-packets` provides a library for encoding and decoding strongly
 
 printscale daily zoom 2
 
-sundays are closed
-
 2025-5-28 to 2025-6-10 are named [Lucas in Wisconsin]
 2025-5-28 to 2025-6-10 are colored in salmon
 
@@ -26,13 +24,13 @@ Project starts 2025-5-1
 [Flight Assembly] happens 2025-6-6
 [VVC] happens 2025-6-10
 
-[JUPITER RBF] requires 1 days and starts 2025-5-10
-[JUPITER Phasing] requires 2 days
+[JUPITER RBF] requires 1 days and starts 2025-5-12
+[JUPITER Phasing] requires 1 days
 [JUPITER Camera] requires 1 days
 [JUPITER Camera Integration] requires 2 days
 [JUPITER Data Recording] requires 2 days
 
-[Ejection Signal] requires 1 day
+[Ejection Signal] requires 1 day and starts 2025-5-10 and is colored in green
 [Ejector RBF] requires 1 days and starts 2025-5-12
 [Ejector Phasing] requires 2 days
 [Ejector ESP32-Cams] requires 1 day
@@ -45,7 +43,7 @@ Project starts 2025-5-1
 [Integrated Radio Test] requires 2 days
 [Full-Range Radio Test] requires 2 days
 
-[JUPITER Battery Latch] requires 1 week
+[JUPITER Battery Latch] requires 3 days
 [Full Mission Simulation] requires 1 week
 
 [ICARUS Servos] requires 1 days
@@ -68,7 +66,9 @@ Project starts 2025-5-1
 [JUPITER Camera Integration] starts at [JUPITER Camera]'s end
 [JUPITER Data Recording] starts at [JUPITER Phasing]'s end
 
-[Ejection Signal] starts at [JUPITER Phasing]'s end
+
+
+[Ejection Test] starts at [Ejection Signal]'s end and requires 1 day
 
 [Ejector Phasing] starts at [Ejector RBF]'s end
 [Ejector Phasing] starts at [Ejection Signal]'s end
