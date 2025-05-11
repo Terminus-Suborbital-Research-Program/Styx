@@ -18,6 +18,10 @@ heapless = "0.8.0"
 avr-device = { version = "0.7.0", features = ["atmega2560"] }
 common = {path = "../common"}
 
+[profile.dev]
+opt-level = "s"
+panic = "abort"
+
 [dependencies.arduino-hal]
 git = "https://github.com/rahix/avr-hal"
 rev = "fafaf587a32a4500239fd073f89d1b9c36b48092"
