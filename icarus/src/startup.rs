@@ -268,8 +268,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let ina_data = INAData::default();
 
     info!("Peripherals initialized, spawning tasks...");
-    // heartbeat::spawn().ok();
-    // radio_flush::spawn().ok();
+    heartbeat::spawn().ok();
     flap_sequencer::spawn().ok();
     relay_sequencer::spawn().ok();
     // motor_drivers::spawn(motor_i2c_arbiter, esc_listener).ok();

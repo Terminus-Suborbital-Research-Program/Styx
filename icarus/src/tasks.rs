@@ -7,6 +7,7 @@ use defmt::{info, warn};
 use embedded_hal::digital::StatefulOutputPin;
 use fugit::ExtU64;
 use rtic::Mutex;
+use rtic_monotonics::rtic_time::monotonic::TimerQueueBasedInstant;
 use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
 
@@ -16,11 +17,11 @@ use crate::phases::StateMachineListener;
 use crate::{app::*, device_constants::MotorI2cBus, Mono};
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
-    let mut sequence_number = 0;
+    let mut sequence_number: u16 = 0;
     loop {
         _ = ctx.local.led.toggle();
 
-        let status = Status::new(DeviceIdentifier::Icarus, now_timestamp(), sequence_number);
+        let status = Status::new(DeviceIdentifier::Icarus, Mono::now().ticks(), sequence_number);
 
         let packet_send = ctx
             .shared

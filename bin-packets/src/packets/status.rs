@@ -9,14 +9,14 @@ pub struct Status {
     /// Origin device
     pub device: DeviceIdentifier,
     /// Current timestamp
-    pub timestamp_ns: Timestamp,
+    pub timestamp_ns: u64,
     /// Packet number
     pub sequence_number: u16,
 }
 
 impl Status {
     /// Create a new status packet
-    pub fn new(device: DeviceIdentifier, timestamp_ns: Timestamp, sequence_number: u16) -> Self {
+    pub fn new(device: DeviceIdentifier, timestamp_ns: u64, sequence_number: u16) -> Self {
         Self {
             device,
             timestamp_ns,
