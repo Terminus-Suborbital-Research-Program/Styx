@@ -1,5 +1,5 @@
 [build]
-target = "thumbv8m.main-none-eabihf"
+target = ["thumbv8m.main-none-eabihf", "x86-64-unknown-linux-gnu", "avr-none", "aarch64-unknown-linux-gnu"]
 
 [unstable]
 build-std = ["core", "alloc"]

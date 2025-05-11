@@ -21,7 +21,11 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     loop {
         _ = ctx.local.led.toggle();
 
-        let status = Status::new(DeviceIdentifier::Icarus, Mono::now().ticks(), sequence_number);
+        let status = Status::new(
+            DeviceIdentifier::Icarus,
+            Mono::now().ticks(),
+            sequence_number,
+        );
 
         let packet_send = ctx
             .shared

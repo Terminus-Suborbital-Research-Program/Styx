@@ -15,7 +15,11 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     loop {
         ctx.shared.led.lock(|led| led.toggle().unwrap());
 
-        let status = Status::new(DeviceIdentifier::Ejector, Mono::now().ticks(), sequence_number);
+        let status = Status::new(
+            DeviceIdentifier::Ejector,
+            Mono::now().ticks(),
+            sequence_number,
+        );
 
         let res = ctx
             .shared
