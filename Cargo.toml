@@ -1,5 +1,5 @@
 [workspace]
-members = ["bin-packets", "ejector", "icarus", "ina260", "jupiter-fsw", "gs-cli", "atmega", "common"]
+# members = ["bin-packets", "ejector", "icarus", "ina260", "jupiter-fsw", "gs-cli", "atmega", "common"]
 resolver = "3"
 
 [profile.dev.package."atmega"]
