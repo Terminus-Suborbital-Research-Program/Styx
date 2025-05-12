@@ -1,46 +1,56 @@
-use rppal::gpio::InputPin;
-use std::{
-    sync::{Arc, RwLock},
-    time::Duration,
-};
+use std::sync::{Arc, Mutex};
+use std::thread::spawn;
 
-use log::warn;
+use common::rbf::{ActiveHighRbf, RbfIndicator};
+use common::rbf::RbfState;
 
-#[allow(dead_code)]
-pub fn rbf_monitor_thread(rbf_pin: InputPin, rbf_status: Arc<RwLock<bool>>) -> ! {
-    // Only grab the lock if this is a new change in state
-    let mut previous_status = false;
+use crate::gpio::read::ReadPin;
 
-    loop {
-        if transitioned_on(&rbf_pin, &previous_status) {
-            match rbf_status.write() {
-                Ok(mut status_writer) => {
-                    *status_writer = true;
-                }
-                Err(e) => {
-                    warn!("Error getting writer! Error: {e:?}");
-                }
-            }
-            previous_status = true
-        } else if transitioned_off(&rbf_pin, &previous_status) {
-            match rbf_status.write() {
-                Ok(mut status_writer) => {
-                    *status_writer = false;
-                }
-                Err(e) => {
-                    warn!("Error getting writer! Error: {e:?}");
-                }
-            }
-            previous_status = false
+/// The task spawner for the RBF reader
+pub struct RbfTask {
+    indicator: ActiveHighRbf<ReadPin>,
+    state: Arc<Mutex<RbfState>>,
+}
+
+impl RbfTask {
+    pub fn new(mut indicator: ActiveHighRbf<ReadPin>) -> Self {
+        let state = indicator.get_inhibition();
+        Self {
+            indicator,
+            state: Arc::new(Mutex::new(state)),
         }
-        std::thread::sleep(Duration::from_millis(1000));
+    }
+
+    pub fn spawn(self, interval_ms: u64) -> RbfReader {
+        let update_state = self.state.clone();
+        spawn(move || {
+            rbf_states_thread(self.indicator, update_state, interval_ms);
+        });
+        RbfReader::from(self.state)
     }
 }
 
-fn transitioned_on(rbf_pin: &InputPin, previous_status: &bool) -> bool {
-    rbf_pin.is_high() && !previous_status
+#[derive(Clone)]
+pub struct RbfReader {
+    rbf: Arc<Mutex<RbfState>>
 }
 
-fn transitioned_off(rbf_pin: &InputPin, previous_status: &bool) -> bool {
-    rbf_pin.is_low() && *previous_status
+impl RbfReader {
+    pub fn read(&self) -> RbfState {
+        self.rbf.lock().unwrap().clone()
+    }
+}
+
+impl From<Arc<Mutex<RbfState>>> for RbfReader {
+    fn from(rbf: Arc<Mutex<RbfState>>) -> Self {
+        Self { rbf }
+    }
+}
+
+fn rbf_states_thread<T: RbfIndicator>(mut indicator: T, state: Arc<Mutex<RbfState>>, update_interval: u64) -> ! {
+    loop {
+        let mut state = state.lock().unwrap();
+        *state = indicator.get_inhibition();
+        std::thread::sleep(std::time::Duration::from_millis(update_interval));
+    }
 }

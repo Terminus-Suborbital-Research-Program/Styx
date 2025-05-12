@@ -1,29 +1,27 @@
 use std::{
-    thread::{self, sleep},
+    thread::sleep,
     time::Duration,
 };
 
 use bin_packets::device::PacketDevice;
 use bin_packets::device::PacketIO;
+use common::rbf::ActiveHighRbf;
 use constants::{EJECTION_IND_PIN, RBF_PIN};
 use env_logger::Env;
 
 use gpio::{Pin, read::ReadPin, write::WritePin};
 use i2cdev::{core::I2CDevice, linux::LinuxI2CDevice};
-use palantir::ping_thread;
-use rbf::RbfPin;
 use states::JupiterStateMachine;
 use tasks::IndicatorsReader;
 
 mod constants;
 mod gpio;
-mod palantir;
-mod rbf;
 mod states;
 mod tasks;
 mod timing;
 
 use log::info;
+use tasks::RbfTask;
 
 static SERIAL_PORT: &str = "/dev/serial0";
 
@@ -39,19 +37,20 @@ fn main() {
         .open()
         .unwrap();
     let mut interface = PacketDevice::new(port);
-    let rbf_pin: RbfPin = ReadPin::from(Pin::new(RBF_PIN)).into();
+    let rbf_pin = ActiveHighRbf::new(ReadPin::from(Pin::new(RBF_PIN)));
     let ejection_pin: WritePin = Pin::new(EJECTION_IND_PIN).into();
     ejection_pin.write(true).unwrap();
 
     let mut atmega = LinuxI2CDevice::new("/dev/i2c-1", 0x26u16).unwrap();
 
     info!("I2c Read: {:?}", atmega.smbus_read_byte());
+
     let pins = IndicatorsReader::new(atmega);
+    let rbf = RbfTask::new(rbf_pin).spawn(100);
+
+    info!("RBF At Boot: {}", rbf.read());
 
     let mut state_machine = JupiterStateMachine::new(pins);
-
-
-    thread::spawn(move || ping_thread());
 
     loop {
         interface.update().ok();

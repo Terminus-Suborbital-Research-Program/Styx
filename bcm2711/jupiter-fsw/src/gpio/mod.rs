@@ -1,3 +1,6 @@
+use embedded_hal::digital::{Error, ErrorKind};
+
+
 pub mod read;
 pub mod write;
 
@@ -6,6 +9,15 @@ pub mod write;
 pub enum PinError {
     IoError(std::io::Error),
     ParseError(String),
+}
+
+impl Error for PinError {
+    fn kind(&self) -> ErrorKind {
+        match self {
+            PinError::IoError(_) => ErrorKind::Other,
+            PinError::ParseError(_) => ErrorKind::Other,
+        }
+    }
 }
 
 #[derive(Debug)]
