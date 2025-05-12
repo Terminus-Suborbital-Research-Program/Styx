@@ -38,7 +38,7 @@ impl ValidState for SkirtSeperation {
             ctx.ejection_pin.write(false).unwrap();
             Box::new(Ejection::default())
         } else {
-            info!("Waiting for ejection to complete.");
+            info!("Waiting for ejection to complete. Time recieved: {}, current time: {}", self.te_recieved_at, ctx.t_time);
             ctx.ejection_pin.write(true).unwrap();
             Box::new(self.clone())
         }
