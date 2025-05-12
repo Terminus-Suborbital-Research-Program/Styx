@@ -8,12 +8,12 @@ use crate::gpio::read::ReadPin;
 
 /// The task spawner for the RBF reader
 pub struct RbfTask {
-    indicator: ActiveLowRbf<ReadPin>,
+    indicator: ActiveHighRbf<ReadPin>,
     state: Arc<Mutex<RbfState>>,
 }
 
 impl RbfTask {
-    pub fn new(mut indicator: ActiveLowRbf<ReadPin>) -> Self {
+    pub fn new(mut indicator: ActiveHighRbf<ReadPin>) -> Self {
         let state = indicator.get_inhibition();
         Self {
             indicator,
