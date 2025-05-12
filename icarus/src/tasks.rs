@@ -11,7 +11,8 @@ use rtic_monotonics::rtic_time::monotonic::TimerQueueBasedInstant;
 use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
 
-use crate::device_constants::servos::{FLAP_SERVO_LOCKED, FLAP_SERVO_UNLOCKED};
+use crate::actuators::servo::ServoMultiMosfet;
+use crate::device_constants::servos::{IcarusServos, FLAP_SERVO_LOCKED, FLAP_SERVO_UNLOCKED, RELAY_SERVO_LOCKED, RELAY_SERVO_UNLOCKED};
 use crate::device_constants::AvionicsI2cBus;
 use crate::phases::StateMachineListener;
 use crate::{app::*, device_constants::MotorI2cBus, Mono};
@@ -84,47 +85,60 @@ unsafe fn I2C0_IRQ() {
     MotorI2cBus::on_interrupt();
 }
 
-/// Sequencer function for the relay deployable
-pub async fn relay_sequencer(ctx: relay_sequencer::Context<'_>) {
-    ctx.local.relay_servo.set_angle(70);
-
-    // Give some time to space away from the deployable
-    Mono::delay(20u64.secs()).await;
-
-    // Loop open and close for 10 seconds
-    let end_time = Mono::now() + 10u64.secs();
-
-    while Mono::now() < end_time {
-        ctx.local.relay_servo.set_angle(0);
-        info!("Opened relay servo");
-        Mono::delay(3000_u64.millis()).await;
-
-        ctx.local.relay_servo.set_angle(90);
-        info!("Closed relay servo");
-        Mono::delay(3000_u64.millis()).await;
-    }
-
-    info!("Relay iteration finished");
+async fn flap_servo_on(mut servo: &mut IcarusServos){
+    servo.enable1();
+    servo.enable2();
 }
 
-/// Sequencer function for the deployable flaps
-pub async fn flap_sequencer(ctx: flap_sequencer::Context<'_>) {
-    ctx.local.flap_servo.set_angle(FLAP_SERVO_LOCKED);
-    ctx.local.flap_servo.enable();
+async fn flap_servo_open(mut servo: &mut IcarusServos){
+    servo.set_angle(90);   
+}
+async fn flap_servo_close(mut servo: &mut IcarusServos){
+    servo.set_angle(0);   
+}
+use rp235x_hal::clocks;
+pub async fn servo_sequencer(mut ctx: servo_sequencer::Context<'_>){
+    let mut status = 0;
+    let mut iteration = 0;
+    let mut mode_start = Mono::now();    
+    
+    mode_start += 5000.millis();
+    Mono::delay_until(mode_start).await;    
 
-    Mono::delay(5000.millis()).await;
-    ctx.local.flap_servo.set_angle(FLAP_SERVO_UNLOCKED);
-
-    let iter_time = 10000u64.millis();
-
-    loop {
-        Mono::delay(iter_time).await;
-        ctx.local.flap_servo.set_angle(FLAP_SERVO_LOCKED);
-        info!("Opened flap servo");
-
-        Mono::delay(iter_time).await;
-        ctx.local.flap_servo.set_angle(FLAP_SERVO_UNLOCKED);
-        info!("Closed flap servo");
+    match Mono::timeout_at(mode_start, flap_servo_on(ctx.local.servos)).await{
+        Ok(_)=>{
+            info!("Timeout Ok");
+        }
+        Err(_)=>{
+            info!("Timeout Error");
+        }
+    };
+    ctx.local.servos.enable1();
+    ctx.local.servos.enable2();
+    loop{
+        let mut flap_servo_timer_close = Mono::now();
+        let flap_servo_timeout_close = flap_servo_timer_close + 5000.millis();
+        Mono::delay_until(flap_servo_timeout_close).await;
+        match Mono::timeout_at(flap_servo_timeout_close+500.millis(), flap_servo_close(ctx.local.servos)).await{
+            Ok(_)=>{
+                info!("Closing Servo");
+            }
+            Err(_)=>{
+                info!("Error Closing Servo");
+            }
+        };
+        let mut flap_servo_timer_open = Mono::now();
+        let flap_servo_timeout_open = flap_servo_timer_open + 5000.millis();
+        Mono::delay_until(flap_servo_timeout_open).await;
+        match Mono::timeout_at(flap_servo_timeout_open+500.millis(), flap_servo_open(ctx.local.servos)).await{
+            Ok(_)=>{
+                info!("Opening Servo");
+            }
+            Err(_)=>{
+                info!("Error Opening Servo");
+            }
+        };
+        Mono::delay(100_u64.millis()).await;
     }
 }
 

@@ -62,7 +62,7 @@ pub mod servos {
         pwm::{Channel, FreeRunning, Pwm0, Pwm1, Slice, B},
     };
 
-    use crate::actuators::servo::Servo;
+    use crate::actuators::servo::{Servo, ServoMultiMosfet};
 
     use super::pins::{FlapMosfetPin, FlapServoPWMGpio, RelayMosfetPin, RelayServoPWMGpio};
 
@@ -87,15 +87,13 @@ pub mod servos {
     /// Relay servo slice
     pub type RelayServoSlice = Slice<RelayServoPwm, FreeRunning>;
 
-    /// Flap Servo
-    pub type FlapServo = Servo<Channel<FlapServoSlice, B>, FlapServoPwmPin, FlapMosfet>;
-    /// Relay Servo
-    pub type RelayServo = Servo<Channel<RelayServoSlice, B>, RelayServoPwmPin, RelayMosfet>;
+    /// Icarus Servos
+    pub type IcarusServos = ServoMultiMosfet<Channel<FlapServoSlice, B>, Pin<FlapServoPWMGpio, FunctionPwm, PullDown>, FlapMosfet, RelayMosfet>;
 
     /// Flap servo locked
-    pub static FLAP_SERVO_LOCKED: u16 = 50;
+    pub static FLAP_SERVO_LOCKED: u16 = 0;
     /// Flap servo unlocked
-    pub static FLAP_SERVO_UNLOCKED: u16 = 70;
+    pub static FLAP_SERVO_UNLOCKED: u16 = 180;
 
     /// Relay servo locked
     pub static RELAY_SERVO_LOCKED: u16 = 90;

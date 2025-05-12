@@ -1,11 +1,6 @@
 use embedded_hal::{digital::OutputPin, pwm::SetDutyCycle};
-// For the servo
 
-pub static EJECTION_ANGLE: u16 = 100;
-pub static HOLDING_ANGLE: u16 = 70;
-// pub static LOCKING_SERVO_LOCKED: u16 = 105;
-// pub static LOCKING_SERVO_UNLOCKED: u16 = 20;
-
+// Servo Consts
 const PWM_TOP: u16 = 46_874;
 const TOP: u16 = PWM_TOP + 1;
 // 0.5ms is 2.5% of 20ms; 0 degrees in servo
@@ -46,14 +41,14 @@ where
         self.channel.set_duty_cycle(duty).unwrap();
     }
 
-    pub fn deg_0(&mut self) {
+    pub fn deg_0(&mut self){
         self.channel.set_duty_cycle(MIN_DUTY);
     }
 
-    pub fn deg_90(&mut self) {
+    pub fn deg_90(&mut self){
         self.channel.set_duty_cycle(HALF_DUTY);
     }
-    pub fn deg_180(&mut self) {
+    pub fn deg_180(&mut self){
         self.channel.set_duty_cycle(HALF_DUTY);
     }
     pub fn enable(&mut self) {
@@ -62,5 +57,61 @@ where
 
     pub fn disable(&mut self) {
         self.mosfet_pin.set_low().unwrap();
+    }
+}
+
+pub struct ServoMultiMosfet<C, P, M1: OutputPin, M2: OutputPin> {
+    channel: C,
+    pin: P,
+    mosfet1_pin: M1,
+    mosfet2_pin: M2,
+}
+
+#[allow(dead_code)]
+impl<C, P,  M1, M2> ServoMultiMosfet<C, P, M1, M2>
+where
+    M1: OutputPin,
+    M2: OutputPin,
+{
+    pub fn new(channel: C, pin: P, mosfet1_pin: M1, mosfet2_pin: M2) -> Self {
+        Self {
+            channel,
+            pin,
+            mosfet1_pin,
+            mosfet2_pin,
+        }
+    }
+}
+
+#[allow(dead_code)]
+impl<C, P, M1, M2> ServoMultiMosfet<C, P, M1, M2>
+where
+    C: SetDutyCycle,
+    M1: OutputPin,
+    M2: OutputPin,{
+    pub fn set_angle(&mut self, angle: u16) {
+        let duty = ((angle as f32 / 180.0) * (MAX_DUTY - MIN_DUTY) as f32 + MIN_DUTY as f32) as u16;
+        self.channel.set_duty_cycle(duty).unwrap();
+    }
+    pub fn deg_0(&mut self) {
+        self.channel.set_duty_cycle(MIN_DUTY);
+    }
+    pub fn deg_90(&mut self) {
+        self.channel.set_duty_cycle(HALF_DUTY);
+    }
+    pub fn deg_180(&mut self) {
+        self.channel.set_duty_cycle(HALF_DUTY);
+    }
+    pub fn enable1(&mut self) {
+        self.mosfet1_pin.set_high().unwrap();
+    }
+    pub fn enable2(&mut self) {
+        self.mosfet2_pin.set_high().unwrap();
+    }
+    pub fn disable1(&mut self) {
+        self.mosfet1_pin.set_low().unwrap();
+    }
+    pub fn disable2(&mut self) {
+        self.mosfet2_pin.set_low().unwrap();
     }
 }
