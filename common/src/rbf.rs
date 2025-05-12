@@ -84,29 +84,3 @@ impl<T: InputPin> RbfIndicator for ActiveHighRbf<T> {
         self.inhibited_at_init
     }
 }
-
-/// An active-low (low = inserted) embedded-hal compatible RBF indicator
-pub struct ActiveLowRbf<T: InputPin> {
-    pin: T,
-    inhibited_at_init: bool,
-}
-
-impl<T: InputPin> ActiveLowRbf<T> {
-    pub fn new(mut pin: T) -> Self {
-        let inhibited_at_init = pin.is_low().unwrap_or(false);
-        Self {
-            pin,
-            inhibited_at_init,
-        }
-    }
-}
-
-impl<T: InputPin> RbfIndicator for ActiveLowRbf<T> {
-    fn is_inserted(&mut self) -> bool {
-        self.pin.is_low().unwrap_or(true)
-    }
-
-    fn inhibited_at_init(&mut self) -> bool {
-        self.inhibited_at_init
-    }
-}
