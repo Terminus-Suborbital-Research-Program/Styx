@@ -7,7 +7,7 @@ use i2cdev::{
     core::I2CDevice as _,
     linux::{LinuxI2CDevice, LinuxI2CError},
 };
-use log::{debug, info, warn};
+use log::{debug, warn};
 
 use common::indicators::{IndicatorStates, MalformedIndicatorError};
 
