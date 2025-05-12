@@ -37,7 +37,7 @@ pub struct RbfReader {
 
 impl RbfReader {
     pub fn read(&self) -> RbfState {
-        self.rbf.lock().unwrap().clone()
+        *self.rbf.lock().unwrap()
     }
 }
 
