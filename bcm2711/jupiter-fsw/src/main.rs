@@ -6,7 +6,6 @@ use std::{
 use bin_packets::device::PacketDevice;
 use bin_packets::device::PacketIO;
 use common::rbf::ActiveHighRbf;
-use common::rbf::ActiveLowRbf;
 use constants::{EJECTION_IND_PIN, RBF_PIN};
 use env_logger::Env;
 
