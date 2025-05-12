@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use std::thread::spawn;
 
-use common::rbf::{ActiveHighRbf, ActiveLowRbf, RbfIndicator};
+use common::rbf::{ActiveHighRbf, RbfIndicator};
 use common::rbf::RbfState;
 
 use crate::gpio::read::ReadPin;
@@ -37,7 +37,7 @@ pub struct RbfReader {
 
 impl RbfReader {
     pub fn read(&self) -> RbfState {
-        self.rbf.lock().unwrap().clone()
+        *self.rbf.lock().unwrap()
     }
 }
 
