@@ -4,7 +4,7 @@ use log::warn;
 
 use crate::states::battery_power::BatteryPower;
 
-use super::traits::ValidState;
+use super::traits::{StateContext, ValidState};
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Ejection {}
@@ -14,7 +14,7 @@ impl ValidState for Ejection {
         JupiterPhase::EjectDeployable
     }
 
-    fn next(&self, ctx: super::traits::StateContext) -> Box<dyn ValidState> {
+    fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
         match ctx.pins.read().te2() {
             PinState::High => {
                 // Low power warning, go to battery power

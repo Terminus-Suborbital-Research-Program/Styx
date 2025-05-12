@@ -17,7 +17,7 @@ impl ValidState for BatteryPower {
         JupiterPhase::BatteryPower
     }
 
-    fn next(&self, ctx: StateContext) -> Box<dyn ValidState> {
+    fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
         if ctx.t_time > POWEROFF_T_TIME_SECS {
             info!("Powering off latch");
             warn!("Power off latch not implemented yet");

@@ -16,7 +16,7 @@ impl ValidState for PowerOn {
         JupiterPhase::PowerOn
     }
 
-    fn next(&self, ctx: StateContext) -> Box<dyn ValidState> {
+    fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
         if ctx.pins.read().te1() == PinState::High {
             // Crap, we have late power on for some reason
             warn!("Late power on: TE1 is high. Emergency transition to MainCamStart");

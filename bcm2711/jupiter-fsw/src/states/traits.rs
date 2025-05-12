@@ -1,25 +1,20 @@
 use bin_packets::phases::JupiterPhase;
 
-use crate::{tasks::IndicatorsReader, timing::t_time_estimate};
+use crate::{gpio::write::WritePin, tasks::IndicatorsReader, timing::t_time_estimate};
 
-#[derive(Clone)]
 pub struct StateContext {
     pub pins: IndicatorsReader,
     pub t_time: i32,
+    pub ejection_pin: WritePin,
 }
 
 impl StateContext {
-    pub fn new(pins: IndicatorsReader) -> Self {
+    pub fn new(pins: IndicatorsReader, ejection_pin: WritePin) -> Self {
         Self {
             pins,
             t_time: t_time_estimate(),
+            ejection_pin,
         }
-    }
-}
-
-impl From<IndicatorsReader> for StateContext {
-    fn from(pins: IndicatorsReader) -> Self {
-        Self::new(pins)
     }
 }
 
@@ -28,5 +23,5 @@ pub trait ValidState {
     fn phase(&self) -> JupiterPhase;
 
     /// Transition to the next state
-    fn next(&self, ctx: StateContext) -> Box<dyn ValidState>;
+    fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState>;
 }

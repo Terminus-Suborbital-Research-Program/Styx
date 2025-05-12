@@ -27,7 +27,7 @@ impl ValidState for Shutdown {
         JupiterPhase::Shutdown
     }
 
-    fn next(&self, ctx: StateContext) -> Box<dyn ValidState> {
+    fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
         if self.time_since_switch + DELAY_TO_SHUTDOWN < ctx.t_time {
             info!("Shutting Down!");
             // Replace with actual shutdown behavior
