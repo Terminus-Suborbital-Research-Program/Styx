@@ -4,28 +4,37 @@ use embedded_hal::digital::InputPin;
 /// An RBF State
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone, Copy, PartialEq, Encode, Decode)]
-pub enum RBFState {
+pub enum RbfState {
     /// The RBF is inserted and the system is inhibited
     Inhibited,
     /// The RBF is not inserted
     Uninhibited,
 }
 
-impl Into<bool> for RBFState {
-    fn into(self) -> bool {
+impl core::fmt::Display for RbfState {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            RBFState::Inhibited => true,
-            RBFState::Uninhibited => false,
+            RbfState::Inhibited => write!(f, "RBF Inhibited"),
+            RbfState::Uninhibited => write!(f, "RBF Uninhibited"),
         }
     }
 }
 
-impl From<bool> for RBFState {
+impl Into<bool> for RbfState {
+    fn into(self) -> bool {
+        match self {
+            RbfState::Inhibited => true,
+            RbfState::Uninhibited => false,
+        }
+    }
+}
+
+impl From<bool> for RbfState {
     fn from(value: bool) -> Self {
         if value {
-            RBFState::Inhibited
+            RbfState::Inhibited
         } else {
-            RBFState::Uninhibited
+            RbfState::Uninhibited
         }
     }
 }
@@ -41,11 +50,11 @@ pub trait RbfIndicator {
     fn inhibited_at_init(&mut self) -> bool;
 
     /// Get the inhibition state currently
-    fn get_inhibition(&mut self) -> RBFState {
+    fn get_inhibition(&mut self) -> RbfState {
         if self.is_inserted() || self.inhibited_at_init() {
-            RBFState::Inhibited
+            RbfState::Inhibited
         } else {
-            RBFState::Uninhibited
+            RbfState::Uninhibited
         }
     }
 }

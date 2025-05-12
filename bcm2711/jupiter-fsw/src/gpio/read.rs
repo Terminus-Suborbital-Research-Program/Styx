@@ -1,3 +1,4 @@
+use embedded_hal::digital::{ErrorType, InputPin};
 use log::warn;
 
 use super::Pin;
@@ -63,5 +64,20 @@ impl ReadPin {
                 "Invalid pin read value: {value}"
             )))
         }
+    }
+}
+
+impl ErrorType for ReadPin {
+    type Error = super::PinError;
+}
+
+impl InputPin for ReadPin {
+    fn is_high(&mut self) -> Result<bool, Self::Error> {
+        self.read()
+    }
+
+    fn is_low(&mut self) -> Result<bool, Self::Error> {
+        let value = self.read()?;
+        Ok(!value)
     }
 }
