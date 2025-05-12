@@ -11,7 +11,7 @@ mod skirt_seperation;
 pub mod traits;
 pub use power_on::*;
 
-use crate::{gpio::write::WritePin, tasks::IndicatorsReader};
+use crate::{gpio::write::WritePin, tasks::IndicatorsReader, timing::t_time_estimate};
 
 /// State machine for JUPITER
 pub struct JupiterStateMachine {
@@ -30,6 +30,7 @@ impl JupiterStateMachine {
 
     /// Update the state machine
     pub fn update(&mut self) {
+        self.context.t_time = t_time_estimate();
         self.state = self.state.next(&mut self.context);
     }
 
