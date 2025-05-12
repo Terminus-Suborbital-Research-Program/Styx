@@ -1,0 +1,64 @@
+[package]
+name = "icarus"
+version = "0.1.1"
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+# HAL for the RP350X architecture
+rp235x-hal = { version = "0.3.0", features = [
+    "binary-info",
+    "critical-section-impl",
+    "rt",
+    "defmt",
+    "rtic-monotonic",
+    "dcp-fast-f64",
+], optional = true } # Embedded-hal for io traits
+
+# Rust safe bindings to register-level control
+embedded-hal = "1.0.0"
+embedded-hal-async = "1.0"
+
+# RTIC for real-time operations
+rtic = { version = "2.1.2" }
+rtic-monotonics = "2.0.3"
+
+rtic-sync = "*"
+fugit = "0.3.7"
+# logging
+defmt = "*"
+defmt-rtt = "*"
+heapless = "0.8.0"
+
+# Packets
+bin-packets = { path = "../../bin-packets" }
+futures = { version = "0.3.31", default-features = false, features = [
+    "async-await",
+] }
+rp235x-pac = "0.1.0"
+
+# Sensors
+bme280-rs = { version = "0.3.0", features = ["async"] }
+ina260_terminus = { path = "../../ina260", features = ["async", "defmt"] }
+
+# Communications
+hc12-rs = { git = "https://github.com/thelenlucas/hc12-rs.git", tag = "v0.0.1" }
+
+# Math
+nalgebra = { version = "*", default-features = false, features = [
+    "libm-force",
+] }
+
+# WGS84
+wgs84 = { git = "https://github.com/MeechaelA/WGS84.git" }
+# Earth Atmosphere
+united_states_standard_atmosphere = { git = "https://github.com/MeechaelA/UnitedStatesStandardAtmosphere.git" }
+
+# Target features
+[features]
+default = ["rp2350"]
+rp2350 = [
+    "dep:rp235x-hal",
+    "rtic-monotonics/rp235x",
+    "rtic/thumbv8main-backend",
+]

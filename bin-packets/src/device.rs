@@ -52,7 +52,6 @@ pub trait PacketIO {
 pub use std_impl::*;
 #[cfg(feature = "std")]
 mod std_impl {
-    use embedded_io::{ReadReady, WriteReady};
 
     use super::*;
     use std::io::{Read, Write};

@@ -33,7 +33,8 @@
             pkg-config
             picotool
             cargo-machete
-            pkgsCross.avr.buildPackages.gcc # For building for the ATMEGA
+            gource
+            pkgsCross.avr.buildPackages.gcc
           ];
 
           RUST_SRC_PATH = rustPlatform.rustLibSrc;

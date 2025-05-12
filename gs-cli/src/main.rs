@@ -67,13 +67,13 @@ fn listen(port: &str) -> ! {
                 incoming_chars.extend_from_slice(&serial_buf[..t]);
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => (),
-            Err(e) => eprintln!("{:?}", e),
+            Err(e) => eprintln!("{e:?}"),
         }
 
         while !incoming_chars.is_empty() {
             match decode_from_slice::<ApplicationPacket, _>(&incoming_chars, standard()) {
                 Ok((packet, consumed)) => {
-                    println!("{:?}", packet);
+                    println!("{packet:?}");
                     incoming_chars = incoming_chars.split_off(consumed);
                 }
                 #[allow(unused_variables)]
@@ -82,7 +82,7 @@ fn listen(port: &str) -> ! {
                 }
 
                 Err(e) => {
-                    eprintln!("{:?}", e);
+                    eprintln!("{e:?}");
                     incoming_chars.clear();
                 }
             }
