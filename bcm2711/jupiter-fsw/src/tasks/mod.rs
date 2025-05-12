@@ -1,5 +1,5 @@
 mod pins;
 mod rbf;
-mod telemetry;
 
 pub use pins::*;
+pub use rbf::*;
