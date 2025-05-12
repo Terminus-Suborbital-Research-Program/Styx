@@ -1,5 +1,5 @@
 use bin_packets::phases::JupiterPhase;
-use traits::ValidState;
+use traits::{StateContext, ValidState};
 
 mod battery_power;
 mod ejection;
@@ -11,26 +11,27 @@ mod skirt_seperation;
 pub mod traits;
 pub use power_on::*;
 
-use crate::tasks::IndicatorsReader;
+use crate::{gpio::write::WritePin, tasks::IndicatorsReader, timing::t_time_estimate};
 
 /// State machine for JUPITER
 pub struct JupiterStateMachine {
     state: Box<dyn ValidState>,
-    pins: IndicatorsReader,
+    context: StateContext,
 }
 
 impl JupiterStateMachine {
     /// Create a new state machine from a pin provider
-    pub fn new(pins: IndicatorsReader) -> Self {
+    pub fn new(pins: IndicatorsReader, ej_pin: WritePin) -> Self {
         Self {
             state: Box::new(PowerOn::default()),
-            pins,
+            context: StateContext::new(pins, ej_pin),
         }
     }
 
     /// Update the state machine
     pub fn update(&mut self) {
-        self.state = self.state.next(self.pins.clone().into());
+        self.context.t_time = t_time_estimate();
+        self.state = self.state.next(&mut self.context);
     }
 
     /// Get the current phase
