@@ -31,7 +31,7 @@ defmt-rtt = "*"
 heapless = "0.8.0"
 
 # Packets
-bin-packets = { path = "../bin-packets" }
+bin-packets = { path = "../../bin-packets" }
 futures = { version = "0.3.31", default-features = false, features = [
     "async-await",
 ] }
@@ -39,7 +39,7 @@ rp235x-pac = "0.1.0"
 
 # Sensors
 bme280-rs = { version = "0.3.0", features = ["async"] }
-ina260_terminus = { path = "../ina260", features = ["async", "defmt"] }
+ina260_terminus = { path = "../../ina260", features = ["async", "defmt"] }
 
 # Communications
 hc12-rs = { git = "https://github.com/thelenlucas/hc12-rs.git", tag = "v0.0.1" }
