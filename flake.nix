@@ -33,6 +33,7 @@
             pkg-config
             picotool
             cargo-machete
+            gource
             pkgsCross.avr.buildPackages.gcc
           ];
 
