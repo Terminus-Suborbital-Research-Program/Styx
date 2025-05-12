@@ -89,7 +89,6 @@ async fn flap_servo_on(mut servo: &mut IcarusServos){
     servo.enable1();
     servo.enable2();
 }
-
 async fn flap_servo_open(mut servo: &mut IcarusServos){
     servo.set_angle(90);   
 }
@@ -113,8 +112,7 @@ pub async fn servo_sequencer(mut ctx: servo_sequencer::Context<'_>){
             info!("Timeout Error");
         }
     };
-    ctx.local.servos.enable1();
-    ctx.local.servos.enable2();
+
     loop{
         let mut flap_servo_timer_close = Mono::now();
         let flap_servo_timeout_close = flap_servo_timer_close + 5000.millis();
