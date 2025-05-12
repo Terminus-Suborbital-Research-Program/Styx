@@ -81,7 +81,7 @@ fn pin_states_thread(mut atmega: Atmega, pins: Arc<Mutex<IndicatorStates>>) -> !
         match atmega.pins() {
             Ok(new_pins) => {
                 let mut pin_states = pins.lock().unwrap();
-                info!("New pin states: {new_pins:?}");
+                debug!("New pin states: {new_pins:?}");
                 *pin_states = new_pins;
             }
 
