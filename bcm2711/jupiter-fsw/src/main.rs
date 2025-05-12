@@ -39,7 +39,7 @@ fn main() {
     let mut interface = PacketDevice::new(port);
     let rbf_pin = ActiveHighRbf::new(ReadPin::from(Pin::new(RBF_PIN)));
     let ejection_pin: WritePin = Pin::new(EJECTION_IND_PIN).into();
-    ejection_pin.write(true).unwrap();
+    ejection_pin.write(false).unwrap();
 
     let mut atmega = LinuxI2CDevice::new("/dev/i2c-1", 0x26u16).unwrap();
 
@@ -50,7 +50,7 @@ fn main() {
 
     info!("RBF At Boot: {}", rbf.read());
 
-    let mut state_machine = JupiterStateMachine::new(pins);
+    let mut state_machine = JupiterStateMachine::new(pins, ejection_pin);
 
     loop {
         interface.update().ok();

@@ -1,5 +1,5 @@
 use lazy_static::lazy_static;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 static POWER_ON_T_ESTIMATE_SEC: i32 = -120;
 
@@ -11,7 +11,9 @@ lazy_static! {
 // Gets the time since power on in seconds
 pub fn power_on_time() -> i32 {
     let now = SystemTime::now();
-    let duration = now.duration_since(*POWER_ON_TIME).unwrap();
+    let duration = now
+        .duration_since(*POWER_ON_TIME)
+        .unwrap_or(Duration::from_millis(0));
     duration.as_secs() as i32
 }
 

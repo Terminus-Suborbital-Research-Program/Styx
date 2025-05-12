@@ -6,7 +6,7 @@ use crate::timing::t_time_estimate;
 
 use super::traits::{StateContext, ValidState};
 
-static DELAY_TO_EJECT_SEC: i32 = 10;
+static DELAY_TO_EJECT_SEC: i32 = 1;
 
 #[derive(Debug)]
 pub struct SkirtSeperation {
@@ -32,11 +32,14 @@ impl ValidState for SkirtSeperation {
         JupiterPhase::SkirtSeperation
     }
 
-    fn next(&self, ctx: StateContext) -> Box<dyn ValidState> {
+    fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
         if self.te_recieved_at + DELAY_TO_EJECT_SEC < ctx.t_time {
-            info!("Skirt Seperation complete, ejecting");
+            info!("Ejection complete, idling.");
+            ctx.ejection_pin.write(false).unwrap();
             Box::new(Ejection::default())
         } else {
+            info!("Waiting for ejection to complete. Time recieved: {}, current time: {}", self.te_recieved_at, ctx.t_time);
+            ctx.ejection_pin.write(true).unwrap();
             Box::new(self.clone())
         }
     }
