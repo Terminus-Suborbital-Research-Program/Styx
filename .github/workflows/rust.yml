@@ -49,7 +49,7 @@ jobs:
       - name: Run format
         run: cargo make format
       - name: Apply Clippy fixes
-        run: cargo make clippy --fix --allow-dirty
+        run: cargo clippy --fix --allow-dirty
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: apply format + clippy fixes"
