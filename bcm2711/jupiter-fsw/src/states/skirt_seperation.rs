@@ -6,7 +6,7 @@ use crate::timing::t_time_estimate;
 
 use super::traits::{StateContext, ValidState};
 
-static DELAY_TO_EJECT_SEC: i32 = 10;
+static DELAY_TO_EJECT_SEC: i32 = 0;
 
 #[derive(Debug)]
 pub struct SkirtSeperation {

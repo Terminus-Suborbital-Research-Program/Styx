@@ -1,6 +1,3 @@
-[build]
-target = "aarch64-unknown-linux-gnu"
-
 # Env-logger level
 [env]
 RUST_LOG = "info"
