@@ -38,7 +38,7 @@ fn main() {
         .open()
         .unwrap();
     let mut interface = PacketDevice::new(port);
-    let rbf_pin = ActiveLowRbf::new(ReadPin::from(Pin::new(RBF_PIN)));
+    let rbf_pin = ActiveHighRbf::new(ReadPin::from(Pin::new(RBF_PIN)));
     let ejection_pin: WritePin = Pin::new(EJECTION_IND_PIN).into();
     ejection_pin.write(true).unwrap();
 
