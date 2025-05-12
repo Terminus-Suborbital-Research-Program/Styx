@@ -1,19 +1,19 @@
 use std::sync::{Arc, Mutex};
 use std::thread::spawn;
 
-use common::rbf::{ActiveHighRbf, RbfIndicator};
+use common::rbf::{ActiveHighRbf, ActiveLowRbf, RbfIndicator};
 use common::rbf::RbfState;
 
 use crate::gpio::read::ReadPin;
 
 /// The task spawner for the RBF reader
 pub struct RbfTask {
-    indicator: ActiveHighRbf<ReadPin>,
+    indicator: ActiveLowRbf<ReadPin>,
     state: Arc<Mutex<RbfState>>,
 }
 
 impl RbfTask {
-    pub fn new(mut indicator: ActiveHighRbf<ReadPin>) -> Self {
+    pub fn new(mut indicator: ActiveLowRbf<ReadPin>) -> Self {
         let state = indicator.get_inhibition();
         Self {
             indicator,

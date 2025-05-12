@@ -6,6 +6,7 @@ use std::{
 use bin_packets::device::PacketDevice;
 use bin_packets::device::PacketIO;
 use common::rbf::ActiveHighRbf;
+use common::rbf::ActiveLowRbf;
 use constants::{EJECTION_IND_PIN, RBF_PIN};
 use env_logger::Env;
 
@@ -37,7 +38,7 @@ fn main() {
         .open()
         .unwrap();
     let mut interface = PacketDevice::new(port);
-    let rbf_pin = ActiveHighRbf::new(ReadPin::from(Pin::new(RBF_PIN)));
+    let rbf_pin = ActiveLowRbf::new(ReadPin::from(Pin::new(RBF_PIN)));
     let ejection_pin: WritePin = Pin::new(EJECTION_IND_PIN).into();
     ejection_pin.write(true).unwrap();
 
