@@ -1,2 +1,8 @@
 {
+    "rust-analyzer.linkedProjects": [
+        "Cargo.toml",
+        "atmega2560/Cargo.toml",
+        "bcm2711/Cargo.toml",
+        "rp235xx/Cargo.toml",
+    ]
 }
