@@ -1,4 +1,6 @@
 use bin_packets::device::PacketDevice;
+use common::rbf::{ActiveHighRbf, ActiveLowRbf, RbfIndicator};
+
 use defmt::{info, warn};
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::{InputPin, OutputPin};
@@ -8,7 +10,7 @@ use hc12_rs::configuration::{Channel, HC12Configuration, Power};
 use hc12_rs::device::IntoATMode;
 use hc12_rs::IntoFU3Mode;
 use rp235x_hal::clocks::init_clocks_and_plls;
-use rp235x_hal::gpio::PullNone;
+use rp235x_hal::gpio::{FunctionPio1, PullNone};
 use rp235x_hal::pwm::Slices;
 use rp235x_hal::uart::{DataBits, StopBits, UartConfig, UartPeripheral};
 use rp235x_hal::{Clock, Sio, Watchdog};
@@ -85,22 +87,27 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         .into_push_pull_output();
     cam_led_pin.set_high().unwrap();
 
+    // Looking at the docs originally an LED wasn't reserved for RBF but this could be a thing
+    // Also there's some issue with specifically the GPIO that would be used for power or RBF
+    // So leaving this commented out for now
+    // let mut rbf_led_pin = bank0_pins
+    //     .gpio15
+    //     .into_pull_type::<PullNone>()
+    //     .into_push_pull_output();
+    // rbf_led_pin.set_low().unwrap();
+
     // These pins for rbf and cam    are placeholder, change later
-    let mut rbf_pin = bank0_pins
+    let rbf_pin = bank0_pins
         .gpio2
         .into_pull_type::<PullNone>()
         .into_pull_up_input();
 
-    let mut rbf_status = false;
-    match rbf_pin.is_low() {
-        Ok(pin_inserted) => {
-            rbf_status = pin_inserted;
-            info!("RBF Status {}", rbf_status);
-        }
-        Err(e) => {
-            info!("Could not read RBF Pin: {:?}", e);
-        }
-    };
+    let mut rbf = ActiveHighRbf::new(rbf_pin);
+
+    // if rbf.inhibited_at_init() {
+    //     rbf_led_pin.set_high().unwrap();
+    //     info!("RBF inhibited at init!");
+    // }
 
     // Get clock frequency
     let clock_freq = clocks.peripheral_clock.freq();
@@ -254,7 +261,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             ejector_time_millis: 0,
             suspend_packet_handler: false,
             radio,
-            rbf_status,
+            rbf,
             downlink: jupiter_downlink,
             led: led_pin,
         },

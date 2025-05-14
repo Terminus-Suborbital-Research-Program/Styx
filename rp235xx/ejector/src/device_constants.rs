@@ -1,20 +1,25 @@
 use hc12_rs::{configuration::baudrates::B9600, ProgrammingPair, FU3, HC12};
 use pins::{
-    CamLEDPin, CameraPin, EjectionPin, HeartbeatPin, JupiterRxPin, JupiterTxPin,
+    CamLEDPin, CameraPin, EjectionPin, HeartbeatPin, JupiterRxPin, JupiterTxPin, RBFLEDPin, RBFPin,
     RadioProgrammingPin, RadioRxPin, RadioTxPin,
 };
 use rp235x_hal::{
-    gpio::{FunctionSio, Pin, PullDown, PullNone, SioInput, SioOutput},
+    gpio::{FunctionSio, Pin, PullDown, PullNone, PullUp, SioInput, SioOutput},
     pac::{UART0, UART1},
     timer::CopyableTimer1,
     uart::{Enabled, UartPeripheral},
     Timer,
 };
 
+use common::rbf::{ActiveHighRbf, ActiveLowRbf, RbfIndicator};
+
 pub mod pins {
     use rp235x_hal::gpio::{
-        bank0::{Gpio13, Gpio14, Gpio16, Gpio17, Gpio20, Gpio21, Gpio25, Gpio8, Gpio9},
-        FunctionSio, FunctionUart, Pin, PullDown, SioOutput,
+        bank0::{
+            Gpio10, Gpio13, Gpio14, Gpio15, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio25, Gpio8,
+            Gpio9,
+        },
+        FunctionSio, FunctionUart, Pin, PullDown, PullUp, SioInput, SioOutput,
     };
 
     // Ejector Heartbeat Output
@@ -28,6 +33,12 @@ pub mod pins {
 
     // Camera LED Pin
     pub type CamLEDPin = Gpio13;
+
+    // RBF LED PIN
+    pub type RBFLEDPin = Gpio15;
+
+    // RBF PIN
+    pub type RBFPin = Pin<Gpio2, FunctionSio<SioInput>, PullUp>;
 
     /// Ejection detection pin
     pub type EjectionPin = Gpio21;
@@ -48,11 +59,17 @@ pub mod pins {
 // Heartbeat LED
 pub type Heartbeat = Pin<HeartbeatPin, FunctionSio<SioOutput>, PullNone>;
 
+// pub type EjectorRBF = ActiveLowRbf<RBFPin>;
+pub type EjectorRBF = ActiveHighRbf<RBFPin>;
+
 // Camera Startup
 pub type Camera = Pin<CameraPin, FunctionSio<SioOutput>, PullNone>;
 
 // Camera LED
 pub type CamLED = Pin<CamLEDPin, FunctionSio<SioOutput>, PullNone>;
+
+// Camera LED
+pub type RBFLED = Pin<RBFLEDPin, FunctionSio<SioOutput>, PullNone>;
 
 /// Ejection detection pin
 pub type EjectionDetectionPin = Pin<EjectionPin, FunctionSio<SioInput>, PullDown>;

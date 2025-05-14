@@ -116,6 +116,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "common"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "defmt 1.0.1",
+ "embedded-hal 1.0.0",
+]
+
+[[package]]
 name = "cortex-m"
 version = "0.7.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -216,6 +225,7 @@ version = "0.1.1"
 dependencies = [
  "bin-packets",
  "bincode",
+ "common",
  "defmt 1.0.1",
  "defmt-rtt",
  "embedded-hal 1.0.0",
