@@ -12,9 +12,9 @@ use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
 
 use crate::actuators::servo::ServoMultiMosfet;
-use crate::device_constants::servos::{IcarusServos, FLAP_SERVO_LOCKED, FLAP_SERVO_UNLOCKED, RELAY_SERVO_LOCKED, RELAY_SERVO_UNLOCKED};
+use crate::device_constants::servos::{FlapServo, RelayServo, FLAP_SERVO_LOCKED, FLAP_SERVO_UNLOCKED, RELAY_SERVO_LOCKED, RELAY_SERVO_UNLOCKED};
 use crate::device_constants::AvionicsI2cBus;
-use crate::phases::StateMachineListener;
+use crate::phases::{StateMachineListener, Modes};
 use crate::{app::*, device_constants::MotorI2cBus, Mono};
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
@@ -85,57 +85,33 @@ unsafe fn I2C0_IRQ() {
     MotorI2cBus::on_interrupt();
 }
 
-async fn flap_servo_on(mut servo: &mut IcarusServos){
-    servo.enable1();
-    servo.enable2();
-}
-async fn flap_servo_open(mut servo: &mut IcarusServos){
-    servo.set_angle(90);   
-}
-async fn flap_servo_close(mut servo: &mut IcarusServos){
-    servo.set_angle(0);   
-}
+
+// async fn flap_servo_close(mut servo: &mut IcarusServos){
+//     servo.set_angle(0);   
+// }
 use rp235x_hal::clocks;
-pub async fn servo_sequencer(mut ctx: servo_sequencer::Context<'_>){
+pub async fn mode_sequencer(mut ctx: mode_sequencer::Context<'_>){
     let mut status = 0;
     let mut iteration = 0;
     let mut mode_start = Mono::now();    
     
-    mode_start += 5000.millis();
-    Mono::delay_until(mode_start).await;    
-
-    match Mono::timeout_at(mode_start, flap_servo_on(ctx.local.servos)).await{
-        Ok(_)=>{
-            info!("Timeout Ok");
-        }
-        Err(_)=>{
-            info!("Timeout Error");
-        }
-    };
-
+    let mut flap_status = false;
+    let mut relay_status = false;
+    ctx.local.relay_servo.enable();
+    ctx.local.flap_servo.enable();
+    ctx.local.flap_servo.deg_0();
+    ctx.local.relay_servo.deg_0();
     loop{
-        let mut flap_servo_timer_close = Mono::now();
-        let flap_servo_timeout_close = flap_servo_timer_close + 5000.millis();
-        Mono::delay_until(flap_servo_timeout_close).await;
-        match Mono::timeout_at(flap_servo_timeout_close+500.millis(), flap_servo_close(ctx.local.servos)).await{
-            Ok(_)=>{
-                info!("Closing Servo");
-            }
-            Err(_)=>{
-                info!("Error Closing Servo");
-            }
-        };
-        let mut flap_servo_timer_open = Mono::now();
-        let flap_servo_timeout_open = flap_servo_timer_open + 5000.millis();
-        Mono::delay_until(flap_servo_timeout_open).await;
-        match Mono::timeout_at(flap_servo_timeout_open+500.millis(), flap_servo_open(ctx.local.servos)).await{
-            Ok(_)=>{
-                info!("Opening Servo");
-            }
-            Err(_)=>{
-                info!("Error Opening Servo");
-            }
-        };
+        if flap_status == false{
+            flap_status = Modes::open_flaps_sequence(mode_start, ctx.local.flap_servo).await;
+        }
+        else{
+        }
+        if relay_status == false{
+            relay_status = Modes::eject_servo_sequence(mode_start, ctx.local.relay_servo).await;
+        }
+        else{
+        }
         Mono::delay(100_u64.millis()).await;
     }
 }

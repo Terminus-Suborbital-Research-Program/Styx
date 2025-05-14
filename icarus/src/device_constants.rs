@@ -87,8 +87,10 @@ pub mod servos {
     /// Relay servo slice
     pub type RelayServoSlice = Slice<RelayServoPwm, FreeRunning>;
 
-    /// Icarus Servos
-    pub type IcarusServos = ServoMultiMosfet<Channel<FlapServoSlice, B>, Pin<FlapServoPWMGpio, FunctionPwm, PullDown>, FlapMosfet, RelayMosfet>;
+    /// Flap Servo
+    pub type FlapServo = Servo<Channel<FlapServoSlice, B>, FlapServoPwmPin, FlapMosfet>;
+    /// Relay Servo
+    pub type RelayServo = Servo<Channel<RelayServoSlice, B>, RelayServoPwmPin, RelayMosfet>;
 
     /// Flap servo locked
     pub static FLAP_SERVO_LOCKED: u16 = 0;

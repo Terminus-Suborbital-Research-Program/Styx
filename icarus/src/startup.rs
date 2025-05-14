@@ -17,15 +17,14 @@ use rtic_sync::{
 // use usb_device::bus::UsbBusAllocator;
 // use usbd_serial::SerialPort;
 
-use crate::actuators::servo::{ServoMultiMosfet};
-
+use crate::actuators::servo::{Servo};
 use crate::{
     app::*,
     device_constants::{
         pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin},
         servos::{
             FlapMosfet, FlapServoPwmPin, FlapServoSlice, RelayMosfet,
-            RelayServoPwmPin, RelayServoSlice, IcarusServos
+            RelayServoPwmPin, RelayServoSlice, RelayServo, FlapServo
         },
         INAData, IcarusRadio, IcarusStateMachine,
     },
@@ -56,7 +55,6 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let mut watchdog = Watchdog::new(ctx.device.WATCHDOG);
 
     info!("Good morning sunshine! Icarus is awake!");
-
     Mono::start(ctx.device.TIMER0, &ctx.device.RESETS);
 
     // The single-cycle I/O block controls our GPIO pins
@@ -188,17 +186,30 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     // Servo PWMs
     let slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
 
-    let mut servo_slice: FlapServoSlice = slices.pwm1;
-    servo_slice.set_div_int(64);
-    servo_slice.set_ph_correct();
-    servo_slice.enable();
-    
-    // Flap servo
-    let mut servo_channel = servo_slice.channel_b;
-    servo_channel.set_enabled(true);
-    let servo_pin: FlapServoPwmPin = servo_channel.output_to(pins.gpio3.into_function::<FunctionPwm>());
-    let servos: IcarusServos = ServoMultiMosfet::new(servo_channel, servo_pin, flap_mosfet, relay_mosfet);
+    let mut flap_slice: FlapServoSlice = slices.pwm1;
+    flap_slice.set_div_int(64);
+    flap_slice.set_ph_correct();
+    flap_slice.enable();
 
+    let mut relay_slice: RelayServoSlice = slices.pwm0;
+    relay_slice.set_div_int(64);
+    relay_slice.set_ph_correct();
+    relay_slice.enable();
+
+    // Flap servo
+    let mut flap_channel = flap_slice.channel_b;
+    flap_channel.set_enabled(true);
+    let flap_pin: FlapServoPwmPin =
+        flap_channel.output_to(pins.gpio3.into_function::<FunctionPwm>());
+    let flap_servo: FlapServo = Servo::new(flap_channel, flap_pin, flap_mosfet);
+
+    // Relay servo
+    let mut relay_channel = relay_slice.channel_b;
+    relay_channel.set_enabled(true);
+    let relay_pin: RelayServoPwmPin =
+        relay_channel.output_to(pins.gpio1.into_function::<FunctionPwm>());
+    let mut relay_servo: RelayServo = Servo::new(relay_channel, relay_pin, relay_mosfet);
+        
     // Sensors
     // Init I2C pins
     let motor_sda_pin: Pin<EscI2CSdaPin, FunctionI2C, PullUp> = pins.gpio18.reconfigure();
@@ -255,7 +266,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     info!("Peripherals initialized, spawning tasks...");
     heartbeat::spawn().ok();
-    servo_sequencer::spawn().ok();
+    mode_sequencer::spawn().ok();
     // motor_drivers::spawn(motor_i2c_arbiter, esc_listener).ok();
     // sample_sensors::spawn(avionics_i2c_arbiter).ok();
     // inertial_nav::spawn().ok();
@@ -269,7 +280,8 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             radio: interface,
         },
         Local {
-            servos,
+            flap_servo,
+            relay_servo,
             led: led_pin,
             bme280,
             ina260_1,

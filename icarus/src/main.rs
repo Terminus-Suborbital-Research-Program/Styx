@@ -56,7 +56,7 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 mod app {
     use crate::{
         device_constants::{
-            servos::{IcarusServos},
+            servos::{RelayServo, FlapServo},
             AvionicsI2cBus, IcarusRadio, IcarusStateMachine, MotorI2cBus,
         },
         phases::StateMachineListener,
@@ -95,7 +95,8 @@ mod app {
 
     #[local]
     pub struct Local {
-        pub servos: IcarusServos,
+        pub relay_servo: RelayServo,
+        pub flap_servo: FlapServo,
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
         pub bme280: AsyncBme280<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub ina260_1: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
@@ -126,8 +127,8 @@ mod app {
         #[task(shared = [radio, ina_data], priority = 1)]
         async fn radio_send(mut ctx: radio_send::Context);
 
-        #[task(priority = 3, local=[servos])]
-        async fn servo_sequencer(&mut ctx: servo_sequencer::Context);
+        #[task(priority = 3, local=[flap_servo, relay_servo])]
+        async fn mode_sequencer(&mut ctx: mode_sequencer::Context);
 
         // Handler for the I2C electronic speed controllers
         #[task(priority = 3, shared = [state_machine, ina_data], local=[ina260_1, ina260_2, ina260_3])]
