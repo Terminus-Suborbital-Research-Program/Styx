@@ -93,6 +93,7 @@ mod app {
         pub ejector_servo: EjectorServo,
         pub cams: Camera,
         pub cams_led: CamLED,
+        pub rbf_led: RBFLED,
         pub ejection_pin: EjectionDetectionPin,
     }
 
@@ -120,6 +121,9 @@ mod app {
 
         #[task(local = [cams, cams_led], shared = [ejector_time_millis, rbf], priority = 2)]
         async fn start_cameras(mut ctx: start_cameras::Context);
+
+        #[task(local = [rbf_led], shared = [rbf], priority = 3)]
+        async fn rbf_monitor(mut ctx: rbf_monitor::Context);
     }
 
     /// Returns the current time in nanoseconds since power-on

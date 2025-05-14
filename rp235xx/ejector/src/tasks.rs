@@ -6,7 +6,6 @@ use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
 use fugit::ExtU64;
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
-
 use crate::{app::*, Mono};
 
 const START_CAMERA_DELAY: u64 = 1000; // 10k millis For testing, 250 for actual
@@ -33,6 +32,20 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     }
 }
 
+pub async fn rbf_monitor(mut ctx: rbf_monitor::Context<'_>) {        
+    loop {
+        ctx.shared.rbf.lock(|rbf| {
+            if rbf.is_inserted() {
+                //info!("Inhibited, waiting for ejector inhibit to be removed");
+                ctx.local.rbf_led.set_low().unwrap();
+            } else if rbf.inhibited_at_init() {
+                panic!("RBF Reset")
+            }
+        });
+        Mono::delay(1000_u64.millis()).await;
+    }
+}
+
 
 
 pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
@@ -42,16 +55,17 @@ pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
     info!("Camera Timer Fulfilled");
     loop {
         if ctx.shared.rbf.lock(|rbf| rbf.is_inserted()) {
-            info!("Inhibited, waiting for ejector inhibit to be removed");
+            // info!("Inhibited, waiting for ejector inhibit to be removed");
             // High to disable cams
             ctx.local.cams.set_high().unwrap();
             ctx.local.cams_led.set_high().unwrap();
         } else {
-            info!("RBF Not  Inhibited");
+            // info!("RBF Not  Inhibited");
 
             ctx.local.cams_led.toggle().unwrap();
             ctx.local.cams.set_low().unwrap();
         }
+
 
         Mono::delay(1000.millis()).await;
     }
@@ -107,7 +121,6 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
 
     if ctx.shared.rbf.lock(|rbf| rbf.is_inserted()) {
         loop {
-            info!("Inhibited, waiting for ejector injibit to be removed");
             Mono::delay(1000_u64.millis()).await;
             if ctx.shared.rbf.lock(|rbf| !rbf.is_inserted()) {
                 break;

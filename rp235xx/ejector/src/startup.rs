@@ -90,12 +90,11 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     // Looking at the docs originally an LED wasn't reserved for RBF but this could be a thing
     // Also there's some issue with specifically the GPIO that would be used for power or RBF
     // So leaving this commented out for now
-    // let mut rbf_led_pin = bank0_pins
-    //     .gpio15
-    //     .into_pull_type::<PullNone>()
-    //     .into_push_pull_output();
-    // rbf_led_pin.set_low().unwrap();
-
+    let mut rbf_led_pin = bank0_pins
+        .gpio15
+        .into_pull_type::<PullNone>()
+        .into_push_pull_output();
+    rbf_led_pin.set_low().unwrap();
     // These pins for rbf and cam    are placeholder, change later
     let rbf_pin = bank0_pins
         .gpio2
@@ -104,10 +103,10 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     let mut rbf = ActiveHighRbf::new(rbf_pin);
 
-    // if rbf.inhibited_at_init() {
-    //     rbf_led_pin.set_high().unwrap();
-    //     info!("RBF inhibited at init!");
-    // }
+    if rbf.inhibited_at_init() {
+        rbf_led_pin.set_high().unwrap();
+        info!("RBF inhibited at init!");
+    }
 
     // Get clock frequency
     let clock_freq = clocks.peripheral_clock.freq();
@@ -250,6 +249,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     ejector_sequencer::spawn().ok();
     radio_read::spawn().ok();
     start_cameras::spawn().ok();
+    rbf_monitor::spawn().ok();
 
     (
         Shared {
@@ -270,6 +270,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             ejection_pin: gpio_detect,
             cams: cam_pin,
             cams_led: cam_led_pin,
+            rbf_led: rbf_led_pin,
         },
     )
 }
