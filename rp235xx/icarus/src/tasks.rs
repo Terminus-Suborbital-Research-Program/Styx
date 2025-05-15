@@ -98,13 +98,11 @@ pub async fn mode_sequencer(mut ctx: mode_sequencer::Context<'_>){
         if flap_status == false{
             flap_status = Modes::open_flaps_sequence(mode_start, ctx.local.flap_servo).await;
         }
-        else{
-        }
+        
         if relay_status == false{
             relay_status = Modes::eject_servo_sequence(mode_start, ctx.local.relay_servo).await;
         }
-        else{
-        }
+        
         Mono::delay(100_u64.millis()).await;
     }
 }
