@@ -4,6 +4,7 @@
 // Our Modules
 pub mod actuators;
 pub mod communications;
+
 mod device_constants;
 pub mod phases;
 pub mod utilities;
@@ -45,13 +46,16 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 )]
 mod app {
     use crate::device_constants::packets::{JupiterInterface, RadioInterface};
-    use crate::device_constants::{CamLED, Camera, EjectionDetectionPin, Heartbeat};
+    use crate::device_constants::{
+        CamLED, Camera, EjectionDetectionPin, EjectorRBF, Heartbeat, RBFLED,
+    };
     use crate::{actuators::servo::EjectorServo, phases::EjectorStateMachine};
 
     use super::*;
 
     use bin_packets::time::Timestamp;
     use hal::gpio::{self};
+    
     use rp235x_hal::uart::UartPeripheral;
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
@@ -79,7 +83,7 @@ mod app {
         pub ejector_time_millis: u64,
         pub suspend_packet_handler: bool,
         pub radio: RadioInterface,
-        pub rbf_status: bool,
+        pub rbf: EjectorRBF,
         pub downlink: JupiterInterface,
         pub led: Heartbeat,
     }
@@ -89,6 +93,7 @@ mod app {
         pub ejector_servo: EjectorServo,
         pub cams: Camera,
         pub cams_led: CamLED,
+        pub rbf_led: RBFLED,
         pub ejection_pin: EjectionDetectionPin,
     }
 
@@ -99,7 +104,7 @@ mod app {
 
     extern "Rust" {
         // Sequences the ejection
-        #[task(local = [ejection_pin, ejector_servo], shared = [rbf_status], priority = 1)]
+        #[task(local = [ejection_pin, ejector_servo], shared = [rbf], priority = 1)]
         async fn ejector_sequencer(mut ctx: ejector_sequencer::Context);
 
         // Heartbeats the main led
@@ -114,8 +119,11 @@ mod app {
         #[task(binds = UART1_IRQ, shared = [radio])]
         fn uart_interrupt(mut ctx: uart_interrupt::Context);
 
-        #[task(local = [cams, cams_led], shared = [ejector_time_millis, rbf_status], priority = 2)]
+        #[task(local = [cams, cams_led], shared = [ejector_time_millis, rbf], priority = 2)]
         async fn start_cameras(mut ctx: start_cameras::Context);
+
+        #[task(local = [rbf_led], shared = [rbf], priority = 3)]
+        async fn rbf_monitor(mut ctx: rbf_monitor::Context);
     }
 
     /// Returns the current time in nanoseconds since power-on

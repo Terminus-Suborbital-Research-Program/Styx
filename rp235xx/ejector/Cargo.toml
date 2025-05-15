@@ -39,6 +39,8 @@ bincode = { version = "2.0.0-rc.3", features = [
 # Packets
 bin-packets = { path = "../../bin-packets" }
 
+common = { path = "../../common" }
+
 # Target features
 [features]
 default = ["rp2350"]

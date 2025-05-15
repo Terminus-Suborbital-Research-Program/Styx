@@ -1,12 +1,13 @@
+use crate::{app::*, Mono};
 use bin_packets::device::PacketIO;
 use bin_packets::{devices::DeviceIdentifier, packets::status::Status};
+use common::rbf::RbfIndicator;
 use defmt::{info, trace, warn};
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
 use fugit::ExtU64;
+use rp235x_hal::reboot::{self, RebootArch, RebootKind};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
-
-use crate::{app::*, Mono};
 
 const START_CAMERA_DELAY: u64 = 1000; // 10k millis For testing, 250 for actual
 
@@ -32,19 +33,39 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     }
 }
 
+pub async fn rbf_monitor(mut ctx: rbf_monitor::Context<'_>) {
+    loop {
+        ctx.shared.rbf.lock(|rbf| {
+            if rbf.is_inserted() {
+                //info!("Inhibited, waiting for ejector inhibit to be removed");
+                ctx.local.rbf_led.set_low().unwrap();
+            } else if rbf.inhibited_at_init() {
+                reboot::reboot(RebootKind::Normal, RebootArch::Arm);
+            }
+        });
+        Mono::delay(1000_u64.millis()).await;
+    }
+}
+
 pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
-    let rbf_on_startup = ctx.shared.rbf_status.lock(|startup_status| *startup_status);
-    if !rbf_on_startup {
-        info!("Camera Timer Starting");
-        Mono::delay(START_CAMERA_DELAY.millis()).await;
-        info!("Cameras on");
-        ctx.local.cams.set_low().unwrap();
-        loop {
+    info!("Camera Timer Starting");
+    Mono::delay(START_CAMERA_DELAY.millis()).await;
+
+    info!("Camera Timer Fulfilled");
+    loop {
+        if ctx.shared.rbf.lock(|rbf| rbf.is_inserted()) {
+            // info!("Inhibited, waiting for ejector inhibit to be removed");
+            // High to disable cams
+            ctx.local.cams.set_high().unwrap();
+            ctx.local.cams_led.set_high().unwrap();
+        } else {
+            // info!("RBF Not  Inhibited");
+
             ctx.local.cams_led.toggle().unwrap();
-            Mono::delay(1000.millis()).await;
+            ctx.local.cams.set_low().unwrap();
         }
-    } else {
-        info!("RBF Inserted: Cameras disabled");
+
+        Mono::delay(1000.millis()).await;
     }
 }
 
@@ -78,7 +99,6 @@ pub fn uart_interrupt(mut ctx: uart_interrupt::Context<'_>) {
 }
 
 pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
-    let rbf_on_startup = ctx.shared.rbf_status.lock(|startup_status| *startup_status);
     let servo = ctx.local.ejector_servo;
     // Latch ejector servos closed
     servo.enable();
@@ -97,12 +117,14 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
 
     info!("Ejection signal high!");
 
-    // If rbf was inserted on startup, exit immediately
-    if rbf_on_startup {
-        info!("RBF Inserted: Ejector disabled");
-        return;
+    if ctx.shared.rbf.lock(|rbf| rbf.is_inserted()) {
+        loop {
+            Mono::delay(1000_u64.millis()).await;
+            if ctx.shared.rbf.lock(|rbf| !rbf.is_inserted()) {
+                break;
+            }
+        }
     }
-
     // Eject, wait 5 seconds, then retract
     info!("Ejecting!");
     servo.eject();
