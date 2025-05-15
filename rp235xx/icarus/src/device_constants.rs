@@ -1,7 +1,7 @@
 use bin_packets::{device::PacketDevice, packets::ApplicationPacket};
 use pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin, LedPin};
 use rp235x_hal::{
-    gpio::{bank0::Gpio10, FunctionI2C, FunctionSio, Pin, PullDown, PullNone, PullUp, SioOutput},
+    gpio::{bank0::Gpio5, FunctionI2C, FunctionSio, Pin, PullDown, PullNone, PullUp, SioOutput},
     i2c::Controller,
     pac::{I2C0, I2C1},
     I2C,
@@ -59,7 +59,7 @@ pub mod pins {
 pub mod servos {
     use rp235x_hal::{
         gpio::{FunctionPwm, FunctionSio, Pin, PullDown, SioOutput},
-        pwm::{Channel, FreeRunning, Pwm0, Pwm1, Slice, A, B},
+        pwm::{Channel, FreeRunning, Pwm0, Pwm1, Slice, B},
     };
 
     use crate::actuators::servo::Servo;
@@ -100,7 +100,7 @@ pub mod servos {
     /// Relay servo locked
     pub static RELAY_SERVO_LOCKED: u16 = 0;
     /// Relay servo unlocked
-    pub static RELAY_SERVO_UNLOCKED: u16 = 180;
+    pub static RELAY_SERVO_UNLOCKED: u16 = 90;
 }
 
 /// Software-controlled LED
@@ -178,8 +178,4 @@ pub struct IcarusData {
     pub i1_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
     pub i2_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
     pub i3_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
-    pub temp_data_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
-    pub pres_data_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
-    pub humid_data_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
-    pub ab_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
 }

@@ -1,10 +1,14 @@
 use embedded_hal::{digital::OutputPin, pwm::SetDutyCycle};
-// For the servo
 
-pub static EJECTION_ANGLE: u16 = 100;
-pub static HOLDING_ANGLE: u16 = 70;
-// pub static LOCKING_SERVO_LOCKED: u16 = 105;
-// pub static LOCKING_SERVO_UNLOCKED: u16 = 20;
+// Servo Consts
+const PWM_TOP: u16 = 46_874;
+const TOP: u16 = PWM_TOP + 1;
+// 0.5ms is 2.5% of 20ms; 0 degrees in servo
+const MIN_DUTY: u16 = (TOP as f64 * (2.5 / 100.)) as u16;
+// 1.5ms is 7.5% of 20ms; 90 degrees in servo
+const HALF_DUTY: u16 = (TOP as f64 * (7.5 / 100.)) as u16;
+// 2.4ms is 12% of 20ms; 180 degree in servo
+const MAX_DUTY: u16 = (TOP as f64 * (12. / 100.)) as u16;
 
 const PWM_TOP: u16 = 46_874;
 const TOP: u16 = PWM_TOP + 1;
