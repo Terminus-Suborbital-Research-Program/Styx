@@ -1,16 +1,16 @@
 use bin_packets::device::PacketDevice;
-use common::rbf::{ActiveHighRbf, ActiveLowRbf, RbfIndicator};
+use common::rbf::{ActiveHighRbf, RbfIndicator};
 
 use defmt::{info, warn};
 use embedded_hal::delay::DelayNs;
-use embedded_hal::digital::{InputPin, OutputPin};
+use embedded_hal::digital::OutputPin;
 use fugit::RateExtU32;
 use hc12_rs::configuration::baudrates::B9600;
 use hc12_rs::configuration::{Channel, HC12Configuration, Power};
 use hc12_rs::device::IntoATMode;
 use hc12_rs::IntoFU3Mode;
 use rp235x_hal::clocks::init_clocks_and_plls;
-use rp235x_hal::gpio::{FunctionPio1, PullNone};
+use rp235x_hal::gpio::PullNone;
 use rp235x_hal::pwm::Slices;
 use rp235x_hal::uart::{DataBits, StopBits, UartConfig, UartPeripheral};
 use rp235x_hal::{Clock, Sio, Watchdog};

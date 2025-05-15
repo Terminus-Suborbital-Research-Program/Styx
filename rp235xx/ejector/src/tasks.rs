@@ -1,12 +1,13 @@
+use crate::{app::*, Mono};
 use bin_packets::device::PacketIO;
 use bin_packets::{devices::DeviceIdentifier, packets::status::Status};
-use common::rbf::{RbfIndicator, RbfState};
+use common::rbf::RbfIndicator;
 use defmt::{info, trace, warn};
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
 use fugit::ExtU64;
+use rp235x_hal::reboot::{self, RebootArch, RebootKind};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
-use crate::{app::*, Mono};
 
 const START_CAMERA_DELAY: u64 = 1000; // 10k millis For testing, 250 for actual
 
@@ -32,21 +33,19 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     }
 }
 
-pub async fn rbf_monitor(mut ctx: rbf_monitor::Context<'_>) {        
+pub async fn rbf_monitor(mut ctx: rbf_monitor::Context<'_>) {
     loop {
         ctx.shared.rbf.lock(|rbf| {
             if rbf.is_inserted() {
                 //info!("Inhibited, waiting for ejector inhibit to be removed");
                 ctx.local.rbf_led.set_low().unwrap();
             } else if rbf.inhibited_at_init() {
-                panic!("RBF Reset")
+                reboot::reboot(RebootKind::Normal, RebootArch::Arm);
             }
         });
         Mono::delay(1000_u64.millis()).await;
     }
 }
-
-
 
 pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
     info!("Camera Timer Starting");
@@ -65,7 +64,6 @@ pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
             ctx.local.cams_led.toggle().unwrap();
             ctx.local.cams.set_low().unwrap();
         }
-
 
         Mono::delay(1000.millis()).await;
     }

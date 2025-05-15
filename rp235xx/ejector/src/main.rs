@@ -55,7 +55,7 @@ mod app {
 
     use bin_packets::time::Timestamp;
     use hal::gpio::{self};
-    use rp235x_hal::gpio::bank0::Gpio2;
+    
     use rp235x_hal::uart::UartPeripheral;
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
