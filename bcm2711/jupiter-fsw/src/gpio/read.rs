@@ -6,27 +6,32 @@ use std::io::Read;
 use std::process::{Command, Stdio};
 
 pub struct ReadPin {
-    pin: u8,
+    pin: String,
+}
+
+impl ReadPin {
+    pub(super) fn new<T: Into<String>>(pin: T) -> Self {
+        ReadPin { pin: pin.into() }
+    }
 }
 
 impl From<Pin> for ReadPin {
     fn from(pin: Pin) -> Self {
-        let mut cmd = Command::new("pigs")
-            .arg("m")
+        let mut cmd = Command::new("gpioget")
             .arg(format!("{}", pin.pin()))
-            .arg("r")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .spawn()
-            .expect("Failed to spawn pigs command");
+            .unwrap();
 
-        cmd.wait().ok();
-        ReadPin { pin: pin.pin() }
+        cmd.wait().unwrap();
+        Self::new(pin.pin())
     }
 }
 
 impl ReadPin {
     pub fn read(&self) -> Result<bool, super::PinError> {
-        let mut cmd = Command::new("pigs")
-            .arg("r")
+        let mut cmd = Command::new("gpioget")
             .arg(format!("{}", self.pin))
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -50,19 +55,12 @@ impl ReadPin {
         })?;
 
         // Parse to 0 or 1, otherwise error
-        let value = output.trim().parse::<u8>().map_err(|e| {
-            warn!("Failed to parse output: {e}");
-            super::PinError::ParseError(output.clone())
-        })?;
-
-        if value == 0 {
-            Ok(false)
-        } else if value == 1 {
+        if output.contains("active") {
             Ok(true)
+        } else if output.contains("inactive") {
+            Ok(false)
         } else {
-            Err(super::PinError::ParseError(format!(
-                "Invalid pin read value: {value}"
-            )))
+            Err(super::PinError::ParseError(output))
         }
     }
 }

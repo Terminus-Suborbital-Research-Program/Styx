@@ -1,6 +1,5 @@
 use embedded_hal::digital::{Error, ErrorKind};
 
-
 pub mod read;
 pub mod write;
 
@@ -22,15 +21,17 @@ impl Error for PinError {
 
 #[derive(Debug)]
 pub struct Pin {
-    pin: u8,
+    pin: String,
 }
 
 impl Pin {
-    pub fn new(pin: u8) -> Self {
-        Pin { pin }
+    pub fn new(pin: &str) -> Self {
+        Pin {
+            pin: pin.to_string(),
+        }
     }
 
-    pub fn pin(&self) -> u8 {
-        self.pin
+    pub fn pin(&self) -> &str {
+        &self.pin
     }
 }

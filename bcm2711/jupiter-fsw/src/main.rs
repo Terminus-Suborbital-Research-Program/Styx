@@ -1,7 +1,4 @@
-use std::{
-    thread::sleep,
-    time::Duration,
-};
+use std::{thread::sleep, time::Duration};
 
 use bin_packets::device::PacketDevice;
 use bin_packets::device::PacketIO;
@@ -23,7 +20,7 @@ mod timing;
 use log::info;
 use tasks::RbfTask;
 
-static SERIAL_PORT: &str = "/dev/serial0";
+static SERIAL_PORT: &str = "/dev/ttyS0";
 
 fn main() {
     let env = Env::default().filter_or("LOG_LEVEL", "info");
