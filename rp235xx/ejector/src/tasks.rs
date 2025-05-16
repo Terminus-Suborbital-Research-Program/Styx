@@ -2,9 +2,9 @@ use crate::{app::*, Mono};
 use bin_packets::device::PacketIO;
 use bin_packets::{devices::DeviceIdentifier, packets::status::Status};
 use common::rbf::RbfIndicator;
-use defmt::{info, trace, warn};
+use defmt::{debug, info, trace, warn};
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
-use fugit::ExtU64;
+use fugit::{Duration, ExtU64};
 use rp235x_hal::reboot::{self, RebootArch, RebootKind};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
@@ -13,18 +13,27 @@ const START_CAMERA_DELAY: u64 = 1000; // 10k millis For testing, 250 for actual
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     let mut sequence_number = 0;
+
+    // Set initial time
+    let task_start_time = Mono::now();
+    // Delay sending packets for one minute
+    let delay: Duration<u64, 1, 1000000> = 1_u64.minutes();
+
     loop {
         ctx.shared.led.lock(|led| led.toggle().unwrap());
 
-        let status = Status::new(DeviceIdentifier::Ejector, now_timestamp(), sequence_number);
+        if Mono::now() - task_start_time > delay {
+            info!("Heartbeat: Sending Status packet");
+            let status = Status::new(DeviceIdentifier::Ejector, now_timestamp(), sequence_number);
 
-        let res = ctx
-            .shared
-            .downlink
-            .lock(|downlink| downlink.write_into(status).err());
+            let res = ctx
+                .shared
+                .downlink
+                .lock(|downlink| downlink.write_into(status).err());
 
-        if let Some(err) = res {
-            info!("Error sending heartbeat: {:?}", err);
+            if let Some(err) = res {
+                info!("Error sending heartbeat: {:?}", err);
+            }
         }
 
         sequence_number = sequence_number.wrapping_add(1);
@@ -75,7 +84,7 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
         loop {
             while let Some(packet) = ctx.shared.radio.lock(|radio| radio.read_packet()) {
                 ctx.shared.led.lock(|led| led.toggle().unwrap());
-                trace!("Got a packet form icarus! Packet: {:?}", packet);
+                debug!("Got a packet form icarus! Packet: {:?}", packet);
                 // Write down range
                 if let Err(e) = ctx
                     .shared
