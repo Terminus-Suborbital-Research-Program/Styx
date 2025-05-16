@@ -4,29 +4,27 @@ use super::Pin;
 use std::process::{Command, Stdio};
 
 pub struct WritePin {
-    pin: u8,
+    pin: String,
+}
+
+impl WritePin {
+    pub(super) fn new<T: Into<String>>(pin: T) -> Self {
+        WritePin { pin: pin.into() }
+    }
 }
 
 impl From<Pin> for WritePin {
     fn from(pin: Pin) -> Self {
-        let mut cmd = Command::new("pigs")
-            .arg("m")
-            .arg(format!("{}", pin.pin()))
-            .arg("w")
-            .spawn()
-            .expect("Failed to spawn pigs command");
-
-        cmd.wait().ok();
-        WritePin { pin: pin.pin() }
+        Self::new(pin.pin())
     }
 }
 
 impl WritePin {
     pub fn write(&self, high: bool) -> Result<(), super::PinError> {
-        let mut cmd = Command::new("pigs")
-            .arg("w")
+        let mut cmd = Command::new("gpioset")
+            .arg("-z") // Daemonize, we're going to kill it ourselves later
             .arg(format!("{}", self.pin))
-            .arg(if high { "1" } else { "0" })
+            .arg(format!("{}={}", self.pin, if high { 1 } else { 0 }))
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
@@ -35,10 +33,13 @@ impl WritePin {
                 super::PinError::IoError(e)
             })?;
 
-        cmd.wait().map_err(|e| {
-            warn!("Failed to wait for command: {e}");
-            super::PinError::IoError(e)
-        })?;
+        // Wait for 200ms
+        std::thread::sleep(std::time::Duration::from_millis(200));
+
+        // Try and kill the child
+        if let Err(e) = cmd.kill() {
+            warn!("Failed to kill process (already dead?): {e}");
+        }
 
         Ok(())
     }
