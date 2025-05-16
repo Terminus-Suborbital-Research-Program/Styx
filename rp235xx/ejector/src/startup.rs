@@ -22,7 +22,7 @@ use usbd_serial::SerialPort;
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
 use crate::device_constants::packets::{JupiterInterface, RadioInterface};
 use crate::device_constants::pins::RadioProgrammingPin;
-use crate::device_constants::{EjectionDetectionPin, EjectorHC12, JupiterUart, RadioUart};
+use crate::device_constants::{EjectionDetectionPin, EjectorHC12, EjectorRbf, JupiterUart, RadioUart};
 use crate::hal;
 use crate::phases::EjectorStateMachine;
 use crate::{app::*, Mono};
@@ -95,13 +95,9 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         .into_pull_type::<PullNone>()
         .into_push_pull_output();
     rbf_led_pin.set_low().unwrap();
-    // These pins for rbf and cam    are placeholder, change later
-    let rbf_pin = bank0_pins
-        .gpio2
-        .into_pull_type::<PullNone>()
-        .into_pull_up_input();
 
-    let mut rbf = ActiveHighRbf::new(rbf_pin);
+    // Ejector rbf should be pull down - it is high when the rbf is inserted
+    let mut rbf: EjectorRbf = ActiveHighRbf::new(bank0_pins.gpio2.into_pull_down_input());
 
     if rbf.inhibited_at_init() {
         rbf_led_pin.set_high().unwrap();
