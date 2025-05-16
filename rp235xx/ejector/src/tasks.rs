@@ -54,12 +54,12 @@ pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
     info!("Camera Timer Fulfilled");
     loop {
         if ctx.shared.rbf.lock(|rbf| rbf.is_inserted()) {
-            // info!("Inhibited, waiting for ejector inhibit to be removed");
+            info!("Inhibited, waiting for ejector inhibit to be removed");
             // High to disable cams
             ctx.local.cams.set_high().unwrap();
             ctx.local.cams_led.set_high().unwrap();
         } else {
-            // info!("RBF Not  Inhibited");
+            info!("RBF Not  Inhibited");
 
             ctx.local.cams_led.toggle().unwrap();
             ctx.local.cams.set_low().unwrap();
