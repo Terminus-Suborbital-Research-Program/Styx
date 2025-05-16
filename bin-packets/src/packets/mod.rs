@@ -20,10 +20,10 @@ pub enum ApplicationPacket {
     },
     CurrentData {
         time_stamp: u64,
-        power: Option<(i8, u32)>,
+        current: Option<(i8, u32)>,
     },
     VoltageData {
         time_stamp: u64,
-        power: Option<(u8, u32)>,
+        voltage: Option<(u8, u32)>,
     },
 }
