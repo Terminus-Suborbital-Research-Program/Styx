@@ -1,5 +1,5 @@
 use embedded_hal::digital::{ErrorType, InputPin};
-use log::warn;
+use log::{info, warn};
 
 use super::Pin;
 use std::io::Read;
@@ -25,6 +25,7 @@ impl From<Pin> for ReadPin {
             .unwrap();
 
         cmd.wait().unwrap();
+        info!("Pin {} is {:?}", pin.pin(), cmd.stdout.unwrap());
         Self::new(pin.pin())
     }
 }
