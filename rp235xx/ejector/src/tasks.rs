@@ -2,9 +2,9 @@ use crate::{app::*, Mono};
 use bin_packets::device::PacketIO;
 use bin_packets::{devices::DeviceIdentifier, packets::status::Status};
 use common::rbf::RbfIndicator;
-use defmt::{info, trace, warn};
+use defmt::{debug, info, trace, warn};
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
-use fugit::ExtU64;
+use fugit::{Duration, ExtU64};
 use rp235x_hal::reboot::{self, RebootArch, RebootKind};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
@@ -13,18 +13,27 @@ const START_CAMERA_DELAY: u64 = 1000; // 10k millis For testing, 250 for actual
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     let mut sequence_number = 0;
+
+    // Set initial time
+    let task_start_time = Mono::now();
+    // Delay sending packets for one minute
+    let delay: Duration<u64, 1, 1000000> = 1_u64.minutes();
+
     loop {
         ctx.shared.led.lock(|led| led.toggle().unwrap());
 
-        let status = Status::new(DeviceIdentifier::Ejector, now_timestamp(), sequence_number);
+        if Mono::now() - task_start_time > delay {
+            info!("Heartbeat: Sending Status packet");
+            let status = Status::new(DeviceIdentifier::Ejector, now_timestamp(), sequence_number);
 
-        let res = ctx
-            .shared
-            .downlink
-            .lock(|downlink| downlink.write_into(status).err());
+            let res = ctx
+                .shared
+                .downlink
+                .lock(|downlink| downlink.write_into(status).err());
 
-        if let Some(err) = res {
-            info!("Error sending heartbeat: {:?}", err);
+            if let Some(err) = res {
+                info!("Error sending heartbeat: {:?}", err);
+            }
         }
 
         sequence_number = sequence_number.wrapping_add(1);
@@ -35,14 +44,14 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 
 pub async fn rbf_monitor(mut ctx: rbf_monitor::Context<'_>) {
     loop {
-        ctx.shared.rbf.lock(|rbf| {
-            if rbf.is_inserted() {
-                //info!("Inhibited, waiting for ejector inhibit to be removed");
-                ctx.local.rbf_led.set_low().unwrap();
-            } else if rbf.inhibited_at_init() {
-                reboot::reboot(RebootKind::Normal, RebootArch::Arm);
-            }
-        });
+        if ctx.shared.rbf.lock(|rbf| rbf.is_inserted()) {
+            //info!("Inhibited, waiting for ejector inhibit to be removed");
+            ctx.local.rbf_led.set_low().unwrap();
+        } else if ctx.shared.rbf.lock(|rbf| !rbf.inhibited_at_init()) {
+            warn!("RBF Removed, rebooting system into uninhibited state");
+            Mono::delay(100_u64.millis()).await;
+            reboot::reboot(RebootKind::Normal, RebootArch::Arm);
+        }
         Mono::delay(1000_u64.millis()).await;
     }
 }
@@ -70,12 +79,13 @@ pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
 }
 
 pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
+    Mono::delay(1_u64.minutes()).await; // Delay to avoid interference with JUPITER bootloader
     loop {
         // Drain all available packets, one per lock to allow interruptions
         loop {
             while let Some(packet) = ctx.shared.radio.lock(|radio| radio.read_packet()) {
                 ctx.shared.led.lock(|led| led.toggle().unwrap());
-                trace!("Got a packet form icarus! Packet: {:?}", packet);
+                debug!("Got a packet form icarus! Packet: {:?}", packet);
                 // Write down range
                 if let Err(e) = ctx
                     .shared
