@@ -21,10 +21,13 @@ impl From<Pin> for WritePin {
 
 impl WritePin {
     pub fn write(&self, high: bool) -> Result<(), super::PinError> {
-        info!("Writing {} to pin {}", if high { "high" } else { "low" }, self.pin);
-        let mut cmd = Command::new("gpioset")
-            .arg(format!("{}", self.pin))
-            .arg(format!("{}={}", self.pin, if high { "active" } else { "inactive" }))
+        let command = format!(
+            "gpioset {}={}",
+            self.pin,
+            if high { "active" } else { "inactive" }
+        );
+        info!("Executing command: {}", command);
+        let mut cmd = Command::new(command)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
