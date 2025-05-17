@@ -38,7 +38,7 @@ pub mod pins {
     pub type RBFLEDPin = Gpio15;
 
     // RBF PIN
-    pub type RBFPin = Pin<Gpio2, FunctionSio<SioInput>, PullUp>;
+    pub type RBFPin = Pin<Gpio2, FunctionSio<SioInput>, PullDown>;
 
     /// Ejection detection pin
     pub type EjectionPin = Gpio21;
@@ -54,6 +54,7 @@ pub mod pins {
     pub type RadioTxPin = Pin<Gpio9, FunctionUart, PullDown>;
     /// Radio Programming Pin
     pub type RadioProgrammingPin = Pin<Gpio20, FunctionSio<SioOutput>, PullDown>;
+
 }
 
 // Heartbeat LED
@@ -76,6 +77,10 @@ pub type EjectionDetectionPin = Pin<EjectionPin, FunctionSio<SioInput>, PullDown
 
 // JUPITER Uart
 pub type JupiterUart = UartPeripheral<Enabled, UART0, (JupiterRxPin, JupiterTxPin)>;
+
+/// Ejector RBF
+/// Represents the active-high Remove Before Flight (RBF) input.
+pub type EjectorRbf = ActiveHighRbf<RBFPin>;
 
 /// Radio UART
 pub type RadioUart = UartPeripheral<Enabled, UART1, (RadioRxPin, RadioTxPin)>;
