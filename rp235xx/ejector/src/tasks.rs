@@ -23,7 +23,7 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
         ctx.shared.led.lock(|led| led.toggle().unwrap());
 
         if Mono::now() - task_start_time > delay {
-            info!("Heartbeat: Sending Status packet");
+            debug!("Heartbeat: Sending Status packet");
             let status = Status::new(DeviceIdentifier::Ejector, now_timestamp(), sequence_number);
 
             let res = ctx
@@ -44,10 +44,14 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 
 pub async fn rbf_monitor(mut ctx: rbf_monitor::Context<'_>) {
     loop {
+        let inserted = ctx.shared.rbf.lock(|rbf| rbf.is_inserted());
+        let inserted_at_boot = ctx.shared.rbf.lock(|rbf| rbf.inhibited_at_init());
         if ctx.shared.rbf.lock(|rbf| rbf.is_inserted()) {
             //info!("Inhibited, waiting for ejector inhibit to be removed");
             ctx.local.rbf_led.set_low().unwrap();
-        } else if ctx.shared.rbf.lock(|rbf| !rbf.inhibited_at_init()) {
+        }
+        
+        if !inserted && inserted_at_boot {
             warn!("RBF Removed, rebooting system into uninhibited state");
             Mono::delay(100_u64.millis()).await;
             reboot::reboot(RebootKind::Normal, RebootArch::Arm);
