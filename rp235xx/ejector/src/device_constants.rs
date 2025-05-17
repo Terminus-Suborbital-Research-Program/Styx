@@ -18,7 +18,7 @@ pub mod pins {
         bank0::{
             Gpio13, Gpio14, Gpio15, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio25, Gpio8,
             Gpio9,
-        }, FunctionSio, FunctionUart, Pin, PullDown, PullNone, SioInput, SioOutput
+        }, FunctionSio, FunctionUart, Pin, PullDown, SioInput, SioOutput
     };
 
     // Ejector Heartbeat Output

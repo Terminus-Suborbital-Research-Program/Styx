@@ -22,9 +22,8 @@ impl From<Pin> for WritePin {
 impl WritePin {
     pub fn write(&self, high: bool) -> Result<(), super::PinError> {
         let mut cmd = Command::new("gpioset")
-            .arg("-z") // Daemonize, we're going to kill it ourselves later
             .arg(format!("{}", self.pin))
-            .arg(format!("{}={}", self.pin, if high { 1 } else { 0 }))
+            .arg(format!("{}={}", self.pin, if high { "active" } else { "inactive" }))
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()

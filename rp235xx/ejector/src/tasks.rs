@@ -126,7 +126,7 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
 
     // Wait until ejection pin reads high
     while !ejection_pin.is_high().unwrap_or(false) {
-        Mono::delay(100_u64.millis()).await;
+        Mono::delay(10_u64.millis()).await;
     }
 
     info!("Ejection signal high!");
