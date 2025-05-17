@@ -265,6 +265,12 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let ina_data = INAData::default();
 
     let mut rbf = pins.gpio4.into_pull_down_input();
+    
+    // Wait for the "Remove Before Flight" (RBF) pin to go low.
+    // The RBF pin is a safety mechanism that ensures certain tasks
+    // do not start until the pin is removed. This loop continuously
+    // checks the state of the pin and delays task initialization
+    // until the pin is confirmed to be low.
     let mut rbf_high = true;
     while(rbf_high) {
         if rbf.is_low().unwrap() {
