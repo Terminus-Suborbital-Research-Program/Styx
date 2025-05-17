@@ -129,27 +129,27 @@ pub async fn motor_drivers(
 
         let vs1 = ApplicationPacket::VoltageData {
             time_stamp: ts,
-            power: voltage_1,
+            voltage: voltage_1,
         };
         let vs2 = ApplicationPacket::VoltageData {
             time_stamp: ts,
-            power: voltage_2,
+            voltage: voltage_2,
         };
         let vs3 = ApplicationPacket::VoltageData {
             time_stamp: ts,
-            power: voltage_3,
+            voltage: voltage_3,
         };
         let cur1 = ApplicationPacket::CurrentData {
             time_stamp: ts,
-            power: current_1,
+            current: current_1,
         };
         let cur2 = ApplicationPacket::CurrentData {
             time_stamp: ts,
-            power: current_2,
+            current: current_2,
         };
         let cur3 = ApplicationPacket::CurrentData {
             time_stamp: ts,
-            power: current_3,
+            current: current_3,
         };
         let pow1 = ApplicationPacket::PowerData {
             time_stamp: ts,
