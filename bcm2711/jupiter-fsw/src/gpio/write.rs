@@ -21,18 +21,12 @@ impl From<Pin> for WritePin {
 
 impl WritePin {
     pub fn write(&self, high: bool) -> Result<(), super::PinError> {
-        let command = format!(
-            "gpioset {}={}",
-            self.pin,
-            if high { "active" } else { "inactive" }
-        );
-        info!("Executing command: {}", command);
-        let mut cmd = Command::new(command)
-            .spawn()
-            .map_err(|e| {
-                warn!("Failed to spawn command: {e}");
-                super::PinError::IoError(e)
-            })?;
+        let arg = format!("{}={}", self.pin, if high { "active" } else { "inactive" });
+        info!("Executing command: gpioset {}", arg);
+        let mut cmd = Command::new("gpioset").arg(arg).spawn().map_err(|e| {
+            warn!("Failed to spawn command: {e}");
+            super::PinError::IoError(e)
+        })?;
 
         // Wait for 200ms
         std::thread::sleep(std::time::Duration::from_millis(1000));
