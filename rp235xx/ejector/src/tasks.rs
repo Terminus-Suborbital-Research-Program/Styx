@@ -44,14 +44,14 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 
 pub async fn rbf_monitor(mut ctx: rbf_monitor::Context<'_>) {
     loop {
-        ctx.shared.rbf.lock(|rbf| {
-            if rbf.is_inserted() {
-                //info!("Inhibited, waiting for ejector inhibit to be removed");
-                ctx.local.rbf_led.set_low().unwrap();
-            } else if rbf.inhibited_at_init() {
-                reboot::reboot(RebootKind::Normal, RebootArch::Arm);
-            }
-        });
+        if ctx.shared.rbf.lock(|rbf| rbf.is_inserted()) {
+            //info!("Inhibited, waiting for ejector inhibit to be removed");
+            ctx.local.rbf_led.set_low().unwrap();
+        } else if ctx.shared.rbf.lock(|rbf| !rbf.inhibited_at_init()) {
+            warn!("RBF Removed, rebooting system into uninhibited state");
+            Mono::delay(100_u64.millis()).await;
+            reboot::reboot(RebootKind::Normal, RebootArch::Arm);
+        }
         Mono::delay(1000_u64.millis()).await;
     }
 }
@@ -79,6 +79,7 @@ pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
 }
 
 pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
+    Mono::delay(1_u64.minutes()).await; // Delay to avoid interference with JUPITER bootloader
     loop {
         // Drain all available packets, one per lock to allow interruptions
         loop {
