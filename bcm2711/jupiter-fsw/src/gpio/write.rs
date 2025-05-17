@@ -34,7 +34,7 @@ impl WritePin {
             })?;
 
         // Wait for 200ms
-        std::thread::sleep(std::time::Duration::from_millis(200));
+        std::thread::sleep(std::time::Duration::from_millis(1000));
 
         // Try and kill the child
         if let Err(e) = cmd.kill() {
