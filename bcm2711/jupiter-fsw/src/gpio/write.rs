@@ -1,4 +1,4 @@
-use log::warn;
+use log::{info, warn};
 
 use super::Pin;
 use std::process::{Command, Stdio};
@@ -21,6 +21,7 @@ impl From<Pin> for WritePin {
 
 impl WritePin {
     pub fn write(&self, high: bool) -> Result<(), super::PinError> {
+        info!("Writing {} to pin {}", if high { "high" } else { "low" }, self.pin);
         let mut cmd = Command::new("gpioset")
             .arg(format!("{}", self.pin))
             .arg(format!("{}={}", self.pin, if high { "active" } else { "inactive" }))
