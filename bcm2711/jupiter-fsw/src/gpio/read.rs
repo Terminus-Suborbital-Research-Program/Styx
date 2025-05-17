@@ -25,7 +25,6 @@ impl From<Pin> for ReadPin {
             .unwrap();
 
         cmd.wait().unwrap();
-        info!("Pin {} is {:?}", pin.pin(), cmd.stdout.unwrap());
         Self::new(pin.pin())
     }
 }
@@ -33,17 +32,20 @@ impl From<Pin> for ReadPin {
 impl ReadPin {
     pub fn read(&self) -> Result<bool, super::PinError> {
         let mut cmd = Command::new("gpioget")
-            .arg(format!("{}", self.pin))
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .map_err(|e| {
-                warn!("Failed to spawn command: {e}");
-                super::PinError::IoError(e)
-            })?;
-
+        .arg(format!("{}", self.pin))
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| {
+            warn!("Failed to spawn command: {e}");
+            super::PinError::IoError(e)
+        })?;
+        
         let mut output = String::new();
         if let Some(ref mut stdout) = cmd.stdout {
+            let mut string = String::new();
+            let out = stdout.read_to_string(&mut string);
+            info!("Pin {} is {}", self.pin, out.unwrap());
             stdout.read_to_string(&mut output).map_err(|e| {
                 warn!("Failed to read stdout: {e}");
                 super::PinError::IoError(e)
