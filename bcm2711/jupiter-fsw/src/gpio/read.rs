@@ -1,5 +1,5 @@
 use embedded_hal::digital::{ErrorType, InputPin};
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 
 use super::{Pin, PinError};
 use std::io::Read;
@@ -50,10 +50,10 @@ impl ReadPin {
             true => {
                 let line = String::from_utf8_lossy(&output.stdout);
                 if line.contains("inactive") {
-                    info!("Pin {} is low", self.pin);
+                    debug!("Pin {} is low", self.pin);
                     Ok(false)
                 } else if line.contains("active") {
-                    info!("Pin {} is high", self.pin);
+                    debug!("Pin {} is high", self.pin);
                     Ok(true)
                 } else {
                     let err = String::from_utf8_lossy(&output.stderr);
