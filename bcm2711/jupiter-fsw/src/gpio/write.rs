@@ -28,8 +28,6 @@ impl WritePin {
         );
         info!("Executing command: {}", command);
         let mut cmd = Command::new(command)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
             .spawn()
             .map_err(|e| {
                 warn!("Failed to spawn command: {e}");
