@@ -1,6 +1,6 @@
 use bin_packets::phases::IcarusPhase;
 use defmt::{info, warn};
-use embedded_hal::{delay::DelayNs, digital::OutputPin};
+use embedded_hal::{delay::DelayNs, digital::{InputPin, OutputPin}};
 use fugit::RateExtU32;
 use hc12_rs::IntoFU3Mode;
 use rp235x_hal::{
@@ -269,6 +269,24 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x42, Mono);
 
     let ina_data = INAData::default();
+
+    let mut rbf = pins.gpio4.into_pull_down_input();
+    
+    // Wait for the "Remove Before Flight" (RBF) pin to go low.
+    // The RBF pin is a safety mechanism that ensures certain tasks
+    // do not start until the pin is removed. This loop continuously
+    // checks the state of the pin and delays task initialization
+    // until the pin is confirmed to be low.
+    let mut rbf_high = true;
+    while(rbf_high) {
+        if rbf.is_low().unwrap() {
+            rbf_high = false;
+            info!("RBF is low.");
+        } else {
+            rbf_high = true;
+            info!("RBF is high.");
+        }
+    }
 
     info!("Peripherals initialized, spawning tasks...");
     heartbeat::spawn().ok();

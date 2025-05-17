@@ -121,19 +121,42 @@ pub async fn motor_drivers(
     loop {
         let ts = Mono::now().ticks();
 
-            let voltage1_result = ctx.local.ina260_1.voltage_split().await;
-            match voltage1_result{
-                Ok(voltage_1)=>{
-                    info!("1: {:?}", voltage_1);
-                        let vs1 = ApplicationPacket::VoltageData {
-                        name: 1,
-                        time_stamp: ts,
-                        voltage: Some(voltage_1),
-                    };
-                    ctx.shared.ina_data.lock(|ina_data| {
-                            ina_data.v1_buffer.write(vs1);
-                        }
-                    );
+        let vs1 = ApplicationPacket::VoltageData {
+            time_stamp: ts,
+            voltage: voltage_1,
+        };
+        let vs2 = ApplicationPacket::VoltageData {
+            time_stamp: ts,
+            voltage: voltage_2,
+        };
+        let vs3 = ApplicationPacket::VoltageData {
+            time_stamp: ts,
+            voltage: voltage_3,
+        };
+        let cur1 = ApplicationPacket::CurrentData {
+            time_stamp: ts,
+            current: current_1,
+        };
+        let cur2 = ApplicationPacket::CurrentData {
+            time_stamp: ts,
+            current: current_2,
+        };
+        let cur3 = ApplicationPacket::CurrentData {
+            time_stamp: ts,
+            current: current_3,
+        };
+        let pow1 = ApplicationPacket::PowerData {
+            time_stamp: ts,
+            power: power_1,
+        };
+        let pow2 = ApplicationPacket::PowerData {
+            time_stamp: ts,
+            power: power_2,
+        };
+        let pow3 = ApplicationPacket::PowerData {
+            time_stamp: ts,
+            power: power_3,
+        };
 
                 }
                 Err(_)=>{
