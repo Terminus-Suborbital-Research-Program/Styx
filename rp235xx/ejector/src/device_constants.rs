@@ -79,6 +79,7 @@ pub type EjectionDetectionPin = Pin<EjectionPin, FunctionSio<SioInput>, PullDown
 pub type JupiterUart = UartPeripheral<Enabled, UART0, (JupiterRxPin, JupiterTxPin)>;
 
 /// Ejector RBF
+/// Represents the active-high Remove Before Flight (RBF) input.
 pub type EjectorRbf = ActiveHighRbf<RBFPin>;
 
 /// Radio UART
