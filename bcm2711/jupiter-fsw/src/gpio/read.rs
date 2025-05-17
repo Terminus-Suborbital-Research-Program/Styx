@@ -49,12 +49,12 @@ impl ReadPin {
 
             true => {
                 let line = String::from_utf8_lossy(&output.stdout);
-                if line.contains("active") {
-                    info!("Pin {} is high", self.pin);
-                    Ok(true)
-                } else if line.contains("inactive") {
+                if line.contains("inactive") {
                     info!("Pin {} is low", self.pin);
                     Ok(false)
+                } else if line.contains("active") {
+                    info!("Pin {} is high", self.pin);
+                    Ok(true)
                 } else {
                     let err = String::from_utf8_lossy(&output.stderr);
                     error!("Failed to parse pin state: {}", err);
