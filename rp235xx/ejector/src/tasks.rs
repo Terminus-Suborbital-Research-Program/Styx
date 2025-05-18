@@ -67,12 +67,12 @@ pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
     info!("Camera Timer Fulfilled");
     loop {
         if ctx.shared.rbf.lock(|rbf| rbf.is_inserted()) {
-            info!("Inhibited, waiting for ejector inhibit to be removed");
+            debug!("Inhibited, waiting for ejector inhibit to be removed");
             // High to disable cams
             ctx.local.cams.set_high().unwrap();
             ctx.local.cams_led.set_high().unwrap();
         } else {
-            info!("RBF Not  Inhibited");
+            debug!("RBF Not  Inhibited");
 
             ctx.local.cams_led.toggle().unwrap();
             ctx.local.cams.set_low().unwrap();
@@ -120,9 +120,10 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
 
     let ejection_pin = ctx.local.ejection_pin;
 
-    // loop {
-    //     info!("Pin: {:?}", ejection_pin.is_high().unwrap());
-    // }
+    // Lockout for one minute to let JUPITER boot up
+    info!("Idling sequencer");
+    Mono::delay(1_u64.minutes()).await;
+    info!("Sequencer unlocked, waiting for ejection signal");
 
     // Wait until ejection pin reads high
     while !ejection_pin.is_high().unwrap_or(false) {
