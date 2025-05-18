@@ -52,6 +52,10 @@ fn main() {
     loop {
         interface.update().ok();
 
+        while let Some(packet) = interface.read_packet() {
+            info!("Got a packet: {:?}", packet);
+        }
+
         state_machine.update();
 
         info!(

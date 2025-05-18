@@ -1,4 +1,4 @@
-use log::warn;
+use log::{info, warn};
 
 use super::Pin;
 use std::process::{Command, Stdio};
@@ -21,20 +21,15 @@ impl From<Pin> for WritePin {
 
 impl WritePin {
     pub fn write(&self, high: bool) -> Result<(), super::PinError> {
-        let mut cmd = Command::new("gpioset")
-            .arg("-z") // Daemonize, we're going to kill it ourselves later
-            .arg(format!("{}", self.pin))
-            .arg(format!("{}={}", self.pin, if high { 1 } else { 0 }))
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .map_err(|e| {
-                warn!("Failed to spawn command: {e}");
-                super::PinError::IoError(e)
-            })?;
+        let arg = format!("{}={}", self.pin, if high { "active" } else { "inactive" });
+        info!("Executing command: gpioset {}", arg);
+        let mut cmd = Command::new("gpioset").arg(arg).spawn().map_err(|e| {
+            warn!("Failed to spawn command: {e}");
+            super::PinError::IoError(e)
+        })?;
 
         // Wait for 200ms
-        std::thread::sleep(std::time::Duration::from_millis(200));
+        std::thread::sleep(std::time::Duration::from_millis(1000));
 
         // Try and kill the child
         if let Err(e) = cmd.kill() {
