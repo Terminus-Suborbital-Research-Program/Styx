@@ -92,11 +92,9 @@ mod std_impl {
         }
 
         fn update(&mut self) -> Result<(), InterfaceError<Self::Error>> {
-            let mut buf = [0u8; 1024];
             self.device
-                .read(&mut buf)
+                .read_to_end(&mut self.buffer)
                 .map_err(InterfaceError::DeviceError)?;
-            self.buffer.extend_from_slice(&buf);
             Ok(())
         }
 

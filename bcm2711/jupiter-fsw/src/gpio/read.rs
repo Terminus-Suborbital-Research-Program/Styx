@@ -1,7 +1,7 @@
 use embedded_hal::digital::{ErrorType, InputPin};
-use log::warn;
+use log::{debug, error, info, warn};
 
-use super::Pin;
+use super::{Pin, PinError};
 use std::io::Read;
 use std::process::{Command, Stdio};
 
@@ -31,36 +31,36 @@ impl From<Pin> for ReadPin {
 
 impl ReadPin {
     pub fn read(&self) -> Result<bool, super::PinError> {
-        let mut cmd = Command::new("gpioget")
-            .arg(format!("{}", self.pin))
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .map_err(|e| {
-                warn!("Failed to spawn command: {e}");
-                super::PinError::IoError(e)
-            })?;
-
-        let mut output = String::new();
-        if let Some(ref mut stdout) = cmd.stdout {
-            stdout.read_to_string(&mut output).map_err(|e| {
-                warn!("Failed to read stdout: {e}");
-                super::PinError::IoError(e)
-            })?;
-        }
-
-        let _status = cmd.wait().map_err(|e| {
-            warn!("Failed to wait for command: {e}");
-            super::PinError::IoError(e)
+        let output = Command::new("gpioget")
+        .arg(&self.pin)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output().map_err(|e| {
+            warn!("Failed to read pin {}: {}", self.pin, e);
+            PinError::IoError(e)
         })?;
 
-        // Parse to 0 or 1, otherwise error
-        if output.contains("active") {
-            Ok(true)
-        } else if output.contains("inactive") {
-            Ok(false)
-        } else {
-            Err(super::PinError::ParseError(output))
+        match output.status.success() {
+            false => {
+                let err = String::from_utf8_lossy(&output.stderr);
+                error!("Failed to read pin {}: {}", self.pin, err);
+                Err(PinError::ParseError(err.to_string()))
+            }
+
+            true => {
+                let line = String::from_utf8_lossy(&output.stdout);
+                if line.contains("inactive") {
+                    debug!("Pin {} is low", self.pin);
+                    Ok(false)
+                } else if line.contains("active") {
+                    debug!("Pin {} is high", self.pin);
+                    Ok(true)
+                } else {
+                    let err = String::from_utf8_lossy(&output.stderr);
+                    error!("Failed to parse pin state: {}", err);
+                    Err(PinError::ParseError(err.to_string()))
+                }
+            }
         }
     }
 }

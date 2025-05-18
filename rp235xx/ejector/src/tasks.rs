@@ -23,7 +23,7 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
         ctx.shared.led.lock(|led| led.toggle().unwrap());
 
         if Mono::now() - task_start_time > delay {
-            info!("Heartbeat: Sending Status packet");
+            debug!("Heartbeat: Sending Status packet");
             let status = Status::new(DeviceIdentifier::Ejector, now_timestamp(), sequence_number);
 
             let res = ctx
@@ -44,10 +44,14 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 
 pub async fn rbf_monitor(mut ctx: rbf_monitor::Context<'_>) {
     loop {
+        let inserted = ctx.shared.rbf.lock(|rbf| rbf.is_inserted());
+        let inserted_at_boot = ctx.shared.rbf.lock(|rbf| rbf.inhibited_at_init());
         if ctx.shared.rbf.lock(|rbf| rbf.is_inserted()) {
             //info!("Inhibited, waiting for ejector inhibit to be removed");
             ctx.local.rbf_led.set_low().unwrap();
-        } else if ctx.shared.rbf.lock(|rbf| !rbf.inhibited_at_init()) {
+        }
+        
+        if !inserted && inserted_at_boot {
             warn!("RBF Removed, rebooting system into uninhibited state");
             Mono::delay(100_u64.millis()).await;
             reboot::reboot(RebootKind::Normal, RebootArch::Arm);
@@ -63,12 +67,12 @@ pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
     info!("Camera Timer Fulfilled");
     loop {
         if ctx.shared.rbf.lock(|rbf| rbf.is_inserted()) {
-            info!("Inhibited, waiting for ejector inhibit to be removed");
+            debug!("Inhibited, waiting for ejector inhibit to be removed");
             // High to disable cams
             ctx.local.cams.set_high().unwrap();
             ctx.local.cams_led.set_high().unwrap();
         } else {
-            info!("RBF Not  Inhibited");
+            debug!("RBF Not  Inhibited");
 
             ctx.local.cams_led.toggle().unwrap();
             ctx.local.cams.set_low().unwrap();
@@ -116,13 +120,14 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
 
     let ejection_pin = ctx.local.ejection_pin;
 
-    // loop {
-    //     info!("Pin: {:?}", ejection_pin.is_high().unwrap());
-    // }
+    // Lockout for one minute to let JUPITER boot up
+    info!("Idling sequencer");
+    Mono::delay(1_u64.minutes()).await;
+    info!("Sequencer unlocked, waiting for ejection signal");
 
     // Wait until ejection pin reads high
     while !ejection_pin.is_high().unwrap_or(false) {
-        Mono::delay(100_u64.millis()).await;
+        Mono::delay(10_u64.millis()).await;
     }
 
     info!("Ejection signal high!");

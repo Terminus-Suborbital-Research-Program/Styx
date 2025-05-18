@@ -35,7 +35,7 @@ impl ValidState for SkirtSeperation {
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
         if self.te_recieved_at + DELAY_TO_EJECT_SEC < ctx.t_time {
             info!("Ejection complete, idling.");
-            ctx.ejection_pin.write(false).unwrap();
+            ctx.ejection_pin.write(true).unwrap();
             Box::new(Ejection::default())
         } else {
             info!("Waiting for ejection to complete. Time recieved: {}, current time: {}", self.te_recieved_at, ctx.t_time);

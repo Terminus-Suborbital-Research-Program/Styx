@@ -15,6 +15,7 @@ impl ValidState for Ejection {
     }
 
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
+        ctx.ejection_pin.write(true).unwrap();
         match ctx.pins.read().te2() {
             PinState::High => {
                 // Low power warning, go to battery power
