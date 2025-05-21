@@ -64,7 +64,7 @@ where
             }
         }
 
-        self.buffer.rotate_left(taken);
+        self.buffer.drain(0..taken);
 
         potential
     }
