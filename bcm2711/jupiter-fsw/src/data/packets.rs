@@ -60,6 +60,9 @@ impl OnboardPacketStorage {
         path.push(format! {"{}", max + 1});
         let file = File::create(path).unwrap();
 
+        info!("Log file created");
+
         Self::new(file)
     }
 }
+
