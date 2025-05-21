@@ -42,28 +42,24 @@ impl OnboardPacketStorage {
         let path = Path::new(&dir_path);
 
         info!("Finding new name...");
-        let new_name = std::fs::read_dir(path)
-            .unwrap()
-            .map(|x| x.ok())
-            .filter(|x| x.is_some())
-            .map(|x| x.unwrap())
-            .map(|x| {
-                x.path()
+        let mut max = 0;
+        for dir in std::fs::read_dir(path).unwrap() {
+            if let Ok(name) = dir {
+                info!("Found {}", name.file_name().to_string_lossy());
+                let x = name
                     .file_name()
-                    .unwrap_or(OsStr::new("0"))
                     .to_string_lossy()
                     .parse::<u32>()
-                    .unwrap_or(0)
-            })
-            .max()
-            .unwrap_or(0)
-            + 1;
-
+                    .unwrap_or(0);
+                if x > max {
+                    max = x;
+                }
+            }
+        }
         let mut path = PathBuf::from(path);
-        path.push(format! {"{}", new_name});
+        path.push(format! {"{}", max + 1});
         let file = File::create(path).unwrap();
 
         Self::new(file)
     }
 }
-
