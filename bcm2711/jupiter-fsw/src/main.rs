@@ -1,4 +1,6 @@
 use std::{thread::sleep, time::Duration};
+use std::process::Child;
+
 
 use bin_packets::device::{PacketReader, PacketWriter, std::Device};
 use common::rbf::ActiveHighRbf;
@@ -9,7 +11,7 @@ use env_logger::Env;
 use gpio::{Pin, read::ReadPin, write::WritePin};
 use i2cdev::{core::I2CDevice, linux::LinuxI2CDevice};
 use states::JupiterStateMachine;
-use tasks::IndicatorsReader;
+use tasks::{IndicatorsReader, InfraTracker};
 
 mod constants;
 mod data;
@@ -52,6 +54,8 @@ fn main() {
 
     let mut state_machine = JupiterStateMachine::new(pins, ejection_pin);
 
+    let infra_tracker_process = InfraTracker::new().spawn();
+
     loop {
         while let Some(packet) = interface.read() {
             onboard_packet_storage.write(packet); // Write to the onboard storage
@@ -60,6 +64,7 @@ fn main() {
             }
             info!("Got a packet: {:?}", packet);
         }
+        
 
         state_machine.update();
 
