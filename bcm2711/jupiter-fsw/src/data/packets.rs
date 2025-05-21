@@ -34,11 +34,14 @@ impl OnboardPacketStorage {
         std::process::Command::new("mkdir")
             .arg(dir_path.clone())
             .arg("-p")
-            .output()
-            .unwrap();
+            .spawn()
+            .unwrap()
+            .wait()
+            .ok();
 
         let path = Path::new(&dir_path);
 
+        info!("Finding new name...");
         let new_name = std::fs::read_dir(path)
             .unwrap()
             .map(|x| x.ok())
