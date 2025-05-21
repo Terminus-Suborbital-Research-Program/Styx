@@ -1,8 +1,9 @@
 use std::{thread::sleep, time::Duration};
 
-use bin_packets::device::{PacketReader, std::Device};
+use bin_packets::device::{PacketReader, PacketWriter, std::Device};
 use common::rbf::ActiveHighRbf;
 use constants::{EJECTION_IND_PIN, RBF_PIN};
+use data::packets::OnboardPacketStorage;
 use env_logger::Env;
 
 use gpio::{Pin, read::ReadPin, write::WritePin};
@@ -11,12 +12,13 @@ use states::JupiterStateMachine;
 use tasks::IndicatorsReader;
 
 mod constants;
+mod data;
 mod gpio;
 mod states;
 mod tasks;
 mod timing;
 
-use log::info;
+use log::{error, info};
 use tasks::RbfTask;
 
 static SERIAL_PORT: &str = "/dev/ttyS0";
@@ -44,12 +46,18 @@ fn main() {
     let pins = IndicatorsReader::new(atmega);
     let rbf = RbfTask::new(rbf_pin).spawn(100);
 
+    let mut onboard_packet_storage = OnboardPacketStorage::get_current_run();
+
     info!("RBF At Boot: {}", rbf.read());
 
     let mut state_machine = JupiterStateMachine::new(pins, ejection_pin);
 
     loop {
         while let Some(packet) = interface.read() {
+            onboard_packet_storage.write(packet); // Write to the onboard storage
+            if let Err(e) = interface.write(packet) {
+                error!("Failed to write packet down: {}", e);
+            }
             info!("Got a packet: {:?}", packet);
         }
 

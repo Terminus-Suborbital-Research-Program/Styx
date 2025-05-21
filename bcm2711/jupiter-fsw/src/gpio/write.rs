@@ -1,7 +1,7 @@
 use log::{info, warn};
 
 use super::Pin;
-use std::process::{Command, Stdio};
+use std::process::Command;
 
 pub struct WritePin {
     pin: String,

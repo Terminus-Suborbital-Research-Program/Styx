@@ -1,5 +1,5 @@
 use embedded_hal::digital::{ErrorType, InputPin};
-use log::{debug, error, info, warn};
+use log::{debug, error, warn};
 
 use super::{Pin, PinError};
 use std::io::Read;
