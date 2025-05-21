@@ -1,5 +1,5 @@
 use embedded_hal::digital::{ErrorType, InputPin};
-use log::{debug, error, info, warn};
+use log::{debug, error, warn};
 
 use super::{Pin, PinError};
 use std::io::Read;
@@ -32,13 +32,19 @@ impl From<Pin> for ReadPin {
 impl ReadPin {
     pub fn read(&self) -> Result<bool, super::PinError> {
         let output = Command::new("gpioget")
-        .arg(&self.pin)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output().map_err(|e| {
-            warn!("Failed to read pin {}: {}", self.pin, e);
-            PinError::IoError(e)
-        })?;
+            .arg(&self.pin)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| {
+                warn!("Failed to read pin {}: {}", self.pin, e);
+                PinError::IoError(e)
+            })?
+            .wait_with_output()
+            .map_err(|e| {
+                warn!("Failed to read pin {}: {}", self.pin, e);
+                PinError::IoError(e)
+            })?;
 
         match output.status.success() {
             false => {

@@ -1,4 +1,4 @@
-use bin_packets::device::PacketIO;
+use bin_packets::device::PacketWriter;
 use bin_packets::devices::DeviceIdentifier;
 use bin_packets::packets::status::Status;
 use bin_packets::packets::ApplicationPacket;
@@ -12,7 +12,7 @@ use rtic_sync::arbiter::Arbiter;
 
 use crate::device_constants::servos::{FlapServo, FLAP_SERVO_LOCKED, FLAP_SERVO_UNLOCKED};
 use crate::device_constants::AvionicsI2cBus;
-use crate::phases::{StateMachineListener, Modes};
+use crate::phases::{Modes, StateMachineListener};
 use crate::{app::*, device_constants::MotorI2cBus, Mono};
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
@@ -22,10 +22,7 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 
         let status = Status::new(DeviceIdentifier::Icarus, now_timestamp(), sequence_number);
 
-        let packet_send = ctx
-            .shared
-            .radio
-            .lock(|radio| radio.write_into(status).err());
+        let packet_send = ctx.shared.radio.lock(|radio| radio.write(status).err());
 
         if let Some(err) = packet_send {
             warn!("Failed to send heartbeat: {:?}", err);
@@ -35,12 +32,6 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 
         Mono::delay(300_u64.millis()).await;
     }
-}
-
-pub fn uart_interrupt(mut ctx: uart_interrupt::Context<'_>) {
-    ctx.shared.radio.lock(|radio| {
-        radio.update().ok();
-    });
 }
 
 pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
@@ -81,27 +72,25 @@ unsafe fn I2C0_IRQ() {
     MotorI2cBus::on_interrupt();
 }
 
-
 // async fn flap_servo_close(mut servo: &mut IcarusServos){
-//     servo.set_angle(0);   
+//     servo.set_angle(0);
 // }
 use rp235x_hal::clocks;
-pub async fn mode_sequencer(mut ctx: mode_sequencer::Context<'_>){
+pub async fn mode_sequencer(mut ctx: mode_sequencer::Context<'_>) {
     let mut status = 0;
     let mut iteration = 0;
-    let mut mode_start = Mono::now();    
-    
+    let mut mode_start = Mono::now();
+
     let mut flap_status = false;
     let mut relay_status = false;
     ctx.local.relay_servo.enable();
     ctx.local.flap_servo.enable();
     ctx.local.flap_servo.deg_0();
     ctx.local.relay_servo.deg_0();
-    loop{
-        if flap_status == false{
+    loop {
+        if flap_status == false {
             flap_status = Modes::open_flaps_sequence(mode_start, ctx.local.flap_servo).await;
-        }
-        else{
+        } else {
         }
         Mono::delay(100_u64.millis()).await;
     }
@@ -329,3 +318,4 @@ pub async fn inertial_nav(_ctx: inertial_nav::Context<'_>) {
         Mono::delay(250_u64.millis()).await;
     }
 }
+

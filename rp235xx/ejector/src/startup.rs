@@ -1,4 +1,4 @@
-use bin_packets::device::PacketDevice;
+use bin_packets::device::Device;
 use common::rbf::{ActiveHighRbf, RbfIndicator};
 
 use defmt::{info, warn};
@@ -22,7 +22,9 @@ use usbd_serial::SerialPort;
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
 use crate::device_constants::packets::{JupiterInterface, RadioInterface};
 use crate::device_constants::pins::{RBFPin, RadioProgrammingPin};
-use crate::device_constants::{EjectionDetectionPin, EjectorHC12, EjectorRbf, JupiterUart, RadioUart};
+use crate::device_constants::{
+    EjectionDetectionPin, EjectorHC12, EjectorRbf, JupiterUart, RadioUart,
+};
 use crate::hal;
 use crate::phases::EjectorStateMachine;
 use crate::{app::*, Mono};
@@ -129,7 +131,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     .unwrap();
 
     // Packet interface to relay packets down
-    let jupiter_downlink: JupiterInterface = PacketDevice::new(jupiter_uart);
+    let jupiter_downlink: JupiterInterface = Device::new(jupiter_uart);
 
     // Pin setup for UART1
     let uart1_pins = (
@@ -196,7 +198,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         }
     };
     let hc: EjectorHC12 = hc.into_fu3_mode().unwrap(); // Infallible
-    let radio: RadioInterface = PacketDevice::new(hc);
+    let radio: RadioInterface = Device::new(hc);
 
     // Servo
     let pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);

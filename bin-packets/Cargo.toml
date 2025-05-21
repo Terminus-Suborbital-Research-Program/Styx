@@ -6,11 +6,12 @@ publish = false
 
 [dependencies]
 bincode = { version = "*", features = ["derive"], default-features = false }
-defmt = "*"
-embedded-io = "0.6.1"
+defmt = { version = "*" }
+embedded-io = { version = "0.6.1", features = ["defmt-03"] }
 heapless = { version = "0.8.0", features = ["defmt-03"] }
 serde = { version = "*", features = ["derive"], default-features = false }
 
 [features]
 default = []
-std = ["bincode/std"]
+std = ["bincode/std", "serde/std", "embedded-io/std"]
+

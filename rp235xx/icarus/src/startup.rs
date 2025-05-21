@@ -1,6 +1,9 @@
 use bin_packets::phases::IcarusPhase;
 use defmt::{info, warn};
-use embedded_hal::{delay::DelayNs, digital::{InputPin, OutputPin}};
+use embedded_hal::{
+    delay::DelayNs,
+    digital::{InputPin, OutputPin},
+};
 use fugit::RateExtU32;
 use hc12_rs::IntoFU3Mode;
 use rp235x_hal::{
@@ -17,14 +20,14 @@ use rtic_sync::{
 // use usb_device::bus::UsbBusAllocator;
 // use usbd_serial::SerialPort;
 
-use crate::actuators::servo::{Servo};
+use crate::actuators::servo::Servo;
 use crate::{
     app::*,
     device_constants::{
         pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin},
         servos::{
-            FlapMosfet, FlapServoPwmPin, FlapServoSlice, RelayMosfet,
-            RelayServoPwmPin, RelayServoSlice, RelayServo, FlapServo
+            FlapMosfet, FlapServo, FlapServoPwmPin, FlapServoSlice, RelayMosfet, RelayServo,
+            RelayServoPwmPin, RelayServoSlice,
         },
         INAData, IcarusRadio, IcarusStateMachine,
     },
@@ -178,7 +181,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     timer_two.delay_ms(150);
     let hc = radio.into_fu3_mode().unwrap(); // Infallible
 
-    let interface: IcarusRadio = bin_packets::device::PacketDevice::new(hc);
+    let interface: IcarusRadio = bin_packets::device::Device::new(hc);
 
     // Servo mosfets
     let mut flap_mosfet: FlapMosfet = pins.gpio2.into_function();
@@ -214,7 +217,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let relay_pin: RelayServoPwmPin =
         relay_channel.output_to(pins.gpio1.into_function::<FunctionPwm>());
     let mut relay_servo: RelayServo = Servo::new(relay_channel, relay_pin, relay_mosfet);
-        
+
     // Sensors
     // Init I2C pins
     let motor_sda_pin: Pin<EscI2CSdaPin, FunctionI2C, PullUp> = pins.gpio16.reconfigure();
@@ -271,14 +274,14 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let ina_data = INAData::default();
 
     let mut rbf = pins.gpio4.into_pull_down_input();
-    
+
     // Wait for the "Remove Before Flight" (RBF) pin to go low.
     // The RBF pin is a safety mechanism that ensures certain tasks
     // do not start until the pin is removed. This loop continuously
     // checks the state of the pin and delays task initialization
     // until the pin is confirmed to be low.
     let mut rbf_high = true;
-    while(rbf_high) {
+    while (rbf_high) {
         if rbf.is_low().unwrap() {
             rbf_high = false;
             info!("RBF is low.");
@@ -315,3 +318,4 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         },
     )
 }
+
