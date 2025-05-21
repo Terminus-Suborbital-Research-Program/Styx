@@ -4,6 +4,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use log::info;
+
 use bin_packets::{
     device::{PacketWriter, std::Device},
     packets::ApplicationPacket,
@@ -28,6 +30,7 @@ impl OnboardPacketStorage {
         let home = std::env::var("HOME").expect("No $HOME variable? What the fuck?");
         let dir_path = format!("{}/data/packets", home);
         // Get the directory if it doesn't exist
+        info!("Making directory...");
         std::process::Command::new("mkdir")
             .arg(dir_path.clone())
             .arg("-p")
