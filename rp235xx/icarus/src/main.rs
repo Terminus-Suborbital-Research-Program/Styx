@@ -56,7 +56,7 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 mod app {
     use crate::{
         device_constants::{
-            servos::{RelayServo, FlapServo},
+            servos::{FlapServo, RelayServo},
             AvionicsI2cBus, IcarusRadio, IcarusStateMachine, MotorI2cBus,
         },
         phases::StateMachineListener,
@@ -138,10 +138,6 @@ mod app {
             mut esc_state_listener: StateMachineListener,
         );
 
-        // Updates the radio module on the serial interrupt
-        #[task(binds = UART1_IRQ, shared = [radio])]
-        fn uart_interrupt(mut ctx: uart_interrupt::Context);
-
         #[task(local = [bme280], priority = 3)]
         async fn sample_sensors(
             mut ctx: sample_sensors::Context,
@@ -162,3 +158,4 @@ mod app {
         Timestamp::new(epoch_ns())
     }
 }
+

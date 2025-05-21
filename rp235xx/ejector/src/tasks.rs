@@ -1,6 +1,9 @@
 use crate::{app::*, Mono};
-use bin_packets::device::PacketIO;
-use bin_packets::{devices::DeviceIdentifier, packets::status::Status};
+use bin_packets::{
+    device::{PacketReader, PacketWriter},
+    devices::DeviceIdentifier,
+    packets::status::Status,
+};
 use common::rbf::RbfIndicator;
 use defmt::{debug, info, trace, warn};
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
@@ -29,7 +32,7 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
             let res = ctx
                 .shared
                 .downlink
-                .lock(|downlink| downlink.write_into(status).err());
+                .lock(|downlink| downlink.write(status).err());
 
             if let Some(err) = res {
                 info!("Error sending heartbeat: {:?}", err);
@@ -50,7 +53,7 @@ pub async fn rbf_monitor(mut ctx: rbf_monitor::Context<'_>) {
             //info!("Inhibited, waiting for ejector inhibit to be removed");
             ctx.local.rbf_led.set_low().unwrap();
         }
-        
+
         if !inserted && inserted_at_boot {
             warn!("RBF Removed, rebooting system into uninhibited state");
             Mono::delay(100_u64.millis()).await;
@@ -84,32 +87,22 @@ pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
 
 pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
     Mono::delay(1_u64.minutes()).await; // Delay to avoid interference with JUPITER bootloader
+                                        // Drain all available packets, one per lock to allow interruptions
     loop {
-        // Drain all available packets, one per lock to allow interruptions
-        loop {
-            while let Some(packet) = ctx.shared.radio.lock(|radio| radio.read_packet()) {
-                ctx.shared.led.lock(|led| led.toggle().unwrap());
-                debug!("Got a packet form icarus! Packet: {:?}", packet);
-                // Write down range
-                if let Err(e) = ctx
-                    .shared
-                    .downlink
-                    .lock(|downlink| downlink.write_into(packet))
-                {
-                    warn!("Error writing packet: {:?}", e);
-                }
+        while let Some(packet) = ctx.shared.radio.lock(|radio| radio.read()) {
+            ctx.shared.led.lock(|led| led.toggle().unwrap());
+            debug!("Got a packet form icarus! Packet: {:?}", packet);
+            // Write down range
+            if let Err(e) = ctx.shared.downlink.lock(|downlink| downlink.write(packet)) {
+                warn!("Error writing packet: {:?}", e);
             }
-            Mono::delay(1000_u64.millis()).await;
         }
+        Mono::delay(1000_u64.millis()).await;
     }
 }
 
-pub fn uart_interrupt(mut ctx: uart_interrupt::Context<'_>) {
-    ctx.shared.radio.lock(|radio| {
-        if let Err(e) = radio.update() {
-            info!("Error updating radio: {:?}", e);
-        }
-    });
+pub fn uart_interrupt(_ctx: uart_interrupt::Context<'_>) {
+    radio_read::spawn().ok();
 }
 
 pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {

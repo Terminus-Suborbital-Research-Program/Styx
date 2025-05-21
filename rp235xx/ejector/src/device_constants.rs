@@ -16,9 +16,9 @@ use common::rbf::ActiveHighRbf;
 pub mod pins {
     use rp235x_hal::gpio::{
         bank0::{
-            Gpio13, Gpio14, Gpio15, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio25, Gpio8,
-            Gpio9,
-        }, FunctionSio, FunctionUart, Pin, PullDown, SioInput, SioOutput
+            Gpio13, Gpio14, Gpio15, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio25, Gpio8, Gpio9,
+        },
+        FunctionSio, FunctionUart, Pin, PullDown, SioInput, SioOutput,
     };
 
     // Ejector Heartbeat Output
@@ -53,7 +53,6 @@ pub mod pins {
     pub type RadioTxPin = Pin<Gpio9, FunctionUart, PullDown>;
     /// Radio Programming Pin
     pub type RadioProgrammingPin = Pin<Gpio20, FunctionSio<SioOutput>, PullDown>;
-
 }
 
 // Heartbeat LED
@@ -92,8 +91,8 @@ pub mod packets {
     use super::{EjectorHC12, JupiterUart};
 
     /// Packet interface for the radio UART
-    pub type RadioInterface = bin_packets::device::PacketDevice<EjectorHC12, 256>;
+    pub type RadioInterface = bin_packets::device::Device<EjectorHC12, 256>;
 
     /// Packet interface for the downlink UART to JUPITER
-    pub type JupiterInterface = bin_packets::device::PacketDevice<JupiterUart, 256>;
+    pub type JupiterInterface = bin_packets::device::Device<JupiterUart, 256>;
 }

@@ -1,7 +1,6 @@
 use std::{thread::sleep, time::Duration};
 
-use bin_packets::device::PacketDevice;
-use bin_packets::device::PacketIO;
+use bin_packets::device::{PacketReader, std::Device};
 use common::rbf::ActiveHighRbf;
 use constants::{EJECTION_IND_PIN, RBF_PIN};
 use env_logger::Env;
@@ -33,7 +32,7 @@ fn main() {
         .timeout(Duration::from_millis(10))
         .open()
         .unwrap();
-    let mut interface = PacketDevice::new(port);
+    let mut interface = Device::new(port);
     let rbf_pin = ActiveHighRbf::new(ReadPin::from(Pin::new(RBF_PIN)));
     let ejection_pin: WritePin = Pin::new(EJECTION_IND_PIN).into();
     ejection_pin.write(false).unwrap();
@@ -50,9 +49,7 @@ fn main() {
     let mut state_machine = JupiterStateMachine::new(pins, ejection_pin);
 
     loop {
-        interface.update().ok();
-
-        while let Some(packet) = interface.read_packet() {
+        while let Some(packet) = interface.read() {
             info!("Got a packet: {:?}", packet);
         }
 

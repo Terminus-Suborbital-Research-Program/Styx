@@ -1,4 +1,4 @@
-use bin_packets::{device::PacketDevice, packets::ApplicationPacket};
+use bin_packets::{device::Device, packets::ApplicationPacket};
 use pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin, LedPin};
 use rp235x_hal::{
     gpio::{bank0::Gpio5, FunctionI2C, FunctionSio, Pin, PullDown, PullNone, PullUp, SioOutput},
@@ -157,7 +157,7 @@ pub type IcarusHC12 = HC12<
 >;
 
 /// Icarus HC12 Packet interface
-pub type IcarusRadio = PacketDevice<IcarusHC12, 256>;
+pub type IcarusRadio = Device<IcarusHC12, 256>;
 
 /// A motor controller on a shared bus
 pub type ReactionWheelMotor = ();
@@ -179,3 +179,4 @@ pub struct INAData {
     pub i2_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
     pub i3_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
 }
+
