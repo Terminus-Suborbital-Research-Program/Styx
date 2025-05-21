@@ -18,6 +18,7 @@ use crate::tasks::*;
 use core::mem::MaybeUninit;
 
 // Sensors
+use bmi323::AsyncBMI323;
 use bme280_rs::AsyncBme280;
 use ina260_terminus::AsyncINA260;
 
@@ -98,6 +99,7 @@ mod app {
         pub flap_servo: FlapServo,
         pub relay_servo: RelayServo,
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
+        pub bmi323: AsyncBMI323<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub bme280: AsyncBme280<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub ina260_1: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
         pub ina260_2: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
@@ -145,7 +147,7 @@ mod app {
         #[task(binds = UART1_IRQ, shared = [radio])]
         fn uart_interrupt(mut ctx: uart_interrupt::Context);
 
-        #[task(local = [bme280], priority = 3)]
+        #[task(local = [bme280, bmi323], priority = 3)]
         async fn sample_sensors(
             mut ctx: sample_sensors::Context,
             avionics_i2c: &'static Arbiter<AvionicsI2cBus>,

@@ -52,8 +52,8 @@ pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
         ctx.shared.ina_data.lock(|ina_data| {
             ctx.shared.radio.lock(|radio| {
                 // GET PACKETS FROM INA DATA AND SEND
-                let packet = ina_data.i1_buffer.first();
-                match packet {
+                let packet_1 = ina_data.i1_buffer.first();
+                match packet_1 {
                     Some(packet_info) => {
                         info!("Data Write: {:?}", packet_info);
                         let radio_write_result = radio.write(*packet_info);
@@ -113,7 +113,7 @@ pub async fn mode_sequencer(mut ctx: mode_sequencer::Context<'_>){
     };
 
     loop{
-        let mut flap_servo_timer_close = Mono::now();
+        let flap_servo_timer_close = Mono::now();
         let flap_servo_timeout_close = flap_servo_timer_close + 10000.millis();
         Mono::delay_until(flap_servo_timeout_close).await;
         match Mono::timeout_at(flap_servo_timeout_close+500.millis(), flap_servo_close(ctx.local.flap_servo)).await{
@@ -153,8 +153,8 @@ pub async fn motor_drivers(
     loop {
         let ts = Mono::now().ticks();
         let voltage_1 = ctx.local.ina260_1.voltage_split().await.ok();
-        let current_1 = ctx.local.ina260_1.current_split().await.ok();
-        let power_1 = ctx.local.ina260_1.power_split().await.ok();
+        let current_1 = ctx.local.ina260_1.current().await.ok();
+        let power_1 = ctx.local.ina260_1.power_raw().await.ok();
         let voltage_2 = ctx.local.ina260_2.voltage_split().await.ok();
         let current_2 = ctx.local.ina260_2.current_split().await.ok();
         let power_2 = ctx.local.ina260_2.power_split().await.ok();
@@ -163,62 +163,84 @@ pub async fn motor_drivers(
         let power_3 = ctx.local.ina260_3.power_split().await.ok();
 
         let vs1 = ApplicationPacket::VoltageData {
+            name: 1,
             time_stamp: ts,
-            power: voltage_1,
+            voltage: voltage_1,
         };
         let vs2 = ApplicationPacket::VoltageData {
+            name:2,
             time_stamp: ts,
-            power: voltage_2,
+            voltage: voltage_2,
         };
         let vs3 = ApplicationPacket::VoltageData {
+            name: 3,
             time_stamp: ts,
-            power: voltage_3,
+            voltage: voltage_3,
         };
         let cur1 = ApplicationPacket::CurrentData {
+            name: 1,
             time_stamp: ts,
-            power: current_1,
+            current: current_1,
         };
-        let cur2 = ApplicationPacket::CurrentData {
-            time_stamp: ts,
-            power: current_2,
-        };
-        let cur3 = ApplicationPacket::CurrentData {
-            time_stamp: ts,
-            power: current_3,
-        };
+        // let cur2 = ApplicationPacket::CurrentData {
+        //     name: 2,
+        //     time_stamp: ts,
+        //     current: current_2,
+        // };
+        // let cur3 = ApplicationPacket::CurrentData {
+        //     name: 3,
+        //     time_stamp: ts,
+        //     current: current_3,
+        // };
         let pow1 = ApplicationPacket::PowerData {
+            name: 1,
             time_stamp: ts,
             power: power_1,
         };
-        let pow2 = ApplicationPacket::PowerData {
-            time_stamp: ts,
-            power: power_2,
-        };
-        let pow3 = ApplicationPacket::PowerData {
-            time_stamp: ts,
-            power: power_3,
-        };
+        // let pow2 = ApplicationPacket::PowerData {
+        //     name: 2,
+        //     time_stamp: ts,
+        //     power: power_2,
+        // };
+        // let pow3 = ApplicationPacket::PowerData {
+        //     name: 3,
+        //     time_stamp: ts,
+        //     power: power_3,
+        // };
 
         ctx.shared.ina_data.lock(|ina_data| {
             ina_data.v1_buffer.write(vs1);
             ina_data.v2_buffer.write(vs2);
             ina_data.v3_buffer.write(vs3);
             ina_data.i1_buffer.write(cur1);
-            ina_data.i2_buffer.write(cur2);
-            ina_data.i3_buffer.write(cur3);
+            // ina_data.i2_buffer.write(cur2);
+            // ina_data.i3_buffer.write(cur3);
             ina_data.p1_buffer.write(pow1);
-            ina_data.p2_buffer.write(pow2);
-            ina_data.p3_buffer.write(pow3);
+            // ina_data.p2_buffer.write(pow2);
+            // ina_data.p3_buffer.write(pow3);
         });
         Mono::delay(100_u64.millis()).await;
     }
 }
 
+
+use uom::si::pressure::pascal;
+use uom::si::ratio::percent;
+use uom::si::thermodynamic_temperature::degree_celsius;
+
 pub async fn sample_sensors(
     ctx: sample_sensors::Context<'_>,
     _avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
 ) {
-    ctx.local.bme280.init().await.ok();
+    let bme_on = ctx.local.bme280.init().await;
+    match bme_on{
+        Ok(_)=>{
+            
+        }
+        Err(i2c_error)=>{
+            info!("BME Error: {}", i2c_error);
+        }
+    }
     ctx.local
         .bme280
         .set_sampling_configuration(
@@ -232,17 +254,28 @@ pub async fn sample_sensors(
         .expect("Failed to configure BME280");
 
     Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
+    
+    let bmi323_init_result = ctx.local.bmi323.init().await;
+    match bmi323_init_result{
+        Ok(_)=>{
+            info!("BMI Initialized");
+        }
+        Err(_)=>{
+            info!("BMI Unininitialized");
+        }
+    }
 
     loop {
-        // if let Ok(Some(temperature)) = ctx.local.bme280.read_temperature().await {
-        //     info!("Temperature: {}", temperature);
-        // }
-        // if let Ok(Some(pressure)) = ctx.local.bme280.read_pressure().await {
-        //     info!("Pressure: {}", pressure);
-        // }
-        // if let Ok(Some(humidity)) = ctx.local.bme280.read_humidity().await {
-        //     info!("Humidity: {}", humidity);
-        // }
+        let sample = ctx.local.bme280.read_sample().await.unwrap();
+
+        let temperature = sample.temperature.unwrap();
+        let humidity = sample.humidity.unwrap();
+        let pressure = sample.pressure.unwrap();
+        info!("Sample: ┳ Temperature: {} C", temperature);
+        info!("        ┣ Humidity: {} %", humidity);
+        info!("        ┗ Pressure: {} hPa", pressure);
+
+
         Mono::delay(250_u64.millis()).await;
     }
 }

@@ -50,6 +50,8 @@ rp235x-pac = "0.1.0"
 # Sensors
 bme280-rs = { version = "0.3.0", features = ["async"] }
 ina260_terminus = { path = "../ina260", features = ["async", "defmt"] }
+bmi323={path="../bmi323", features=["async", "defmt"]}
+uom = {version = "0.37.0", default-features = false, features = ["si", "f32"]}
 
 # Communications
 hc12-rs = { git = "https://github.com/thelenlucas/hc12-rs.git", tag = "v0.0.1" }
