@@ -38,8 +38,10 @@ futures = { version = "0.3.31", default-features = false, features = [
 rp235x-pac = "0.1.0"
 
 # Sensors
+uom = {version = "*", default-features = false, features = ["si", "f32"]}
 bme280-rs = { version = "0.3.0", features = ["async"] }
 ina260_terminus = { path = "../../ina260", features = ["async", "defmt"] }
+bmi323 = {path="../../bmi323"}
 
 # Communications
 hc12-rs = { git = "https://github.com/thelenlucas/hc12-rs.git", tag = "v0.0.1" }

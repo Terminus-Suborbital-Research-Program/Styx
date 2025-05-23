@@ -1,5 +1,5 @@
 use bin_packets::phases::IcarusPhase;
-use defmt::{info, warn};
+use defmt::{info, warn, error};
 use embedded_hal::{
     delay::DelayNs,
     digital::{InputPin, OutputPin},
@@ -29,7 +29,7 @@ use crate::{
             FlapMosfet, FlapServo, FlapServoPwmPin, FlapServoSlice, RelayMosfet, RelayServo,
             RelayServoPwmPin, RelayServoSlice,
         },
-        INAData, IcarusRadio, IcarusStateMachine,
+        IcarusData, IcarusRadio, IcarusStateMachine,
     },
     peripherals::async_i2c::AsyncI2c,
     phases::{StateMachine, StateMachineListener},
@@ -174,7 +174,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             link
         }
         Err(e) => {
-            warn!("Failed to set HC12 power: {:?}", e.error);
+            error!("Failed to set HC12 power: {:?}", e.error);
             e.hc12
         }
     };
@@ -271,7 +271,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x41, Mono);
     let ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x42, Mono);
 
-    let ina_data = INAData::default();
+    let data = IcarusData::default();
 
     let mut rbf = pins.gpio4.into_pull_down_input();
 
@@ -294,14 +294,14 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     info!("Peripherals initialized, spawning tasks...");
     heartbeat::spawn().ok();
     mode_sequencer::spawn().ok();
-    // motor_drivers::spawn(motor_i2c_arbiter, esc_listener).ok();
-    // sample_sensors::spawn(avionics_i2c_arbiter).ok();
-    // inertial_nav::spawn().ok();
-    // radio_send::spawn().ok();
+    motor_drivers::spawn(motor_i2c_arbiter, esc_listener).ok();
+    sample_sensors::spawn(avionics_i2c_arbiter).ok();
+    inertial_nav::spawn().ok();
+    radio_send::spawn().ok();
     info!("Tasks spawned!");
     (
         Shared {
-            ina_data,
+            data,
             clock_freq_hz: clock_freq.to_Hz(),
             state_machine,
             radio: interface,

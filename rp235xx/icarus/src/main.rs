@@ -23,7 +23,7 @@ use bme280_rs::AsyncBme280;
 use ina260_terminus::AsyncINA260;
 
 // Busses
-use device_constants::INAData;
+use device_constants::IcarusData;
 use rtic_sync::arbiter::i2c::ArbiterDevice;
 
 /// Lets us know when we panic
@@ -67,6 +67,7 @@ mod app {
 
     use bin_packets::{phases::IcarusPhase, time::Timestamp};
 
+    use device_constants::IcarusData;
     use hal::gpio::{self, FunctionSio, PullNone, SioOutput};
     use rp235x_hal::uart::UartPeripheral;
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
@@ -91,7 +92,7 @@ mod app {
         pub clock_freq_hz: u32,
         pub radio: IcarusRadio,
         pub state_machine: IcarusStateMachine,
-        pub ina_data: INAData,
+        pub data: IcarusData,
     }
 
     #[local]
@@ -126,27 +127,21 @@ mod app {
         async fn heartbeat(ctx: heartbeat::Context);
 
         // Takes care of incoming packets
-        #[task(shared = [radio, ina_data], priority = 1)]
+        #[task(shared = [radio, data], priority = 1)]
         async fn radio_send(mut ctx: radio_send::Context);
 
         #[task(priority = 3, local=[flap_servo, relay_servo])]
         async fn mode_sequencer(&mut ctx: mode_sequencer::Context);
 
         // Handler for the I2C electronic speed controllers
-        #[task(priority = 3, local=[flap_servo, relay_servo])]
-        async fn mode_sequencer(
-            &mut ctx: mode_sequencer::Context,
-        );
-
-        // Handler for the I2C electronic speed controllers
-        #[task(priority = 3, shared = [state_machine, ina_data], local=[ina260_1, ina260_2, ina260_3])]
+        #[task(priority = 3, shared = [state_machine, data], local=[ina260_1, ina260_2, ina260_3])]
         async fn motor_drivers(
             &mut ctx: motor_drivers::Context,
             i2c: &'static Arbiter<MotorI2cBus>,
             mut esc_state_listener: StateMachineListener,
         );
 
-        #[task(local = [bme280], priority = 3)]
+        #[task(local = [bme280, bmi323], priority = 3)]
         async fn sample_sensors(
             mut ctx: sample_sensors::Context,
             avionics_i2c: &'static Arbiter<AvionicsI2cBus>,

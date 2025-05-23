@@ -24,9 +24,9 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 
         let packet_send = ctx.shared.radio.lock(|radio| radio.write(status).err());
 
-        if let Some(err) = packet_send {
-            warn!("Failed to send heartbeat: {:?}", err);
-        }
+        // if let Some(err) = packet_send {
+        //     warn!("Failed to send heartbeat: {}", err);
+        // }
 
         sequence_number = sequence_number.wrapping_add(1);
 
@@ -36,7 +36,7 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 
 pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
     loop {
-        ctx.shared.ina_data.lock(|ina_data| {
+        ctx.shared.data.lock(|ina_data| {
             ctx.shared.radio.lock(|radio| {
                 // GET PACKETS FROM INA DATA AND SEND
                 let packet_1 = ina_data.i1_buffer.first();
@@ -110,51 +110,27 @@ pub async fn motor_drivers(
     loop {
         let ts = Mono::now().ticks();
 
-        let vs1 = ApplicationPacket::VoltageData {
-            time_stamp: ts,
-            voltage: voltage_1,
-        };
-        let vs2 = ApplicationPacket::VoltageData {
-            time_stamp: ts,
-            voltage: voltage_2,
-        };
-        let vs3 = ApplicationPacket::VoltageData {
-            time_stamp: ts,
-            voltage: voltage_3,
-        };
-        let cur1 = ApplicationPacket::CurrentData {
-            time_stamp: ts,
-            current: current_1,
-        };
-        let cur2 = ApplicationPacket::CurrentData {
-            time_stamp: ts,
-            current: current_2,
-        };
-        let cur3 = ApplicationPacket::CurrentData {
-            time_stamp: ts,
-            current: current_3,
-        };
-        let pow1 = ApplicationPacket::PowerData {
-            time_stamp: ts,
-            power: power_1,
-        };
-        let pow2 = ApplicationPacket::PowerData {
-            time_stamp: ts,
-            power: power_2,
-        };
-        let pow3 = ApplicationPacket::PowerData {
-            time_stamp: ts,
-            power: power_3,
-        };
-
-                }
-                Err(_)=>{
-                    info!("Wack 1");
-                }
+        let voltage1_result = ctx.local.ina260_1.voltage_split().await;
+        match voltage1_result{
+            Ok(voltage_1)=>{
+                    info!("2: {:?}", voltage_1);
+                let vs1 = ApplicationPacket::VoltageData {
+                    name:1,
+                    time_stamp: ts,
+                    voltage: Some(voltage_1),
+                };
+                ctx.shared.data.lock(|ina_data| {
+                        ina_data.v1_buffer.write(vs1);
+                    }
+                );
             }
-            let current_1 = ctx.local.ina260_1.current().await.ok();
-            let power_1 = ctx.local.ina260_1.power_raw().await.ok();
-            let voltage2_result = ctx.local.ina260_2.voltage_split().await;
+            Err(_)=>{
+                info!("Wack 1");
+            }
+        }
+        let current_1 = ctx.local.ina260_1.current_split().await.ok();
+        let power_1 = ctx.local.ina260_1.power_raw().await.ok();
+        let voltage2_result = ctx.local.ina260_2.voltage_split().await;
             match voltage2_result{
                 Ok(voltage_2)=>{
                         info!("2: {:?}", voltage_2);
@@ -163,7 +139,7 @@ pub async fn motor_drivers(
                         time_stamp: ts,
                         voltage: Some(voltage_2),
                     };
-                    ctx.shared.ina_data.lock(|ina_data| {
+                    ctx.shared.data.lock(|ina_data| {
                             ina_data.v2_buffer.write(vs2);
                         }
                     );
@@ -183,7 +159,7 @@ pub async fn motor_drivers(
                         time_stamp: ts,
                         voltage: Some(voltage_3),
                     };
-                    ctx.shared.ina_data.lock(|ina_data| {
+                    ctx.shared.data.lock(|ina_data| {
                             ina_data.v3_buffer.write(vs3);
                         }
                     );

@@ -95,6 +95,17 @@ dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-async",
  "log",
+ "uom",
+]
+
+[[package]]
+name = "bmi323"
+version = "0.1.0"
+dependencies = [
+ "cast",
+ "defmt 1.0.1",
+ "embedded-hal 1.0.0",
+ "embedded-hal-async",
 ]
 
 [[package]]
@@ -487,6 +498,7 @@ version = "0.1.1"
 dependencies = [
  "bin-packets",
  "bme280-rs",
+ "bmi323",
  "defmt 1.0.1",
  "defmt-rtt",
  "embedded-hal 1.0.0",
@@ -1054,6 +1066,16 @@ name = "unty"
 version = "0.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d49784317cd0d1ee7ec5c716dd598ec5b4483ea832a2dced265471cc0f690ae"
+
+[[package]]
+name = "uom"
+version = "0.36.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffd36e5350a65d112584053ee91843955826bf9e56ec0d1351214e01f6d7cd9c"
+dependencies = [
+ "num-traits",
+ "typenum",
+]
 
 [[package]]
 name = "usb-device"
