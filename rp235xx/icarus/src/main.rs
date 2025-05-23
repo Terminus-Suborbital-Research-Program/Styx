@@ -88,6 +88,8 @@ mod app {
     pub struct Shared {
         //uart0: UART0Bus,
         //uart0_buffer: heapless::String<HEAPLESS_STRING_ALLOC_LENGTH>,
+        pub flap_servo: FlapServo,
+        pub relay_servo: RelayServo,
         // pub usb_serial: SerialPort<'static, hal::usb::UsbBus>,
         pub clock_freq_hz: u32,
         pub radio: IcarusRadio,

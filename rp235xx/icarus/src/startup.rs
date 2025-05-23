@@ -59,6 +59,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let mut watchdog = Watchdog::new(ctx.device.WATCHDOG);
 
     info!("Good morning sunshine! Icarus is awake!");
+
     Mono::start(ctx.device.TIMER0, &ctx.device.RESETS);
 
     // The single-cycle I/O block controls our GPIO pins
@@ -144,6 +145,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     // Transition to AT mode
     info!("Programming HC12...");
     let radio = radio.into_at_mode().unwrap(); // Infallible
+    timer_two.delay_ms(100);
     let radio = match radio.set_baudrate(B9600) {
         Ok(link) => {
             info!("HC12 baudrate set to 9600");
@@ -218,6 +220,12 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         relay_channel.output_to(pins.gpio1.into_function::<FunctionPwm>());
     let mut relay_servo: RelayServo = Servo::new(relay_channel, relay_pin, relay_mosfet);
 
+    // Lock initially
+    flap_servo.set_angle(FLAP_SERVO_LOCKED);
+    relay_servo.set_angle(RELAY_SERVO_LOCKED);
+    flap_servo.enable();
+    relay_servo.enable();
+
     // Sensors
     // Init I2C pins
     let motor_sda_pin: Pin<EscI2CSdaPin, FunctionI2C, PullUp> = pins.gpio16.reconfigure();
@@ -252,6 +260,8 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         .local
         .i2c_avionics_bus
         .write(Arbiter::new(async_avionics_i2c));
+
+    // let mut delay_here = hal::Timer::new_timer1(pac.TIMER1, &mut pac.RESETS, &clocks);
 
     // Initialize Avionics Sensors
     let bmi323 = AsyncBMI323::new(ArbiterDevice::new(avionics_i2c_arbiter), 0x69, Mono);
