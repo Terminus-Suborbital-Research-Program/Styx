@@ -98,6 +98,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bmi323"
+version = "0.1.0"
+dependencies = [
+ "cast",
+ "defmt 1.0.1",
+ "embedded-hal 1.0.0",
+ "embedded-hal-async",
+]
+
+[[package]]
 name = "byteorder"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -289,6 +299,18 @@ dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-async",
  "portable-atomic",
+]
+
+[[package]]
+name = "embedded-hal-bus"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "513e0b3a8fb7d3013a8ae17a834283f170deaf7d0eeab0a7c1a36ad4dd356d22"
+dependencies = [
+ "critical-section",
+ "defmt 0.3.100",
+ "embedded-hal 1.0.0",
+ "embedded-hal-async",
 ]
 
 [[package]]
@@ -486,23 +508,32 @@ name = "icarus"
 version = "0.1.1"
 dependencies = [
  "bin-packets",
+ "bincode",
  "bme280-rs",
+ "bmi323",
+ "cortex-m",
  "defmt 1.0.1",
  "defmt-rtt",
  "embedded-hal 1.0.0",
  "embedded-hal-async",
+ "embedded-hal-bus 0.3.0",
+ "embedded-io",
  "fugit",
  "futures",
  "hc12-rs",
  "heapless",
  "ina260_terminus",
- "nalgebra",
+ "minikalman",
+ "nalgebra 0.33.2",
  "rp235x-hal",
  "rp235x-pac",
  "rtic",
  "rtic-monotonics",
  "rtic-sync",
  "united_states_standard_atmosphere",
+ "uom",
+ "usb-device",
+ "usbd-serial",
  "wgs84",
 ]
 
@@ -548,6 +579,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 
 [[package]]
+name = "minikalman"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7493dfdf176e7728ed1e4430bd8d19797f1372c39a21e183d0e197e76530fe1"
+dependencies = [
+ "libm",
+ "nalgebra 0.32.6",
+ "num-traits",
+]
+
+[[package]]
+name = "nalgebra"
+version = "0.32.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b5c17de023a86f59ed79891b2e5d5a94c705dbe904a5b5c9c952ea6221b03e4"
+dependencies = [
+ "approx",
+ "num-complex",
+ "num-rational",
+ "num-traits",
+ "simba 0.8.1",
+ "typenum",
+]
+
+[[package]]
 name = "nalgebra"
 version = "0.33.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -557,7 +613,7 @@ dependencies = [
  "num-complex",
  "num-rational",
  "num-traits",
- "simba",
+ "simba 0.9.0",
  "typenum",
 ]
 
@@ -611,6 +667,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
+ "libm",
 ]
 
 [[package]]
@@ -892,7 +949,7 @@ dependencies = [
  "critical-section",
  "embedded-hal 1.0.0",
  "embedded-hal-async",
- "embedded-hal-bus",
+ "embedded-hal-bus 0.2.0",
  "heapless",
  "portable-atomic",
  "rtic-common",
@@ -967,6 +1024,18 @@ name = "sha2-const-stable"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f179d4e11094a893b82fff208f74d448a7512f99f5a0acbd5c679b705f83ed9"
+
+[[package]]
+name = "simba"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "061507c94fc6ab4ba1c9a0305018408e312e17c041eb63bef8aa726fa33aceae"
+dependencies = [
+ "approx",
+ "num-complex",
+ "num-traits",
+ "paste",
+]
 
 [[package]]
 name = "simba"
@@ -1056,6 +1125,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d49784317cd0d1ee7ec5c716dd598ec5b4483ea832a2dced265471cc0f690ae"
 
 [[package]]
+name = "uom"
+version = "0.37.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd5cfe7d84f6774726717f358a37f5bca8fca273bed4de40604ad129d1107b49"
+dependencies = [
+ "num-traits",
+ "typenum",
+]
+
+[[package]]
 name = "usb-device"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1110,5 +1189,5 @@ version = "0.1.0"
 source = "git+https://github.com/MeechaelA/WGS84.git#9a9accf126bb8d4430c243c2c5d107ef368b1f03"
 dependencies = [
  "libm",
- "nalgebra",
+ "nalgebra 0.33.2",
 ]

@@ -3,7 +3,7 @@ use common::rbf::{ActiveHighRbf, RbfIndicator};
 
 use defmt::{info, warn};
 use embedded_hal::delay::DelayNs;
-use embedded_hal::digital::{InputPin as _, OutputPin};
+use embedded_hal::digital::OutputPin;
 use fugit::RateExtU32;
 use hc12_rs::configuration::baudrates::B9600;
 use hc12_rs::configuration::{Channel, HC12Configuration, Power};
@@ -23,7 +23,7 @@ use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
 use crate::device_constants::packets::{JupiterInterface, RadioInterface};
 use crate::device_constants::pins::{RBFPin, RadioProgrammingPin};
 use crate::device_constants::{
-    EjectionDetectionPin, EjectorHC12, EjectorRbf, JupiterUart, RadioUart,
+    EjectionDetectionPin, EjectorHC12, JupiterUart, RadioUart,
 };
 use crate::hal;
 use crate::phases::EjectorStateMachine;

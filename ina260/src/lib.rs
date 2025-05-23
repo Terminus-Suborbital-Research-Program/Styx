@@ -304,7 +304,6 @@ where
             }
             Err(e) => {
                 error!("Error reading INA260 Voltage");
-                error!("Error reading INA260 Voltage");
                 Err(e)
             }
         }
@@ -318,7 +317,6 @@ where
             Ok(buffer) => Ok(u16(buffer[0]) << 8 | u16(buffer[1])),
             Err(e) => {
                 error!("Error reading INA260 Power");
-                error!("Error reading INA260 Power");
                 Err(e)
             }
         }
@@ -331,7 +329,6 @@ where
         match raw {
             Ok(raw) => Ok(u32(raw) * 10),
             Err(e) => {
-                error!("Error reading INA260 Power");
                 error!("Error reading INA260 Power");
                 Err(e)
             }
@@ -350,7 +347,6 @@ where
                 Ok((full as u8, rest))
             }
             Err(e) => {
-                error!("Error reading INA260 Power");
                 error!("Error reading INA260 Power");
                 Err(e)
             }
