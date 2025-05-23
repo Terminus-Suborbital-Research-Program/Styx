@@ -17,7 +17,7 @@ pub enum ApplicationPacket {
     PowerData {
         name: u16,
         time_stamp: u64,
-        power: Option<(u16)>,
+        power: Option<u16>,
     },
     CurrentData {
         name: u16,
