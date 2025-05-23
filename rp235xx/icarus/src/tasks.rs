@@ -12,7 +12,7 @@ use rtic_sync::arbiter::Arbiter;
 
 use crate::device_constants::servos::{FlapServo, FLAP_SERVO_LOCKED, FLAP_SERVO_UNLOCKED};
 use crate::device_constants::AvionicsI2cBus;
-use crate::phases::{Modes, StateMachineListener};
+use crate::phases::{FlapServoStatus, Modes, RelayServoStatus, StateMachineListener};
 use crate::{app::*, device_constants::MotorI2cBus, Mono};
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
@@ -76,6 +76,8 @@ unsafe fn I2C0_IRQ() {
 //     servo.set_angle(0);
 // }
 use rp235x_hal::clocks;
+
+use crate::phases::mode::{FLUTTER_COUNT, FLUTTER_START_TIME, SERVO_DISABLE_DELAY};
 pub async fn mode_sequencer(mut ctx: mode_sequencer::Context<'_>) {
     let mut status = 0;
     let mut iteration = 0;
@@ -87,13 +89,33 @@ pub async fn mode_sequencer(mut ctx: mode_sequencer::Context<'_>) {
     ctx.local.flap_servo.enable();
     ctx.local.flap_servo.deg_0();
     ctx.local.relay_servo.deg_0();
+    let mut relay_flutter_status = RelayServoStatus::Open;
+    let mut flap_flutter_status = FlapServoStatus::Open;
+    let mut flutter_count = 0;
     loop {
         if flap_status == false {
             flap_status = Modes::open_flaps_sequence(mode_start, ctx.local.flap_servo).await;
-        } else {
+            relay_status = Modes::relay_eject_servo_sequence(mode_start, ctx.local.relay_servo).await;
+        } 
+        else {
+            Mono::delay(FLUTTER_START_TIME.millis()).await;
+            if flutter_count < FLUTTER_COUNT{
+                mode_start = Mono::now();
+                flap_flutter_status = Modes::flap_flutter_sequence(mode_start, flap_flutter_status, ctx.local.flap_servo).await;
+                relay_flutter_status = Modes::relay_flutter_sequence(mode_start, relay_flutter_status, ctx.local.relay_servo).await;
+                flutter_count += 1;
+            }
+            else{
+                ctx.local.flap_servo.deg_0();
+                ctx.local.relay_servo.deg_0();
+                Mono::delay(SERVO_DISABLE_DELAY.millis()).await;
+                ctx.local.flap_servo.disable();
+                ctx.local.relay_servo.disable();
+            }
         }
-        Mono::delay(100_u64.millis()).await;
+        Mono::delay(5_u64.millis()).await;
     }
+
 }
 
 pub async fn motor_drivers(
