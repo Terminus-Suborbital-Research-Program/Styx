@@ -23,7 +23,6 @@ use bmi323::AsyncBMI323;
 use ina260_terminus::AsyncINA260;
 
 // Busses
-use device_constants::IcarusData;
 use rtic_sync::arbiter::i2c::ArbiterDevice;
 
 /// Lets us know when we panic

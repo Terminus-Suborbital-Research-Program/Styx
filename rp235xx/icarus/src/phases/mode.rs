@@ -1,8 +1,7 @@
-use fugit::{Instant, MicrosDurationU64, MillisDuration, MillisDurationU64};
+use fugit::{Instant, MicrosDurationU64};
 use rtic_monotonics::Monotonic;
 use crate::{Mono};
 use defmt::{info, error};
-use crate::actuators::servo::Servo;
 use crate::device_constants::servos::{FlapServo, RelayServo};
 
 // ICARUS Mission Constants
@@ -39,14 +38,14 @@ pub struct Modes{
 }
 
 impl Modes{
-    async fn flap_servos_actuate(mut servo: &mut FlapServo){
+    async fn flap_servos_actuate(servo: &mut FlapServo){
         servo.set_angle(FLAP_ANGLE_OPEN);
     }
-    async fn relay_servos_actuate(mut servo: &mut RelayServo){
+    async fn relay_servos_actuate(servo: &mut RelayServo){
         servo.set_angle(RELAY_ANGLE_OPEN);
     }
 
-    pub async fn open_flaps_sequence(mut now: Instant<u64, 1, 1000000>, mut servo: &mut FlapServo)->bool{
+    pub async fn open_flaps_sequence(now: Instant<u64, 1, 1000000>, servo: &mut FlapServo)->bool{
         // Enable Flap Mosfet -> Meant to lock servos
         servo.enable();
         // Wait until T+FLAP_DEPLOY_TIME
@@ -64,7 +63,7 @@ impl Modes{
             }
         }
     }
-    pub async fn flap_flutter_sequence(mut now: Instant<u64, 1, 1000000>, status: FlapServoStatus, mut servo: &mut FlapServo)->FlapServoStatus{
+    pub async fn flap_flutter_sequence(now: Instant<u64, 1, 1000000>, status: FlapServoStatus, servo: &mut FlapServo)->FlapServoStatus{
         // Wait until FLUTTER_TIME_NEXT
         let flutter_millis = MicrosDurationU64::millis(FLAP_FLUTTER_TIME);
         let tplus_flap_flutter = now + flutter_millis;
@@ -109,14 +108,14 @@ impl Modes{
             }
         }
     }
-    async fn flap_servos_flutter_close(mut servo: &mut FlapServo){
+    async fn flap_servos_flutter_close(servo: &mut FlapServo){
         servo.set_angle(FLAP_ANGLE_CLOSE);
     }
-    async fn flap_servos_flutter_open(mut servo: &mut FlapServo){
+    async fn flap_servos_flutter_open(servo: &mut FlapServo){
         servo.set_angle(FLAP_ANGLE_OPEN);
     }
 
-    pub async fn relay_eject_servo_sequence(mut now: Instant<u64, 1, 1000000>, mut servo: &mut RelayServo)->bool{
+    pub async fn relay_eject_servo_sequence(now: Instant<u64, 1, 1000000>, servo: &mut RelayServo)->bool{
         // Enable Relay Mosfet -> Meant to lock servos
         servo.enable();
         // Wait until T+Relay Deployment Time
@@ -135,7 +134,7 @@ impl Modes{
         }
     }
 
-    pub async fn relay_flutter_sequence(mut now: Instant<u64, 1, 1000000>, status: RelayServoStatus, mut servo: &mut RelayServo)->RelayServoStatus{
+    pub async fn relay_flutter_sequence(now: Instant<u64, 1, 1000000>, status: RelayServoStatus, servo: &mut RelayServo)->RelayServoStatus{
         // Wait until FLUTTER_TIME_NEXT
         let flutter_millis = MicrosDurationU64::millis(RELAY_FLUTTER_TIME);
         let tplus_relay_flutter = now + flutter_millis;
@@ -179,10 +178,10 @@ impl Modes{
             }
         }
     }
-    async fn relay_servos_flutter_close(mut servo: &mut RelayServo){
+    async fn relay_servos_flutter_close(servo: &mut RelayServo){
         servo.set_angle(RELAY_ANGLE_CLOSE);
     }
-    async fn relay_servos_flutter_open(mut servo: &mut RelayServo){
+    async fn relay_servos_flutter_open(servo: &mut RelayServo){
         servo.set_angle(RELAY_ANGLE_OPEN);
     }
 

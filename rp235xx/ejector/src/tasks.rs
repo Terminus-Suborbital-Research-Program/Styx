@@ -5,7 +5,7 @@ use bin_packets::{
     packets::status::Status,
 };
 use common::rbf::RbfIndicator;
-use defmt::{debug, info, trace, warn};
+use defmt::{debug, info, warn};
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
 use fugit::{Duration, ExtU64};
 use rp235x_hal::reboot::{self, RebootArch, RebootKind};

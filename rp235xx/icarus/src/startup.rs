@@ -217,7 +217,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     relay_channel.set_enabled(true);
     let relay_pin: RelayServoPwmPin =
         relay_channel.output_to(pins.gpio1.into_function::<FunctionPwm>());
-    let mut relay_servo: RelayServo = Servo::new(relay_channel, relay_pin, relay_mosfet);
+    let relay_servo: RelayServo = Servo::new(relay_channel, relay_pin, relay_mosfet);
 
     // Sensors
     // Init I2C pins
@@ -284,7 +284,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     // checks the state of the pin and delays task initialization
     // until the pin is confirmed to be low.
     let mut rbf_high = true;
-    while (rbf_high) {
+    while rbf_high {
         if rbf.is_low().unwrap() {
             rbf_high = false;
             info!("RBF is low.");

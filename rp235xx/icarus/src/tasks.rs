@@ -3,14 +3,13 @@ use bin_packets::devices::DeviceIdentifier;
 use bin_packets::packets::status::Status;
 use bin_packets::packets::ApplicationPacket;
 use bme280_rs::{Configuration, Oversampling, SensorMode};
-use defmt::{info, warn, error};
+use defmt::{info, error};
 use embedded_hal::digital::StatefulOutputPin;
-use fugit::{ExtU64, Instant};
+use fugit::ExtU64;
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
 
-use crate::device_constants::servos::{FlapServo, FLAP_SERVO_LOCKED, FLAP_SERVO_UNLOCKED};
 use crate::device_constants::AvionicsI2cBus;
 use crate::phases::{FlapServoStatus, Modes, RelayServoStatus, StateMachineListener};
 use crate::{app::*, device_constants::MotorI2cBus, Mono};
@@ -75,12 +74,11 @@ unsafe fn I2C0_IRQ() {
 // async fn flap_servo_close(mut servo: &mut IcarusServos){
 //     servo.set_angle(0);
 // }
-use rp235x_hal::clocks;
 
 use crate::phases::mode::{FLUTTER_COUNT, FLUTTER_START_TIME, SERVO_DISABLE_DELAY};
-pub async fn mode_sequencer(mut ctx: mode_sequencer::Context<'_>) {
-    let mut status = 0;
-    let mut iteration = 0;
+pub async fn mode_sequencer(ctx: mode_sequencer::Context<'_>) {
+    let status = 0;
+    let iteration = 0;
     let mut mode_start = Mono::now();
 
     let mut flap_status = false;
@@ -235,9 +233,6 @@ pub async fn motor_drivers(
 }
 
 
-use uom::si::pressure::pascal;
-use uom::si::ratio::percent;
-use uom::si::thermodynamic_temperature::degree_celsius;
 
 pub async fn sample_sensors(
     ctx: sample_sensors::Context<'_>,
