@@ -18,8 +18,8 @@ use crate::tasks::*;
 use core::mem::MaybeUninit;
 
 // Sensors
-use bmi323::AsyncBMI323;
 use bme280_rs::AsyncBme280;
+use bmi323::AsyncBMI323;
 use ina260_terminus::AsyncINA260;
 
 // Busses
@@ -88,8 +88,6 @@ mod app {
     pub struct Shared {
         //uart0: UART0Bus,
         //uart0_buffer: heapless::String<HEAPLESS_STRING_ALLOC_LENGTH>,
-        pub flap_servo: FlapServo,
-        pub relay_servo: RelayServo,
         // pub usb_serial: SerialPort<'static, hal::usb::UsbBus>,
         pub clock_freq_hz: u32,
         pub radio: IcarusRadio,
@@ -163,4 +161,3 @@ mod app {
         Timestamp::new(epoch_ns())
     }
 }
-

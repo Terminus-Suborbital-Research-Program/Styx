@@ -1,5 +1,5 @@
 use bin_packets::phases::IcarusPhase;
-use defmt::{info, warn, error};
+use defmt::{error, info, warn};
 use embedded_hal::{
     delay::DelayNs,
     digital::{InputPin, OutputPin},
@@ -42,8 +42,8 @@ use hc12_rs::{
 };
 
 // Sensors
-use bmi323::AsyncBMI323;
 use bme280_rs::AsyncBme280;
+use bmi323::AsyncBMI323;
 use ina260_terminus::AsyncINA260;
 
 // Logs our time for demft
@@ -212,19 +212,12 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         flap_channel.output_to(pins.gpio3.into_function::<FunctionPwm>());
     let flap_servo: FlapServo = Servo::new(flap_channel, flap_pin, flap_mosfet);
 
-
     // Relay servo
     let mut relay_channel = relay_slice.channel_b;
     relay_channel.set_enabled(true);
     let relay_pin: RelayServoPwmPin =
         relay_channel.output_to(pins.gpio1.into_function::<FunctionPwm>());
     let mut relay_servo: RelayServo = Servo::new(relay_channel, relay_pin, relay_mosfet);
-
-    // Lock initially
-    flap_servo.set_angle(FLAP_SERVO_LOCKED);
-    relay_servo.set_angle(RELAY_SERVO_LOCKED);
-    flap_servo.enable();
-    relay_servo.enable();
 
     // Sensors
     // Init I2C pins
@@ -328,4 +321,3 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         },
     )
 }
-
