@@ -15,15 +15,18 @@ pub enum ApplicationPacket {
     Command(CommandPacket),
     Status(Status),
     PowerData {
+        name: u16,
         time_stamp: u64,
-        power: Option<(u8, u32)>,
+        power: Option<(u16)>,
     },
     CurrentData {
+        name: u16,
         time_stamp: u64,
-        power: Option<(i8, u32)>,
+        current: Option<(i32)>,
     },
     VoltageData {
+        name: u16,
         time_stamp: u64,
-        power: Option<(u8, u32)>,
+        voltage: Option<(u8, u32)>,
     },
 }

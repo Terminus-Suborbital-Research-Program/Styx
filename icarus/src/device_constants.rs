@@ -135,7 +135,7 @@ use hc12_rs::configuration::baudrates::B9600;
 use hc12_rs::ProgrammingPair;
 use hc12_rs::FU3;
 use hc12_rs::HC12;
-use rp235x_hal::gpio::bank0::{Gpio8, Gpio9};
+use rp235x_hal::gpio::bank0::{Gpio5, Gpio8, Gpio9};
 use rp235x_hal::gpio::FunctionUart;
 use rp235x_hal::pac::UART1;
 use rp235x_hal::uart::Enabled;
@@ -151,7 +151,7 @@ pub type IcarusHC12 = HC12<
             Pin<Gpio9, FunctionUart, PullDown>,
         ),
     >,
-    ProgrammingPair<Pin<Gpio10, FunctionSio<SioOutput>, PullDown>, Timer<CopyableTimer1>>,
+    ProgrammingPair<Pin<Gpio5, FunctionSio<SioOutput>, PullDown>, Timer<CopyableTimer1>>,
     FU3<B9600>,
     B9600,
 >;
@@ -168,7 +168,7 @@ const HISTORY_BUFFER_LENGTH: usize = 10;
 // Sensor Data Types
 // use bin_packets::types::{PowerData, CurrentData, VoltageData};
 #[derive(Debug, Default)]
-pub struct INAData {
+pub struct IcarusData {
     pub p1_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
     pub p2_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
     pub p3_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
@@ -178,4 +178,8 @@ pub struct INAData {
     pub i1_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
     pub i2_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
     pub i3_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+    pub temp_data_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+    pub pres_data_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+    pub humid_data_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
+    pub ab_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
 }

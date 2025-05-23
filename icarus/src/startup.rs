@@ -1,6 +1,5 @@
 use bin_packets::phases::IcarusPhase;
-use defmt::info;
-use defmt::warn;
+use defmt::{info, warn, error};
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
 use embedded_hal::pwm::SetDutyCycle;
@@ -137,7 +136,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             .unwrap();
     uart1_peripheral.enable_rx_interrupt(); // Make sure we can drive our interrupts
 
-    let programming = pins.gpio10.into_push_pull_output();
+    let programming = pins.gpio5.into_push_pull_output();
     // Copy the timer
     let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
     let mut timer_two = timer;
@@ -160,17 +159,18 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     // Transition to AT mode
     info!("Programming HC12...");
     let radio = radio.into_at_mode().unwrap(); // Infallible
-    timer_two.delay_ms(100);
     let radio = match radio.set_baudrate(B9600) {
         Ok(link) => {
             info!("HC12 baudrate set to 9600");
             link
         }
         Err(e) => {
-            warn!("Failed to set HC12 baudrate: {:?}", e.error);
+            error!("Failed to set HC12 baudrate: {:?}", e.error);
             e.hc12
         }
     };
+
+    timer_two.delay_ms(150);
 
     let radio = match radio.set_channel(Channel::Channel1) {
         Ok(link) => {
@@ -178,10 +178,11 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             link
         }
         Err(e) => {
-            warn!("Failed to set HC12 channel: {:?}", e.error);
+            error!("Failed to set HC12 channel: {:?}", e.error);
             e.hc12
         }
     };
+    timer_two.delay_ms(150);
     let radio = match radio.set_power(Power::P8) {
         Ok(link) => {
             info!("HC12 power set to P8");
@@ -192,6 +193,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             e.hc12
         }
     };
+    timer_two.delay_ms(150);
     let hc = radio.into_fu3_mode().unwrap(); // Infallible
 
     let interface: IcarusRadio = bin_packets::device::PacketDevice::new(hc);
@@ -245,6 +247,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         &mut ctx.device.RESETS,
         clocks.system_clock.freq(),
     );
+
     let async_motor_i2c = AsyncI2c::new(motor_i2c, 10);
     let motor_i2c_arbiter = ctx.local.i2c_motor_bus.write(Arbiter::new(async_motor_i2c));
 
@@ -266,12 +269,9 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         .i2c_avionics_bus
         .write(Arbiter::new(async_avionics_i2c));
 
-    // let mut delay_here = hal::Timer::new_timer1(pac.TIMER1, &mut pac.RESETS, &clocks);
-
     // Initialize Avionics Sensors
     let bmi323 = AsyncBMI323::new(ArbiterDevice::new(avionics_i2c_arbiter), 0x69, Mono);
-    let bme280 =
-        AsyncBme280::new_with_address(ArbiterDevice::new(avionics_i2c_arbiter), 0x76, Mono);
+    let bme280 = AsyncBme280::new(ArbiterDevice::new(avionics_i2c_arbiter), Mono);
 
     // State machine
     let mut state_machine: IcarusStateMachine = StateMachine::new();
@@ -290,10 +290,10 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let ina_data = INAData::default();
 
     info!("Peripherals initialized, spawning tasks...");
-    // mode_sequencer::spawn().ok();
+    mode_sequencer::spawn().ok();
     motor_drivers::spawn(motor_i2c_arbiter, esc_listener).ok();
     sample_sensors::spawn(avionics_i2c_arbiter).ok();
-    // inertial_nav::spawn().ok();
+    inertial_nav::spawn().ok();
     radio_send::spawn().ok();
     info!("Tasks spawned!");
     (

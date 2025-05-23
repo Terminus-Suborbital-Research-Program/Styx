@@ -3,7 +3,7 @@ use bin_packets::devices::DeviceIdentifier;
 use bin_packets::packets::status::Status;
 use bin_packets::packets::ApplicationPacket;
 use bme280_rs::{Configuration, Oversampling, SensorMode};
-use defmt::{info, warn};
+use defmt::{info, warn, error};
 use embedded_hal::digital::StatefulOutputPin;
 use fugit::{ExtU64, Instant};
 use rtic::Mutex;
@@ -53,6 +53,8 @@ pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
             ctx.shared.radio.lock(|radio| {
                 // GET PACKETS FROM INA DATA AND SEND
                 let packet_1 = ina_data.i1_buffer.first();
+                // let packet_2 = ina_data.i2_buffer.first();
+                // let packet_3 = ina_data.i3_buffer.first();
                 match packet_1 {
                     Some(packet_info) => {
                         info!("Data Write: {:?}", packet_info);
@@ -67,7 +69,7 @@ pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
                         }
                     }
                     None => {
-                        info!("No Packet To Send")
+                        // info!("No Packet To Send")
                     }
                 }
             });
@@ -152,73 +154,106 @@ pub async fn motor_drivers(
 
     loop {
         let ts = Mono::now().ticks();
-        let voltage_1 = ctx.local.ina260_1.voltage_split().await.ok();
-        let current_1 = ctx.local.ina260_1.current().await.ok();
-        let power_1 = ctx.local.ina260_1.power_raw().await.ok();
-        let voltage_2 = ctx.local.ina260_2.voltage_split().await.ok();
-        let current_2 = ctx.local.ina260_2.current_split().await.ok();
-        let power_2 = ctx.local.ina260_2.power_split().await.ok();
-        let voltage_3 = ctx.local.ina260_3.voltage_split().await.ok();
-        let current_3 = ctx.local.ina260_3.current_split().await.ok();
-        let power_3 = ctx.local.ina260_3.power_split().await.ok();
 
-        let vs1 = ApplicationPacket::VoltageData {
-            name: 1,
-            time_stamp: ts,
-            voltage: voltage_1,
-        };
-        let vs2 = ApplicationPacket::VoltageData {
-            name:2,
-            time_stamp: ts,
-            voltage: voltage_2,
-        };
-        let vs3 = ApplicationPacket::VoltageData {
-            name: 3,
-            time_stamp: ts,
-            voltage: voltage_3,
-        };
-        let cur1 = ApplicationPacket::CurrentData {
-            name: 1,
-            time_stamp: ts,
-            current: current_1,
-        };
-        // let cur2 = ApplicationPacket::CurrentData {
-        //     name: 2,
-        //     time_stamp: ts,
-        //     current: current_2,
-        // };
-        // let cur3 = ApplicationPacket::CurrentData {
-        //     name: 3,
-        //     time_stamp: ts,
-        //     current: current_3,
-        // };
-        let pow1 = ApplicationPacket::PowerData {
-            name: 1,
-            time_stamp: ts,
-            power: power_1,
-        };
-        // let pow2 = ApplicationPacket::PowerData {
-        //     name: 2,
-        //     time_stamp: ts,
-        //     power: power_2,
-        // };
-        // let pow3 = ApplicationPacket::PowerData {
-        //     name: 3,
-        //     time_stamp: ts,
-        //     power: power_3,
-        // };
+            let voltage1_result = ctx.local.ina260_1.voltage_split().await;
+            match voltage1_result{
+                Ok(voltage_1)=>{
+                    info!("1: {:?}", voltage_1);
+                        let vs1 = ApplicationPacket::VoltageData {
+                        name: 1,
+                        time_stamp: ts,
+                        voltage: Some(voltage_1),
+                    };
+                    ctx.shared.ina_data.lock(|ina_data| {
+                            ina_data.v1_buffer.write(vs1);
+                        }
+                    );
 
-        ctx.shared.ina_data.lock(|ina_data| {
-            ina_data.v1_buffer.write(vs1);
-            ina_data.v2_buffer.write(vs2);
-            ina_data.v3_buffer.write(vs3);
-            ina_data.i1_buffer.write(cur1);
-            // ina_data.i2_buffer.write(cur2);
-            // ina_data.i3_buffer.write(cur3);
-            ina_data.p1_buffer.write(pow1);
-            // ina_data.p2_buffer.write(pow2);
-            // ina_data.p3_buffer.write(pow3);
-        });
+                }
+                Err(_)=>{
+                    info!("Wack 1");
+                }
+            }
+            let current_1 = ctx.local.ina260_1.current().await.ok();
+            let power_1 = ctx.local.ina260_1.power_raw().await.ok();
+            let voltage2_result = ctx.local.ina260_2.voltage_split().await;
+            match voltage2_result{
+                Ok(voltage_2)=>{
+                        info!("2: {:?}", voltage_2);
+                    let vs2 = ApplicationPacket::VoltageData {
+                        name:2,
+                        time_stamp: ts,
+                        voltage: Some(voltage_2),
+                    };
+                    ctx.shared.ina_data.lock(|ina_data| {
+                            ina_data.v2_buffer.write(vs2);
+                        }
+                    );
+                }
+                Err(_)=>{
+                    info!("Wack 2");
+                }
+            }
+            let current_2 = ctx.local.ina260_2.current_split().await.ok();
+            let power_2 = ctx.local.ina260_2.power_split().await.ok();
+            let voltage3_result = ctx.local.ina260_3.voltage_split().await;
+            match voltage3_result{
+                Ok(voltage_3)=>{
+                    info!("3: {:?}", voltage_3);
+                    let vs3 = ApplicationPacket::VoltageData {
+                        name: 3,
+                        time_stamp: ts,
+                        voltage: Some(voltage_3),
+                    };
+                    ctx.shared.ina_data.lock(|ina_data| {
+                            ina_data.v3_buffer.write(vs3);
+                        }
+                    );
+                }
+                Err(_)=>{
+                    info!("Wack 3");
+                }
+            }
+            let current_3 = ctx.local.ina260_3.current_split().await.ok();
+            let power_3 = ctx.local.ina260_3.power_split().await.ok();
+
+            let cur1 = ApplicationPacket::CurrentData {
+                name: 1,
+                time_stamp: ts,
+                current: current_1,
+            };
+            // let cur2 = ApplicationPacket::CurrentData {
+            //     name: 2,
+            //     time_stamp: ts,
+            //     current: current_2,
+            // };
+            // let cur3 = ApplicationPacket::CurrentData {
+            //     name: 3,
+            //     time_stamp: ts,
+            //     current: current_3,
+            // };
+            let pow1 = ApplicationPacket::PowerData {
+                name: 1,
+                time_stamp: ts,
+                power: power_1,
+            };
+            // let pow2 = ApplicationPacket::PowerData {
+            //     name: 2,
+            //     time_stamp: ts,
+            //     power: power_2,
+            // };
+            // let pow3 = ApplicationPacket::PowerData {
+            //     name: 3,
+            //     time_stamp: ts,
+            //     power: power_3,
+            // };
+
+            // ina_data.i1_buffer.write(cur1);
+            // // ina_data.i2_buffer.write(cur2);
+            // // ina_data.i3_buffer.write(cur3);
+            // ina_data.p1_buffer.write(pow1);
+            // // ina_data.p2_buffer.write(pow2);
+            // // ina_data.p3_buffer.write(pow3);
         Mono::delay(100_u64.millis()).await;
     }
 }
@@ -241,6 +276,7 @@ pub async fn sample_sensors(
             info!("BME Error: {}", i2c_error);
         }
     }
+    Mono::delay(10_u64.millis()).await;
     ctx.local
         .bme280
         .set_sampling_configuration(
@@ -253,27 +289,45 @@ pub async fn sample_sensors(
         .await
         .expect("Failed to configure BME280");
 
+    let bme_id = ctx.local.bme280.chip_id().await;
+    match bme_id{
+        Ok(id)=>{
+            info!("BME280 ID: {}", id);
+        }
+        Err(i2c_error)=>{
+            info!("I2CError: {}", i2c_error)
+        }
+    }
+
     Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
-    
     let bmi323_init_result = ctx.local.bmi323.init().await;
     match bmi323_init_result{
         Ok(_)=>{
             info!("BMI Initialized");
         }
         Err(_)=>{
-            info!("BMI Unininitialized");
+            error!("BMI Unininitialized");
         }
     }
 
     loop {
-        let sample = ctx.local.bme280.read_sample().await.unwrap();
 
-        let temperature = sample.temperature.unwrap();
-        let humidity = sample.humidity.unwrap();
-        let pressure = sample.pressure.unwrap();
-        info!("Sample: ┳ Temperature: {} C", temperature);
-        info!("        ┣ Humidity: {} %", humidity);
-        info!("        ┗ Pressure: {} hPa", pressure);
+
+        let sample_result = ctx.local.bme280.read_sample().await;
+        match sample_result{
+            Ok(sample)=>{
+                let temperature = sample.temperature.unwrap();
+                let humidity = sample.humidity.unwrap();
+                let pressure = sample.pressure.unwrap();
+                info!("Sample: ┳ Temperature: {} C", temperature);
+                info!("        ┣ Humidity: {} %", humidity);
+                info!("        ┗ Pressure: {} hPa", pressure);
+            }
+            Err(i2c_error)=>{
+                error!("I2C Error: {}", i2c_error)
+            }
+        }
+
 
 
         Mono::delay(250_u64.millis()).await;

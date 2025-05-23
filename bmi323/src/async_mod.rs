@@ -59,8 +59,8 @@ where
                 .await
         }
     
-        async fn read_register(&mut self, reg: u8) -> Result<[u8; 2], I2C::Error> {
-            let mut buf = [0; 2];
+        async fn read_register(&mut self, reg: u8) -> Result<[u8; 4], I2C::Error> {
+            let mut buf = [0; 4];
             let result = self.i2c
                 .write_read(self.address, &[reg], &mut buf)
                 .await;
