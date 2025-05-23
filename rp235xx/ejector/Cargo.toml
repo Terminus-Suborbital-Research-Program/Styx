@@ -37,7 +37,7 @@ bincode = { version = "2.0.0-rc.3", features = [
 ], default-features = false }
 
 # Packets
-bin-packets = { path = "../bin-packets" }
+bin-packets = { path = "../../bin-packets" }
 
 # Target features
 [features]

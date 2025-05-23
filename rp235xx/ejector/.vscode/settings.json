@@ -1,4 +1,0 @@
-{
-    "rust-analyzer.cargo.target": "thumbv8m.main-none-eabihf",
-    "nixEnvPicker.envFile": "${workspaceFolder}${/}../flake.nix"
-}
