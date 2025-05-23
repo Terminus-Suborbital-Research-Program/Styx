@@ -18,11 +18,12 @@ use crate::tasks::*;
 use core::mem::MaybeUninit;
 
 // Sensors
-use bme280_rs::AsyncBme280;
 use bmi323::AsyncBMI323;
+use bme280_rs::AsyncBme280;
 use ina260_terminus::AsyncINA260;
 
 // Busses
+use device_constants::IcarusData;
 use rtic_sync::arbiter::i2c::ArbiterDevice;
 
 /// Lets us know when we panic
@@ -140,7 +141,11 @@ mod app {
             mut esc_state_listener: StateMachineListener,
         );
 
+<<<<<<< HEAD
         #[task(local = [bme280, bmi323], priority = 3)]
+=======
+        #[task(local = [bme280], priority = 3)]
+>>>>>>> main
         async fn sample_sensors(
             mut ctx: sample_sensors::Context,
             avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
@@ -160,3 +165,4 @@ mod app {
         Timestamp::new(epoch_ns())
     }
 }
+
