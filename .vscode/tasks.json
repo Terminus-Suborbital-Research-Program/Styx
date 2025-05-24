@@ -2,12 +2,15 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Build targets",
+            "label": "Build RP2350 Targets",
             "type": "shell",
-            "command": "cargo make build",
+            "command": "cargo build",
             "group": {
                 "kind": "build",
                 "isDefault": true
+            },
+            "options": {
+                "cwd": "${workspaceFolder}/rp235xx"
             },
             "problemMatcher": []
         }
