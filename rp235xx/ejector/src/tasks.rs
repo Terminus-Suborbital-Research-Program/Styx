@@ -73,7 +73,7 @@ pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
             ctx.local.cams_led.set_high().unwrap();
         } else {
             debug!("RBF Not  Inhibited");
-
+            // High to enable cams
             ctx.local.cams.set_high().unwrap();
             ctx.local.cams_led.toggle().unwrap();
         }

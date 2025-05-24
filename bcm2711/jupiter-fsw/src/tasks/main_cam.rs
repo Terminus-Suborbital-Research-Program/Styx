@@ -37,6 +37,8 @@ fn camera_task() -> ! {
             .unwrap_or(0);
 
         let next = format!("{}.avi", highest + 1);
+        let mut file_path = video_directory.clone();
+        file_path.push(next);
 
         let mut cmd = std::process::Command::new("ffmpeg")
             .args(["-f", "v4l2"])
@@ -46,7 +48,7 @@ fn camera_task() -> ! {
             .args(["-i", "/dev/video0"])
             .args(["-c:v", "copy"])
             .args(["-hide_banner", "-loglevel", "error"]) // Silences ffmpeg output
-            .arg(&next)
+            .arg(&file_path)
             .stdout(Stdio::null()) // More silencing
             .stderr(Stdio::null())
             .spawn()
