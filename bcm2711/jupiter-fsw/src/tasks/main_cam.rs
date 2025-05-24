@@ -6,6 +6,8 @@ use std::{
     time::Duration,
 };
 
+use log::{error, info};
+
 use crate::timing::t_time_estimate;
 
 /// Internal task for running the actual camera task information
@@ -14,6 +16,7 @@ fn camera_task() -> ! {
     while t_time_estimate() < -30 {
         sleep(Duration::from_millis(1000));
     }
+    info!("Starting main camera!");
 
     let mut video_directory =
         Path::new(&std::env::var("HOME").expect("Who the heck doesn't set a home variable?"))
@@ -47,6 +50,7 @@ fn camera_task() -> ! {
 
         // Run until completion, and then restart
         cmd.wait().ok();
+        error!("Camera thread ended unexpectedly!");
     }
 }
 
