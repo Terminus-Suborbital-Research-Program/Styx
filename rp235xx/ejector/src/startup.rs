@@ -102,11 +102,9 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     let ejection_rbf_pin: RBFPin = bank0_pins.gpio2.reconfigure();
     let mut rbf = ActiveHighRbf::new(ejection_rbf_pin);
 
-    info!("RBF Pin state: {}", rbf.is_inserted());
-
     if rbf.inhibited_at_init() {
         rbf_led_pin.set_high().unwrap();
-        info!("RBF inhibited at init!");
+        warn!("RBF inserted!");
     }
 
     // Get clock frequency
