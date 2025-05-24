@@ -55,7 +55,7 @@ mod app {
 
     use bin_packets::time::Timestamp;
     use hal::gpio::{self};
-    
+
     use rp235x_hal::uart::UartPeripheral;
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
@@ -104,7 +104,7 @@ mod app {
 
     extern "Rust" {
         // Sequences the ejection
-        #[task(local = [ejection_pin, ejector_servo], shared = [rbf], priority = 1)]
+        #[task(local = [ejection_pin, ejector_servo], shared = [rbf], priority = 2)]
         async fn ejector_sequencer(mut ctx: ejector_sequencer::Context);
 
         // Heartbeats the main led

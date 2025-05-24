@@ -24,7 +24,7 @@ pub trait BlockingReader {
 
 impl<D: ReadReady> BlockingReader for D {
     fn would_block(&mut self) -> bool {
-        self.read_ready().unwrap_or(true)
+        !self.read_ready().unwrap_or(false)
     }
 }
 
@@ -72,17 +72,13 @@ where
 {
     /// Read data into the buffer, may block.
     pub fn update(&mut self) {
-        let len = self.buffer.len();
-        let capacity = self.buffer.capacity();
-        let buffer_section = &mut self.buffer[len..capacity];
+        let mut buffer = [0u8; N];
+        let available_space = self.buffer.capacity() - self.buffer.len();
 
         // Read into
-        if let Ok(bytes_read) = self.device.read(buffer_section) {
-            // Exend the buffer by that amount we can do so without checking, because
-            // we can never extend by more byes than we have free.
-            unsafe {
-                self.buffer.set_len(capacity + bytes_read);
-            }
+        if let Ok(bytes_read) = self.device.read(&mut buffer[0..available_space]) {
+            // Extend the buffer
+            self.buffer.extend_from_slice(&buffer[0..bytes_read]).ok();
         }
     }
 }

@@ -1,2 +1,20 @@
+[target.thumbv8m.main-none-eabihf]
+
+rustflags = [
+    "-C", "link-arg=--nmagic",
+    "-C", "link-arg=-Tlink.x",
+    "-C", "link-arg=-Tdefmt.x",
+    "-C", "target-cpu=cortex-m33",
+]
+
+# "./picotool/build/picotool load -u -v -x -t elf" <- Old picotool loader
+runner = 'probe-rs run --chip rp235x'
+
 [build]
-target = "thumbv8m.main-none-eabihf"
+target = "thumbv8m.main-none-eabihf" # Cortex-M33 (with FPU)
+
+[alias]
+flash-picotool = "build && ./picotool/build/picotool load -u -v -x -t elf"
+
+[env]
+DEFMT_LOG = "info"

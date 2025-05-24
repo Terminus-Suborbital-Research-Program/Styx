@@ -1,11 +1,11 @@
 use crate::{app::*, Mono};
 use bin_packets::{
-    device::{PacketReader, PacketWriter},
+    device::{NonBlockingReader, PacketReader, PacketWriter},
     devices::DeviceIdentifier,
     packets::status::Status,
 };
 use common::rbf::RbfIndicator;
-use defmt::{debug, info, warn};
+use defmt::{debug, info, warn, Debug2Format};
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
 use fugit::{Duration, ExtU64};
 use rp235x_hal::reboot::{self, RebootArch, RebootKind};
@@ -22,7 +22,7 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     // Set initial time
     let task_start_time = Mono::now();
     // Delay sending packets for one minute
-    let delay: Duration<u64, 1, 1000000> = 1_u64.minutes();
+    let delay: Duration<u64, 1, 1000000> = JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs();
 
     loop {
         ctx.shared.led.lock(|led| led.toggle().unwrap());
@@ -37,7 +37,7 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
                 .lock(|downlink| downlink.write(status).err());
 
             if let Some(err) = res {
-                info!("Error sending heartbeat: {:?}", err);
+                info!("Error sending heartbeat: {:?}", Debug2Format(&err));
             }
         }
 
@@ -88,15 +88,15 @@ pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
 }
 
 pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
-    Mono::delay(1_u64.minutes()).await; // Delay to avoid interference with JUPITER bootloader
-                                        // Drain all available packets, one per lock to allow interruptions
+    Mono::delay(JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs()).await; // Delay to avoid interference with JUPITER bootloader
+                                                                 // Drain all available packets, one per lock to allow interruptions
     loop {
-        while let Some(packet) = ctx.shared.radio.lock(|radio| radio.read()) {
+        while let Some(packet) = ctx.shared.radio.lock(|radio| radio.read_non_blocking()) {
             ctx.shared.led.lock(|led| led.toggle().unwrap());
-            debug!("Got a packet form icarus! Packet: {:?}", packet);
+            debug!("Got a packet from icarus! Packet: {:?}", packet);
             // Write down range
             if let Err(e) = ctx.shared.downlink.lock(|downlink| downlink.write(packet)) {
-                warn!("Error writing packet: {:?}", e);
+                warn!("Error writing packet: {:?}", Debug2Format(&e));
             }
         }
         Mono::delay(1000_u64.millis()).await;
@@ -116,13 +116,14 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
     let ejection_pin = ctx.local.ejection_pin;
 
     // Lockout for one minute to let JUPITER boot up
-    info!("Idling sequencer");
-    Mono::delay(1_u64.minutes()).await;
+    warn!("Idling sequencer");
+    Mono::delay(JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs()).await;
     info!("Sequencer unlocked, waiting for ejection signal");
 
     // Wait until ejection pin reads high
     while !ejection_pin.is_high().unwrap_or(false) {
-        Mono::delay(10_u64.millis()).await;
+        debug!("Ejector idling while waiting for ejection signal");
+        Mono::delay(100_u64.millis()).await;
     }
 
     info!("Ejection signal high!");
