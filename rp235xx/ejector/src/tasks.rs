@@ -13,6 +13,8 @@ use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 
 const START_CAMERA_DELAY: u64 = 1000; // 10k millis For testing, 250 for actual
+/// Constant to prevent ejector from interfering with JUPITER's u-boot sequence
+const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 10;
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     let mut sequence_number = 0;
