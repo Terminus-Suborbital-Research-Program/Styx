@@ -1,6 +1,7 @@
 use std::{
     fs::{create_dir, read_dir},
     path::Path,
+    process::Stdio,
     str::FromStr,
     thread::sleep,
     time::Duration,
@@ -44,7 +45,10 @@ fn camera_task() -> ! {
             .args(["-video_size", "1920x1080"])
             .args(["-i", "/dev/video0"])
             .args(["-c:v", "copy"])
+            .args(["-hide_banner", "-loglevel", "error"]) // Silences ffmpeg output
             .arg(&next)
+            .stdout(Stdio::null()) // More silencing
+            .stderr(Stdio::null())
             .spawn()
             .unwrap();
 
