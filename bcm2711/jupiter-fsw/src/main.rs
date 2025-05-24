@@ -50,7 +50,7 @@ fn main() {
 
     info!("RBF At Boot: {}", rbf.read());
 
-    let mut state_machine = JupiterStateMachine::new(pins, ejection_pin);
+    let mut state_machine = JupiterStateMachine::new(pins, ejection_pin, rbf.clone());
 
     loop {
         while let Some(packet) = interface.read() {
