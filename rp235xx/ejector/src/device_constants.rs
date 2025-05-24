@@ -1,6 +1,6 @@
 use hc12_rs::{configuration::baudrates::B9600, ProgrammingPair, FU3, HC12};
 use pins::{
-    CamLEDPin, CameraPin, EjectionPin, HeartbeatPin, JupiterRxPin, JupiterTxPin, RBFLEDPin, RBFPin,
+    CamLEDPin, EjectionPin, HeartbeatPin, JupiterRxPin, JupiterTxPin, RBFLEDPin, RBFPin,
     RadioProgrammingPin, RadioRxPin, RadioTxPin,
 };
 use rp235x_hal::{
@@ -26,9 +26,6 @@ pub mod pins {
 
     // Camera Startup should be right but the heartbeat and Cam LED Pins might be wrong
     // (inconsistency in ejector pinout doc) ask Brooks later
-
-    // Camera Startup Pin
-    pub type CameraPin = Gpio14;
 
     // Camera LED Pin
     pub type CamLEDPin = Gpio13;
@@ -58,9 +55,6 @@ pub mod pins {
 // Heartbeat LED
 pub type Heartbeat = Pin<HeartbeatPin, FunctionSio<SioOutput>, PullNone>;
 
-// Camera Startup
-pub type Camera = Pin<CameraPin, FunctionSio<SioOutput>, PullNone>;
-
 // Camera LED
 pub type CamLED = Pin<CamLEDPin, FunctionSio<SioOutput>, PullNone>;
 
@@ -75,7 +69,7 @@ pub type JupiterUart = UartPeripheral<Enabled, UART0, (JupiterRxPin, JupiterTxPi
 
 /// Ejector RBF
 /// Represents the active-high Remove Before Flight (RBF) input.
-pub type EjectorRbf = NoRbf; //ActiveHighRbf<RBFPin>;
+pub type EjectorRbf = ActiveHighRbf<RBFPin>; //ActiveHighRbf<RBFPin>;
 
 /// Radio UART
 pub type RadioUart = UartPeripheral<Enabled, UART1, (RadioRxPin, RadioTxPin)>;

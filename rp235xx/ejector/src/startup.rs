@@ -3,7 +3,7 @@ use common::rbf::{ActiveHighRbf, NoRbf, RbfIndicator};
 
 use defmt::{info, warn};
 use embedded_hal::delay::DelayNs;
-use embedded_hal::digital::OutputPin;
+use embedded_hal::digital::{InputPin, OutputPin};
 use fugit::RateExtU32;
 use hc12_rs::configuration::baudrates::B9600;
 use hc12_rs::configuration::{Channel, HC12Configuration, Power};
@@ -22,9 +22,7 @@ use usbd_serial::SerialPort;
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
 use crate::device_constants::packets::{JupiterInterface, RadioInterface};
 use crate::device_constants::pins::{RBFPin, RadioProgrammingPin};
-use crate::device_constants::{
-    EjectionDetectionPin, EjectorHC12, JupiterUart, RadioUart,
-};
+use crate::device_constants::{EjectionDetectionPin, EjectorHC12, JupiterUart, RadioUart};
 use crate::hal;
 use crate::phases::EjectorStateMachine;
 use crate::{app::*, Mono};
@@ -99,8 +97,9 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     rbf_led_pin.set_low().unwrap();
 
     // Ejector rbf should be pull down - it is high when the rbf is inserted
-    let _: RBFPin = bank0_pins.gpio2.reconfigure();
-    let mut rbf = NoRbf::new();
+    let mut rbf_pin: RBFPin = bank0_pins.gpio2.into_pull_down_input();
+    let read = rbf_pin.is_high().unwrap();
+    let mut rbf = ActiveHighRbf::new(rbf_pin);
 
     if rbf.inhibited_at_init() {
         rbf_led_pin.set_high().unwrap();
