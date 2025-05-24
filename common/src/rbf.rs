@@ -1,3 +1,5 @@
+use core::str;
+
 use bincode::{Decode, Encode};
 use embedded_hal::digital::InputPin;
 
@@ -56,6 +58,24 @@ pub trait RbfIndicator {
         } else {
             RbfState::Uninhibited
         }
+    }
+}
+
+/// A testing override RBF - always reads as not inserted
+pub struct NoRbf;
+impl NoRbf {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl RbfIndicator for NoRbf {
+    fn is_inserted(&mut self) -> bool {
+        false
+    }
+
+    fn inhibited_at_init(&mut self) -> bool {
+        false
     }
 }
 

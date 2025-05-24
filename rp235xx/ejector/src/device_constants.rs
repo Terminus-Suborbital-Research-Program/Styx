@@ -11,7 +11,7 @@ use rp235x_hal::{
     Timer,
 };
 
-use common::rbf::ActiveHighRbf;
+use common::rbf::{ActiveHighRbf, NoRbf};
 
 pub mod pins {
     use rp235x_hal::gpio::{
@@ -58,9 +58,6 @@ pub mod pins {
 // Heartbeat LED
 pub type Heartbeat = Pin<HeartbeatPin, FunctionSio<SioOutput>, PullNone>;
 
-// pub type EjectorRBF = ActiveLowRbf<RBFPin>;
-pub type EjectorRBF = ActiveHighRbf<RBFPin>;
-
 // Camera Startup
 pub type Camera = Pin<CameraPin, FunctionSio<SioOutput>, PullNone>;
 
@@ -78,7 +75,7 @@ pub type JupiterUart = UartPeripheral<Enabled, UART0, (JupiterRxPin, JupiterTxPi
 
 /// Ejector RBF
 /// Represents the active-high Remove Before Flight (RBF) input.
-pub type EjectorRbf = ActiveHighRbf<RBFPin>;
+pub type EjectorRbf = NoRbf; //ActiveHighRbf<RBFPin>;
 
 /// Radio UART
 pub type RadioUart = UartPeripheral<Enabled, UART1, (RadioRxPin, RadioTxPin)>;

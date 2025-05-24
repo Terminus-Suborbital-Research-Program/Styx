@@ -1,5 +1,5 @@
 use bin_packets::device::Device;
-use common::rbf::{ActiveHighRbf, RbfIndicator};
+use common::rbf::{ActiveHighRbf, NoRbf, RbfIndicator};
 
 use defmt::{info, warn};
 use embedded_hal::delay::DelayNs;
@@ -99,8 +99,8 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     rbf_led_pin.set_low().unwrap();
 
     // Ejector rbf should be pull down - it is high when the rbf is inserted
-    let ejection_rbf_pin: RBFPin = bank0_pins.gpio2.reconfigure();
-    let mut rbf = ActiveHighRbf::new(ejection_rbf_pin);
+    let _: RBFPin = bank0_pins.gpio2.reconfigure();
+    let mut rbf = NoRbf::new();
 
     if rbf.inhibited_at_init() {
         rbf_led_pin.set_high().unwrap();
