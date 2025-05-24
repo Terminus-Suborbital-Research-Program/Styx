@@ -13,7 +13,7 @@ pub use power_on::*;
 
 use crate::{
     gpio::write::WritePin,
-    tasks::{IndicatorsReader, RbfReader, RbfTask},
+    tasks::{IndicatorsReader, RbfReader},
     timing::t_time_estimate,
 };
 

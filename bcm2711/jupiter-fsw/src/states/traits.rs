@@ -2,7 +2,7 @@ use bin_packets::phases::JupiterPhase;
 
 use crate::{
     gpio::write::WritePin,
-    tasks::{IndicatorsReader, RbfReader, RbfTask},
+    tasks::{IndicatorsReader, RbfReader},
     timing::t_time_estimate,
 };
 
