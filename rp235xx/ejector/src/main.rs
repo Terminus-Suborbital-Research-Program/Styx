@@ -46,9 +46,8 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 )]
 mod app {
     use crate::device_constants::packets::{JupiterInterface, RadioInterface};
-    use crate::device_constants::{
-        CamLED, Camera, EjectionDetectionPin, EjectorRbf, Heartbeat, RBFLED
-    };
+    use crate::device_constants::pins::CamMosfetPin;
+    use crate::device_constants::{CamLED, EjectionDetectionPin, EjectorRbf, Heartbeat, RBFLED};
     use crate::{actuators::servo::EjectorServo, phases::EjectorStateMachine};
 
     use super::*;
@@ -91,7 +90,7 @@ mod app {
     #[local]
     pub struct Local {
         pub ejector_servo: EjectorServo,
-        pub cams: Camera,
+        pub cams: CamMosfetPin,
         pub cams_led: CamLED,
         pub rbf_led: RBFLED,
         pub ejection_pin: EjectionDetectionPin,

@@ -12,7 +12,7 @@ use rp235x_hal::reboot::{self, RebootArch, RebootKind};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 
-const START_CAMERA_DELAY: u64 = 1000; // 10k millis For testing, 250 for actual
+const START_CAMERA_DELAY: u64 = 250; // 10k millis For testing, 250 for actual
 /// Constant to prevent ejector from interfering with JUPITER's u-boot sequence
 const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 180;
 
@@ -62,20 +62,20 @@ pub async fn rbf_monitor(mut ctx: rbf_monitor::Context<'_>) {
 
 pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
     info!("Camera Timer Starting");
-    Mono::delay(START_CAMERA_DELAY.millis()).await;
+    Mono::delay(START_CAMERA_DELAY.secs()).await;
 
     info!("Camera Timer Fulfilled");
     loop {
         if ctx.shared.rbf.lock(|rbf| rbf.is_inserted()) {
             debug!("Inhibited, waiting for ejector inhibit to be removed");
-            // High to disable cams
-            ctx.local.cams.set_high().unwrap();
+            // Low to disable cams
+            ctx.local.cams.set_low().unwrap();
             ctx.local.cams_led.set_high().unwrap();
         } else {
             debug!("RBF Not  Inhibited");
 
+            ctx.local.cams.set_high().unwrap();
             ctx.local.cams_led.toggle().unwrap();
-            ctx.local.cams.set_low().unwrap();
         }
 
         Mono::delay(1000.millis()).await;

@@ -16,7 +16,8 @@ use common::rbf::{ActiveHighRbf, NoRbf};
 pub mod pins {
     use rp235x_hal::gpio::{
         bank0::{
-            Gpio13, Gpio14, Gpio15, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio25, Gpio8, Gpio9,
+            Gpio13, Gpio14, Gpio15, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio25, Gpio3, Gpio8,
+            Gpio9,
         },
         FunctionSio, FunctionUart, Pin, PullDown, SioInput, SioOutput,
     };
@@ -26,6 +27,9 @@ pub mod pins {
 
     // Camera Startup should be right but the heartbeat and Cam LED Pins might be wrong
     // (inconsistency in ejector pinout doc) ask Brooks later
+
+    /// Camera GPIO activation
+    pub type CamMosfetPin = Pin<Gpio3, FunctionSio<SioOutput>, PullDown>;
 
     // Camera LED Pin
     pub type CamLEDPin = Gpio13;
