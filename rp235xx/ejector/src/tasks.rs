@@ -17,28 +17,23 @@ const START_CAMERA_DELAY: u64 = 1000; // 10k millis For testing, 250 for actual
 const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 180;
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
-    let mut sequence_number = 0;
+    Mono::delay(JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs()).await;
 
-    // Set initial time
-    let task_start_time = Mono::now();
-    // Delay sending packets for one minute
-    let delay: Duration<u64, 1, 1000000> = JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs();
+    let mut sequence_number = 0;
 
     loop {
         ctx.shared.led.lock(|led| led.toggle().unwrap());
 
-        if Mono::now() - task_start_time > delay {
-            debug!("Heartbeat: Sending Status packet");
-            let status = Status::new(DeviceIdentifier::Ejector, now_timestamp(), sequence_number);
+        debug!("Heartbeat: Sending Status packet");
+        let status = Status::new(DeviceIdentifier::Ejector, now_timestamp(), sequence_number);
 
-            let res = ctx
-                .shared
-                .downlink
-                .lock(|downlink| downlink.write(status).err());
+        let res = ctx
+            .shared
+            .downlink
+            .lock(|downlink| downlink.write(status).err());
 
-            if let Some(err) = res {
-                info!("Error sending heartbeat: {:?}", Debug2Format(&err));
-            }
+        if let Some(err) = res {
+            info!("Error sending heartbeat: {:?}", Debug2Format(&err));
         }
 
         sequence_number = sequence_number.wrapping_add(1);
