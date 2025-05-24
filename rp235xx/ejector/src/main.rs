@@ -53,6 +53,7 @@ mod app {
     use super::*;
 
     use bin_packets::time::Timestamp;
+    use common::rbf::NoRbf;
     use hal::gpio::{self};
 
     use rp235x_hal::uart::UartPeripheral;
@@ -82,7 +83,7 @@ mod app {
         pub ejector_time_millis: u64,
         pub suspend_packet_handler: bool,
         pub radio: RadioInterface,
-        pub rbf: EjectorRbf,
+        pub rbf: NoRbf,
         pub downlink: JupiterInterface,
         pub led: Heartbeat,
     }
