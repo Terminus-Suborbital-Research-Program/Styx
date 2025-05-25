@@ -12,8 +12,9 @@ impl InfraTracker {
         }
     }
 
-    pub fn spawn(self) -> Child {
-        let script_path = "temp";
+    pub fn spawn(self, image_amount: i32, ) -> Child {
+        let script_path = "../../../../../COTS-Star-Tracker-Amalthea/infratracker.py";
+        // Args- delay between camera shots
         Command::new("python")
             .arg(script_path)
             .arg(self.start_t_time.to_string())
