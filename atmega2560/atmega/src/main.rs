@@ -12,7 +12,7 @@ use atmega_hal::{
 use common::indicators::IndicatorBuilder;
 use i2c_slave::*;
 use panic_halt as _;
-use ufmt::uwriteln;
+use ufmt::{uwriteln, uwrite};
 
 type CoreClock = MHz16;
 
@@ -72,7 +72,7 @@ fn main() -> ! {
     // Check in and out of loop
 
     let mut write_buf: [u8; 1] = [0u8; 1];
-    let mut read_buf: [u8; 1] = [0u8; 1];
+    let mut read_buf: [u8; 2] = [0u8; 2];
 
     loop {
         let pins = IndicatorBuilder::new()
@@ -87,19 +87,19 @@ fn main() -> ! {
 
         write_buf[0] = pins.into();
 
-        match i2c_slave.respond(&write_buf) {
-            Ok(bytes_sent) => {
-                uwriteln!(serial, "{} bytes sent", bytes_sent).ok();
-            }
+        // match i2c_slave.respond(&write_buf) {
+        //     Ok(bytes_sent) => {
+        //         uwriteln!(serial, "{} bytes sent", bytes_sent).ok();
+        //     }
 
-            Err(err) => {
-                uwriteln!(serial, "Response Error: {:?}", err).ok();
-            }
-        }
+        //     Err(err) => {
+        //         uwriteln!(serial, "Response Error: {:?}", err).ok();
+        //     }
+        // }
 
         match i2c_slave.receive(&mut read_buf) {
             Ok(_) => {
-                uwriteln!(serial, "Succesful read").ok();
+                uwriteln!(serial, "Successful read").ok();
                 if read_buf[0] == 1 {
                     battery_latch.set_high();
                 } else {
@@ -110,6 +110,27 @@ fn main() -> ! {
                 uwriteln!(serial, "Error: {:?}", err).ok();
             }
         }
+
+        // match i2c_slave.transact(&mut read_buf, &mut write_buf) {
+        //     Ok(()) => {
+        //         uwriteln!(serial, "Worked").ok();
+        //         match read_buf[1] {
+        //             0 => {}
+        //             1 => {}
+        //             2 => {}
+        //         }
+        //     }
+
+        //     Err(err) => {
+        //         uwriteln!(serial, "Response Error: {:?}", err).ok();
+        //     }
+            
+        // }
+
+        // for b in read_buf {
+        //     uwrite!(serial, "{}", b).ok();
+        // }
+        // uwriteln!(serial, "").ok();
 
         read_buf.fill(0);
     }
