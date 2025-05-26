@@ -47,7 +47,7 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 mod app {
     use crate::device_constants::packets::{JupiterInterface, RadioInterface};
     use crate::device_constants::{
-        CamLED, Camera, EjectionDetectionPin, EjectorRbf, Heartbeat, RBFLED
+        CamLED, Camera, EjectionDetectionPin, EjectorRbf, Heartbeat, RBFLED,
     };
     use crate::{actuators::servo::EjectorServo, phases::EjectorStateMachine};
 

@@ -9,7 +9,7 @@ use env_logger::Env;
 use gpio::{Pin, read::ReadPin, write::WritePin};
 use i2cdev::{core::I2CDevice, linux::LinuxI2CDevice};
 use states::JupiterStateMachine;
-use tasks::IndicatorsReader;
+use tasks::{IndicatorsReader, spawn_camera_thread};
 
 mod constants;
 mod data;
@@ -46,11 +46,14 @@ fn main() {
     let pins = IndicatorsReader::new(atmega);
     let rbf = RbfTask::new(rbf_pin).spawn(100);
 
+    // Main camera
+    spawn_camera_thread();
+
     let mut onboard_packet_storage = OnboardPacketStorage::get_current_run();
 
     info!("RBF At Boot: {}", rbf.read());
 
-    let mut state_machine = JupiterStateMachine::new(pins, ejection_pin);
+    let mut state_machine = JupiterStateMachine::new(pins, ejection_pin, rbf.clone());
 
     loop {
         while let Some(packet) = interface.read() {

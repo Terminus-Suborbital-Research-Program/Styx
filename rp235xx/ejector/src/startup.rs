@@ -22,9 +22,7 @@ use usbd_serial::SerialPort;
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
 use crate::device_constants::packets::{JupiterInterface, RadioInterface};
 use crate::device_constants::pins::{RBFPin, RadioProgrammingPin};
-use crate::device_constants::{
-    EjectionDetectionPin, EjectorHC12, JupiterUart, RadioUart,
-};
+use crate::device_constants::{EjectionDetectionPin, EjectorHC12, JupiterUart, RadioUart};
 use crate::hal;
 use crate::phases::EjectorStateMachine;
 use crate::{app::*, Mono};
@@ -78,7 +76,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     // Configure GPIOX as a cam output // Change later
     let mut cam_pin = bank0_pins
-        .gpio14
+        .gpio3
         .into_pull_type::<PullNone>()
         .into_push_pull_output();
     cam_pin.set_high().unwrap();

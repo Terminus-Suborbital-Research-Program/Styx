@@ -16,7 +16,8 @@ use common::rbf::{ActiveHighRbf, NoRbf};
 pub mod pins {
     use rp235x_hal::gpio::{
         bank0::{
-            Gpio13, Gpio14, Gpio15, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio25, Gpio8, Gpio9,
+            Gpio13, Gpio14, Gpio15, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio25, Gpio3, Gpio8,
+            Gpio9,
         },
         FunctionSio, FunctionUart, Pin, PullDown, SioInput, SioOutput,
     };
@@ -28,7 +29,7 @@ pub mod pins {
     // (inconsistency in ejector pinout doc) ask Brooks later
 
     // Camera Startup Pin
-    pub type CameraPin = Gpio14;
+    pub type CameraPin = Gpio3;
 
     // Camera LED Pin
     pub type CamLEDPin = Gpio13;
