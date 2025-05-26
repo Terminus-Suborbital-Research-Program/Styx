@@ -9,6 +9,7 @@ const PART_ID: u8 = 0x45;
 const SEQ_ID: u8 = 0x08;
 
 /// Sanity checks our solor luminocity sensor
+#[allow(dead_code)] // This sensor probably dead
 pub fn si1145_sanity_check<I: I2c>(device: &mut I) -> Result<(), I::Error> {
     let mut buf = [0u8; 1];
     device.write_read(SENSOR_ADDRESS, &[PART_ID_REG], &mut buf)?;

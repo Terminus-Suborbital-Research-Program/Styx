@@ -248,11 +248,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         12.MHz(),
     );
 
-    // Check sanity
-    if let Err(e) = si1145_sanity_check(&mut guard_i2c) {
-        defmt::error!("Failed sanity check for si1145: {:?}", e);
-    }
-
     info!("Peripherals initialized, spawning tasks");
 
     // Tasks
