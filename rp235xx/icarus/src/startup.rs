@@ -20,7 +20,7 @@ use rtic_sync::{
 // use usb_device::bus::UsbBusAllocator;
 // use usbd_serial::SerialPort;
 
-use crate::actuators::servo::Servo;
+use crate::{actuators::servo::Servo, device_constants::DownlinkBuffer};
 use crate::{
     app::*,
     device_constants::{
@@ -29,7 +29,7 @@ use crate::{
             FlapMosfet, FlapServo, FlapServoPwmPin, FlapServoSlice, RelayMosfet, RelayServo,
             RelayServoPwmPin, RelayServoSlice,
         },
-        IcarusData, IcarusRadio, IcarusStateMachine,
+        IcarusRadio, IcarusStateMachine,
     },
     peripherals::async_i2c::AsyncI2c,
     phases::{StateMachine, StateMachineListener},
@@ -274,7 +274,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x41, Mono);
     let ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x42, Mono);
 
-    let data = IcarusData::default();
+    let data = DownlinkBuffer::new();
 
     let mut rbf = pins.gpio4.into_pull_down_input();
 
@@ -307,9 +307,9 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             data,
             clock_freq_hz: clock_freq.to_Hz(),
             state_machine,
-            radio: interface,
         },
         Local {
+            radio: interface,
             flap_servo,
             relay_servo,
             led: led_pin,

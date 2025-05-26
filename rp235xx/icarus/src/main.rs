@@ -57,7 +57,7 @@ mod app {
     use crate::{
         device_constants::{
             servos::{FlapServo, RelayServo},
-            AvionicsI2cBus, IcarusRadio, IcarusStateMachine, MotorI2cBus,
+            AvionicsI2cBus, DownlinkBuffer, IcarusRadio, IcarusStateMachine, MotorI2cBus,
         },
         phases::StateMachineListener,
     };
@@ -66,7 +66,6 @@ mod app {
 
     use bin_packets::{phases::IcarusPhase, time::Timestamp};
 
-    use device_constants::IcarusData;
     use hal::gpio::{self, FunctionSio, PullNone, SioOutput};
     use rp235x_hal::uart::UartPeripheral;
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
@@ -89,13 +88,13 @@ mod app {
         //uart0_buffer: heapless::String<HEAPLESS_STRING_ALLOC_LENGTH>,
         // pub usb_serial: SerialPort<'static, hal::usb::UsbBus>,
         pub clock_freq_hz: u32,
-        pub radio: IcarusRadio,
         pub state_machine: IcarusStateMachine,
-        pub data: IcarusData,
+        pub data: DownlinkBuffer,
     }
 
     #[local]
     pub struct Local {
+        pub radio: IcarusRadio,
         pub relay_servo: RelayServo,
         pub flap_servo: FlapServo,
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
@@ -108,8 +107,7 @@ mod app {
 
     #[init(
         local=[
-            // Task local initialized resources are static
-            // Here we use MaybeUninit to allow for initialization in init()
+            // Task local initialized resources are static Here we use MaybeUninit to allow for initialization in init()
             // This enables its usage in driver initialization
             i2c_avionics_bus: MaybeUninit<Arbiter<AvionicsI2cBus>> = MaybeUninit::uninit(),
             i2c_motor_bus: MaybeUninit<Arbiter<MotorI2cBus>> = MaybeUninit::uninit(),
@@ -122,11 +120,11 @@ mod app {
 
     extern "Rust" {
         // Heartbeats the main led
-        #[task(local = [led], shared = [radio], priority = 2)]
+        #[task(local = [led], shared = [data], priority = 2)]
         async fn heartbeat(ctx: heartbeat::Context);
 
         // Takes care of incoming packets
-        #[task(shared = [radio, data], priority = 1)]
+        #[task(local = [radio], shared = [data], priority = 1)]
         async fn radio_send(mut ctx: radio_send::Context);
 
         #[task(priority = 3, local=[flap_servo, relay_servo])]
