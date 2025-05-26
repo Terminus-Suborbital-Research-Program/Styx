@@ -9,6 +9,9 @@ mod device_constants;
 pub mod phases;
 pub mod utilities;
 
+// Guard module
+pub mod guard;
+
 // RTIC Tasks
 pub mod startup;
 pub mod tasks;
@@ -53,7 +56,7 @@ mod app {
     use super::*;
 
     use bin_packets::time::Timestamp;
-    use common::rbf::NoRbf;
+    
     use hal::gpio::{self};
 
     use rp235x_hal::uart::UartPeripheral;

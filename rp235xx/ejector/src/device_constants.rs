@@ -1,25 +1,26 @@
 use hc12_rs::{configuration::baudrates::B9600, ProgrammingPair, FU3, HC12};
 use pins::{
-    CamLEDPin, EjectionPin, HeartbeatPin, JupiterRxPin, JupiterTxPin, RBFLEDPin, RBFPin,
-    RadioProgrammingPin, RadioRxPin, RadioTxPin,
+    CamLEDPin, EjectionPin, GuardScl, GuardSda, HeartbeatPin, JupiterRxPin, JupiterTxPin,
+    RBFLEDPin, RadioProgrammingPin, RadioRxPin, RadioTxPin,
 };
 use rp235x_hal::{
     gpio::{FunctionSio, Pin, PullDown, PullNone, SioInput, SioOutput},
-    pac::{UART0, UART1},
+    i2c::Controller,
+    pac::{I2C1, UART0, UART1},
     timer::CopyableTimer1,
     uart::{Enabled, UartPeripheral},
-    Timer,
+    Timer, I2C,
 };
 
-use common::rbf::{ActiveHighRbf, NoRbf};
+use common::rbf::NoRbf;
 
 pub mod pins {
     use rp235x_hal::gpio::{
         bank0::{
-            Gpio13, Gpio14, Gpio15, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio25, Gpio3, Gpio8,
-            Gpio9,
+            Gpio13, Gpio15, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio25, Gpio26, Gpio27,
+            Gpio3, Gpio8, Gpio9,
         },
-        FunctionSio, FunctionUart, Pin, PullDown, SioInput, SioOutput,
+        FunctionI2C, FunctionSio, FunctionUart, Pin, PullDown, PullUp, SioInput, SioOutput,
     };
 
     // Ejector Heartbeat Output
@@ -54,7 +55,15 @@ pub mod pins {
     pub type RadioTxPin = Pin<Gpio9, FunctionUart, PullDown>;
     /// Radio Programming Pin
     pub type RadioProgrammingPin = Pin<Gpio20, FunctionSio<SioOutput>, PullDown>;
+
+    /// GUARD SDA
+    pub type GuardSda = Pin<Gpio26, FunctionI2C, PullUp>;
+    /// GUARD SCL
+    pub type GuardScl = Pin<Gpio27, FunctionI2C, PullUp>;
 }
+
+/// SI1145
+pub type GuardI2C = I2C<I2C1, (GuardSda, GuardScl), Controller>;
 
 // Heartbeat LED
 pub type Heartbeat = Pin<HeartbeatPin, FunctionSio<SioOutput>, PullNone>;

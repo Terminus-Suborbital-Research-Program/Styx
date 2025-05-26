@@ -3,7 +3,7 @@ use common::rbf::{ActiveHighRbf, NoRbf, RbfIndicator};
 
 use defmt::{info, warn};
 use embedded_hal::delay::DelayNs;
-use embedded_hal::digital::{InputPin, OutputPin};
+use embedded_hal::digital::OutputPin;
 use fugit::RateExtU32;
 use hc12_rs::configuration::baudrates::B9600;
 use hc12_rs::configuration::{Channel, HC12Configuration, Power};
@@ -13,7 +13,7 @@ use rp235x_hal::clocks::init_clocks_and_plls;
 use rp235x_hal::gpio::PullNone;
 use rp235x_hal::pwm::Slices;
 use rp235x_hal::uart::{DataBits, StopBits, UartConfig, UartPeripheral};
-use rp235x_hal::{Clock, Sio, Watchdog};
+use rp235x_hal::{Clock, Sio, Watchdog, I2C};
 use rtic_monotonics::Monotonic;
 use usb_device::bus::UsbBusAllocator;
 use usb_device::device::{StringDescriptors, UsbDeviceBuilder, UsbVidPid};
@@ -22,7 +22,10 @@ use usbd_serial::SerialPort;
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
 use crate::device_constants::packets::{JupiterInterface, RadioInterface};
 use crate::device_constants::pins::{CamMosfetPin, RBFPin, RadioProgrammingPin};
-use crate::device_constants::{EjectionDetectionPin, EjectorHC12, JupiterUart, RadioUart};
+use crate::device_constants::{
+    EjectionDetectionPin, EjectorHC12, GuardI2C, JupiterUart, RadioUart,
+};
+use crate::guard::si1145_sanity_check;
 use crate::hal;
 use crate::phases::EjectorStateMachine;
 use crate::{app::*, Mono};
@@ -93,7 +96,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     rbf_led_pin.set_low().unwrap();
 
     // Ejector rbf should be pull down - it is high when the rbf is inserted
-    let mut rbf_pin: RBFPin = bank0_pins.gpio2.into_pull_down_input();
+    let rbf_pin: RBFPin = bank0_pins.gpio2.into_pull_down_input();
     let mut rbf = ActiveHighRbf::new(rbf_pin);
 
     if rbf.inhibited_at_init() {
@@ -234,6 +237,21 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         .unwrap()
         .device_class(2)
         .build();
+
+    // SI1445 I2C
+    let mut guard_i2c: GuardI2C = I2C::i2c1(
+        ctx.device.I2C1,
+        bank0_pins.gpio26.reconfigure(),
+        bank0_pins.gpio27.reconfigure(),
+        100.kHz(),
+        &mut ctx.device.RESETS,
+        12.MHz(),
+    );
+
+    // Check sanity
+    if let Err(e) = si1145_sanity_check(&mut guard_i2c) {
+        defmt::error!("Failed sanity check for si1145: {:?}", e);
+    }
 
     info!("Peripherals initialized, spawning tasks");
 

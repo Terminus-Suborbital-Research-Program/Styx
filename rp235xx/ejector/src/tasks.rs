@@ -7,12 +7,12 @@ use bin_packets::{
 use common::rbf::RbfIndicator;
 use defmt::{debug, info, warn, Debug2Format};
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
-use fugit::{Duration, ExtU64};
+use fugit::ExtU64;
 use rp235x_hal::reboot::{self, RebootArch, RebootKind};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 
-const START_CAMERA_DELAY: u64 = 250; // 10k millis For testing, 250 for actual
+const START_CAMERA_DELAY_SECONDS: u64 = 10; // 10k millis For testing, 250 for actual
 /// Constant to prevent ejector from interfering with JUPITER's u-boot sequence
 const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 180;
 
@@ -62,7 +62,7 @@ pub async fn rbf_monitor(mut ctx: rbf_monitor::Context<'_>) {
 
 pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
     info!("Camera Timer Starting");
-    Mono::delay(START_CAMERA_DELAY.secs()).await;
+    Mono::delay(START_CAMERA_DELAY_SECONDS.secs()).await;
 
     info!("Camera Timer Fulfilled");
     loop {
@@ -70,12 +70,10 @@ pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
             debug!("Inhibited, waiting for ejector inhibit to be removed");
             // Low to disable cams
             ctx.local.cams.set_low().unwrap();
-            ctx.local.cams_led.set_high().unwrap();
         } else {
             debug!("RBF Not  Inhibited");
             // High to enable cams
             ctx.local.cams.set_high().unwrap();
-            ctx.local.cams_led.toggle().unwrap();
         }
 
         Mono::delay(1000.millis()).await;
