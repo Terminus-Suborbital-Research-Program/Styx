@@ -94,8 +94,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     // Ejector rbf should be pull down - it is high when the rbf is inserted
     let mut rbf_pin: RBFPin = bank0_pins.gpio2.into_pull_down_input();
-    let _ = rbf_pin.is_high().unwrap();
-    let mut rbf = NoRbf::new();
+    let mut rbf = ActiveHighRbf::new(rbf_pin);
 
     if rbf.inhibited_at_init() {
         rbf_led_pin.set_high().unwrap();
@@ -255,7 +254,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             ejector_time_millis: 0,
             suspend_packet_handler: false,
             radio,
-            rbf,
+            rbf: NoRbf::new(),
             downlink: jupiter_downlink,
             led: led_pin,
         },

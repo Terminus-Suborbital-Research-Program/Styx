@@ -73,7 +73,7 @@ pub type JupiterUart = UartPeripheral<Enabled, UART0, (JupiterRxPin, JupiterTxPi
 
 /// Ejector RBF
 /// Represents the active-high Remove Before Flight (RBF) input.
-pub type EjectorRbf = ActiveHighRbf<RBFPin>; //ActiveHighRbf<RBFPin>;
+pub type EjectorRbf = NoRbf; //ActiveHighRbf<RBFPin>;
 
 /// Radio UART
 pub type RadioUart = UartPeripheral<Enabled, UART1, (RadioRxPin, RadioTxPin)>;

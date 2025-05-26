@@ -83,7 +83,7 @@ mod app {
         pub ejector_time_millis: u64,
         pub suspend_packet_handler: bool,
         pub radio: RadioInterface,
-        pub rbf: NoRbf,
+        pub rbf: EjectorRbf,
         pub downlink: JupiterInterface,
         pub led: Heartbeat,
     }
