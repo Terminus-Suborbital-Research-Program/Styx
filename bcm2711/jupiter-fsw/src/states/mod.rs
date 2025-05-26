@@ -11,7 +11,11 @@ mod skirt_seperation;
 pub mod traits;
 pub use power_on::*;
 
-use crate::{gpio::write::WritePin, tasks::IndicatorsReader, timing::t_time_estimate};
+use crate::{
+    gpio::write::WritePin,
+    tasks::{IndicatorsReader, RbfReader},
+    timing::t_time_estimate,
+};
 
 /// State machine for JUPITER
 pub struct JupiterStateMachine {
@@ -21,10 +25,10 @@ pub struct JupiterStateMachine {
 
 impl JupiterStateMachine {
     /// Create a new state machine from a pin provider
-    pub fn new(pins: IndicatorsReader, ej_pin: WritePin) -> Self {
+    pub fn new(pins: IndicatorsReader, ej_pin: WritePin, rbf: RbfReader) -> Self {
         Self {
             state: Box::new(PowerOn::default()),
-            context: StateContext::new(pins, ej_pin),
+            context: StateContext::new(pins, ej_pin, rbf),
         }
     }
 

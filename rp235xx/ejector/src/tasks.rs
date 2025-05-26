@@ -1,6 +1,6 @@
 use crate::{app::*, Mono};
 use bin_packets::{
-    device::{NonBlockingReader, PacketReader, PacketWriter},
+    device::{NonBlockingReader, PacketWriter},
     devices::DeviceIdentifier,
     packets::status::Status,
 };
@@ -12,33 +12,28 @@ use rp235x_hal::reboot::{self, RebootArch, RebootKind};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 
-const START_CAMERA_DELAY: u64 = 1000; // 10k millis For testing, 250 for actual
+const START_CAMERA_DELAY: u64 = 250; // 10k millis For testing, 250 for actual
 /// Constant to prevent ejector from interfering with JUPITER's u-boot sequence
-const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 10;
+const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 180;
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
-    let mut sequence_number = 0;
+    Mono::delay(JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs()).await;
 
-    // Set initial time
-    let task_start_time = Mono::now();
-    // Delay sending packets for one minute
-    let delay: Duration<u64, 1, 1000000> = JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs();
+    let mut sequence_number = 0;
 
     loop {
         ctx.shared.led.lock(|led| led.toggle().unwrap());
 
-        if Mono::now() - task_start_time > delay {
-            debug!("Heartbeat: Sending Status packet");
-            let status = Status::new(DeviceIdentifier::Ejector, now_timestamp(), sequence_number);
+        debug!("Heartbeat: Sending Status packet");
+        let status = Status::new(DeviceIdentifier::Ejector, now_timestamp(), sequence_number);
 
-            let res = ctx
-                .shared
-                .downlink
-                .lock(|downlink| downlink.write(status).err());
+        let res = ctx
+            .shared
+            .downlink
+            .lock(|downlink| downlink.write(status).err());
 
-            if let Some(err) = res {
-                info!("Error sending heartbeat: {:?}", Debug2Format(&err));
-            }
+        if let Some(err) = res {
+            info!("Error sending heartbeat: {:?}", Debug2Format(&err));
         }
 
         sequence_number = sequence_number.wrapping_add(1);
@@ -67,20 +62,20 @@ pub async fn rbf_monitor(mut ctx: rbf_monitor::Context<'_>) {
 
 pub async fn start_cameras(mut ctx: start_cameras::Context<'_>) {
     info!("Camera Timer Starting");
-    Mono::delay(START_CAMERA_DELAY.millis()).await;
+    Mono::delay(START_CAMERA_DELAY.secs()).await;
 
     info!("Camera Timer Fulfilled");
     loop {
         if ctx.shared.rbf.lock(|rbf| rbf.is_inserted()) {
             debug!("Inhibited, waiting for ejector inhibit to be removed");
-            // High to disable cams
-            ctx.local.cams.set_high().unwrap();
+            // Low to disable cams
+            ctx.local.cams.set_low().unwrap();
             ctx.local.cams_led.set_high().unwrap();
         } else {
             debug!("RBF Not  Inhibited");
-
+            // High to enable cams
+            ctx.local.cams.set_high().unwrap();
             ctx.local.cams_led.toggle().unwrap();
-            ctx.local.cams.set_low().unwrap();
         }
 
         Mono::delay(1000.millis()).await;

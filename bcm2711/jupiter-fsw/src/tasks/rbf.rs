@@ -61,4 +61,3 @@ fn rbf_states_thread<T: RbfIndicator>(
         std::thread::sleep(std::time::Duration::from_millis(update_interval));
     }
 }
-
