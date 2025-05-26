@@ -32,9 +32,7 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
     defmt::error!("Panic: {}", info);
     loop {
         // Halt the CPU
-        unsafe {
-            hal::sio::spinlock_reset();
-        }
+        hal::halt();
     }
 }
 
@@ -56,7 +54,7 @@ mod app {
     use super::*;
 
     use bin_packets::time::Timestamp;
-    
+
     use hal::gpio::{self};
 
     use rp235x_hal::uart::UartPeripheral;

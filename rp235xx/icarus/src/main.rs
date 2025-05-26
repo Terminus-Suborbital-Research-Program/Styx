@@ -29,7 +29,8 @@ use rtic_sync::arbiter::i2c::ArbiterDevice;
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
     defmt::error!("Panic: {}", info);
-    loop {}
+    // Better panic
+    hal::halt();
 }
 
 // HAL Access
@@ -55,9 +56,9 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 )]
 mod app {
     use crate::device_constants::{
-            servos::{FlapServo, RelayServo},
-            AvionicsI2cBus, DownlinkBuffer, IcarusRadio, MotorI2cBus,
-        };
+        servos::{FlapServo, RelayServo},
+        AvionicsI2cBus, DownlinkBuffer, IcarusRadio, MotorI2cBus,
+    };
 
     use super::*;
 
@@ -119,11 +120,11 @@ mod app {
         #[task(local = [radio], shared = [data], priority = 1)]
         async fn radio_send(mut ctx: radio_send::Context);
 
-        #[task(priority = 3, local=[flap_servo, relay_servo])]
+        #[task(priority = 2, local=[flap_servo, relay_servo])]
         async fn mode_sequencer(&mut ctx: mode_sequencer::Context);
 
         // Handles INA sensors
-        #[task(priority = 3, shared = [data], local=[ina260_1, ina260_2, ina260_3])]
+        #[task(priority = 2, shared = [data], local=[ina260_1, ina260_2, ina260_3])]
         async fn ina_sample(&mut ctx: ina_sample::Context, i2c: &'static Arbiter<MotorI2cBus>);
 
         #[task(local = [bme280, bmi323], priority = 3)]
