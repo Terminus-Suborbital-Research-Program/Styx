@@ -11,7 +11,7 @@ use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
 
 use crate::device_constants::AvionicsI2cBus;
-use crate::phases::{FlapServoStatus, Modes, RelayServoStatus, StateMachineListener};
+use crate::phases::{FlapServoStatus, Modes, RelayServoStatus};
 use crate::{app::*, device_constants::MotorI2cBus, Mono};
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
@@ -103,11 +103,7 @@ pub async fn mode_sequencer(ctx: mode_sequencer::Context<'_>) {
     }
 }
 
-pub async fn motor_drivers(
-    mut ctx: motor_drivers::Context<'_>,
-    _i2c: &'static Arbiter<MotorI2cBus>,
-    esc_state_listener: StateMachineListener,
-) {
+pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter<MotorI2cBus>) {
     info!("Motor Driver Task Started");
 
     ctx.local.ina260_1.init().await.ok();

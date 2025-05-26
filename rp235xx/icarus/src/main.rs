@@ -54,13 +54,10 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
     peripherals = true,
 )]
 mod app {
-    use crate::{
-        device_constants::{
+    use crate::device_constants::{
             servos::{FlapServo, RelayServo},
-            AvionicsI2cBus, DownlinkBuffer, IcarusRadio, IcarusStateMachine, MotorI2cBus,
-        },
-        phases::StateMachineListener,
-    };
+            AvionicsI2cBus, DownlinkBuffer, IcarusRadio, MotorI2cBus,
+        };
 
     use super::*;
 
@@ -84,11 +81,6 @@ mod app {
     // pub static mut USB_BUS: Option<UsbBusAllocator<hal::usb::UsbBus>> = None;
     #[shared]
     pub struct Shared {
-        //uart0: UART0Bus,
-        //uart0_buffer: heapless::String<HEAPLESS_STRING_ALLOC_LENGTH>,
-        // pub usb_serial: SerialPort<'static, hal::usb::UsbBus>,
-        pub clock_freq_hz: u32,
-        pub state_machine: IcarusStateMachine,
         pub data: DownlinkBuffer,
     }
 
@@ -130,13 +122,9 @@ mod app {
         #[task(priority = 3, local=[flap_servo, relay_servo])]
         async fn mode_sequencer(&mut ctx: mode_sequencer::Context);
 
-        // Handler for the I2C electronic speed controllers
-        #[task(priority = 3, shared = [state_machine, data], local=[ina260_1, ina260_2, ina260_3])]
-        async fn motor_drivers(
-            &mut ctx: motor_drivers::Context,
-            i2c: &'static Arbiter<MotorI2cBus>,
-            mut esc_state_listener: StateMachineListener,
-        );
+        // Handles INA sensors
+        #[task(priority = 3, shared = [data], local=[ina260_1, ina260_2, ina260_3])]
+        async fn ina_sample(&mut ctx: ina_sample::Context, i2c: &'static Arbiter<MotorI2cBus>);
 
         #[task(local = [bme280, bmi323], priority = 3)]
         async fn sample_sensors(
