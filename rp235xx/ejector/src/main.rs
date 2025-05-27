@@ -30,10 +30,7 @@ rp235x_timer_monotonic!(Mono);
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
     defmt::error!("Panic: {}", info);
-    loop {
-        // Halt the CPU
-        hal::halt();
-    }
+    hal::halt();
 }
 
 /// Tell the Boot ROM about our application
@@ -115,10 +112,6 @@ mod app {
         // Reads incoming packets from the radio
         #[task(shared = [radio, downlink, led], priority = 1)]
         async fn radio_read(mut ctx: radio_read::Context);
-
-        // Updates the radio module on the serial interrupt
-        #[task(binds = UART1_IRQ, shared = [radio])]
-        fn uart_interrupt(mut ctx: uart_interrupt::Context);
 
         #[task(local = [cams, cams_led], shared = [ejector_time_millis, rbf], priority = 2)]
         async fn start_cameras(mut ctx: start_cameras::Context);

@@ -3,6 +3,7 @@ use embedded_hal::{
     delay::DelayNs,
     digital::{InputPin, OutputPin},
 };
+use embedded_io::Write;
 use fugit::RateExtU32;
 use hc12_rs::IntoFU3Mode;
 use rp235x_hal::{
@@ -170,7 +171,13 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         }
     };
     timer_two.delay_ms(150);
-    let hc = radio.into_fu3_mode().unwrap(); // Infallible
+    let mut hc = radio.into_fu3_mode().unwrap(); // Infallible
+
+    loop {
+        let str = "icarus says hello 123456789";
+        hc.write_all(str.as_bytes()).ok();
+        timer_two.delay_ms(150);
+    }
 
     let interface: IcarusRadio = bin_packets::device::Device::new(hc);
 

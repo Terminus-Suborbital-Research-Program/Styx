@@ -7,7 +7,6 @@ use defmt::{error, info};
 use embedded_hal::digital::StatefulOutputPin;
 use fugit::ExtU64;
 use futures::join;
-use heapless::Vec;
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
@@ -41,8 +40,8 @@ pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
                 error!("Could not send packet: {:?}", defmt::Debug2Format(&e));
             }
             // TODO: Test this duration stability
-            Mono::delay(50.millis()).await;
         }
+        Mono::delay(500.millis()).await;
     }
 }
 

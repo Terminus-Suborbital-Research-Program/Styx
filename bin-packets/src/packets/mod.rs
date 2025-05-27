@@ -12,15 +12,6 @@ use crate::commands::CommandPacket;
 
 #[derive(Debug, Clone, Copy, Encode, Decode, Format, Serialize, Deserialize)]
 pub enum ApplicationPacket {
-    Command(CommandPacket),
     Status(Status),
-    PowerData {
-        name: u16,
-        time_stamp: u64,
-        power: Option<u16>,
-    },
-    CurrentData {
-        timestamp: u64,
-        currrent: [f32; 3],
-    },
+    CurrentData { timestamp: u64, currrent: [f32; 3] },
 }

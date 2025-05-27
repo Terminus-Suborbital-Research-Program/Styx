@@ -40,6 +40,7 @@ fn camera_task() -> ! {
         let mut file_path = video_directory.clone();
         file_path.push(next);
 
+        // ffmpeg -f v4l2 -input_format mjpeg -framerate 30 -video_size 1020x1080 -i /dev/video0 -c:v copy output.avi
         let mut cmd = std::process::Command::new("ffmpeg")
             .args(["-f", "v4l2"])
             .args(["-input_format", "mjpeg"])

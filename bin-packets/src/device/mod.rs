@@ -7,6 +7,7 @@ use bincode::{
     error::{DecodeError, EncodeError},
 };
 use embedded_io::{Read, ReadReady, Write, WriteReady};
+use heapless::Vec;
 
 use crate::packets::ApplicationPacket;
 
@@ -59,10 +60,9 @@ impl<D, const N: usize> Device<D, N> {
     /// Remove bytes from the front of the buffer
     pub fn drain_some(&mut self, bytes: usize) {
         let bytes = core::cmp::min(bytes, self.buffer.len());
-
-        if bytes > 0 {
-            self.buffer.rotate_left(bytes)
-        };
+        for _ in 0..bytes - 1 {
+            self.buffer.remove(0);
+        }
     }
 }
 
@@ -94,41 +94,7 @@ impl<D: Read, const N: usize> PacketReader for Device<D, N> {
         // Buffer in data to try and decode.
         self.update();
 
-        // Potential packet
-        let mut pot: Option<ApplicationPacket> = None;
-        let mut used_bytes = 0;
-
-        for start in 0..self.buffer.len() {
-            let section = &self.buffer[start..self.buffer.len()];
-            let res: Result<(ApplicationPacket, usize), DecodeError> =
-                decode_from_slice(section, standard());
-
-            match res {
-                Ok(packet_size) => {
-                    let (packet, bytes_taken) = packet_size;
-                    pot = Some(packet);
-                    // Remove the bytes that were read off, too
-                    used_bytes = start + bytes_taken;
-                    break;
-                }
-
-                #[allow(unused_variables)] // Wish there were a less awkward way of doing this
-                Err(DecodeError::UnexpectedEnd { additional }) => {
-                    // Take off however many junk bytes we saw
-                    used_bytes = start;
-                    break; // No more reading would do anything for us
-                }
-
-                _ => {
-                    // Do nothing, just drop those bytes from the front and try to continue
-                }
-            }
-        }
-
-        // Clear off the number of bytes we used
-        self.drain_some(used_bytes);
-
-        pot
+        let mut scratch: heapless::Vec<u8, N> = Vec::new();
     }
 }
 
@@ -210,10 +176,12 @@ where
     D: Write,
 {
     fn write<T: Into<ApplicationPacket>>(&mut self, packet: T) -> Result<(), EncodeError> {
+        let magic = [0x99u8];
+        self.device.write_all(&magic).ok();
         let mut buf = [0u8; N];
         match encode_into_slice(packet.into(), &mut buf, standard()) {
             Ok(written) => {
-                self.device.write(&buf[0..written]).ok();
+                self.device.write_all(&buf[0..written]).ok();
                 Ok(())
             }
             Err(e) => Err(e),

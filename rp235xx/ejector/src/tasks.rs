@@ -14,7 +14,7 @@ use rtic_monotonics::Monotonic;
 
 const START_CAMERA_DELAY_SECONDS: u64 = 10; // 10k millis For testing, 250 for actual
 /// Constant to prevent ejector from interfering with JUPITER's u-boot sequence
-const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 180;
+const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 3;
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     Mono::delay(JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs()).await;
@@ -86,7 +86,7 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
     loop {
         while let Some(packet) = ctx.shared.radio.lock(|radio| radio.read_non_blocking()) {
             ctx.shared.led.lock(|led| led.toggle().unwrap());
-            debug!("Got a packet from icarus! Packet: {:?}", packet);
+            info!("Got a packet from icarus! Packet: {:?}", packet);
             // Write down range
             if let Err(e) = ctx.shared.downlink.lock(|downlink| downlink.write(packet)) {
                 warn!("Error writing packet: {:?}", Debug2Format(&e));
@@ -94,10 +94,6 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
         }
         Mono::delay(1000_u64.millis()).await;
     }
-}
-
-pub fn uart_interrupt(_ctx: uart_interrupt::Context<'_>) {
-    radio_read::spawn().ok();
 }
 
 pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {

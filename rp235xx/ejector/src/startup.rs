@@ -4,11 +4,13 @@ use common::rbf::{ActiveHighRbf, NoRbf, RbfIndicator};
 use defmt::{info, warn};
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
+use embedded_io::Read;
 use fugit::RateExtU32;
 use hc12_rs::configuration::baudrates::B9600;
 use hc12_rs::configuration::{Channel, HC12Configuration, Power};
 use hc12_rs::device::IntoATMode;
 use hc12_rs::IntoFU3Mode;
+use heapless::{String, Vec};
 use rp235x_hal::clocks::init_clocks_and_plls;
 use rp235x_hal::gpio::PullNone;
 use rp235x_hal::pwm::Slices;
@@ -192,7 +194,8 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             e.hc12
         }
     };
-    let hc: EjectorHC12 = hc.into_fu3_mode().unwrap(); // Infallible
+    let mut hc: EjectorHC12 = hc.into_fu3_mode().unwrap(); // Infallible
+
     let radio: RadioInterface = Device::new(hc);
 
     // Servo
