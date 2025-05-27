@@ -20,13 +20,7 @@ pub enum ApplicationPacket {
         power: Option<u16>,
     },
     CurrentData {
-        name: u16,
-        time_stamp: u64,
-        current: Option<(i8, u32)>,
-    },
-    VoltageData {
-        name: u16,
-        time_stamp: u64,
-        voltage: Option<(u8, u32)>,
+        timestamp: u64,
+        currrent: [f32; 3],
     },
 }

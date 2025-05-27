@@ -1,4 +1,5 @@
 use bin_packets::{device::Device, packets::ApplicationPacket};
+use heapless::Deque;
 use pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin, LedPin};
 use rp235x_hal::{
     gpio::{FunctionI2C, FunctionSio, Pin, PullDown, PullNone, PullUp, SioOutput},
@@ -162,21 +163,5 @@ pub type IcarusRadio = Device<IcarusHC12, 256>;
 /// A motor controller on a shared bus
 pub type ReactionWheelMotor = ();
 
-// CONSTANTS FOR ALL
-const HISTORY_BUFFER_LENGTH: usize = 10;
-
-// Sensor Data Types
-// use bin_packets::types::{PowerData, CurrentData, VoltageData};
-#[derive(Debug, Default)]
-pub struct IcarusData {
-    pub p1_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
-    pub p2_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
-    pub p3_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
-    pub v1_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
-    pub v2_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
-    pub v3_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
-    pub i1_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
-    pub i2_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
-    pub i3_buffer: heapless::HistoryBuffer<ApplicationPacket, HISTORY_BUFFER_LENGTH>,
-}
-
+/// Data buffer for downsyncing ICARUS data
+pub type DownlinkBuffer = Deque<ApplicationPacket, 16>;

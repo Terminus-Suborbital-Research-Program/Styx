@@ -29,7 +29,8 @@ use rtic_sync::arbiter::i2c::ArbiterDevice;
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
     defmt::error!("Panic: {}", info);
-    loop {}
+    // Better panic
+    hal::halt();
 }
 
 // HAL Access
@@ -54,19 +55,15 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
     peripherals = true,
 )]
 mod app {
-    use crate::{
-        device_constants::{
-            servos::{FlapServo, RelayServo},
-            AvionicsI2cBus, IcarusRadio, IcarusStateMachine, MotorI2cBus,
-        },
-        phases::StateMachineListener,
+    use crate::device_constants::{
+        servos::{FlapServo, RelayServo},
+        AvionicsI2cBus, DownlinkBuffer, IcarusRadio, MotorI2cBus,
     };
 
     use super::*;
 
     use bin_packets::{phases::IcarusPhase, time::Timestamp};
 
-    use device_constants::IcarusData;
     use hal::gpio::{self, FunctionSio, PullNone, SioOutput};
     use rp235x_hal::uart::UartPeripheral;
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
@@ -85,17 +82,12 @@ mod app {
     // pub static mut USB_BUS: Option<UsbBusAllocator<hal::usb::UsbBus>> = None;
     #[shared]
     pub struct Shared {
-        //uart0: UART0Bus,
-        //uart0_buffer: heapless::String<HEAPLESS_STRING_ALLOC_LENGTH>,
-        // pub usb_serial: SerialPort<'static, hal::usb::UsbBus>,
-        pub clock_freq_hz: u32,
-        pub radio: IcarusRadio,
-        pub state_machine: IcarusStateMachine,
-        pub data: IcarusData,
+        pub data: DownlinkBuffer,
     }
 
     #[local]
     pub struct Local {
+        pub radio: IcarusRadio,
         pub relay_servo: RelayServo,
         pub flap_servo: FlapServo,
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
@@ -108,8 +100,7 @@ mod app {
 
     #[init(
         local=[
-            // Task local initialized resources are static
-            // Here we use MaybeUninit to allow for initialization in init()
+            // Task local initialized resources are static Here we use MaybeUninit to allow for initialization in init()
             // This enables its usage in driver initialization
             i2c_avionics_bus: MaybeUninit<Arbiter<AvionicsI2cBus>> = MaybeUninit::uninit(),
             i2c_motor_bus: MaybeUninit<Arbiter<MotorI2cBus>> = MaybeUninit::uninit(),
@@ -122,23 +113,19 @@ mod app {
 
     extern "Rust" {
         // Heartbeats the main led
-        #[task(local = [led], shared = [radio], priority = 2)]
+        #[task(local = [led], shared = [data], priority = 2)]
         async fn heartbeat(ctx: heartbeat::Context);
 
         // Takes care of incoming packets
-        #[task(shared = [radio, data], priority = 1)]
+        #[task(local = [radio], shared = [data], priority = 1)]
         async fn radio_send(mut ctx: radio_send::Context);
 
-        #[task(priority = 3, local=[flap_servo, relay_servo])]
+        #[task(priority = 2, local=[flap_servo, relay_servo])]
         async fn mode_sequencer(&mut ctx: mode_sequencer::Context);
 
-        // Handler for the I2C electronic speed controllers
-        #[task(priority = 3, shared = [state_machine, data], local=[ina260_1, ina260_2, ina260_3])]
-        async fn motor_drivers(
-            &mut ctx: motor_drivers::Context,
-            i2c: &'static Arbiter<MotorI2cBus>,
-            mut esc_state_listener: StateMachineListener,
-        );
+        // Handles INA sensors
+        #[task(priority = 2, shared = [data], local=[ina260_1, ina260_2, ina260_3])]
+        async fn ina_sample(&mut ctx: ina_sample::Context, i2c: &'static Arbiter<MotorI2cBus>);
 
         #[task(local = [bme280, bmi323], priority = 3)]
         async fn sample_sensors(

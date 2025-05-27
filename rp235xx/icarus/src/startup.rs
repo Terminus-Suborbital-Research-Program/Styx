@@ -1,4 +1,3 @@
-use bin_packets::phases::IcarusPhase;
 use defmt::{error, info, warn};
 use embedded_hal::{
     delay::DelayNs,
@@ -13,14 +12,9 @@ use rp235x_hal::{
     uart::{DataBits, StopBits, UartConfig, UartPeripheral},
     Clock, Sio, Watchdog, I2C,
 };
-use rtic_sync::{
-    arbiter::{i2c::ArbiterDevice, Arbiter},
-    signal::Signal,
-};
-// use usb_device::bus::UsbBusAllocator;
-// use usbd_serial::SerialPort;
+use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
 
-use crate::actuators::servo::Servo;
+use crate::{actuators::servo::Servo, device_constants::DownlinkBuffer};
 use crate::{
     app::*,
     device_constants::{
@@ -29,10 +23,9 @@ use crate::{
             FlapMosfet, FlapServo, FlapServoPwmPin, FlapServoSlice, RelayMosfet, RelayServo,
             RelayServoPwmPin, RelayServoSlice,
         },
-        IcarusData, IcarusRadio, IcarusStateMachine,
+        IcarusRadio,
     },
     peripherals::async_i2c::AsyncI2c,
-    phases::{StateMachine, StateMachineListener},
     Mono,
 };
 
@@ -96,7 +89,6 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
                 debug_pin.set_low().unwrap();
             }
             warn!("Failed to init clocks: {:?}", e);
-            loop {}
             panic!("Failed to init clocks");
         }
     };
@@ -107,9 +99,6 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         .into_pull_type::<PullNone>()
         .into_push_pull_output();
     led_pin.set_low().unwrap();
-
-    // Get clock frequency
-    let clock_freq = clocks.peripheral_clock.freq();
 
     // Pin setup for UART1
     let uart1_pins = (pins.gpio8.into_function(), pins.gpio9.into_function());
@@ -260,21 +249,11 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let bmi323 = AsyncBMI323::new(ArbiterDevice::new(avionics_i2c_arbiter), 0x69, Mono);
     let bme280 = AsyncBme280::new(ArbiterDevice::new(avionics_i2c_arbiter), Mono);
 
-    // State machine
-    let mut state_machine: IcarusStateMachine = StateMachine::new();
-    let esc_state_signal: Signal<IcarusPhase> = Signal::new();
-    ctx.local.esc_state_signal.write(esc_state_signal);
-
-    let r = unsafe { ctx.local.esc_state_signal.assume_init_ref() };
-    let (writer, reader) = r.split();
-    state_machine.add_channel(writer).ok();
-    let esc_listener = StateMachineListener::new(reader);
-
     let ina260_1 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x40, Mono);
     let ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x41, Mono);
     let ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x42, Mono);
 
-    let data = IcarusData::default();
+    let data = DownlinkBuffer::new();
 
     let mut rbf = pins.gpio4.into_pull_down_input();
 
@@ -297,19 +276,15 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     info!("Peripherals initialized, spawning tasks...");
     heartbeat::spawn().ok();
     mode_sequencer::spawn().ok();
-    motor_drivers::spawn(motor_i2c_arbiter, esc_listener).ok();
-    sample_sensors::spawn(avionics_i2c_arbiter).ok();
+    ina_sample::spawn(motor_i2c_arbiter).ok();
+    //sample_sensors::spawn(avionics_i2c_arbiter).ok();
     inertial_nav::spawn().ok();
     radio_send::spawn().ok();
     info!("Tasks spawned!");
     (
-        Shared {
-            data,
-            clock_freq_hz: clock_freq.to_Hz(),
-            state_machine,
-            radio: interface,
-        },
+        Shared { data },
         Local {
+            radio: interface,
             flap_servo,
             relay_servo,
             led: led_pin,
