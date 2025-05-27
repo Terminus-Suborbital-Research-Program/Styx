@@ -6,6 +6,8 @@ use bme280_rs::{Configuration, Oversampling, SensorMode};
 use defmt::{error, info};
 use embedded_hal::digital::StatefulOutputPin;
 use fugit::ExtU64;
+use futures::join;
+use heapless::Vec;
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
@@ -49,10 +51,6 @@ use rp235x_pac::interrupt;
 unsafe fn I2C0_IRQ() {
     MotorI2cBus::on_interrupt();
 }
-
-// async fn flap_servo_close(mut servo: &mut IcarusServos){
-//     servo.set_angle(0);
-// }
 
 use crate::phases::mode::{FLUTTER_COUNT, FLUTTER_START_TIME, SERVO_DISABLE_DELAY};
 pub async fn mode_sequencer(ctx: mode_sequencer::Context<'_>) {
@@ -106,109 +104,38 @@ pub async fn mode_sequencer(ctx: mode_sequencer::Context<'_>) {
 pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter<MotorI2cBus>) {
     info!("Motor Driver Task Started");
 
-    ctx.local.ina260_1.init().await.ok();
-    ctx.local.ina260_2.init().await.ok();
-    ctx.local.ina260_3.init().await.ok();
+    if let Err(e) = ctx.local.ina260_1.init().await {
+        error!("Error initializing INA 1: {:?}", e);
+    }
+
+    if let Err(e) = ctx.local.ina260_2.init().await {
+        error!("Error initializing INA 2: {:?}", e);
+    }
+
+    if let Err(e) = ctx.local.ina260_3.init().await {
+        error!("Error initializing INA 1: {:?}", e);
+    }
 
     loop {
-        let ts = Mono::now().ticks();
+        let items = join!(
+            ctx.local.ina260_1.current(),
+            ctx.local.ina260_2.current(),
+            ctx.local.ina260_3.current()
+        );
+        let currents = [
+            items.0.unwrap_or(0.0),
+            items.1.unwrap_or(0.0),
+            items.2.unwrap_or(0.0),
+        ];
 
-        let voltage1_result = ctx.local.ina260_1.voltage_split().await;
-        match voltage1_result {
-            Ok(voltage_1) => {
-                info!("2: {:?}", voltage_1);
-                let vs1 = ApplicationPacket::VoltageData {
-                    name: 1,
-                    time_stamp: ts,
-                    voltage: Some(voltage_1),
-                };
-                ctx.shared.data.lock(|ina_data| {
-                    ina_data.push_back(vs1).ok();
-                });
-            }
-            Err(_) => {
-                info!("Wack 1");
-            }
-        }
-        let current_1 = ctx.local.ina260_1.current_split().await.ok();
-        let power_1 = ctx.local.ina260_1.power_raw().await.ok();
-        let voltage2_result = ctx.local.ina260_2.voltage_split().await;
-        match voltage2_result {
-            Ok(voltage_2) => {
-                info!("2: {:?}", voltage_2);
-                let vs2 = ApplicationPacket::VoltageData {
-                    name: 2,
-                    time_stamp: ts,
-                    voltage: Some(voltage_2),
-                };
-                ctx.shared.data.lock(|ina_data| {
-                    ina_data.push_back(vs2).ok();
-                });
-            }
-            Err(_) => {
-                info!("Wack 2");
-            }
-        }
-        let current_2 = ctx.local.ina260_2.current_split().await.ok();
-        let power_2 = ctx.local.ina260_2.power_split().await.ok();
-        let voltage3_result = ctx.local.ina260_3.voltage_split().await;
-        match voltage3_result {
-            Ok(voltage_3) => {
-                info!("3: {:?}", voltage_3);
-                let vs3 = ApplicationPacket::VoltageData {
-                    name: 3,
-                    time_stamp: ts,
-                    voltage: Some(voltage_3),
-                };
-                ctx.shared.data.lock(|ina_data| {
-                    ina_data.push_back(vs3).ok();
-                });
-            }
-            Err(_) => {
-                info!("Wack 3");
-            }
-        }
-        let current_3 = ctx.local.ina260_3.current_split().await.ok();
-        let power_3 = ctx.local.ina260_3.power_split().await.ok();
-
-        let cur1 = ApplicationPacket::CurrentData {
-            name: 1,
-            time_stamp: ts,
-            current: current_1,
+        let packet = ApplicationPacket::CurrentData {
+            timestamp: epoch_ns(),
+            currrent: currents,
         };
-        // let cur2 = ApplicationPacket::CurrentData {
-        //     name: 2,
-        //     time_stamp: ts,
-        //     current: current_2,
-        // };
-        // let cur3 = ApplicationPacket::CurrentData {
-        //     name: 3,
-        //     time_stamp: ts,
-        //     current: current_3,
-        // };
-        let pow1 = ApplicationPacket::PowerData {
-            name: 1,
-            time_stamp: ts,
-            power: power_1,
-        };
-        // let pow2 = ApplicationPacket::PowerData {
-        //     name: 2,
-        //     time_stamp: ts,
-        //     power: power_2,
-        // };
-        // let pow3 = ApplicationPacket::PowerData {
-        //     name: 3,
-        //     time_stamp: ts,
-        //     power: power_3,
-        // };
 
-        // ina_data.i1_buffer.write(cur1);
-        // // ina_data.i2_buffer.write(cur2);
-        // // ina_data.i3_buffer.write(cur3);
-        // ina_data.p1_buffer.write(pow1);
-        // // ina_data.p2_buffer.write(pow2);
-        // // ina_data.p3_buffer.write(pow3);
-        Mono::delay(100_u64.millis()).await;
+        ctx.shared.data.lock(|vec| vec.push_back(packet).ok());
+
+        Mono::delay(100.millis()).await;
     }
 }
 
@@ -220,7 +147,7 @@ pub async fn sample_sensors(
     match bme_on {
         Ok(_) => {}
         Err(i2c_error) => {
-            info!("BME Error: {}", i2c_error);
+            error!("BME Error: {}", i2c_error);
         }
     }
     Mono::delay(10_u64.millis()).await;
@@ -246,7 +173,8 @@ pub async fn sample_sensors(
         }
     }
 
-    Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
+    // TODO: (Remove me if no effect) Delaying preemptive to other processes just in case...
+    Mono::delay(10_u64.millis()).await;
     let bmi323_init_result = ctx.local.bmi323.init().await;
     match bmi323_init_result {
         Ok(_) => {

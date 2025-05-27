@@ -27,7 +27,7 @@
         }
       ],
       "env": {
-        "DEFMT_LOG": "info"
+        "DEFMT_LOG": "INFO"
       },
       // Info, Debug
       "consoleLogLevel": "Console"
@@ -58,7 +58,7 @@
         }
       ],
       "env": {
-        "DEFMT_LOG": "info"
+        "DEFMT_LOG": "INFO"
       },
       // Info, Debug
       "consoleLogLevel": "Console"
