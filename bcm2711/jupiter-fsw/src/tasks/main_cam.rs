@@ -57,6 +57,7 @@ fn camera_task() -> ! {
         // Run until completion, and then restart
         cmd.wait().ok();
         error!("Camera thread ended unexpectedly!");
+        std::thread::sleep(Duration::from_millis(1000));
     }
 }
 
