@@ -40,16 +40,19 @@ pub mod packets {
 
     impl TinyFrame {
         /// Checksum of contained data
+        #[inline(always)]
         fn checksum(&self) -> u16 {
-            crc16_ccitt_false(&self.data)
+            crc16_ccitt_false(&self.data[..self.length])
         }
 
         /// Length of the frame
+        #[inline(always)]
         pub fn frame_length(&self) -> usize {
             self.length
         }
 
         /// Frame data
+        #[inline(always)]
         pub fn data(&self) -> &[u8] {
             &self.data[0..self.length]
         }
@@ -115,7 +118,7 @@ pub mod packets {
                 return Err(FrameError::UnexpectedEOF); // Not enough bytes to read
             }
 
-            if bytes[0] != 0x01 {
+            if bytes[0] != SOF {
                 // Not a start byte
                 return Err(FrameError::BadStart);
             }
