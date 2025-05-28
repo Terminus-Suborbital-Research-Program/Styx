@@ -1,13 +1,14 @@
 #![cfg_attr(not(test), no_std)]
 
 mod crc;
+pub mod writer;
 
 pub mod packets {
     /// Valid start of frame bit
-    const SOF: u8 = 0x01;
+    pub const SOF: u8 = 0x01;
 
     /// Max length per packet
-    const MAX_PACKET_LEN: usize = 128;
+    pub const MAX_PACKET_LEN: usize = 128;
     use core::ops::Not;
 
     use crate::crc::crc16_ccitt_false;
@@ -39,6 +40,16 @@ pub mod packets {
             crc16_ccitt_false(&self.data)
         }
 
+        /// Length of the frame
+        pub fn frame_length(&self) -> usize {
+            self.length
+        }
+
+        /// Frame data
+        pub fn data(&self) -> &[u8] {
+            &self.data[0..self.length]
+        }
+
         /// Checks validity of packet
         fn check_validity(&self) -> Result<(), FrameError> {
             let calculated = self.checksum();
@@ -54,7 +65,7 @@ pub mod packets {
 
         /// Takes a data source, and encodes it into packet, returning the packet and the number of
         /// bytes read from the buffer. This is a low level function not intended for consumption
-        fn create_from_slice(bytes: &[u8]) -> (Self, u8) {
+        pub(crate) fn create_from_slice(bytes: &[u8]) -> (Self, usize) {
             let length = core::cmp::min(MAX_PACKET_LEN, bytes.len());
 
             let slice = &bytes[0..length];
@@ -68,7 +79,7 @@ pub mod packets {
                     data,
                     checksum,
                 },
-                length as u8,
+                length,
             )
         }
 
@@ -149,7 +160,7 @@ pub mod packets {
 
             // Build a frame from raw data
             let (frame, consumed) = TinyFrame::create_from_slice(&payload);
-            assert_eq!(consumed as usize, payload.len());
+            assert_eq!(consumed, payload.len());
 
             // Encode into a buffer large enough for the packet
             let mut buf = [0u8; MAX_PACKET_LEN + 5];
