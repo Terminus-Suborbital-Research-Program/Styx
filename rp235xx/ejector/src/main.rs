@@ -3,11 +3,8 @@
 
 // Our Modules
 pub mod actuators;
-pub mod communications;
 
 mod device_constants;
-pub mod phases;
-pub mod utilities;
 
 // Guard module
 pub mod guard;
@@ -45,11 +42,11 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 )]
 mod app {
     use crate::device_constants::packets::RadioInterface;
-    use crate::device_constants::pins::CamMosfetPin;
+
+    use crate::actuators::servo::EjectorServo;
     use crate::device_constants::{
         CamLED, EjectionDetectionPin, EjectorRbf, Heartbeat, JupiterUart, RbfLed,
     };
-    use crate::{actuators::servo::EjectorServo, phases::EjectorStateMachine};
 
     use super::*;
 
@@ -62,9 +59,6 @@ mod app {
     use rp235x_hal::uart::UartPeripheral;
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
-    use usb_device::{class_prelude::*, prelude::*};
-    use usbd_serial::SerialPort;
-
     pub type UART0Bus = UartPeripheral<
         rp235x_hal::uart::Enabled,
         rp235x_hal::pac::UART0,
@@ -74,16 +68,9 @@ mod app {
         ),
     >;
 
-    pub static mut USB_BUS: Option<UsbBusAllocator<hal::usb::UsbBus>> = None;
-
     #[shared]
     pub struct Shared {
         pub downlink_packets: Deque<ApplicationPacket, 16>,
-        pub usb_serial: SerialPort<'static, hal::usb::UsbBus>,
-        pub usb_device: UsbDevice<'static, hal::usb::UsbBus>,
-        pub clock_freq_hz: u32,
-        pub state_machine: EjectorStateMachine,
-        pub blink_status_delay_millis: u64,
         pub ejector_time_millis: u64,
         pub suspend_packet_handler: bool,
         pub radio: RadioInterface,
@@ -111,7 +98,7 @@ mod app {
         async fn ejector_sequencer(mut ctx: ejector_sequencer::Context);
 
         // Heartbeats the main led
-        #[task(shared = [blink_status_delay_millis, radio, downlink_packets, ejector_time_millis, led], priority = 2)]
+        #[task(shared = [radio, downlink_packets, ejector_time_millis, led], priority = 2)]
         async fn heartbeat(mut ctx: heartbeat::Context);
 
         // Reads incoming packets from the radio

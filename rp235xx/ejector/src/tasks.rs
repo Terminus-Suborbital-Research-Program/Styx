@@ -1,20 +1,14 @@
 use crate::{app::*, Mono};
-use bin_packets::{
-    device::{NonBlockingReader, PacketWriter},
-    devices::DeviceIdentifier,
-    packets::status::Status,
-};
+use bin_packets::{devices::DeviceIdentifier, packets::status::Status};
 use bincode::{config::standard, encode_into_slice};
 use common::rbf::RbfIndicator;
-use defmt::{debug, error, info, warn, Debug2Format};
-use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
+use defmt::{debug, info, warn};
+use embedded_hal::digital::{InputPin, StatefulOutputPin};
 use embedded_io::Write;
 use fugit::ExtU64;
-use rp235x_hal::reboot::{self, RebootArch, RebootKind};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 
-const START_CAMERA_DELAY_SECONDS: u64 = 10; // 10k millis For testing, 250 for actual
 /// Constant to prevent ejector from interfering with JUPITER's u-boot sequence
 const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 180;
 

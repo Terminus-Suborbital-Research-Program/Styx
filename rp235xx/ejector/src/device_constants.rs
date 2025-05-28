@@ -1,19 +1,19 @@
 use hc12_rs::{configuration::baudrates::B9600, ProgrammingPair, FU3, HC12};
 use pins::{
-    CamLEDPin, EjectionPin, GuardScl, GuardSda, HeartbeatPin, JupiterRxPin, JupiterTxPin,
+    CamLEDPin, EjectionPin, HeartbeatPin, JupiterRxPin, JupiterTxPin,
     RBFLEDPin, RadioProgrammingPin, RadioRxPin, RadioTxPin,
 };
 use rp235x_hal::{
     gpio::{FunctionSio, Pin, PullDown, PullNone, SioInput, SioOutput},
-    i2c::Controller,
-    pac::{I2C1, UART0, UART1},
+    pac::{UART0, UART1},
     timer::CopyableTimer1,
     uart::{Enabled, UartPeripheral},
-    Timer, I2C,
+    Timer,
 };
 
 use common::rbf::NoRbf;
 
+#[allow(dead_code)]
 pub mod pins {
     use rp235x_hal::gpio::{
         bank0::{
@@ -62,8 +62,8 @@ pub mod pins {
     pub type GuardScl = Pin<Gpio27, FunctionI2C, PullUp>;
 }
 
-/// SI1145
-pub type GuardI2C = I2C<I2C1, (GuardSda, GuardScl), Controller>;
+// SI1145
+//pub type GuardI2C = I2C<I2C1, (GuardSda, GuardScl), Controller>;
 
 // Heartbeat LED
 pub type Heartbeat = Pin<HeartbeatPin, FunctionSio<SioOutput>, PullNone>;
@@ -94,7 +94,7 @@ pub type EjectorHC12 =
 pub mod packets {
     use tinyframe::reader::BufferedReader;
 
-    use super::{EjectorHC12, JupiterUart, RadioUart};
+    use super::EjectorHC12;
 
     /// Packet interface for the radio UART
     pub type RadioInterface = BufferedReader<EjectorHC12, 256>;

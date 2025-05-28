@@ -1,10 +1,8 @@
-use bin_packets::device::Device;
 use common::rbf::{ActiveHighRbf, NoRbf, RbfIndicator};
 
 use defmt::{info, warn};
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
-use embedded_io::Read;
 use fugit::RateExtU32;
 use hc12_rs::configuration::baudrates::B9600;
 use hc12_rs::configuration::{Channel, HC12Configuration, Power};
@@ -15,22 +13,15 @@ use rp235x_hal::clocks::init_clocks_and_plls;
 use rp235x_hal::gpio::PullNone;
 use rp235x_hal::pwm::Slices;
 use rp235x_hal::uart::{DataBits, StopBits, UartConfig, UartPeripheral};
-use rp235x_hal::{Clock, Sio, Watchdog, I2C};
+use rp235x_hal::{Clock, Sio, Watchdog};
 use rtic_monotonics::Monotonic;
 use tinyframe::reader::BufferedReader;
-use usb_device::bus::UsbBusAllocator;
-use usb_device::device::{StringDescriptors, UsbDeviceBuilder, UsbVidPid};
-use usbd_serial::SerialPort;
 
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
 use crate::device_constants::packets::RadioInterface;
-use crate::device_constants::pins::{CamMosfetPin, RBFPin, RadioProgrammingPin};
-use crate::device_constants::{
-    EjectionDetectionPin, EjectorHC12, GuardI2C, JupiterUart, RadioUart,
-};
-use crate::guard::si1145_sanity_check;
+use crate::device_constants::pins::{RBFPin, RadioProgrammingPin};
+use crate::device_constants::{EjectionDetectionPin, EjectorHC12, JupiterUart, RadioUart};
 use crate::hal;
-use crate::phases::EjectorStateMachine;
 use crate::{app::*, Mono};
 
 // Timestamp for logging
@@ -80,9 +71,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         .into_push_pull_output();
     led_pin.set_low().unwrap();
 
-    // Configure GPIOX as a cam output // Change later
-    let cam_pin: CamMosfetPin = bank0_pins.gpio3.reconfigure();
-
     let mut cam_led_pin = bank0_pins
         .gpio13
         .into_pull_type::<PullNone>()
@@ -106,9 +94,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         rbf_led_pin.set_high().unwrap();
         warn!("RBF inserted!");
     }
-
-    // Get clock frequency
-    let clock_freq = clocks.peripheral_clock.freq();
 
     let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
     let mut timer_two = timer;
@@ -215,39 +200,15 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     let gpio_detect: EjectionDetectionPin = bank0_pins.gpio21.reconfigure();
 
-    // Set up USB Device allocator
-    let usb_bus = UsbBusAllocator::new(hal::usb::UsbBus::new(
-        ctx.device.USB,
-        ctx.device.USB_DPRAM,
-        clocks.usb_clock,
-        true,
-        &mut ctx.device.RESETS,
-    ));
-    unsafe {
-        USB_BUS = Some(usb_bus);
-    }
-    #[allow(static_mut_refs)]
-    let usb_bus_ref = unsafe { USB_BUS.as_ref().unwrap() };
-
-    let serial = SerialPort::new(usb_bus_ref);
-    let usb_dev = UsbDeviceBuilder::new(usb_bus_ref, UsbVidPid(0x16c0, 0x27dd))
-        .strings(&[StringDescriptors::default()
-            .manufacturer("UAH TERMINUS PROGRAM")
-            .product("Canonical Toolchain USB Serial Port")
-            .serial_number("TEST")])
-        .unwrap()
-        .device_class(2)
-        .build();
-
     // SI1445 I2C
-    let guard_i2c: GuardI2C = I2C::i2c1(
-        ctx.device.I2C1,
-        bank0_pins.gpio26.reconfigure(),
-        bank0_pins.gpio27.reconfigure(),
-        100.kHz(),
-        &mut ctx.device.RESETS,
-        12.MHz(),
-    );
+    // let guard_i2c: GuardI2C = I2C::i2c1(
+    //     ctx.device.I2C1,
+    //     bank0_pins.gpio26.reconfigure(),
+    //     bank0_pins.gpio27.reconfigure(),
+    //     100.kHz(),
+    //     &mut ctx.device.RESETS,
+    //     12.MHz(),
+    // );
 
     info!("Peripherals initialized, spawning tasks");
 
@@ -259,11 +220,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     (
         Shared {
             downlink_packets: Deque::new(),
-            usb_device: usb_dev,
-            usb_serial: serial,
-            clock_freq_hz: clock_freq.to_Hz(),
-            state_machine: EjectorStateMachine::new(),
-            blink_status_delay_millis: 1000,
             ejector_time_millis: 0,
             suspend_packet_handler: false,
             radio,

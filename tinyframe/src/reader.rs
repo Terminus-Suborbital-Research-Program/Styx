@@ -1,6 +1,6 @@
 use bin_packets::packets::ApplicationPacket;
 use bincode::{config::standard, decode_from_slice};
-use defmt::{error, info};
+use defmt::error;
 use embedded_io::{Read, ReadReady};
 use heapless::Vec;
 
