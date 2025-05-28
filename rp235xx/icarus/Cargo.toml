@@ -67,6 +67,7 @@ minikalman = { version = "0.6.0", features = [
 wgs84 = { git = "https://github.com/MeechaelA/WGS84.git" }
 # Earth Atmosphere
 united_states_standard_atmosphere = { git = "https://github.com/MeechaelA/UnitedStatesStandardAtmosphere.git" }
+tinyframe = { version = "0.1.0", path = "../../tinyframe" }
 
 # Target features
 [features]

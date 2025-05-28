@@ -36,12 +36,24 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
     let radio = ctx.local.radio;
     loop {
-        while let Some(packet) = ctx.shared.data.lock(|buffer| buffer.pop_front()) {
-            if let Err(e) = radio.write(packet) {
-                error!("Could not send packet: {:?}", defmt::Debug2Format(&e));
+        if radio.waiting() > 0 {
+            while ctx.shared.data.lock(|data| data.len()) < 1 {
+                Mono::delay(100.millis()).await;
             }
-            // TODO: Test this duration stability
-            Mono::delay(50.millis()).await;
+        }
+
+        ctx.shared.data.lock(|data| {
+            while let Some(packet) = data.front() {
+                if radio.add(packet).is_ok() {
+                    let _ = data.pop_front();
+                }
+            }
+        });
+
+        if radio.waiting() > 0 {
+            let written = radio.write(32).unwrap_or(0) as u64;
+            Mono::delay((written / (9600 / 8)).secs()).await;
+            info!("Wrote {} bytes to the buffer", written);
         }
     }
 }
@@ -135,7 +147,7 @@ pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter
 
         ctx.shared.data.lock(|vec| vec.push_back(packet).ok());
 
-        Mono::delay(100.millis()).await;
+        Mono::delay(1000.millis()).await;
     }
 }
 

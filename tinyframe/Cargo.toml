@@ -1,0 +1,11 @@
+[package]
+name = "tinyframe"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bin-packets = { version = "0.1.2", path = "../bin-packets" }
+bincode = { version = "2.0.1", default-features = false }
+defmt = "1.0.1"
+embedded-io = { version = "0.6.1", features = ["defmt-03"] }
+heapless = { version = "0.8.0", features = ["defmt-03"] }

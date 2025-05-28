@@ -13,6 +13,7 @@ use rp235x_hal::{
     Clock, Sio, Watchdog, I2C,
 };
 use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
+use tinyframe::writer::BufferingWriter;
 
 use crate::{actuators::servo::Servo, device_constants::DownlinkBuffer};
 use crate::{
@@ -172,7 +173,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     timer_two.delay_ms(150);
     let hc = radio.into_fu3_mode().unwrap(); // Infallible
 
-    let interface: IcarusRadio = bin_packets::device::Device::new(hc);
+    let interface: IcarusRadio = BufferingWriter::new(hc);
 
     // Servo mosfets
     let mut flap_mosfet: FlapMosfet = pins.gpio2.into_function();

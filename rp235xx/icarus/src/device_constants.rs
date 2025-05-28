@@ -7,6 +7,7 @@ use rp235x_hal::{
     pac::{I2C0, I2C1},
     I2C,
 };
+use tinyframe::writer::BufferingWriter;
 
 use crate::{peripherals::async_i2c::AsyncI2c, phases::StateMachine};
 
@@ -158,7 +159,7 @@ pub type IcarusHC12 = HC12<
 >;
 
 /// Icarus HC12 Packet interface
-pub type IcarusRadio = Device<IcarusHC12, 256>;
+pub type IcarusRadio = BufferingWriter<IcarusHC12, 512>;
 
 /// A motor controller on a shared bus
 pub type ReactionWheelMotor = ();
