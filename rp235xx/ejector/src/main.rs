@@ -30,10 +30,8 @@ rp235x_timer_monotonic!(Mono);
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
     defmt::error!("Panic: {}", info);
-    loop {
-        // Halt the CPU
-        hal::halt();
-    }
+    // Halt the CPU
+    hal::halt();
 }
 
 /// Tell the Boot ROM about our application
@@ -46,17 +44,21 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
     dispatchers = [PIO2_IRQ_0, PIO2_IRQ_1, DMA_IRQ_0],
 )]
 mod app {
-    use crate::device_constants::packets::{JupiterInterface, RadioInterface};
+    use crate::device_constants::packets::RadioInterface;
     use crate::device_constants::pins::CamMosfetPin;
-    use crate::device_constants::{CamLED, EjectionDetectionPin, EjectorRbf, Heartbeat, RBFLED};
+    use crate::device_constants::{
+        CamLED, EjectionDetectionPin, EjectorRbf, Heartbeat, JupiterUart, RbfLed,
+    };
     use crate::{actuators::servo::EjectorServo, phases::EjectorStateMachine};
 
     use super::*;
 
+    use bin_packets::packets::ApplicationPacket;
     use bin_packets::time::Timestamp;
 
     use hal::gpio::{self};
 
+    use heapless::Deque;
     use rp235x_hal::uart::UartPeripheral;
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
@@ -76,6 +78,7 @@ mod app {
 
     #[shared]
     pub struct Shared {
+        pub downlink_packets: Deque<ApplicationPacket, 16>,
         pub usb_serial: SerialPort<'static, hal::usb::UsbBus>,
         pub usb_device: UsbDevice<'static, hal::usb::UsbBus>,
         pub clock_freq_hz: u32,
@@ -85,17 +88,16 @@ mod app {
         pub suspend_packet_handler: bool,
         pub radio: RadioInterface,
         pub rbf: EjectorRbf,
-        pub downlink: JupiterInterface,
         pub led: Heartbeat,
     }
 
     #[local]
     pub struct Local {
         pub ejector_servo: EjectorServo,
-        pub cams: CamMosfetPin,
         pub cams_led: CamLED,
-        pub rbf_led: RBFLED,
+        pub rbf_led: RbfLed,
         pub ejection_pin: EjectionDetectionPin,
+        pub downlink: JupiterUart,
     }
 
     #[init]
@@ -109,22 +111,17 @@ mod app {
         async fn ejector_sequencer(mut ctx: ejector_sequencer::Context);
 
         // Heartbeats the main led
-        #[task(shared = [blink_status_delay_millis, radio, downlink, ejector_time_millis, led], priority = 2)]
+        #[task(shared = [blink_status_delay_millis, radio, downlink_packets, ejector_time_millis, led], priority = 2)]
         async fn heartbeat(mut ctx: heartbeat::Context);
 
         // Reads incoming packets from the radio
-        #[task(shared = [radio, downlink, led], priority = 1)]
+        #[task(local = [downlink], shared = [radio, downlink_packets, led], priority = 3)]
         async fn radio_read(mut ctx: radio_read::Context);
 
         // Updates the radio module on the serial interrupt
         #[task(binds = UART1_IRQ, shared = [radio])]
         fn uart_interrupt(mut ctx: uart_interrupt::Context);
 
-        #[task(local = [cams, cams_led], shared = [ejector_time_millis, rbf], priority = 2)]
-        async fn start_cameras(mut ctx: start_cameras::Context);
-
-        #[task(local = [rbf_led], shared = [rbf], priority = 3)]
-        async fn rbf_monitor(mut ctx: rbf_monitor::Context);
     }
 
     /// Returns the current time in nanoseconds since power-on

@@ -506,6 +506,10 @@ dependencies = [
 name = "tinyframe"
 version = "0.1.0"
 dependencies = [
+ "bin-packets",
+ "bincode",
+ "defmt 1.0.1",
+ "embedded-io",
  "heapless",
 ]
 

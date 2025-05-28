@@ -4,23 +4,26 @@ use common::rbf::{ActiveHighRbf, NoRbf, RbfIndicator};
 use defmt::{info, warn};
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
+use embedded_io::Read;
 use fugit::RateExtU32;
 use hc12_rs::configuration::baudrates::B9600;
 use hc12_rs::configuration::{Channel, HC12Configuration, Power};
 use hc12_rs::device::IntoATMode;
 use hc12_rs::IntoFU3Mode;
+use heapless::Deque;
 use rp235x_hal::clocks::init_clocks_and_plls;
 use rp235x_hal::gpio::PullNone;
 use rp235x_hal::pwm::Slices;
 use rp235x_hal::uart::{DataBits, StopBits, UartConfig, UartPeripheral};
 use rp235x_hal::{Clock, Sio, Watchdog, I2C};
 use rtic_monotonics::Monotonic;
+use tinyframe::reader::BufferedReader;
 use usb_device::bus::UsbBusAllocator;
 use usb_device::device::{StringDescriptors, UsbDeviceBuilder, UsbVidPid};
 use usbd_serial::SerialPort;
 
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
-use crate::device_constants::packets::{JupiterInterface, RadioInterface};
+use crate::device_constants::packets::RadioInterface;
 use crate::device_constants::pins::{CamMosfetPin, RBFPin, RadioProgrammingPin};
 use crate::device_constants::{
     EjectionDetectionPin, EjectorHC12, GuardI2C, JupiterUart, RadioUart,
@@ -125,9 +128,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     )
     .unwrap();
 
-    // Packet interface to relay packets down
-    let jupiter_downlink: JupiterInterface = Device::new(jupiter_uart);
-
     // Pin setup for UART1
     let uart1_pins = (
         bank0_pins.gpio8.into_function(),
@@ -193,7 +193,8 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         }
     };
     let hc: EjectorHC12 = hc.into_fu3_mode().unwrap(); // Infallible
-    let radio: RadioInterface = Device::new(hc);
+
+    let radio: RadioInterface = BufferedReader::new(hc);
 
     // Servo
     let pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
@@ -239,7 +240,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         .build();
 
     // SI1445 I2C
-    let mut guard_i2c: GuardI2C = I2C::i2c1(
+    let guard_i2c: GuardI2C = I2C::i2c1(
         ctx.device.I2C1,
         bank0_pins.gpio26.reconfigure(),
         bank0_pins.gpio27.reconfigure(),
@@ -254,11 +255,10 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     heartbeat::spawn().ok();
     ejector_sequencer::spawn().ok();
     radio_read::spawn().ok();
-    start_cameras::spawn().ok();
-    rbf_monitor::spawn().ok();
 
     (
         Shared {
+            downlink_packets: Deque::new(),
             usb_device: usb_dev,
             usb_serial: serial,
             clock_freq_hz: clock_freq.to_Hz(),
@@ -268,13 +268,12 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             suspend_packet_handler: false,
             radio,
             rbf: NoRbf::new(),
-            downlink: jupiter_downlink,
             led: led_pin,
         },
         Local {
+            downlink: jupiter_uart,
             ejector_servo,
             ejection_pin: gpio_detect,
-            cams: cam_pin,
             cams_led: cam_led_pin,
             rbf_led: rbf_led_pin,
         },

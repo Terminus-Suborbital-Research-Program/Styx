@@ -1,87 +1,68 @@
-//! Simple framing “transcoder”: turn a raw byte stream into a sequence of
-//! [`TinyFrame`] packets, packed back-to-back into a destination buffer.
-//
-// NB: we *return the number of source bytes consumed*, not how many were
-// written, because a caller that hits the destination-full condition will
-// typically resume later with the *unread* tail of the source.
+use bin_packets::packets::ApplicationPacket;
+use bincode::{config::standard, encode_into_slice};
+use embedded_io::Write;
+use heapless::Vec;
 
-use crate::packets::{FrameError, TinyFrame};
+use crate::packets::TinyFrame;
 
-/// Transcodes `source` into `destination`, packetising it as `TinyFrame`s.
-///
-/// *Returns* the number of bytes **read** from `source`.  
-/// If `destination` fills before `source` is exhausted the function exits early;
-/// the caller can invoke it again with the remaining source tail.
-pub fn transcode_to_frames(source: &[u8], destination: &mut [u8]) -> usize {
-    let mut src_read = 0; // how many bytes we have consumed from `source`
-    let mut dst_filled = 0; // how many bytes we have produced into `destination`
-
-    while src_read < source.len() {
-        // Create a frame from the *remaining* chunk of the source.
-        let (frame, used) = TinyFrame::create_from_slice(&source[src_read..]);
-
-        // Try to encode into the *remaining* slice of the destination.
-        match frame.encode_into_slice(&mut destination[dst_filled..]) {
-            Ok(written) => {
-                src_read += used;
-                dst_filled += written;
-            }
-            // Most likely `UnexpectedEOF` – out of space in destination.
-            Err(FrameError::UnexpectedEOF) => break,
-            // Any other error means the frame itself is logically bad, but that
-            // should be impossible because `create_from_slice` always produces a
-            // self-consistent frame. Bubble the error up as a panic for debug
-            // builds; real code might return a `Result`.
-            Err(e) => panic!("transcode_stream: unexpected error: {e:?}"),
-        }
-    }
-
-    src_read
+/// A buffering writer that is created with a number of consumed items. Each call to `write` will
+/// write some of the stream downlinked.
+pub struct BufferingWriter<D: Write, const N: usize> {
+    device: D,
+    write_buffer: Vec<u8, N>,
 }
 
-#[cfg(test)]
-mod transcode_tests {
-    use super::*;
-    use crate::packets::{MAX_PACKET_LEN, SOF};
-
-    /// Helper that makes a deterministic “payload”
-    fn payload(n: usize) -> Vec<u8> {
-        (0..n).map(|i| i as u8).collect()
+impl<D: Write, const N: usize> BufferingWriter<D, N> {
+    pub fn new(device: D) -> Self {
+        Self {
+            device,
+            write_buffer: Vec::new(),
+        }
     }
 
-    #[test]
-    fn roundtrip_full_transcode() {
-        let src = payload(300);
+    /// Add a packet onto the writer. This will return an error if there is not enough room to add
+    /// the packet on.
+    pub fn add(&mut self, packet: &ApplicationPacket) -> Result<(), ()> {
+        let mut packet_buffer = [0u8; N];
 
-        // Destination big enough for worst-case: every 128-byte chunk becomes +5.
-        let mut dst = [0u8; (300 / MAX_PACKET_LEN + 2) * (MAX_PACKET_LEN + 5)];
+        let bytes = encode_into_slice(packet, &mut packet_buffer, standard()).unwrap_or(0);
+        let mut start = 0;
+        while start < bytes {
+            let (frame, used_for_frame) =
+                TinyFrame::create_from_slice(&packet_buffer[start..bytes]);
 
-        let read = transcode_to_frames(&src, &mut dst);
-        assert_eq!(read, src.len());
+            let mut frame_buffer = [0u8; 128 + 5];
+            let bytes_written = frame.encode_into_slice(&mut frame_buffer).unwrap();
+            start += used_for_frame;
 
-        // Decode packets back out and rebuild the original stream.
-        let mut recovered = Vec::<u8>::new();
-        let mut cursor = 0;
-        while cursor < dst.len() && dst[cursor] == SOF {
-            let need = dst[cursor + 1] as usize;
-            let (frame, consumed) =
-                crate::packets::TinyFrame::decode_from_slice(&dst[cursor..cursor + need]).unwrap();
-            cursor += consumed;
-            recovered.extend_from_slice(frame.data());
+            if self
+                .write_buffer
+                .extend_from_slice(&frame_buffer[0..bytes_written])
+                .is_err()
+            {
+                return Err(());
+            }
         }
 
-        assert_eq!(recovered[..src.len()], src[..]);
+        Ok(())
     }
 
-    #[test]
-    fn destination_full_consumes_only_first_frame() {
-        let src = payload(300);
-        // Buffer that fits *exactly one* 128-byte frame (+5 overhead).
-        let mut dst = [0u8; MAX_PACKET_LEN + 5];
+    /// Current number of bytes in buffer waiting to be written
+    pub fn waiting(&self) -> usize {
+        self.write_buffer.len()
+    }
 
-        let read = transcode_to_frames(&src, &mut dst);
-        assert_eq!(read, MAX_PACKET_LEN); // only first 128 bytes consumed
-        assert_eq!(dst[0], SOF); // packet really present
-        // Source tail (bytes 128..) remains unconsumed.
+    /// Write up to a certain number of bytes down the write buffer. This will block until all
+    /// bytes are written.
+    pub fn write(&mut self, max: usize) -> Result<usize, D::Error> {
+        let to_write = core::cmp::min(max, self.write_buffer.len());
+        self.device.write_all(&self.write_buffer[0..to_write])?;
+
+        self.write_buffer.rotate_left(to_write);
+        unsafe {
+            self.write_buffer
+                .set_len(self.write_buffer.len() - to_write);
+        }
+        Ok(to_write)
     }
 }

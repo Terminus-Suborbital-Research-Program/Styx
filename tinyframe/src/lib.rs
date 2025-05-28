@@ -1,6 +1,8 @@
 #![cfg_attr(not(test), no_std)]
 
+mod bincode;
 mod crc;
+pub mod reader;
 pub mod writer;
 
 pub mod packets {
@@ -11,9 +13,11 @@ pub mod packets {
     pub const MAX_PACKET_LEN: usize = 128;
     use core::ops::Not;
 
+    use defmt::Format;
+
     use crate::crc::crc16_ccitt_false;
 
-    #[derive(Clone, Copy, Debug)]
+    #[derive(Clone, Copy, Debug, Format)]
     pub struct TinyFrame {
         length: usize,
         /// Maximum of 256 bits
@@ -22,12 +26,12 @@ pub mod packets {
         checksum: u16,
     }
 
-    #[derive(Clone, Copy, Debug)]
+    #[derive(Clone, Copy, Debug, Format)]
     pub enum FrameError {
         /// Bad start condition
         BadStart,
         /// Bad header (length wrong or checksum failure)
-        BadHeader,
+        BadHeader { first: u8, checksum: u8 },
         /// Not enough bytes in the buffer
         UnexpectedEOF,
         /// Bad CRC value
@@ -118,7 +122,10 @@ pub mod packets {
 
             let needed_len = bytes[1] as usize;
             if needed_len as u8 != bytes[2].not() {
-                return Err(FrameError::BadHeader);
+                return Err(FrameError::BadHeader {
+                    first: bytes[1],
+                    checksum: bytes[2],
+                });
             }
 
             // Check if enough bytes
@@ -203,13 +210,11 @@ pub mod packets {
         }
 
         #[test]
+        #[should_panic]
         fn decode_rejects_bad_header() {
             // 0x01 start, declared length 10, third byte *not* the complement of 10
             let bogus_header = [SOF, 10u8, 10u8];
-            matches!(
-                TinyFrame::decode_from_slice(&bogus_header),
-                Err(FrameError::BadHeader)
-            );
+            let _ = TinyFrame::decode_from_slice(&bogus_header).unwrap();
         }
 
         #[test]

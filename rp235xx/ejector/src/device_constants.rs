@@ -17,8 +17,8 @@ use common::rbf::NoRbf;
 pub mod pins {
     use rp235x_hal::gpio::{
         bank0::{
-            Gpio13, Gpio15, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio25, Gpio26, Gpio27,
-            Gpio3, Gpio8, Gpio9,
+            Gpio13, Gpio15, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio25, Gpio26, Gpio27, Gpio3,
+            Gpio8, Gpio9,
         },
         FunctionI2C, FunctionSio, FunctionUart, Pin, PullDown, PullUp, SioInput, SioOutput,
     };
@@ -72,7 +72,7 @@ pub type Heartbeat = Pin<HeartbeatPin, FunctionSio<SioOutput>, PullNone>;
 pub type CamLED = Pin<CamLEDPin, FunctionSio<SioOutput>, PullNone>;
 
 // Camera LED
-pub type RBFLED = Pin<RBFLEDPin, FunctionSio<SioOutput>, PullNone>;
+pub type RbfLed = Pin<RBFLEDPin, FunctionSio<SioOutput>, PullNone>;
 
 /// Ejection detection pin
 pub type EjectionDetectionPin = Pin<EjectionPin, FunctionSio<SioInput>, PullDown>;
@@ -92,11 +92,10 @@ pub type EjectorHC12 =
     HC12<RadioUart, ProgrammingPair<RadioProgrammingPin, Timer<CopyableTimer1>>, FU3<B9600>, B9600>;
 
 pub mod packets {
-    use super::{EjectorHC12, JupiterUart};
+    use tinyframe::reader::BufferedReader;
+
+    use super::{EjectorHC12, JupiterUart, RadioUart};
 
     /// Packet interface for the radio UART
-    pub type RadioInterface = bin_packets::device::Device<EjectorHC12, 256>;
-
-    /// Packet interface for the downlink UART to JUPITER
-    pub type JupiterInterface = bin_packets::device::Device<JupiterUart, 256>;
+    pub type RadioInterface = BufferedReader<EjectorHC12, 256>;
 }

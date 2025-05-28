@@ -247,6 +247,7 @@ dependencies = [
  "rtic",
  "rtic-monotonics",
  "rtic-sync",
+ "tinyframe",
  "usb-device",
  "usbd-serial",
 ]
@@ -530,6 +531,7 @@ dependencies = [
  "rtic",
  "rtic-monotonics",
  "rtic-sync",
+ "tinyframe",
  "united_states_standard_atmosphere",
  "uom",
  "usb-device",
@@ -1096,6 +1098,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.101",
+]
+
+[[package]]
+name = "tinyframe"
+version = "0.1.0"
+dependencies = [
+ "bin-packets",
+ "bincode",
+ "defmt 1.0.1",
+ "embedded-io",
+ "heapless",
 ]
 
 [[package]]
