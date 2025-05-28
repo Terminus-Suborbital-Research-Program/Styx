@@ -510,7 +510,6 @@ impl<'a> I2cSlave<'a> {
         self.arm();
 
         
-
         // Read I2C in blocking mode
         let result: Result<(), I2CSlaveError> = loop {
             if self.int_flag.load(Ordering::SeqCst) {
@@ -553,6 +552,7 @@ impl<'a> I2cSlave<'a> {
                                     .set_bit()
                             });
                         }
+
 
                         self.int_flag.store(false, Ordering::SeqCst);
                     }
