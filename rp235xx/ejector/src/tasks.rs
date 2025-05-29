@@ -38,7 +38,10 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 
 pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
     let downlink = ctx.local.downlink;
-    Mono::delay(JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs()).await; // Delay to avoid interference with JUPITER bootloader                                                             // Drain all available packets, one per lock to allow interruption
+    // Delay to avoid interference with JUPITER bootloader
+    Mono::delay(JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs()).await;
+
+    // Drain all available packets, one per lock to allow interruption
     let mut buffer = [0u8; 256];
     loop {
         ctx.shared.radio.lock(|x| {
@@ -49,7 +52,7 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
             }
 
             if !x.packet_buffer().is_empty() {
-                debug!("Buffer: {}", x.frame_buffer());
+                debug!("Buffer: {}", x.packet_buffer());
             }
 
             for packet in x {
@@ -66,7 +69,7 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
             }
         });
 
-        Mono::delay(100.micros()).await;
+        Mono::delay(100.millis()).await;
     }
 }
 
