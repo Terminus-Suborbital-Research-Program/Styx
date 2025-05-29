@@ -13,8 +13,8 @@ pub enum ApplicationPacket {
     Command(CommandPacket),
     Status(Status),
     VoltageData {
-        timestamp: [u64; 4],
-        voltage: [f32; 4],
+        timestamp: u64,
+        voltage: [f32; 3],
     },
     PowerData {
         timestamp: [u64; 4],

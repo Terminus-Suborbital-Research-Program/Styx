@@ -155,26 +155,25 @@ pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter
     ctx.local.ina260_4.set_operating_mode(ina260_terminus::OperMode::SCBVC).await;
 
     loop {
-        let ina_samples = ina_data_handle(ctx.local.ina260_1, ctx.local.ina260_2, ctx.local.ina260_3, ctx.local.ina260_4).await;
-        ctx.shared.data.lock(|data|{
-            let voltages_packet = ApplicationPacket::VoltageData { timestamp: ina_samples.0.0, voltage: ina_samples.1.0};
-            let current_packet = ApplicationPacket::CurrentData { timestamp: ina_samples.0.1, current: ina_samples.1.1};
-            let power_packet = ApplicationPacket::PowerData { timestamp: ina_samples.0.2, power: ina_samples.1.2};
-            info!("Voltage Packet: {}", voltages_packet);
-            info!("Current Packet: {}", current_packet);
-            info!("Power Packet: {}", power_packet);
-            if data.is_full(){
-                data.pop_back();
-                data.pop_back();
-                data.pop_back();
-            }
-            else{
-                data.push_back(voltages_packet);
-                data.push_back(current_packet);
-                data.push_back(power_packet);
-            }
-        });
-        Mono::delay(250.millis()).await;
+        let items = join!(
+            ctx.local.ina260_1.voltage(),
+            ctx.local.ina260_2.voltage(),
+            ctx.local.ina260_3.voltage()
+        );
+        let voltages = [
+            items.0.unwrap_or(f32::NAN),
+            items.1.unwrap_or(f32::NAN),
+            items.2.unwrap_or(f32::NAN),
+        ];
+
+        let packet = ApplicationPacket::VoltageData {
+            timestamp: epoch_ns(),
+            voltage: voltages,
+        };
+
+        ctx.shared.data.lock(|vec| vec.push_back(packet).ok());
+
+        Mono::delay(1000.millis()).await;
     }
 }
 
@@ -194,7 +193,7 @@ pub async fn sample_sensors(
     ctx.local.bmm350.set_power_mode(bmm350::PowerMode::Normal).await;
     ctx.local.bmm350.set_mag_config(mag_config.build()).await;
 
- Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
+    Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
     let bmi323_init_result = ctx.local.bmi323.init().await;
     match bmi323_init_result{
         Ok(_)=>{
@@ -204,22 +203,8 @@ pub async fn sample_sensors(
             error!("BMI Unininitialized");
         }
     }
-
-
     Mono::delay(10_u64.millis()).await;
-
-
     loop {
-        let bmm350_init_result = ctx.local.bmm350.init().await;
-        match bmm350_init_result{
-            Ok(_)=>{
-                info!("BMM Initialized");
-            }
-            Err(_)=>{
-                error!("BMM Unininitialized");
-            }
-        }
-
         let sample_result = ctx.local.bme280.read_sample().await;
         match sample_result {
             Ok(sample) => {
@@ -234,28 +219,7 @@ pub async fn sample_sensors(
                 info!("BMI: {}", i2c_error);
             }
         }
-        let gyro_result = ctx.local.bmi323.read_gyro_data_scaled().await;
-        match gyro_result{
-            Ok(gyro)=>{
-                info!("Gyro: {}, {}, {}", gyro.x, gyro.y, gyro.z);
-            }
-            Err(i2c_error)=>{
-                info!("BMI: {}", i2c_error);
-            }
-        }
-        let mag_result = ctx.local.bmm350.read_mag_data_scaled().await;
-        match mag_result{
-            Ok(mag)=>{
-                info!("Mag: {}, {}, {}", mag.x, mag.y, mag.z);
-            }
-            Err(i2c_error)=>{
-                info!("BMM: {}", i2c_error);
-            }        }
-        let env = ctx.local.bme280.sample().await;
-        info!("Temperature: {}", env.1);
-        info!("Pressure: {}", env.2);
-        info!("Humidity: {}", env.3);
-        Mono::delay(100_u64.millis()).await;
+        Mono::delay(250_u64.millis()).await;
     }
 }
 
