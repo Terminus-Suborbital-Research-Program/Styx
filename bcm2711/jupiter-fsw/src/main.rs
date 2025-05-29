@@ -39,9 +39,7 @@ fn main() {
     let ejection_pin: WritePin = Pin::new(EJECTION_IND_PIN).into();
     ejection_pin.write(false).unwrap();
 
-    let atmega = LinuxI2CDevice::new("/dev/i2c-1", 0x26u16).unwrap();
-
-    let atmega = Atmega::new(atmega);
+    let atmega = Atmega::new(LinuxI2CDevice::new("/dev/i2c-1", 0x26u16).unwrap());
 
     let rbf = RbfTask::new(rbf_pin).spawn(100);
 
