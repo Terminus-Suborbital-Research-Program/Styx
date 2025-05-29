@@ -2,3 +2,4 @@
 
 pub mod indicators;
 pub mod rbf;
+pub mod battery_state;
