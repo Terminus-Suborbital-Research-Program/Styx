@@ -42,7 +42,11 @@ fn main() {
     let mut atmega = LinuxI2CDevice::new("/dev/i2c-1", 0x26u16).unwrap();
 
     info!("I2c Read: {:?}", atmega.smbus_read_byte());
-    let atmega = Atmega::new(atmega);
+    let mut atmega = Atmega::new(atmega);
+    info!(
+        "Latch: {:?}",
+        atmega.set_battery_latch(common::battery_state::BatteryState::LatchOn)
+    );
 
     let rbf = RbfTask::new(rbf_pin).spawn(100);
 
