@@ -14,6 +14,20 @@ pub struct IndicatorStates {
     te3: PinState,
 }
 
+impl Default for IndicatorStates {
+    fn default() -> Self {
+        Self {
+            gse1: false.into(),
+            gse2: false.into(),
+            te_ra: false.into(),
+            te_rb: false.into(),
+            te1: false.into(),
+            te2: false.into(),
+            te3: false.into(),
+        }
+    }
+}
+
 impl IndicatorStates {
     /// GSE-1 value
     pub fn gse1(&self) -> PinState {

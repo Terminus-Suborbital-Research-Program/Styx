@@ -2,12 +2,11 @@ use bin_packets::phases::JupiterPhase;
 
 use crate::{
     gpio::write::WritePin,
-    tasks::{Atmega, IndicatorsReader, RbfReader},
+    tasks::{Atmega, RbfReader},
     timing::t_time_estimate,
 };
 
 pub struct StateContext {
-    pub pins: IndicatorsReader,
     pub t_time: i32,
     pub ejection_pin: WritePin,
     pub rbf: RbfReader,
@@ -15,14 +14,8 @@ pub struct StateContext {
 }
 
 impl StateContext {
-    pub fn new(
-        pins: IndicatorsReader,
-        atmega: Atmega,
-        ejection_pin: WritePin,
-        rbf: RbfReader,
-    ) -> Self {
+    pub fn new(atmega: Atmega, ejection_pin: WritePin, rbf: RbfReader) -> Self {
         Self {
-            pins,
             t_time: t_time_estimate(),
             ejection_pin,
             rbf,
