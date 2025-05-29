@@ -13,6 +13,7 @@ use crate::timing::t_time_estimate;
 
 /// Internal task for running the actual camera task information
 fn camera_task() -> ! {
+    let mut fail_count = 0;
     // Wait until after the delay
     while t_time_estimate() < -30 {
         sleep(Duration::from_millis(1000));
@@ -57,7 +58,12 @@ fn camera_task() -> ! {
         // Run until completion, and then restart
         cmd.wait().ok();
         error!("Camera thread ended unexpectedly!");
-        std::thread::sleep(Duration::from_millis(1000));
+        fail_count += 1;
+        std::thread::sleep(Duration::from_millis(if fail_count < 10 {
+            1000
+        } else {
+            10_000
+        }));
     }
 }
 

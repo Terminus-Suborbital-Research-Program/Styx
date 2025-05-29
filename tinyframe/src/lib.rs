@@ -40,19 +40,16 @@ pub mod packets {
 
     impl TinyFrame {
         /// Checksum of contained data
-        #[inline(always)]
         fn checksum(&self) -> u16 {
-            crc16_ccitt_false(&self.data[..self.length])
+            crc16_ccitt_false(&self.data)
         }
 
         /// Length of the frame
-        #[inline(always)]
         pub fn frame_length(&self) -> usize {
             self.length
         }
 
         /// Frame data
-        #[inline(always)]
         pub fn data(&self) -> &[u8] {
             &self.data[0..self.length]
         }

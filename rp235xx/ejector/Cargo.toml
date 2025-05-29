@@ -7,11 +7,11 @@ build = "build.rs"
 [dependencies]
 # HAL for the RP350X architecture
 rp235x-hal = { version = "*", features = [
-    "binary-info",
-    "critical-section-impl",
-    "rt",
-    "defmt",
-    "rtic-monotonic",
+  "binary-info",
+  "critical-section-impl",
+  "rt",
+  "defmt",
+  "rtic-monotonic",
 ], optional = true }
 # Rust safe bindings to register-level control
 embedded-hal = "*"
@@ -33,7 +33,7 @@ defmt = "*"
 defmt-rtt = "*"
 heapless = "*"
 bincode = { version = "2.0.0-rc.3", features = [
-    "derive",
+  "derive",
 ], default-features = false }
 
 # Packets
@@ -46,7 +46,8 @@ tinyframe = { version = "0.1.0", path = "../../tinyframe" }
 [features]
 default = ["rp2350"]
 rp2350 = [
-    "dep:rp235x-hal",
-    "rtic-monotonics/rp235x",
-    "rtic/thumbv8main-backend",
+  "dep:rp235x-hal",
+  "rtic-monotonics/rp235x",
+  "rtic/thumbv8main-backend",
 ]
+fast-startup = []

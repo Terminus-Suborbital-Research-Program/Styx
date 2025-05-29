@@ -56,7 +56,6 @@ impl<D: Read + ReadReady, const N: usize> BufferedReader<D, N> {
                         _ => {
                             // Any other is  a failure
                             self.incoming_frame_buffer.remove(0);
-                            error!("Decoding error on frame! {}", e);
                         }
                     }
                 }
