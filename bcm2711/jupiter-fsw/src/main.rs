@@ -42,6 +42,7 @@ fn main() {
     let mut atmega = LinuxI2CDevice::new("/dev/i2c-1", 0x26u16).unwrap();
 
     info!("I2c Read: {:?}", atmega.smbus_read_byte());
+    let atmega = Atmega::new(atmega);
 
     let rbf = RbfTask::new(rbf_pin).spawn(100);
 
@@ -52,11 +53,7 @@ fn main() {
 
     info!("RBF At Boot: {}", rbf.read());
 
-    let mut state_machine = JupiterStateMachine::new(
-        Atmega::new(LinuxI2CDevice::new("/dev/i2c-1", 0x26u16).unwrap()),
-        ejection_pin,
-        rbf.clone(),
-    );
+    let mut state_machine = JupiterStateMachine::new(atmega, ejection_pin, rbf.clone());
 
     loop {
         while let Some(packet) = interface.read() {
