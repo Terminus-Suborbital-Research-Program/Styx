@@ -130,19 +130,19 @@ pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter
 
     loop {
         let items = join!(
-            ctx.local.ina260_1.current(),
-            ctx.local.ina260_2.current(),
-            ctx.local.ina260_3.current()
+            ctx.local.ina260_1.voltage(),
+            ctx.local.ina260_2.voltage(),
+            ctx.local.ina260_3.voltage()
         );
-        let currents = [
-            items.0.unwrap_or(0.0),
-            items.1.unwrap_or(0.0),
-            items.2.unwrap_or(0.0),
+        let voltages = [
+            items.0.unwrap_or(f32::NAN),
+            items.1.unwrap_or(f32::NAN),
+            items.2.unwrap_or(f32::NAN),
         ];
 
-        let packet = ApplicationPacket::CurrentData {
+        let packet = ApplicationPacket::VoltageData {
             timestamp: epoch_ns(),
-            currrent: currents,
+            voltage: voltages,
         };
 
         ctx.shared.data.lock(|vec| vec.push_back(packet).ok());
@@ -197,7 +197,7 @@ pub async fn sample_sensors(
         }
     }
 
- Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
+    Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
     let bmi323_init_result = ctx.local.bmi323.init().await;
     match bmi323_init_result{
         Ok(_)=>{
@@ -207,22 +207,8 @@ pub async fn sample_sensors(
             error!("BMI Unininitialized");
         }
     }
-
-
     Mono::delay(10_u64.millis()).await;
-
-
     loop {
-        let bmm350_init_result = ctx.local.bmm350.init().await;
-        match bmm350_init_result{
-            Ok(_)=>{
-                info!("BMM Initialized");
-            }
-            Err(_)=>{
-                error!("BMM Unininitialized");
-            }
-        }
-
         let sample_result = ctx.local.bme280.read_sample().await;
         match sample_result {
             Ok(sample) => {
@@ -237,7 +223,6 @@ pub async fn sample_sensors(
                 error!("I2C Error: {}", i2c_error)
             }
         }
-
         Mono::delay(250_u64.millis()).await;
     }
 }

@@ -14,6 +14,10 @@ use crate::commands::CommandPacket;
 pub enum ApplicationPacket {
     Command(CommandPacket),
     Status(Status),
+    VoltageData {
+        timestamp: u64,
+        voltage: [f32; 3],
+    },
     PowerData {
         name: u16,
         time_stamp: u64,
