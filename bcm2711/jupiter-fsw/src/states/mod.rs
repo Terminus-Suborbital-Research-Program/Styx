@@ -13,7 +13,7 @@ pub use power_on::*;
 
 use crate::{
     gpio::write::WritePin,
-    tasks::{IndicatorsReader, RbfReader},
+    tasks::{Atmega, IndicatorsReader, RbfReader},
     timing::t_time_estimate,
 };
 
@@ -25,10 +25,10 @@ pub struct JupiterStateMachine {
 
 impl JupiterStateMachine {
     /// Create a new state machine from a pin provider
-    pub fn new(pins: IndicatorsReader, ej_pin: WritePin, rbf: RbfReader) -> Self {
+    pub fn new(pins: IndicatorsReader, atmega: Atmega, ej_pin: WritePin, rbf: RbfReader) -> Self {
         Self {
             state: Box::new(PowerOn::default()),
-            context: StateContext::new(pins, ej_pin, rbf),
+            context: StateContext::new(pins, atmega, ej_pin, rbf),
         }
     }
 

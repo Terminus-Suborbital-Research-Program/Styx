@@ -1,4 +1,5 @@
 use bin_packets::phases::JupiterPhase;
+use common::battery_state::BatteryState;
 use embedded_hal::digital::PinState;
 use log::{info, warn};
 
@@ -29,6 +30,9 @@ impl ValidState for PowerOn {
             Box::new(MainCam::default())
         } else {
             // Stay in power on
+            ctx.atmega
+                .set_battery_latch(BatteryState::LatchOff)
+                .unwrap();
             Box::new(PowerOn::default())
         }
     }
