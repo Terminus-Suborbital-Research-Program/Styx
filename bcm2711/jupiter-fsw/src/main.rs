@@ -39,9 +39,8 @@ fn main() {
     let ejection_pin: WritePin = Pin::new(EJECTION_IND_PIN).into();
     ejection_pin.write(false).unwrap();
 
-    let mut atmega = LinuxI2CDevice::new("/dev/i2c-1", 0x26u16).unwrap();
+    let atmega = LinuxI2CDevice::new("/dev/i2c-1", 0x26u16).unwrap();
 
-    info!("I2c Read: {:?}", atmega.smbus_read_byte());
     let mut atmega = Atmega::new(atmega);
     info!(
         "Latch: {:?}",
