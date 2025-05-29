@@ -27,9 +27,7 @@ impl ValidState for PowerOn {
             Box::new(Launch::default())
         } else {
             // Stay in power on
-            ctx.atmega
-                .set_battery_latch(BatteryState::LatchOff)
-                .unwrap();
+            ctx.atmega.set_battery_latch(BatteryState::LatchOn).unwrap();
             Box::new(PowerOn::default())
         }
     }
