@@ -9,11 +9,11 @@ use atmega_hal::{
     usart::{Baudrate, Usart},
 };
 
-use common::indicators::IndicatorBuilder;
 use common::battery_state::BatteryState;
+use common::indicators::IndicatorBuilder;
 use i2c_slave::*;
 use panic_halt as _;
-use ufmt::{uwriteln, uwrite};
+use ufmt::{uwrite, uwriteln};
 
 type CoreClock = MHz16;
 
@@ -77,23 +77,20 @@ fn main() -> ! {
     let mut read_buf: [u8; 2] = [0u8; 2];
 
     loop {
-        
         let pins = IndicatorBuilder::new()
-                    .gse1(gse1.is_high())
-                    .gse2(gse2.is_high())
-                    .te_ra(te_ra.is_high())
-                    .te_rb(te_rb.is_high())
-                    .te1(te_1.is_high())
-                    .te2(te_2.is_high())
-                    .te3(te_3.is_high())
-                    .build();
+            .gse1(gse1.is_high())
+            .gse2(gse2.is_high())
+            .te_ra(te_ra.is_high())
+            .te_rb(te_rb.is_high())
+            .te1(te_1.is_high())
+            .te2(te_2.is_high())
+            .te3(te_3.is_high())
+            .build();
         write_buf[0] = pins.into();
-
 
         match i2c_slave.transact(&mut read_buf, &mut write_buf) {
             Ok(()) => {
                 match BatteryState::from(read_buf[1]) {
-
                     BatteryState::LatchOn => {
                         battery_latch.set_high();
                         uwriteln!(serial, "Set High").ok();
@@ -107,16 +104,13 @@ fn main() -> ! {
                         uwriteln!(serial, "Set Low").ok();
                     }
 
-                    BatteryState::Neutral => {
-
-                    }
+                    BatteryState::Neutral => {}
                 }
             }
 
             Err(err) => {
                 uwriteln!(serial, "Response Error: {:?}", err).ok();
             }
-            
         }
 
         for b in read_buf {

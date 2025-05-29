@@ -1,10 +1,8 @@
-
 pub enum BatteryState {
     LatchOff,
     LatchOn,
     Neutral,
 }
-
 
 impl From<u8> for BatteryState {
     fn from(value: u8) -> Self {
@@ -31,3 +29,4 @@ impl From<BatteryState> for u8 {
         }
     }
 }
+
