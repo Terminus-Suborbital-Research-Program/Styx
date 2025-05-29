@@ -9,7 +9,7 @@ use env_logger::Env;
 use gpio::{Pin, read::ReadPin, write::WritePin};
 use i2cdev::{core::I2CDevice, linux::LinuxI2CDevice};
 use states::JupiterStateMachine;
-use tasks::{Atmega, IndicatorsReader, spawn_camera_thread};
+use tasks::{Atmega, spawn_camera_thread};
 
 mod constants;
 mod data;
