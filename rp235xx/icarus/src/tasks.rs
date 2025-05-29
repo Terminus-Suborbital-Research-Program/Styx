@@ -197,7 +197,32 @@ pub async fn sample_sensors(
         }
     }
 
+ Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
+    let bmi323_init_result = ctx.local.bmi323.init().await;
+    match bmi323_init_result{
+        Ok(_)=>{
+            info!("BMI Initialized");
+        }
+        Err(_)=>{
+            error!("BMI Unininitialized");
+        }
+    }
+
+
+    Mono::delay(10_u64.millis()).await;
+
+
     loop {
+        let bmm350_init_result = ctx.local.bmm350.init().await;
+        match bmm350_init_result{
+            Ok(_)=>{
+                info!("BMM Initialized");
+            }
+            Err(_)=>{
+                error!("BMM Unininitialized");
+            }
+        }
+
         let sample_result = ctx.local.bme280.read_sample().await;
         match sample_result {
             Ok(sample) => {

@@ -39,6 +39,7 @@ use hc12_rs::{
 use bme280_rs::AsyncBme280;
 use bmi323::AsyncBMI323;
 use ina260_terminus::AsyncINA260;
+use bmm350::AsyncBMM350;
 
 // Logs our time for demft
 defmt::timestamp!("{=u64:us}", { epoch_ns() });
@@ -247,6 +248,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     // let mut delay_here = hal::Timer::new_timer1(pac.TIMER1, &mut pac.RESETS, &clocks);
 
     // Initialize Avionics Sensors
+    let bmm350 = AsyncBMM350::new(ArbiterDevice::new(avionics_i2c_arbiter), 0x14, Mono);
     let bmi323 = AsyncBMI323::new(ArbiterDevice::new(avionics_i2c_arbiter), 0x69, Mono);
     let bme280 = AsyncBme280::new(ArbiterDevice::new(avionics_i2c_arbiter), Mono);
 
@@ -278,7 +280,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     heartbeat::spawn().ok();
     mode_sequencer::spawn().ok();
     ina_sample::spawn(motor_i2c_arbiter).ok();
-    //sample_sensors::spawn(avionics_i2c_arbiter).ok();
+    sample_sensors::spawn(avionics_i2c_arbiter).ok();
     inertial_nav::spawn().ok();
     radio_send::spawn().ok();
     info!("Tasks spawned!");
@@ -289,6 +291,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             flap_servo,
             relay_servo,
             led: led_pin,
+            bmm350,
             bmi323,
             bme280,
             ina260_1,

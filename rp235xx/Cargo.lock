@@ -108,6 +108,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bmm350"
+version = "0.1.0"
+dependencies = [
+ "cast",
+ "defmt 1.0.1",
+ "embedded-hal 1.0.0",
+ "embedded-hal-async",
+]
+
+[[package]]
 name = "byteorder"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -512,6 +522,7 @@ dependencies = [
  "bincode",
  "bme280-rs",
  "bmi323",
+ "bmm350",
  "cortex-m",
  "defmt 1.0.1",
  "defmt-rtt",
