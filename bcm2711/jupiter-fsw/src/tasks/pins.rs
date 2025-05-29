@@ -63,7 +63,22 @@ impl Atmega {
     }
 
     /// Write a battery state to the device
-    pub fn set_battery_latch(&mut self, latch_state: BatteryState) -> Result<(), IndicatorError> {
+    fn set_battery_latch(&mut self, latch_state: BatteryState) -> Result<(), IndicatorError> {
         self.write_reg0(latch_state.into())
+    }
+
+    /// Activate Latch
+    pub fn activate_latch(&mut self) {
+        self.set_battery_latch(BatteryState::LatchOn).ok();
+    }
+
+    /// Idle latch
+    pub fn idle_latch(&mut self) {
+        self.set_battery_latch(BatteryState::Neutral).ok();
+    }
+
+    /// Send the battery latch low
+    pub fn deactivate_latch(&mut self) {
+        self.set_battery_latch(BatteryState::LatchOff).ok();
     }
 }

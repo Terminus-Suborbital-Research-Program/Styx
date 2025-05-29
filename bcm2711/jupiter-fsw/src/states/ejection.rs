@@ -19,7 +19,7 @@ impl ValidState for Ejection {
             PinState::High => {
                 // Low power warning, go to battery power
                 log::info!("Received LV shutoff signal, triggering battery power");
-                warn!("ATMEGA latch not implemented yet");
+                ctx.atmega.activate_latch();
                 Box::new(BatteryPower::default())
             }
 

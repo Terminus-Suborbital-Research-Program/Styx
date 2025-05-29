@@ -99,7 +99,7 @@ fn main() -> ! {
                     BatteryState::LatchOff => {
                         // Wait 30 seconds and then latch off
                         // TE 2 is 30 second warning before sutdown
-                        delay_ms(30_000);
+                        // delay_ms(30_000);
                         battery_latch.set_low();
                         uwriteln!(serial, "Set Low").ok();
                     }
