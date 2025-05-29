@@ -3,11 +3,9 @@ use common::battery_state::BatteryState;
 use embedded_hal::digital::PinState;
 use log::{info, warn};
 
-use crate::states::main_cam::MainCam;
+use crate::states::main_cam::Launch;
 
 use super::traits::{StateContext, ValidState};
-
-static MAIN_CAM_T_TIME: i32 = -30;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct PowerOn {}
@@ -18,16 +16,15 @@ impl ValidState for PowerOn {
     }
 
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
-        if ctx.pins.read().te1() == PinState::High {
+        if ctx.atmega.pins().unwrap_or_default().te1() == PinState::High {
             // Crap, we have late power on for some reason
             warn!("Late power on: TE1 is high. Emergency transition to MainCamStart");
-            return Box::new(MainCam::default());
+            return Box::new(Launch::default());
         }
 
-        if ctx.t_time > MAIN_CAM_T_TIME {
-            // Go to main cam start
-            info!("Starting main cam");
-            Box::new(MainCam::default())
+        if ctx.t_time > 0 {
+            info!("Launch!");
+            Box::new(Launch::default())
         } else {
             // Stay in power on
             ctx.atmega

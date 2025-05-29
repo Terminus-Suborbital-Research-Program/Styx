@@ -43,7 +43,6 @@ fn main() {
 
     info!("I2c Read: {:?}", atmega.smbus_read_byte());
 
-    let pins = IndicatorsReader::new(atmega);
     let rbf = RbfTask::new(rbf_pin).spawn(100);
 
     // Main camera
@@ -54,7 +53,6 @@ fn main() {
     info!("RBF At Boot: {}", rbf.read());
 
     let mut state_machine = JupiterStateMachine::new(
-        pins,
         Atmega::new(LinuxI2CDevice::new("/dev/i2c-1", 0x26u16).unwrap()),
         ejection_pin,
         rbf.clone(),

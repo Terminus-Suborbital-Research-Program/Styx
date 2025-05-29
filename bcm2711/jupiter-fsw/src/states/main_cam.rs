@@ -7,17 +7,18 @@ use super::{
 };
 
 #[derive(Debug, Clone, Copy, Default)]
-pub struct MainCam {}
+pub struct Launch {}
 
-impl ValidState for MainCam {
+impl ValidState for Launch {
     fn phase(&self) -> JupiterPhase {
         JupiterPhase::MainCamStart
     }
 
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
-        match ctx.pins.read().te1() {
-            PinState::High =>  Box::new(SkirtSeperation::enter()),
-            PinState::Low => Box::new(Self::default())
+        match ctx.atmega.pins().unwrap_or_default().te1() {
+            PinState::High => Box::new(SkirtSeperation::enter()),
+            PinState::Low => Box::new(Self::default()),
         }
     }
 }
+

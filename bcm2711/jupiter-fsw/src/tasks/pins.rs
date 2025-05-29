@@ -14,29 +14,7 @@ use common::{
     indicators::{IndicatorStates, MalformedIndicatorError},
 };
 
-#[derive(Clone)]
-pub struct IndicatorsReader {
-    pin_states: Arc<Mutex<IndicatorStates>>,
-}
-
 static ATMEGA_ONCE: Once = Once::new();
-impl IndicatorsReader {
-    pub fn new<T: Into<Atmega>>(atmega: T) -> Self {
-        let pins = Arc::new(Mutex::new(IndicatorStates::none()));
-        let c = pins.clone();
-        let atmega = atmega.into();
-        ATMEGA_ONCE.call_once(|| {
-            std::thread::spawn(move || {
-                pin_states_thread(atmega, c);
-            });
-        });
-        Self { pin_states: pins }
-    }
-
-    pub fn read(&self) -> IndicatorStates {
-        *self.pin_states.lock().unwrap()
-    }
-}
 
 /// ATMega abstraction
 pub struct Atmega {
@@ -87,23 +65,5 @@ impl Atmega {
     /// Write a battery state to the device
     pub fn set_battery_latch(&mut self, latch_state: BatteryState) -> Result<(), IndicatorError> {
         self.write_reg0(latch_state.into())
-    }
-}
-
-fn pin_states_thread(mut atmega: Atmega, pins: Arc<Mutex<IndicatorStates>>) -> ! {
-    loop {
-        match atmega.pins() {
-            Ok(new_pins) => {
-                let mut pin_states = pins.lock().unwrap();
-                debug!("New pin states: {new_pins:?}");
-                *pin_states = new_pins;
-            }
-
-            Err(e) => {
-                warn!("Error reading pins: {e:?}");
-            }
-        }
-
-        std::thread::sleep(Duration::from_millis(100));
     }
 }
