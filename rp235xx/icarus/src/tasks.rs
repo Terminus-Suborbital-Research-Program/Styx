@@ -194,11 +194,41 @@ pub async fn sample_sensors(
     ctx.local.bmm350.set_power_mode(bmm350::PowerMode::Normal).await;
     ctx.local.bmm350.set_mag_config(mag_config.build()).await;
 
+ Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
+    let bmi323_init_result = ctx.local.bmi323.init().await;
+    match bmi323_init_result{
+        Ok(_)=>{
+            info!("BMI Initialized");
+        }
+        Err(_)=>{
+            error!("BMI Unininitialized");
+        }
+    }
+
+
+    Mono::delay(10_u64.millis()).await;
+
+
     loop {
-        let imu_result = ctx.local.bmi323.read_accel_data_scaled().await;
-        match imu_result{
-            Ok(acc)=>{
-                info!("Accel: {}, {}, {}", acc.x, acc.y, acc.z);
+        let bmm350_init_result = ctx.local.bmm350.init().await;
+        match bmm350_init_result{
+            Ok(_)=>{
+                info!("BMM Initialized");
+            }
+            Err(_)=>{
+                error!("BMM Unininitialized");
+            }
+        }
+
+        let sample_result = ctx.local.bme280.read_sample().await;
+        match sample_result {
+            Ok(sample) => {
+                let temperature = sample.temperature.unwrap();
+                let humidity = sample.humidity.unwrap();
+                let pressure = sample.pressure.unwrap();
+                info!("Sample: ┳ Temperature: {} C", temperature);
+                info!("        ┣ Humidity: {} %", humidity);
+                info!("        ┗ Pressure: {} hPa", pressure);
             }
             Err(i2c_error)=>{
                 info!("BMI: {}", i2c_error);
