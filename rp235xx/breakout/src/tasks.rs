@@ -2,7 +2,7 @@ use bin_packets::device::PacketWriter;
 use bin_packets::devices::DeviceIdentifier;
 use bin_packets::packets::status::Status;
 use bin_packets::packets::ApplicationPacket;
-use bme280::{Configuration, Oversampling, SensorMode};
+use bme280_rs::{Configuration, Oversampling, SensorMode};
 use defmt::{error, info};
 use embedded_hal::digital::StatefulOutputPin;
 use fugit::ExtU64;
@@ -134,34 +134,16 @@ pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter
     ctx.local.ina260_1.set_operating_mode(ina260_terminus::OperMode::SCBVC).await;
     ctx.local.ina260_2.set_operating_mode(ina260_terminus::OperMode::SCBVC).await;
     ctx.local.ina260_3.set_operating_mode(ina260_terminus::OperMode::SCBVC).await;
-    ctx.local.ina260_4.set_operating_mode(ina260_terminus::OperMode::SCBVC).await;
 
     loop {
-        let voltages = join!(
+        let items = join!(
             ctx.local.ina260_1.voltage(),
-            ctx.local.ina260_2.voltage(),
-            ctx.local.ina260_3.voltage(),
-            ctx.local.ina260_4.voltage()
+            // ctx.local.ina260_2.voltage(),
+            // ctx.local.ina260_3.voltage()
         );
-
-        let currents = join!(
-            ctx.local.ina260_1.current(),
-            ctx.local.ina260_2.current(),
-            ctx.local.ina260_3.current(),
-            ctx.local.ina260_4.current()
-        );
-
-        let powers = join!(
-            ctx.local.ina260_1.power(),
-            ctx.local.ina260_2.power(),
-            ctx.local.ina260_3.power(),
-            ctx.local.ina260_4.power()
-        );
-
-        info!("Voltages: {}, {}, {}, {}", voltages.0, voltages.1, voltages.2, voltages.3);
-        info!("Currents: {}, {}, {}, {}", currents.0, currents.1, currents.2, currents.3);
-        info!("Powers: {}, {}, {}, {}", powers.0, powers.1, powers.2, powers.3);
-
+        info!("Currents: {}", ctx.local.ina260_1.current().await); //, ctx.local.ina260_2.current().await, ctx.local.ina260_3.current().await);
+        info!("Powers: {}", ctx.local.ina260_1.power().await); //, ctx.local.ina260_2.power().await, ctx.local.ina260_3.power().await);
+        info!("Voltages: {}", items.0);
         // let voltages = [
         //     items.0.unwrap_or(f32::NAN),
         //     items.1.unwrap_or(f32::NAN),
@@ -182,79 +164,72 @@ pub async fn sample_sensors(
     ctx: sample_sensors::Context<'_>,
     _avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
 ) {
-    // let bmi323_init_result = ctx.local.bmi323.init().await;
-    // match bmi323_init_result {
-    //     Ok(_) => {
-    //         info!("BMI Initialized");
-    //     }
-    //     Err(_) => {
-    //         error!("BMI Unininitialized");
-    //     }
-    // }
-
-    // Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
-    // let bmi323_init_result = ctx.local.bmi323.init().await;
-    // match bmi323_init_result{
-    //     Ok(_)=>{
-    //         info!("BMI Initialized");
-    //     }
-    //     Err(_)=>{
-    //         error!("BMI Unininitialized");
-    //     }
-    // }
-        // let bmi323_init_result = ctx.local.bmi323.init().await;
-        // match bmi323_init_result{
-        //     Ok(_)=>{
-        //         info!("BMI Initialized");
-        //     }
-        //     Err(_)=>{
-        //         error!("BMI Unininitialized");
-        //     }
-        // }
-        let bme_on = ctx.local.bme280.init_with_config(&mut Mono, 
-                Configuration::default()
-                    .with_humidity_oversampling(Oversampling::Oversampling1X)
-                    .with_pressure_oversampling(Oversampling::Oversampling16X)
-                    .with_temperature_oversampling(Oversampling::Oversampling2X)
-        ).await;
-        match bme_on {
-            Ok(_) => {}
-            Err(i2c_error) => {
-                error!("BME Error: {}", i2c_error);
-            }
+    let bme_on = ctx.local.bme280.init().await;
+    match bme_on {
+        Ok(_) => {}
+        Err(i2c_error) => {
+            error!("BME Error: {}", i2c_error);
         }
-        // ctx.local
-        //     .bme280
-        //     .set_sampling_configuration(
-        //         Configuration::default()
-        //             .with_temperature_oversampling(Oversampling::Oversample1)
-        //             .with_pressure_oversampling(Oversampling::Oversample1)
-        //             .with_humidity_oversampling(Oversampling::Oversample1)
-        //             .with_sensor_mode(SensorMode::Normal),
-        //     )
-        //     .await
-        //     .expect("Failed to configure BME280");
-    // let bme_id = ctx.local.bme280.).await;
-    // match bme_id {
-    //     Ok(id) => {
-    //         info!("BME280 ID: {}", id);
-    //     }
-    //     Err(i2c_error) => {
-    //         error!("I2CError: {}", i2c_error)
-    //     }
-    // }
-    // Mono::delay(10_u64.millis()).await;
+    }
+    Mono::delay(10_u64.millis()).await;
+    ctx.local
+        .bme280
+        .set_sampling_configuration(
+            Configuration::default()
+                .with_temperature_oversampling(Oversampling::Oversample1)
+                .with_pressure_oversampling(Oversampling::Oversample1)
+                .with_humidity_oversampling(Oversampling::Oversample1)
+                .with_sensor_mode(SensorMode::Normal),
+        )
+        .await
+        .expect("Failed to configure BME280");
 
+    let bme_id = ctx.local.bme280.chip_id().await;
+    match bme_id {
+        Ok(id) => {
+            info!("BME280 ID: {}", id);
+        }
+        Err(i2c_error) => {
+            info!("I2CError: {}", i2c_error)
+        }
+    }
+
+    // TODO: (Remove me if no effect) Delaying preemptive to other processes just in case...
+    Mono::delay(10_u64.millis()).await;
+    let bmi323_init_result = ctx.local.bmi323.init().await;
+    match bmi323_init_result {
+        Ok(_) => {
+            info!("BMI Initialized");
+        }
+        Err(_) => {
+            error!("BMI Unininitialized");
+        }
+    }
+
+    Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
+    let bmi323_init_result = ctx.local.bmi323.init().await;
+    match bmi323_init_result{
+        Ok(_)=>{
+            info!("BMI Initialized");
+        }
+        Err(_)=>{
+            error!("BMI Unininitialized");
+        }
+    }
+    Mono::delay(10_u64.millis()).await;
     loop {
-        let sample = ctx.local.bme280.measure(&mut Mono).await;
-        match sample{
-            Ok(values)=>{
-                let temperature = values.temperature;
-                let pressure = values.pressure;
-                let humidity = values.humidity;
+        let sample_result = ctx.local.bme280.read_sample().await;
+        match sample_result {
+            Ok(sample) => {
+                let temperature = sample.temperature.unwrap();
+                let humidity = sample.humidity.unwrap();
+                let pressure = sample.pressure.unwrap();
+                info!("Sample: ┳ Temperature: {} C", temperature);
+                info!("        ┣ Humidity: {} %", humidity);
+                info!("        ┗ Pressure: {} hPa", pressure);
             }
-            Err(error)=>{
-                error!("BME280 Error: {}", error);
+            Err(i2c_error) => {
+                error!("I2C Error: {}", i2c_error)
             }
         }
         Mono::delay(250_u64.millis()).await;

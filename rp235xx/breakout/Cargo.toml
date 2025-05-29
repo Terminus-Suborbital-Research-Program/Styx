@@ -47,9 +47,9 @@ rp235x-pac = "0.1.0"
 
 # Sensors
 uom = {version = "*", default-features = false, features = ["si", "f32"]}
-bme280 = { git="https://git@github.com/VersBinarii/bme280-rs.git", features = ["async", "with_defmt"] }
+bme280-rs = { version = "0.3.0", features = ["async"] }
 ina260_terminus = { path = "../../ina260", features = ["async", "defmt"] }
-bmi323 = {path="../../bmi323-rs", features = ["async"]}
+bmi323 = {path="../../bmi323", features = ["async", "defmt"]}
 bmm350 = {path="../../bmm350", features = ["async", "defmt"]}
 
 # Communications
