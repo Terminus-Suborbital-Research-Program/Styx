@@ -19,6 +19,10 @@ impl<D> Device<D> {
             buffer: Vec::new(),
         }
     }
+
+    pub fn device(&mut self) -> &mut D {
+        &mut self.device
+    }
 }
 
 impl<D> Device<D>

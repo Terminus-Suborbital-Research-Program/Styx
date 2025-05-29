@@ -56,12 +56,14 @@ fn main() {
     let mut state_machine = JupiterStateMachine::new(pins, ejection_pin, rbf.clone());
 
     loop {
-        while let Some(packet) = interface.read() {
-            onboard_packet_storage.write(packet); // Write to the onboard storage
-            if let Err(e) = interface.write(packet) {
-                error!("Failed to write packet down: {}", e);
+        if interface.device().read_data_set_ready().unwrap_or(false) {
+            while let Some(packet) = interface.read() {
+                onboard_packet_storage.write(packet); // Write to the onboard storage
+                if let Err(e) = interface.write(packet) {
+                    error!("Failed to write packet down: {}", e);
+                }
+                info!("Got a packet: {:?}", packet);
             }
-            info!("Got a packet: {:?}", packet);
         }
 
         state_machine.update();
