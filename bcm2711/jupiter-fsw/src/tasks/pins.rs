@@ -58,7 +58,7 @@ impl Atmega {
     fn write_reg0(&mut self, value: u8) -> Result<(), IndicatorError> {
         // LinuxI2CDevice already has smbus_write_byte_data(cmd, value)
         self.device
-            .smbus_write_byte(value)
+            .smbus_write_byte_data(0x00, value)
             .map_err(IndicatorError::from)
     }
 
