@@ -10,7 +10,10 @@ use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 
 /// Constant to prevent ejector from interfering with JUPITER's u-boot sequence
+#[cfg(not(feature = "fast-startup"))]
 const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 180;
+#[cfg(feature = "fast-startup")]
+const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 10;
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     Mono::delay(JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs()).await;
@@ -40,6 +43,15 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
     loop {
         ctx.shared.radio.lock(|x| {
             x.update().ok();
+
+            if !x.frame_buffer().is_empty() {
+                debug!("Buffer: {}", x.frame_buffer());
+            }
+
+            if !x.packet_buffer().is_empty() {
+                debug!("Buffer: {}", x.frame_buffer());
+            }
+
             for packet in x {
                 info!("Got packet: {}", packet);
                 let bytes = encode_into_slice(packet, &mut buffer, standard()).unwrap_or(0);
@@ -48,11 +60,13 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
         });
 
         ctx.shared.downlink_packets.lock(|packets| {
-            for packet in packets {
-                let bytes = encode_into_slice(*packet, &mut buffer, standard()).unwrap_or(0);
+            while let Some(packet) = packets.pop_front() {
+                let bytes = encode_into_slice(packet, &mut buffer, standard()).unwrap_or(0);
                 downlink.write_all(&buffer[0..bytes]).ok();
             }
-        })
+        });
+
+        Mono::delay(100.micros()).await;
     }
 }
 
