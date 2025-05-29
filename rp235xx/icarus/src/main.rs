@@ -19,6 +19,7 @@ use core::mem::MaybeUninit;
 
 // Sensors
 use bmi323::AsyncBMI323;
+use bmm350::AsyncBMM350;
 use bme280_rs::AsyncBme280;
 use ina260_terminus::AsyncINA260;
 
@@ -100,6 +101,7 @@ mod app {
         pub relay_servo: RelayServo,
         pub flap_servo: FlapServo,
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
+        pub bmm350: AsyncBMM350<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub bmi323: AsyncBMI323<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub bme280: AsyncBme280<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub ina260_1: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
@@ -141,7 +143,7 @@ mod app {
             mut esc_state_listener: StateMachineListener,
         );
 
-        #[task(local = [bme280, bmi323], priority = 3)]
+        #[task(local = [bme280, bmi323, bmm350], priority = 3)]
         async fn sample_sensors(
             mut ctx: sample_sensors::Context,
             avionics_i2c: &'static Arbiter<AvionicsI2cBus>,

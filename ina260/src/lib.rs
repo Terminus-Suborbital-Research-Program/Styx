@@ -273,7 +273,6 @@ where
     }
 
     /// Delivers the measured current in mV
-    /// Delivers the measured current in mV
     #[inline(always)]
     pub async fn voltage(&mut self) -> Result<u32, I2C::Error> {
         let result = self.voltage_raw().await;
@@ -284,19 +283,18 @@ where
             }
             Err(e) => {
                 error!("Error reading INA260 Voltage");
-                error!("Error reading INA260 Voltage");
                 Err(e)
             }
         }
     }
 
     /// Delivers the measured voltage in as tuple of full volts and tenth millivolts
-    /// Delivers the measured voltage in as tuple of full volts and tenth millivolts
     #[inline(always)]
     pub async fn voltage_split(&mut self) -> Result<(u8, u32), I2C::Error> {
         let raw_result = self.voltage_raw().await;
         match raw_result {
             Ok(raw_16) => {
+                info!("Raw: {}", raw_16);
                 let raw_result = u32::from(raw_16);
                 let full = (0..=raw_result).step_by(800).skip(1).count() as u32;
                 let rest = (raw_result - (full * 800)) * 125;
@@ -354,7 +352,7 @@ where
     }
 }
 
-use defmt::Format;
+use defmt::{info, Format};
 #[derive(Debug, Format)]
 pub enum Error<E> {
     /// Failed to compensate a raw measurement
