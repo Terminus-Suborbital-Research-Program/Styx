@@ -1,4 +1,3 @@
-use common::rbf::{ActiveHighRbf, NoRbf, RbfIndicator};
 
 use defmt::{info, warn};
 use embedded_hal::delay::DelayNs;
@@ -10,7 +9,7 @@ use hc12_rs::device::IntoATMode;
 use hc12_rs::IntoFU3Mode;
 use heapless::Deque;
 use rp235x_hal::clocks::init_clocks_and_plls;
-use rp235x_hal::gpio::{OutputDriveStrength, PinState, PullNone};
+use rp235x_hal::gpio::{PinState, PullNone};
 use rp235x_hal::pwm::Slices;
 use rp235x_hal::uart::{DataBits, StopBits, UartConfig, UartPeripheral};
 use rp235x_hal::{Clock, Sio, Watchdog};
@@ -19,7 +18,7 @@ use tinyframe::reader::BufferedReader;
 
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
 use crate::device_constants::packets::RadioInterface;
-use crate::device_constants::pins::{CamMosfetPin, RBFPin, RadioProgrammingPin};
+use crate::device_constants::pins::{CamMosfetPin, RadioProgrammingPin};
 use crate::device_constants::{
     EjectionDetectionPin, EjectorHC12, GreenLed, JupiterUart, RadioUart, RedLed,
 };

@@ -46,7 +46,7 @@ mod app {
     use crate::actuators::servo::EjectorServo;
     use crate::device_constants::pins::CamMosfetPin;
     use crate::device_constants::{
-        EjectionDetectionPin, EjectorRbf, GreenLed, JupiterUart, OnboardLED, RedLed,
+        EjectionDetectionPin, GreenLed, JupiterUart, OnboardLED, RedLed,
     };
 
     use super::*;
