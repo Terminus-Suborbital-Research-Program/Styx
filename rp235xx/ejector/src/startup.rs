@@ -73,8 +73,8 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     // Red led pin - gets set high when armed
     let red_led_pin: RedLed = bank0_pins
-        .gpio13
-        .into_push_pull_output_in_state(PinState::Low)
+        .gpio10
+        .into_push_pull_output_in_state(PinState::High)
         .reconfigure();
 
     // Control pins for camera - pull high to turn on cameras
@@ -84,8 +84,8 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     // Frame received indicator
     let packet_indicator: GreenLed = bank0_pins
-        .gpio15
-        .into_push_pull_output_in_state(PinState::Low)
+        .gpio11
+        .into_push_pull_output_in_state(PinState::High)
         .reconfigure();
 
     let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
