@@ -1,7 +1,7 @@
 use hc12_rs::{configuration::baudrates::B9600, ProgrammingPair, FU3, HC12};
 use pins::{
-    CamLEDPin, EjectionPin, JupiterRxPin, JupiterTxPin, OnboardLEDPin, RBFLEDPin,
-    RadioProgrammingPin, RadioRxPin, RadioTxPin,
+    EjectionPin, GreenLedPin, JupiterRxPin, JupiterTxPin, OnboardLEDPin, RadioProgrammingPin,
+    RadioRxPin, RadioTxPin, RedLedPin,
 };
 use rp235x_hal::{
     gpio::{FunctionSio, Pin, PullDown, PullNone, SioInput, SioOutput},
@@ -17,7 +17,8 @@ use common::rbf::NoRbf;
 pub mod pins {
     use rp235x_hal::gpio::{
         bank0::{
-            Gpio12, Gpio13, Gpio15, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio25, Gpio26, Gpio27, Gpio8, Gpio9,
+            Gpio10, Gpio11, Gpio12, Gpio13, Gpio15, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio25,
+            Gpio26, Gpio27, Gpio8, Gpio9,
         },
         FunctionI2C, FunctionSio, FunctionUart, Pin, PullDown, PullUp, SioInput, SioOutput,
     };
@@ -32,10 +33,10 @@ pub mod pins {
     pub type CamMosfetPin = Pin<Gpio12, FunctionSio<SioOutput>, PullDown>;
 
     // Camera LED Pin
-    pub type CamLEDPin = Gpio13;
+    pub type RedLedPin = Gpio10;
 
     // RBF LED PIN
-    pub type RBFLEDPin = Gpio15;
+    pub type GreenLedPin = Gpio11;
 
     // RBF PIN
     pub type RBFPin = Pin<Gpio2, FunctionSio<SioInput>, PullDown>;
@@ -68,10 +69,10 @@ pub mod pins {
 pub type OnboardLED = Pin<OnboardLEDPin, FunctionSio<SioOutput>, PullNone>;
 
 // Camera LED
-pub type RedLed = Pin<CamLEDPin, FunctionSio<SioOutput>, PullNone>;
+pub type RedLed = Pin<RedLedPin, FunctionSio<SioOutput>, PullNone>;
 
 // Camera LED
-pub type GreenLed = Pin<RBFLEDPin, FunctionSio<SioOutput>, PullNone>;
+pub type GreenLed = Pin<GreenLedPin, FunctionSio<SioOutput>, PullNone>;
 
 /// Ejection detection pin
 pub type EjectionDetectionPin = Pin<EjectionPin, FunctionSio<SioInput>, PullDown>;
