@@ -1,7 +1,7 @@
 use hc12_rs::{configuration::baudrates::B9600, ProgrammingPair, FU3, HC12};
 use pins::{
-    CamLEDPin, EjectionPin, HeartbeatPin, JupiterRxPin, JupiterTxPin,
-    RBFLEDPin, RadioProgrammingPin, RadioRxPin, RadioTxPin,
+    CamLEDPin, EjectionPin, JupiterRxPin, JupiterTxPin, OnboardLEDPin, RBFLEDPin,
+    RadioProgrammingPin, RadioRxPin, RadioTxPin,
 };
 use rp235x_hal::{
     gpio::{FunctionSio, Pin, PullDown, PullNone, SioInput, SioOutput},
@@ -17,20 +17,20 @@ use common::rbf::NoRbf;
 pub mod pins {
     use rp235x_hal::gpio::{
         bank0::{
-            Gpio13, Gpio15, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio25, Gpio26, Gpio27, Gpio3,
-            Gpio8, Gpio9,
+            Gpio12, Gpio13, Gpio15, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio25, Gpio26, Gpio27,
+            Gpio3, Gpio8, Gpio9,
         },
         FunctionI2C, FunctionSio, FunctionUart, Pin, PullDown, PullUp, SioInput, SioOutput,
     };
 
     // Ejector Heartbeat Output
-    pub type HeartbeatPin = Gpio25;
+    pub type OnboardLEDPin = Gpio25;
 
     // Camera Startup should be right but the heartbeat and Cam LED Pins might be wrong
     // (inconsistency in ejector pinout doc) ask Brooks later
 
     /// Camera GPIO activation
-    pub type CamMosfetPin = Pin<Gpio3, FunctionSio<SioOutput>, PullDown>;
+    pub type CamMosfetPin = Pin<Gpio12, FunctionSio<SioOutput>, PullDown>;
 
     // Camera LED Pin
     pub type CamLEDPin = Gpio13;
@@ -66,13 +66,13 @@ pub mod pins {
 //pub type GuardI2C = I2C<I2C1, (GuardSda, GuardScl), Controller>;
 
 // Heartbeat LED
-pub type Heartbeat = Pin<HeartbeatPin, FunctionSio<SioOutput>, PullNone>;
+pub type OnboardLED = Pin<OnboardLEDPin, FunctionSio<SioOutput>, PullNone>;
 
 // Camera LED
-pub type CamLED = Pin<CamLEDPin, FunctionSio<SioOutput>, PullNone>;
+pub type RedLed = Pin<CamLEDPin, FunctionSio<SioOutput>, PullNone>;
 
 // Camera LED
-pub type RbfLed = Pin<RBFLEDPin, FunctionSio<SioOutput>, PullNone>;
+pub type GreenLed = Pin<RBFLEDPin, FunctionSio<SioOutput>, PullNone>;
 
 /// Ejection detection pin
 pub type EjectionDetectionPin = Pin<EjectionPin, FunctionSio<SioInput>, PullDown>;

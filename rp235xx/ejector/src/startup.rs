@@ -10,7 +10,7 @@ use hc12_rs::device::IntoATMode;
 use hc12_rs::IntoFU3Mode;
 use heapless::Deque;
 use rp235x_hal::clocks::init_clocks_and_plls;
-use rp235x_hal::gpio::PullNone;
+use rp235x_hal::gpio::{OutputDriveStrength, PinState, PullNone};
 use rp235x_hal::pwm::Slices;
 use rp235x_hal::uart::{DataBits, StopBits, UartConfig, UartPeripheral};
 use rp235x_hal::{Clock, Sio, Watchdog};
@@ -19,8 +19,10 @@ use tinyframe::reader::BufferedReader;
 
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
 use crate::device_constants::packets::RadioInterface;
-use crate::device_constants::pins::{RBFPin, RadioProgrammingPin};
-use crate::device_constants::{EjectionDetectionPin, EjectorHC12, JupiterUart, RadioUart};
+use crate::device_constants::pins::{CamMosfetPin, RBFPin, RadioProgrammingPin};
+use crate::device_constants::{
+    EjectionDetectionPin, EjectorHC12, GreenLed, JupiterUart, RadioUart, RedLed,
+};
 use crate::hal;
 use crate::{app::*, Mono};
 
@@ -64,36 +66,31 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         &mut ctx.device.RESETS,
     );
 
-    // Configure GPIO25 as an output
+    // Debugging on-board LED pin
     let mut led_pin = bank0_pins
         .gpio25
         .into_pull_type::<PullNone>()
         .into_push_pull_output();
     led_pin.set_low().unwrap();
 
-    let mut cam_led_pin = bank0_pins
+    // Red led pin - gets set high when armed
+    let red_led_pin: RedLed = bank0_pins
         .gpio13
-        .into_pull_type::<PullNone>()
-        .into_push_pull_output();
-    cam_led_pin.set_high().unwrap();
+        .into_push_pull_output_in_state(PinState::High)
+        .reconfigure();
 
-    // Looking at the docs originally an LED wasn't reserved for RBF but this could be a thing
-    // Also there's some issue with specifically the GPIO that would be used for power or RBF
-    // So leaving this commented out for now
-    let mut rbf_led_pin = bank0_pins
+    // Control pins for camera
+    let _cam_pin: CamMosfetPin = bank0_pins
+        .gpio12
+        .into_push_pull_output_in_state(PinState::Low)
+        .reconfigure();
+
+    // Frame received indicator
+    let mut packet_indicator: GreenLed = bank0_pins
         .gpio15
         .into_pull_type::<PullNone>()
         .into_push_pull_output();
-    rbf_led_pin.set_low().unwrap();
-
-    // Ejector rbf should be pull down - it is high when the rbf is inserted
-    let rbf_pin: RBFPin = bank0_pins.gpio2.into_pull_down_input();
-    let mut rbf = ActiveHighRbf::new(rbf_pin);
-
-    if rbf.inhibited_at_init() {
-        rbf_led_pin.set_high().unwrap();
-        warn!("RBF inserted!");
-    }
+    packet_indicator.set_low().unwrap();
 
     let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
     let mut timer_two = timer;
@@ -141,6 +138,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             panic!("Failed to init HC-12: {}", e.0);
         }
     };
+
     // Transition to AT mode
     info!("Programming HC12...");
     let radio = radio.into_at_mode().unwrap(); // Infallible
@@ -220,18 +218,15 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     (
         Shared {
             downlink_packets: Deque::new(),
-            ejector_time_millis: 0,
-            suspend_packet_handler: false,
             radio,
-            rbf: NoRbf::new(),
-            led: led_pin,
         },
         Local {
+            onboard_led: led_pin,
             downlink: jupiter_uart,
             ejector_servo,
             ejection_pin: gpio_detect,
-            cams_led: cam_led_pin,
-            rbf_led: rbf_led_pin,
+            arming_led: red_led_pin,
+            rbf_led: packet_indicator,
         },
     )
 }

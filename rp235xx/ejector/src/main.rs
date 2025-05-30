@@ -45,7 +45,7 @@ mod app {
 
     use crate::actuators::servo::EjectorServo;
     use crate::device_constants::{
-        CamLED, EjectionDetectionPin, EjectorRbf, Heartbeat, JupiterUart, RbfLed,
+        EjectionDetectionPin, EjectorRbf, GreenLed, JupiterUart, OnboardLED, RedLed,
     };
 
     use super::*;
@@ -71,18 +71,15 @@ mod app {
     #[shared]
     pub struct Shared {
         pub downlink_packets: Deque<ApplicationPacket, 16>,
-        pub ejector_time_millis: u64,
-        pub suspend_packet_handler: bool,
         pub radio: RadioInterface,
-        pub rbf: EjectorRbf,
-        pub led: Heartbeat,
     }
 
     #[local]
     pub struct Local {
+        pub onboard_led: OnboardLED,
         pub ejector_servo: EjectorServo,
-        pub cams_led: CamLED,
-        pub rbf_led: RbfLed,
+        pub arming_led: RedLed,
+        pub rbf_led: GreenLed,
         pub ejection_pin: EjectionDetectionPin,
         pub downlink: JupiterUart,
     }
@@ -94,21 +91,20 @@ mod app {
 
     extern "Rust" {
         // Sequences the ejection
-        #[task(local = [ejection_pin, ejector_servo], shared = [rbf], priority = 2)]
+        #[task(local = [ejection_pin, arming_led, ejector_servo],  priority = 2)]
         async fn ejector_sequencer(mut ctx: ejector_sequencer::Context);
 
-        // Heartbeats the main led
-        #[task(shared = [radio, downlink_packets, ejector_time_millis, led], priority = 2)]
+        // Heartbeats the main led (and sends packets after arming)
+        #[task(shared = [radio, downlink_packets], local = [onboard_led], priority = 2)]
         async fn heartbeat(mut ctx: heartbeat::Context);
 
         // Reads incoming packets from the radio
-        #[task(local = [downlink], shared = [radio, downlink_packets, led], priority = 3)]
+        #[task(local = [downlink], shared = [radio, downlink_packets], priority = 3)]
         async fn radio_read(mut ctx: radio_read::Context);
 
         // Updates the radio module on the serial interrupt
         #[task(binds = UART1_IRQ, shared = [radio])]
         fn uart_interrupt(mut ctx: uart_interrupt::Context);
-
     }
 
     /// Returns the current time in nanoseconds since power-on
