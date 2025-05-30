@@ -17,6 +17,8 @@ const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 180;
 #[cfg(feature = "fast-startup")]
 const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 10;
 
+const SHUTDOWN_TIME_CAMERAS: u64 = 210;
+
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     let onboard_led = ctx.local.onboard_led;
 
@@ -62,11 +64,11 @@ pub async fn geiger_calculator(mut ctx: geiger_calculator::Context<'_>) {
 
         if pulses > 0 {
             let packet = ApplicationPacket::GeigerData {
-                timestamp_ns: Mono::now().duration_since_epoch().to_millis(),
+                timestamp_ms: Mono::now().duration_since_epoch().to_millis(),
                 recorded_pulses: pulses as u16,
             };
 
-            info!("Recorded pulses! {}", pulses);
+            debug!("Recorded pulses! {}", pulses);
 
             if ctx
                 .shared
@@ -91,14 +93,6 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
         ctx.shared.radio.lock(|x| {
             x.update().ok();
 
-            if !x.frame_buffer().is_empty() {
-                debug!("Buffer: {}", x.frame_buffer());
-            }
-
-            if !x.packet_buffer().is_empty() {
-                debug!("Buffer: {}", x.packet_buffer());
-            }
-
             for packet in x {
                 info!("Got packet: {}", packet);
                 ctx.local.packet_led.toggle().ok();
@@ -122,7 +116,10 @@ pub async fn camera_sequencer(ctx: camera_sequencer::Context<'_>) {
     // T+70, drive the cameras high
     Mono::delay(250.secs()).await;
     info!("Activating cameras!");
-    ctx.local.camera_mosfet.is_set_high().ok();
+    ctx.local.camera_mosfet.set_high().ok();
+    Mono::delay(SHUTDOWN_TIME_CAMERAS.secs()).await;
+    info!("Shutting down cameras!");
+    ctx.local.camera_mosfet.set_low().ok();
 }
 
 pub fn uart_interrupt(_ctx: uart_interrupt::Context<'_>) {
@@ -140,7 +137,7 @@ pub async fn ejector_sequencer(ctx: ejector_sequencer::Context<'_>) {
     // Lockout for one minute to let JUPITER boot up
     warn!("Idling sequencer");
     Mono::delay(JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs()).await;
-    ctx.local.arming_led.set_high().ok();
+    ctx.local.arming_led.set_low().ok();
     info!("Sequencer unlocked, waiting for ejection signal");
 
     // Wait until ejection pin reads high
