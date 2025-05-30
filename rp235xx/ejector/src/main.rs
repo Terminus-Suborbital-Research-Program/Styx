@@ -96,26 +96,26 @@ mod app {
 
     extern "Rust" {
         // Sequences the ejection
-        #[task(local = [ejection_pin, arming_led, ejector_servo],  priority = 2)]
+        #[task(local = [ejection_pin, arming_led, ejector_servo],  priority = 1)]
         async fn ejector_sequencer(mut ctx: ejector_sequencer::Context);
 
         // Sequences cameras activation
-        #[task(local = [camera_mosfet], priority = 2)]
+        #[task(local = [camera_mosfet], priority = 1)]
         async fn camera_sequencer(mut ctx: camera_sequencer::Context);
 
         // Heartbeats the main led (and sends packets after arming)
-        #[task(shared = [radio, downlink_packets], local = [onboard_led], priority = 2)]
+        #[task(shared = [radio, downlink_packets], local = [onboard_led], priority = 1)]
         async fn heartbeat(mut ctx: heartbeat::Context);
 
         // Reads incoming packets from the radio
-        #[task(local = [downlink, packet_led], shared = [radio, downlink_packets], priority = 3)]
+        #[task(local = [downlink, packet_led], shared = [radio, downlink_packets], priority = 1)]
         async fn radio_read(mut ctx: radio_read::Context);
 
         // Updates the radio module on the serial interrupt
         #[task(binds = UART1_IRQ, shared = [radio])]
         fn uart_interrupt(mut ctx: uart_interrupt::Context);
 
-        #[task(binds = ADC_IRQ_FIFO, priority = 1, shared = [samples_buffer], local = [geiger_fifo, counter: usize = 1])]
+        #[task(binds = ADC_IRQ_FIFO, priority = 3, shared = [samples_buffer], local = [geiger_fifo, counter: usize = 1])]
         fn adc_irq(mut ctx: adc_irq::Context);
 
         #[task(priority = 2, shared = [samples_buffer, downlink_packets])]

@@ -54,28 +54,28 @@ pub fn adc_irq(mut ctx: adc_irq::Context<'_>) {
 }
 
 pub async fn geiger_calculator(mut ctx: geiger_calculator::Context<'_>) {
-    Mono::delay(JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs()).await;
-
-    let pulses = ctx
-        .shared
-        .samples_buffer
-        .lock(|buf| buf.iter().filter(|x| **x > 2047).count());
-
-    if pulses != 0 {
-        let packet = ApplicationPacket::GeigerData {
-            timestamp_ns: Mono::now().duration_since_epoch().to_millis(),
-            recorded_pulses: pulses as u16,
-        };
-
-        info!("Recorded pulses! {}", pulses);
-
-        if ctx
+    if Mono::now().duration_since_epoch().to_secs() > JUPITER_BOOT_LOCKOUT_TIME_SECONDS {
+        let pulses = ctx
             .shared
-            .downlink_packets
-            .lock(|packets| packets.push_back(packet))
-            .is_err()
-        {
-            warn!("Packet buffer full!");
+            .samples_buffer
+            .lock(|buf| buf.iter().filter(|x| **x > 10).count());
+
+        if pulses > 0 {
+            let packet = ApplicationPacket::GeigerData {
+                timestamp_ns: Mono::now().duration_since_epoch().to_millis(),
+                recorded_pulses: pulses as u16,
+            };
+
+            info!("Recorded pulses! {}", pulses);
+
+            if ctx
+                .shared
+                .downlink_packets
+                .lock(|packets| packets.push_back(packet))
+                .is_err()
+            {
+                warn!("Packet buffer full!");
+            }
         }
     }
 }

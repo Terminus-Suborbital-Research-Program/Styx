@@ -24,7 +24,7 @@ pub enum ApplicationPacket {
         currrent: [f32; 3],
     },
     GeigerData {
-        timestamp_ns: u64,
+        timestamp_ms: u64,
         recorded_pulses: u16,
     },
 }
