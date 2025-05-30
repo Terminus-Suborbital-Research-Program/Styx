@@ -44,6 +44,7 @@ mod app {
     use crate::device_constants::packets::RadioInterface;
 
     use crate::actuators::servo::EjectorServo;
+    use crate::device_constants::pins::CamMosfetPin;
     use crate::device_constants::{
         EjectionDetectionPin, EjectorRbf, GreenLed, JupiterUart, OnboardLED, RedLed,
     };
@@ -82,6 +83,7 @@ mod app {
         pub rbf_led: GreenLed,
         pub ejection_pin: EjectionDetectionPin,
         pub downlink: JupiterUart,
+        pub camera_mosfet: CamMosfetPin,
     }
 
     #[init]
@@ -93,6 +95,10 @@ mod app {
         // Sequences the ejection
         #[task(local = [ejection_pin, arming_led, ejector_servo],  priority = 2)]
         async fn ejector_sequencer(mut ctx: ejector_sequencer::Context);
+
+        // Sequences cameras activation
+        #[task(local = [camera_mosfet], priority = 2)]
+        async fn camera_sequencer(mut ctx: camera_sequencer::Context);
 
         // Heartbeats the main led (and sends packets after arming)
         #[task(shared = [radio, downlink_packets], local = [onboard_led], priority = 2)]

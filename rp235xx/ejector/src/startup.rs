@@ -76,21 +76,19 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     // Red led pin - gets set high when armed
     let red_led_pin: RedLed = bank0_pins
         .gpio13
-        .into_push_pull_output_in_state(PinState::High)
-        .reconfigure();
-
-    // Control pins for camera
-    let _cam_pin: CamMosfetPin = bank0_pins
-        .gpio12
         .into_push_pull_output_in_state(PinState::Low)
         .reconfigure();
 
+    // Control pins for camera - pull high to turn on cameras
+    let cam_pin: CamMosfetPin = bank0_pins
+        .gpio12
+        .into_push_pull_output_in_state(PinState::Low);
+
     // Frame received indicator
-    let mut packet_indicator: GreenLed = bank0_pins
+    let packet_indicator: GreenLed = bank0_pins
         .gpio15
-        .into_pull_type::<PullNone>()
-        .into_push_pull_output();
-    packet_indicator.set_low().unwrap();
+        .into_push_pull_output_in_state(PinState::Low)
+        .reconfigure();
 
     let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
     let mut timer_two = timer;
@@ -221,6 +219,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             radio,
         },
         Local {
+            camera_mosfet: cam_pin,
             onboard_led: led_pin,
             downlink: jupiter_uart,
             ejector_servo,

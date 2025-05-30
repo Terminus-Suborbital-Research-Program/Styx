@@ -74,6 +74,13 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
     }
 }
 
+pub async fn camera_sequencer(ctx: camera_sequencer::Context<'_>) {
+    // T+70, drive the cameras high
+    Mono::delay(250.secs()).await;
+    info!("Activating cameras!");
+    ctx.local.camera_mosfet.is_set_high().ok();
+}
+
 pub fn uart_interrupt(_ctx: uart_interrupt::Context<'_>) {
     radio_read::spawn().ok();
 }
@@ -89,6 +96,7 @@ pub async fn ejector_sequencer(ctx: ejector_sequencer::Context<'_>) {
     // Lockout for one minute to let JUPITER boot up
     warn!("Idling sequencer");
     Mono::delay(JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs()).await;
+    ctx.local.arming_led.set_high().ok();
     info!("Sequencer unlocked, waiting for ejection signal");
 
     // Wait until ejection pin reads high
@@ -97,7 +105,6 @@ pub async fn ejector_sequencer(ctx: ejector_sequencer::Context<'_>) {
         Mono::delay(100_u64.millis()).await;
     }
 
-    ctx.local.arming_led.set_high().ok();
     info!("Ejection signal high!");
 
     // Eject, wait 5 seconds, then retract
