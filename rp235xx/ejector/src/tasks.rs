@@ -1,9 +1,8 @@
 use crate::{app::*, Mono};
 use bin_packets::{devices::DeviceIdentifier, packets::status::Status};
 use bincode::{config::standard, encode_into_slice};
-use common::rbf::RbfIndicator;
 use defmt::{debug, info, warn};
-use embedded_hal::digital::{InputPin, StatefulOutputPin};
+use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
 use embedded_io::Write;
 use fugit::ExtU64;
 use rtic::Mutex;
@@ -16,21 +15,23 @@ const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 180;
 const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 10;
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
-    Mono::delay(JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs()).await;
+    let onboard_led = ctx.local.onboard_led;
 
     let mut sequence_number = 0;
 
+    // Still blink, but toggle as it is done
     loop {
-        ctx.shared.led.lock(|led| led.toggle().unwrap());
+        onboard_led.toggle().unwrap();
 
-        debug!("Heartbeat: Sending Status packet");
-        let status = Status::new(DeviceIdentifier::Ejector, now_timestamp(), sequence_number);
+        if Mono::now().duration_since_epoch().to_secs() > JUPITER_BOOT_LOCKOUT_TIME_SECONDS {
+            let status = Status::new(DeviceIdentifier::Ejector, now_timestamp(), sequence_number);
 
-        ctx.shared
-            .downlink_packets
-            .lock(|q| q.push_back(status.into()).ok());
+            ctx.shared
+                .downlink_packets
+                .lock(|q| q.push_back(status.into()).ok());
 
-        sequence_number = sequence_number.wrapping_add(1);
+            sequence_number = sequence_number.wrapping_add(1);
+        }
 
         Mono::delay(300_u64.millis()).await;
     }
@@ -77,7 +78,7 @@ pub fn uart_interrupt(_ctx: uart_interrupt::Context<'_>) {
     radio_read::spawn().ok();
 }
 
-pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
+pub async fn ejector_sequencer(ctx: ejector_sequencer::Context<'_>) {
     let servo = ctx.local.ejector_servo;
     // Latch ejector servos closed
     servo.enable();
@@ -96,16 +97,9 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
         Mono::delay(100_u64.millis()).await;
     }
 
+    ctx.local.arming_led.set_high().ok();
     info!("Ejection signal high!");
 
-    if ctx.shared.rbf.lock(|rbf| rbf.is_inserted()) {
-        loop {
-            Mono::delay(1000_u64.millis()).await;
-            if ctx.shared.rbf.lock(|rbf| !rbf.is_inserted()) {
-                break;
-            }
-        }
-    }
     // Eject, wait 5 seconds, then retract
     info!("Ejecting!");
     servo.eject();
