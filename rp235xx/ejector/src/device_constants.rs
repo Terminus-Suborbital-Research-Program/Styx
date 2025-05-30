@@ -17,8 +17,7 @@ use common::rbf::NoRbf;
 pub mod pins {
     use rp235x_hal::gpio::{
         bank0::{
-            Gpio12, Gpio13, Gpio15, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio25, Gpio26, Gpio27,
-            Gpio3, Gpio8, Gpio9,
+            Gpio12, Gpio13, Gpio15, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio25, Gpio26, Gpio27, Gpio8, Gpio9,
         },
         FunctionI2C, FunctionSio, FunctionUart, Pin, PullDown, PullUp, SioInput, SioOutput,
     };

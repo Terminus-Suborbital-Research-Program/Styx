@@ -1,4 +1,3 @@
-use core::str;
 
 use bincode::{Decode, Encode};
 use embedded_hal::digital::InputPin;
