@@ -7,6 +7,7 @@ use hc12_rs::configuration::{Channel, HC12Configuration, Power};
 use hc12_rs::device::IntoATMode;
 use hc12_rs::IntoFU3Mode;
 use heapless::Deque;
+use rp235x_hal::adc::AdcPin;
 use rp235x_hal::clocks::init_clocks_and_plls;
 use rp235x_hal::gpio::{PinState, PullNone};
 use rp235x_hal::pwm::Slices;
@@ -19,7 +20,7 @@ use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
 use crate::device_constants::packets::RadioInterface;
 use crate::device_constants::pins::{CamMosfetPin, RadioProgrammingPin};
 use crate::device_constants::{
-    EjectionDetectionPin, EjectorHC12, GreenLed, JupiterUart, RadioUart, RedLed,
+    EjectionDetectionPin, EjectorHC12, GreenLed, JupiterUart, RadioUart, RedLed, SAMPLE_COUNT,
 };
 use crate::hal;
 use crate::{app::*, Mono};
@@ -87,6 +88,27 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         .gpio11
         .into_push_pull_output_in_state(PinState::High)
         .reconfigure();
+
+    // Geiger counter
+    *ctx.local.adc = Some(hal::Adc::new(ctx.device.ADC, &mut ctx.device.RESETS));
+    let adc = ctx.local.adc.as_mut().unwrap();
+    let mut gegier_pin = AdcPin::new(bank0_pins.gpio28).unwrap();
+
+    // adc.free_running(&gegier_pin);
+    // loop {
+    //     adc.wait_ready();
+    //     let reading = adc.read_single();
+    //     if reading > 100 {
+    //         info!("Reading: {}", reading as f32 * 3.3 / 4096.0);
+    //     }
+    // }
+
+    let geiger_fifo = adc
+        .build_fifo()
+        .clock_divider(47000, 0)
+        .set_channel(&mut gegier_pin)
+        .enable_interrupt(1)
+        .start();
 
     let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
     let mut timer_two = timer;
@@ -215,8 +237,10 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         Shared {
             downlink_packets: Deque::new(),
             radio,
+            samples_buffer: [0u16; SAMPLE_COUNT],
         },
         Local {
+            geiger_fifo: Some(geiger_fifo),
             camera_mosfet: cam_pin,
             onboard_led: led_pin,
             downlink: jupiter_uart,

@@ -1,5 +1,8 @@
-use crate::{app::*, Mono};
-use bin_packets::{devices::DeviceIdentifier, packets::status::Status};
+use crate::{app::*, device_constants::SAMPLE_COUNT, Mono};
+use bin_packets::{
+    devices::DeviceIdentifier,
+    packets::{status::Status, ApplicationPacket},
+};
 use bincode::{config::standard, encode_into_slice};
 use defmt::{debug, info, warn};
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
@@ -34,6 +37,46 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
         }
 
         Mono::delay(300_u64.millis()).await;
+    }
+}
+
+pub fn adc_irq(mut ctx: adc_irq::Context<'_>) {
+    let sample = ctx.local.geiger_fifo.as_mut().unwrap().read();
+    let i = *ctx.local.counter;
+
+    ctx.shared.samples_buffer.lock(|buff| buff[i] = sample);
+    *ctx.local.counter += 1;
+
+    if i >= (SAMPLE_COUNT - 1) {
+        *ctx.local.counter = 0;
+        geiger_calculator::spawn().ok();
+    }
+}
+
+pub async fn geiger_calculator(mut ctx: geiger_calculator::Context<'_>) {
+    Mono::delay(JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs()).await;
+
+    let pulses = ctx
+        .shared
+        .samples_buffer
+        .lock(|buf| buf.iter().filter(|x| **x > 2047).count());
+
+    if pulses != 0 {
+        let packet = ApplicationPacket::GeigerData {
+            timestamp_ns: Mono::now().duration_since_epoch().to_millis(),
+            recorded_pulses: pulses as u16,
+        };
+
+        info!("Recorded pulses! {}", pulses);
+
+        if ctx
+            .shared
+            .downlink_packets
+            .lock(|packets| packets.push_back(packet))
+            .is_err()
+        {
+            warn!("Packet buffer full!");
+        }
     }
 }
 

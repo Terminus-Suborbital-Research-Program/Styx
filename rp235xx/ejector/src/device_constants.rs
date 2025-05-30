@@ -91,6 +91,9 @@ pub type RadioUart = UartPeripheral<Enabled, UART1, (RadioRxPin, RadioTxPin)>;
 pub type EjectorHC12 =
     HC12<RadioUart, ProgrammingPair<RadioProgrammingPin, Timer<CopyableTimer1>>, FU3<B9600>, B9600>;
 
+/// Samples per second of the geiger counter
+pub static SAMPLE_COUNT: usize = 100;
+
 pub mod packets {
     use tinyframe::reader::BufferedReader;
 
