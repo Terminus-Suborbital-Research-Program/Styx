@@ -80,7 +80,7 @@ mod app {
         pub onboard_led: OnboardLED,
         pub ejector_servo: EjectorServo,
         pub arming_led: RedLed,
-        pub rbf_led: GreenLed,
+        pub packet_led: GreenLed,
         pub ejection_pin: EjectionDetectionPin,
         pub downlink: JupiterUart,
         pub camera_mosfet: CamMosfetPin,
@@ -105,7 +105,7 @@ mod app {
         async fn heartbeat(mut ctx: heartbeat::Context);
 
         // Reads incoming packets from the radio
-        #[task(local = [downlink], shared = [radio, downlink_packets], priority = 3)]
+        #[task(local = [downlink, packet_led], shared = [radio, downlink_packets], priority = 3)]
         async fn radio_read(mut ctx: radio_read::Context);
 
         // Updates the radio module on the serial interrupt

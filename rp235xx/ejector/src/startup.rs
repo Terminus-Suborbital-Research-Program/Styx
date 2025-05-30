@@ -1,4 +1,3 @@
-
 use defmt::{info, warn};
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
@@ -224,7 +223,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             ejector_servo,
             ejection_pin: gpio_detect,
             arming_led: red_led_pin,
-            rbf_led: packet_indicator,
+            packet_led: packet_indicator,
         },
     )
 }

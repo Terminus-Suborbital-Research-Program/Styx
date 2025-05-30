@@ -8,9 +8,9 @@ use fugit::ExtU64;
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 
-/// Constant to prevent ejector from interfering with JUPITER's u-boot sequence
 #[cfg(not(feature = "fast-startup"))]
 const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 180;
+/// Constant to prevent ejector from interfering with JUPITER's u-boot sequence
 #[cfg(feature = "fast-startup")]
 const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 10;
 
@@ -58,6 +58,7 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
 
             for packet in x {
                 info!("Got packet: {}", packet);
+                ctx.local.packet_led.toggle().ok();
                 let bytes = encode_into_slice(packet, &mut buffer, standard()).unwrap_or(0);
                 downlink.write_all(&buffer[0..bytes]).ok();
             }
