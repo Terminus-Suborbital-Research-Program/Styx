@@ -51,7 +51,6 @@ impl Commands {
 
                     let mut writer: Option<BufWriter<File>> = None;
                     if output {
-                        // let output_file = fs::File::create(write_file_path).expect("Uh oh, output file couldn't open");
                         if let Some(output_path) = write_file_path {
                             let output_file = OpenOptions::new()
                                                     .create(true)
