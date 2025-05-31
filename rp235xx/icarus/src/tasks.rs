@@ -17,6 +17,7 @@ use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
 use uom::si::electric_potential::volt;
 use uom::si::power;
+
 use crate::device_constants::AvionicsI2cBus;
 use crate::phases::{FlapServoStatus, Modes, RelayServoStatus};
 use crate::{app::*, device_constants::MotorI2cBus, Mono};
@@ -144,6 +145,10 @@ pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter
         error!("Error initializing INA 3: {:?}", e);
     }
     Mono::delay(2_u64.millis()).await;
+    if let Err(e) = ctx.local.ina260_4.init().await {
+        error!("Error initializing INA 4: {:?}", e);
+    }
+    Mono::delay(2_u64.millis()).await;
 
     ctx.local.ina260_1.set_operating_mode(ina260_terminus::OperMode::SCBVC).await;
     ctx.local.ina260_2.set_operating_mode(ina260_terminus::OperMode::SCBVC).await;
@@ -151,43 +156,15 @@ pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter
     ctx.local.ina260_4.set_operating_mode(ina260_terminus::OperMode::SCBVC).await;
 
     loop {
-        let voltages = join!(
-            ctx.local.ina260_1.voltage(),
-            ctx.local.ina260_2.voltage(),
-            ctx.local.ina260_3.voltage()
-            ctx.local.ina260_4.voltage()
-        );
-
-        let currents = join!(
-            ctx.local.ina260_1.current(),
-            ctx.local.ina260_2.current(),
-            ctx.local.ina260_3.current()
-            ctx.local.ina260_4.current()
-        );
-
-        let powers = join!(
-            ctx.local.ina260_1.power(),
-            ctx.local.ina260_2.power(),
-            ctx.local.ina260_3.power()
-            ctx.local.ina260_4.power()
-        );
-
-        info!("Voltages: {}, {}, {}, {}", voltages.0, voltages.1, voltages.2, voltages.3);
-        info!("Currents: {}, {}, {}, {}", currents.0, currents.1, currents.2, currents.3);
-        info!("Powers: {}, {}, {}, {}", powers.0, powers.1, powers.2, powers.3);
-
-        // let voltages = [
-        //     items.0.unwrap_or(f32::NAN),
-        //     items.1.unwrap_or(f32::NAN),
-        //     items.2.unwrap_or(f32::NAN),
-        // ];
-        // let packet = ApplicationPacket::VoltageData {
-        //     timestamp: epoch_ns(),
-        //     voltage: voltages,
-        // };
-
-        // ctx.shared.data.lock(|vec| vec.push_back(packet).ok());
-
+        let ina_samples = ina_data_handle(ctx.local.ina260_1, ctx.local.ina260_2, ctx.local.ina260_3, ctx.local.ina260_4).await;
+        ctx.shared.data.lock(|data|{
+            let voltages_packet = ApplicationPacket::VoltageData { timestamp: ina_samples.0.0, voltage: ina_samples.1.0};
+            let current_packet = ApplicationPacket::CurrentData { timestamp: ina_samples.0.1, current: ina_samples.1.1};
+            let power_packet = ApplicationPacket::PowerData { timestamp: ina_samples.0.2, power: ina_samples.1.2};
+            data.push_back(voltages_packet);
+            data.push_back(current_packet);
+            data.push_back(power_packet);
+        });
         Mono::delay(50.millis()).await;
     }
 }
@@ -288,13 +265,13 @@ async fn ina_data_handle(ina260_1: &mut AsyncINA260<ArbiterDevice<'_, AsyncI2c<I
     let p4_ts = Mono::now().ticks();
 
     let mut voltage_slice = [0.0_f32; 4];
-    let v_ts_slice = [v1_ts, v2_ts, v3_ts, v4_ts];
+    let mut v_ts_slice = [v1_ts, v2_ts, v3_ts, v4_ts];
 
     let mut current_slice = [0.0_f32; 4];
-    let i_ts_slice = [i1_ts, i2_ts, i3_ts, i4_ts];
+    let mut i_ts_slice = [i1_ts, i2_ts, i3_ts, i4_ts];
 
     let mut power_slice = [0.0_f32; 4];
-    let p_ts_slice = [p1_ts, p2_ts, p3_ts, p4_ts];
+    let mut p_ts_slice = [p1_ts, p2_ts, p3_ts, p4_ts];
 
     match voltage_1 {
         Ok(voltage)=>{
