@@ -65,7 +65,9 @@ impl Commands {
                         
                         match data {
                             Ok(packet) => {
-                                println!("{:#?}", packet);
+                                if stdout {
+                                    println!("{:#?}", packet);
+                                }
                                 if output {
                                     if let Some(ref mut file_writer) = writer {
                                         Commands::file_write(packet, file_writer);
