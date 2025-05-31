@@ -13,8 +13,8 @@ pub enum ApplicationPacket {
     Command(CommandPacket),
     Status(Status),
     VoltageData {
-        timestamp: u64,
-        voltage: [f32; 3],
+        timestamp: [u64; 4],
+        voltage: [f32; 4],
     },
     PowerData {
         timestamp: [u64; 4],
@@ -23,13 +23,5 @@ pub enum ApplicationPacket {
     CurrentData {
         timestamp: [u64; 4],
         current: [f32; 4],
-    },
-    GeigerData {
-        timestamp_ms: u64,
-        recorded_pulses: u16,
-    },
-    JupiterAccelerometer {
-        timestamp_ms: u64,
-        vector: [f32; 3],
     },
 }
