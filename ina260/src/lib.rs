@@ -1,6 +1,5 @@
 #![no_std]
 
-
 // TI INA260 Current Sensor
 #[cfg(feature = "async")]
 use embedded_hal_async::delay::DelayNs;

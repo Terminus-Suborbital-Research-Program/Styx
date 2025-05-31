@@ -68,24 +68,16 @@ where
         let result = self.i2c.write_read(self.address, &[reg], &mut buf).await;
 
         match result {
-            Ok(_) => {
-                Ok(buf)
-            }
-            Err(i2c_error) => {
-                Err(i2c_error)
-            }
+            Ok(_) => Ok(buf),
+            Err(i2c_error) => Err(i2c_error),
         }
     }
 
     async fn get_chip_id(&mut self) -> Result<u8, I2C::Error> {
         let init_result = self.read_register(CHIP_ID.0).await;
         match init_result {
-            Ok(chip_id) => {
-                Ok(chip_id[0])
-            }
-            Err(i2c_error) => {
-                Err(i2c_error)
-            }
+            Ok(chip_id) => Ok(chip_id[0]),
+            Err(i2c_error) => Err(i2c_error),
         }
     }
 
@@ -104,9 +96,7 @@ where
                     Ok(false)
                 }
             }
-            Err(i2c_error) => {
-                Err(i2c_error)
-            }
+            Err(i2c_error) => Err(i2c_error),
         }
     }
 }
