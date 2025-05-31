@@ -1,0 +1,10 @@
+[package]
+name = "data-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.5.39", features = ["derive"] }
+bincode = { version = "*", features = ["derive"], default-features = false }
+bin-packets = { path = "../bin-packets", features = ["std"] }
+
