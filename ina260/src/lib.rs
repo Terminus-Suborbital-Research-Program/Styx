@@ -34,7 +34,7 @@ where
             delay,
             _marker: core::marker::PhantomData,
             state: OperMode::SCBVC.bits()
-                | Averaging::AVG512.bits()
+                | Averaging::AVG64.bits()
                 | SCConvTime::MS8_244.bits()
                 | BVConvTime::MS8_244.bits(),
         }

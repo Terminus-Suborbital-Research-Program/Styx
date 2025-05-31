@@ -42,9 +42,7 @@ where
                 }
                 Ok(())
             }
-            Err(i2c_error) => {
-                Err(i2c_error)
-            }
+            Err(i2c_error) => Err(i2c_error),
         }
     }
 
