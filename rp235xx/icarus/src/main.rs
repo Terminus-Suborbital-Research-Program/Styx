@@ -115,27 +115,27 @@ mod app {
 
     extern "Rust" {
         // Heartbeats the main led
-        #[task(local = [led], shared = [data], priority = 2)]
+        #[task(local = [led], shared = [data], priority = 1)]
         async fn heartbeat(ctx: heartbeat::Context);
 
         // Takes care of incoming packets
         #[task(local = [radio], shared = [data], priority = 1)]
         async fn radio_send(mut ctx: radio_send::Context);
 
-        #[task(priority = 2, local=[flap_servo, relay_servo])]
+        #[task(priority = 3, local=[flap_servo, relay_servo])]
         async fn mode_sequencer(&mut ctx: mode_sequencer::Context);
 
         // Handles INA sensors
         #[task(priority = 2, shared = [data], local=[ina260_1, ina260_2, ina260_3])]
         async fn ina_sample(&mut ctx: ina_sample::Context, i2c: &'static Arbiter<MotorI2cBus>);
 
-        #[task(local = [bme280, bmi323, bmm350], priority = 3)]
+        #[task(local = [bme280, bmi323, bmm350], priority = 2)]
         async fn sample_sensors(
             mut ctx: sample_sensors::Context,
             avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
         );
 
-        #[task(priority = 3)]
+        #[task(priority = 2)]
         async fn inertial_nav(mut ctx: inertial_nav::Context);
     }
 

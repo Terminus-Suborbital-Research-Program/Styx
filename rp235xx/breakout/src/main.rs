@@ -98,6 +98,7 @@ mod app {
         pub ina260_1: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
         pub ina260_2: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
         pub ina260_3: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
+        pub ina260_4: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
     }
 
     #[init(
@@ -126,7 +127,7 @@ mod app {
         async fn mode_sequencer(&mut ctx: mode_sequencer::Context);
 
         // Handles INA sensors
-        #[task(priority = 2, shared = [data], local=[ina260_1, ina260_2, ina260_3])]
+        #[task(priority = 2, shared = [data], local=[ina260_1, ina260_2, ina260_3, ina260_4])]
         async fn ina_sample(&mut ctx: ina_sample::Context, i2c: &'static Arbiter<MotorI2cBus>);
 
         #[task(local = [bme280, bmi323, bmm350], priority = 2)]
