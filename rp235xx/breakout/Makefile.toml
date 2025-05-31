@@ -1,0 +1,60 @@
+[tasks.format]
+install_crate = "rustfmt"
+command = "cargo"
+args = ["fmt"]
+
+[tasks.build]
+command = "cargo"
+args = ["build"]
+
+[tasks.test]
+command = "echo"
+
+[tasks.docs]
+command = "cargo"
+args = ["doc"]
+
+[tasks.clippy]
+install_crate = "clippy"
+command = "cargo"
+args = ["clippy", "--fix", "--no-deps", "--allow-dirty", "--target", "thumbv8m.main-none-eabihf", "--bin", "breakout"]
+
+[tasks.flash_debug_usb]
+#command = "pwd"
+command = "picotool"
+# picotool load -u -v -x -t elf
+args = [
+    "load",
+    "-u",
+    "-v",
+    "-x",
+    "-t",
+    "elf",
+    "../target/thumbv8m.main-none-eabihf/debug/breakout",
+]
+dependencies = ["build"]
+
+[tasks.flash_release_usb]
+command = "picotool"
+args = [
+    "load",
+    "-u",
+    "-v",
+    "-x",
+    "-t",
+    "elf",
+    "../target/thumbv8m.main-none-eabihf/release/breakout",
+]
+dependencies = ["build_release"]
+
+[tasks.run_debug_probe]
+install_crate = "probe-rs"
+command = "probe-rs"
+# run --chip rp235x
+args = [
+    "run",
+    "--chip",
+    "rp235x",
+    "../target/thumbv8m.main-none-eabihf/debug/breakout",
+]
+dependencies = ["build"]
