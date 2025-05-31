@@ -1,9 +1,6 @@
 #![no_std]
 
-
 // TI INA260 Current Sensor
-#[cfg(feature = "defmt")]
-use defmt::error;
 #[cfg(feature = "async")]
 use embedded_hal_async::delay::DelayNs;
 #[cfg(feature = "async")]
