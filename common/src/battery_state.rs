@@ -29,4 +29,3 @@ impl From<BatteryState> for u8 {
         }
     }
 }
-
