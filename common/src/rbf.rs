@@ -1,4 +1,3 @@
-
 use bincode::{Decode, Encode};
 use embedded_hal::digital::InputPin;
 
@@ -21,9 +20,9 @@ impl core::fmt::Display for RbfState {
     }
 }
 
-impl Into<bool> for RbfState {
-    fn into(self) -> bool {
-        match self {
+impl From<RbfState> for bool {
+    fn from(val: RbfState) -> Self {
+        match val {
             RbfState::Inhibited => true,
             RbfState::Uninhibited => false,
         }
@@ -41,7 +40,7 @@ impl From<bool> for RbfState {
 }
 
 /// Remove-before fire indicators are used at several points on flight hardware to prevent undisirable behavior
-/// during testing. On the Ejector and on ICARUS, this inhibits servo movements, while on JUPITER it prevents 
+/// during testing. On the Ejector and on ICARUS, this inhibits servo movements, while on JUPITER it prevents
 /// the main-camera from starting up.
 pub trait RbfIndicator {
     /// Is the RBF currently inserted?
@@ -62,6 +61,12 @@ pub trait RbfIndicator {
 
 /// A testing override RBF - always reads as not inserted
 pub struct NoRbf;
+impl Default for NoRbf {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NoRbf {
     pub fn new() -> Self {
         Self {}
