@@ -2,6 +2,8 @@
 
 
 // TI INA260 Current Sensor
+#[cfg(feature = "defmt")]
+use defmt::error;
 #[cfg(feature = "async")]
 use embedded_hal_async::delay::DelayNs;
 #[cfg(feature = "async")]
@@ -34,7 +36,7 @@ where
             delay,
             _marker: core::marker::PhantomData,
             state: OperMode::SCBVC.bits()
-                | Averaging::AVG512.bits()
+                | Averaging::AVG64.bits()
                 | SCConvTime::MS8_244.bits()
                 | BVConvTime::MS8_244.bits(),
         }

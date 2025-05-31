@@ -254,36 +254,36 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     let ina260_1 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x40, Mono);
     let ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x41, Mono);
-    let ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x42, Mono);
-    let ina260_4 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x42, Mono);
+    let ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x44, Mono);
+    let ina260_4 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x45, Mono);
 
     let data = DownlinkBuffer::new();
 
-    let mut rbf = pins.gpio4.into_pull_down_input();
+    // let mut rbf = pins.gpio4.into_pull_down_input();
 
     // Wait for the "Remove Before Flight" (RBF) pin to go low.
     // The RBF pin is a safety mechanism that ensures certain tasks
     // do not start until the pin is removed. This loop continuously
     // checks the state of the pin and delays task initialization
     // until the pin is confirmed to be low.
-    let mut rbf_high = true;
-    while rbf_high {
-        if rbf.is_low().unwrap() {
-            rbf_high = false;
-            info!("RBF is low.");
-        } else {
-            rbf_high = true;
-            info!("RBF is high.");
-        }
-    }
+    // let mut rbf_high = true;
+    // while rbf_high {
+    //     if rbf.is_low().unwrap() {
+    //         rbf_high = false;
+    //         info!("RBF is low.");
+    //     } else {
+    //         rbf_high = true;
+    //         info!("RBF is high.");
+    //     }
+    // }
 
     info!("Peripherals initialized, spawning tasks...");
-    heartbeat::spawn().ok();
-    mode_sequencer::spawn().ok();
+    // heartbeat::spawn().ok();
+    // mode_sequencer::spawn().ok();
     ina_sample::spawn(motor_i2c_arbiter).ok();
-    sample_sensors::spawn(avionics_i2c_arbiter).ok();
-    inertial_nav::spawn().ok();
-    radio_send::spawn().ok();
+    // sample_sensors::spawn(avionics_i2c_arbiter).ok();
+    // inertial_nav::spawn().ok();
+    // radio_send::spawn().ok();
     info!("Tasks spawned!");
     (
         Shared { data },
