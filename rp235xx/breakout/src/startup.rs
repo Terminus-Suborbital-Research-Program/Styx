@@ -254,7 +254,8 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     let ina260_1 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x40, Mono);
     let ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x41, Mono);
-    let ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x42, Mono);
+    let ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x44, Mono);
+    let ina260_4 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x45, Mono);
 
     let data = DownlinkBuffer::new();
 
@@ -297,6 +298,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             ina260_1,
             ina260_2,
             ina260_3,
+            ina260_4
         },
     )
 }

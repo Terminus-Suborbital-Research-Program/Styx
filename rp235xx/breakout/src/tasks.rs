@@ -134,16 +134,34 @@ pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter
     ctx.local.ina260_1.set_operating_mode(ina260_terminus::OperMode::SCBVC).await;
     ctx.local.ina260_2.set_operating_mode(ina260_terminus::OperMode::SCBVC).await;
     ctx.local.ina260_3.set_operating_mode(ina260_terminus::OperMode::SCBVC).await;
+    ctx.local.ina260_4.set_operating_mode(ina260_terminus::OperMode::SCBVC).await;
 
     loop {
-        let items = join!(
+        let voltages = join!(
             ctx.local.ina260_1.voltage(),
-            // ctx.local.ina260_2.voltage(),
-            // ctx.local.ina260_3.voltage()
+            ctx.local.ina260_2.voltage(),
+            ctx.local.ina260_3.voltage(),
+            ctx.local.ina260_4.voltage()
         );
-        info!("Currents: {}", ctx.local.ina260_1.current().await); //, ctx.local.ina260_2.current().await, ctx.local.ina260_3.current().await);
-        info!("Powers: {}", ctx.local.ina260_1.power().await); //, ctx.local.ina260_2.power().await, ctx.local.ina260_3.power().await);
-        info!("Voltages: {}", items.0);
+
+        let currents = join!(
+            ctx.local.ina260_1.current(),
+            ctx.local.ina260_2.current(),
+            ctx.local.ina260_3.current(),
+            ctx.local.ina260_4.current()
+        );
+
+        let powers = join!(
+            ctx.local.ina260_1.power(),
+            ctx.local.ina260_2.power(),
+            ctx.local.ina260_3.power(),
+            ctx.local.ina260_4.power()
+        );
+
+        info!("Voltages: {}, {}, {}, {}", voltages.0, voltages.1, voltages.2, voltages.3);
+        info!("Currents: {}, {}, {}, {}", currents.0, currents.1, currents.2, currents.3);
+        info!("Powers: {}, {}, {}, {}", powers.0, powers.1, powers.2, powers.3);
+
         // let voltages = [
         //     items.0.unwrap_or(f32::NAN),
         //     items.1.unwrap_or(f32::NAN),

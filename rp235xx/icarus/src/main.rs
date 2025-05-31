@@ -130,7 +130,7 @@ mod app {
         #[task(priority = 2, shared = [data], local=[ina260_1, ina260_2, ina260_3, ina260_4])]
         async fn ina_sample(&mut ctx: ina_sample::Context, i2c: &'static Arbiter<MotorI2cBus>);
 
-        #[task(local = [bme280, bmi323, bmm350], priority = 3)]
+        #[task(local = [bme280, bmi323, bmm350], priority = 2)]
         async fn sample_sensors(
             mut ctx: sample_sensors::Context,
             avionics_i2c: &'static Arbiter<AvionicsI2cBus>,

@@ -148,6 +148,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "breakout"
+version = "0.1.1"
+dependencies = [
+ "bin-packets",
+ "bincode",
+ "bme280-rs",
+ "bmi323",
+ "bmm350",
+ "cortex-m",
+ "defmt 0.3.100",
+ "defmt-rtt",
+ "embedded-hal 1.0.0",
+ "embedded-hal-async",
+ "embedded-hal-bus 0.3.0",
+ "embedded-io",
+ "fugit",
+ "futures",
+ "hc12-rs",
+ "heapless",
+ "ina260_terminus",
+ "minikalman",
+ "nalgebra 0.32.6",
+ "rp235x-hal",
+ "rp235x-pac",
+ "rtic",
+ "rtic-monotonics",
+ "rtic-sync",
+ "tinyframe",
+ "united_states_standard_atmosphere",
+ "uom",
+ "usb-device",
+ "usbd-serial",
+ "wgs84",
+]
+
+[[package]]
 name = "byteorder"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1134,6 +1170,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "061507c94fc6ab4ba1c9a0305018408e312e17c041eb63bef8aa726fa33aceae"
 dependencies = [
  "approx",
+ "libm",
  "num-complex",
  "num-traits",
  "paste",
