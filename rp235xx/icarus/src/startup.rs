@@ -249,13 +249,13 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     // Initialize Avionics Sensors
     let bmm350 = AsyncBMM350::new(ArbiterDevice::new(avionics_i2c_arbiter), 0x14, Mono);
-    let bmi323 = AsyncBmi323::new_with_i2c(ArbiterDevice::new(avionics_i2c_arbiter), 0x69, Mono);
-    let bme280 = AsyncBME280::new(ArbiterDevice::new(avionics_i2c_arbiter), 0x76, Mono);
+    let bmi323 = AsyncBMI323::new(ArbiterDevice::new(avionics_i2c_arbiter), 0x69, Mono);
+    let bme280 = AsyncBme280::new(ArbiterDevice::new(avionics_i2c_arbiter), Mono);
 
     let ina260_1 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x40, Mono);
     let ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x41, Mono);
-    let ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x44, Mono);
-    let ina260_4 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x45, Mono);
+    let ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x42, Mono);
+    let ina260_4 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x42, Mono);
 
     let data = DownlinkBuffer::new();
 
@@ -279,11 +279,11 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     info!("Peripherals initialized, spawning tasks...");
     heartbeat::spawn().ok();
-    // mode_sequencer::spawn().ok();
-    // ina_sample::spawn(motor_i2c_arbiter).ok();
+    mode_sequencer::spawn().ok();
+    ina_sample::spawn(motor_i2c_arbiter).ok();
     sample_sensors::spawn(avionics_i2c_arbiter).ok();
-    // inertial_nav::spawn().ok();
-    // radio_send::spawn().ok();
+    inertial_nav::spawn().ok();
+    radio_send::spawn().ok();
     info!("Tasks spawned!");
     (
         Shared { data },

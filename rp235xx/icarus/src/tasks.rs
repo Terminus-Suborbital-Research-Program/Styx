@@ -16,6 +16,7 @@ use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
 use uom::si::electric_potential::volt;
 use uom::si::power;
+
 use crate::device_constants::AvionicsI2cBus;
 use crate::phases::{FlapServoStatus, Modes, RelayServoStatus};
 use crate::{app::*, device_constants::MotorI2cBus, Mono};
@@ -159,21 +160,11 @@ pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter
             let voltages_packet = ApplicationPacket::VoltageData { timestamp: ina_samples.0.0, voltage: ina_samples.1.0};
             let current_packet = ApplicationPacket::CurrentData { timestamp: ina_samples.0.1, current: ina_samples.1.1};
             let power_packet = ApplicationPacket::PowerData { timestamp: ina_samples.0.2, power: ina_samples.1.2};
-            info!("Voltage Packet: {}", voltages_packet);
-            info!("Current Packet: {}", current_packet);
-            info!("Power Packet: {}", power_packet);
-            if data.is_full(){
-                data.pop_back();
-                data.pop_back();
-                data.pop_back();
-            }
-            else{
-                data.push_back(voltages_packet);
-                data.push_back(current_packet);
-                data.push_back(power_packet);
-            }
+            data.push_back(voltages_packet);
+            data.push_back(current_packet);
+            data.push_back(power_packet);
         });
-        Mono::delay(250.millis()).await;
+        Mono::delay(50.millis()).await;
     }
 }
 
@@ -184,66 +175,33 @@ pub async fn sample_sensors(
     // ctx.local.bme280.init().await;
     ctx.local.bmi323.init().await;
 
-    let accel_config = AccelConfig::builder().mode(bmi323::AccelerometerPowerMode::Normal);
-    ctx.local.bmi323.set_accel_config(accel_config.build()).await;
-    let gyro_config = GyroConfig::builder().mode(bmi323::GyroscopePowerMode::Normal);
-    ctx.local.bmi323.set_gyro_config(gyro_config.build()).await;
+    Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
+    let bmi323_init_result = ctx.local.bmi323.init().await;
+    match bmi323_init_result{
+        Ok(_)=>{
+            info!("BMI Initialized");
+        }
+        Err(_)=>{
+            error!("BMI Unininitialized");
+        }
+    }
+    Mono::delay(10_u64.millis()).await;
     loop {
-        let imu_result = ctx.local.bmi323.read_accel_data_scaled().await;
-        match imu_result{
-            Ok(acc)=>{
-                info!("Accel: {}, {}, {}", acc.x, acc.y, acc.z);
+        let sample_result = ctx.local.bme280.read_sample().await;
+        match sample_result {
+            Ok(sample) => {
+                // let temperature = sample.temperature.unwrap();
+                // let humidity = sample.humidity.unwrap();
+                // let pressure = sample.pressure.unwrap();
+            //     info!("Sample: ┳ Temperature: {} C", temperature);
+            //     info!("        ┣ Humidity: {} %", humidity);
+            //     info!("        ┗ Pressure: {} hPa", pressure);
             }
             Err(i2c_error)=>{
                 info!("BMI: {}", i2c_error);
             }
         }
-        let gyro_result = ctx.local.bmi323.read_gyro_data_scaled().await;
-        match gyro_result{
-            Ok(gyro)=>{
-                info!("Gyro: {}, {}, {}", gyro.x, gyro.y, gyro.z);
-            }
-            Err(i2c_error)=>{
-                info!("BMI: {}", i2c_error);
-            }
-        }
-        // let env = ctx.local.bme280.sample().await;
-        // // info!("Env: {}, {}, {}", env.1, env.2, env.3);
-        // let imu = ctx.local.bmi323.sample().await;
-        // match imu{
-        //     Ok(motion)=>{
-        //         if let Some(data) = motion {
-        //             if let Some(accel) = data.accel {
-        //                 info!("Accel: [{}, {}, {}] m/s²", accel[0], accel[1], accel[2]);
-        //             }
-        //             if let Some(gyro) = data.gyro {
-        //                 info!("Gyro: [{}, {}, {}] rad/s", gyro[0], gyro[1], gyro[2]);
-        //             }
-        //             info!("Timestamp: {} ticks", data.timestamp_ticks);
-        //         }
-        //     }
-        //     Err(_)=>{
-        //         error!("Error of some kind...");
-        //     }
-        // }
-
-        // let mag = ctx.local.bmm350.read_calibrated_data().await;
-        // info!("Magnetic field: {} µT", mag.mag_ut);
-        // info!("Temperature: {} °C", mag.temperature_c);
-
-        // let sample = ctx.local.bme280.measure(&mut Mono).await;
-        // match sample{
-        //     Ok(values)=>{
-        //         let temperature = values.temperature;
-        //         let pressure = values.pressure;
-        //         let humidity = values.humidity;
-        //         info!("T/P/H: {}, {}, {}", temperature, pressure, humidity);
-        //     }
-        //     Err(error)=>{
-        //         error!("BME280 Error: {}", error);
-        //     }
-        // }
-        Mono::delay(100_u64.millis()).await;
+        Mono::delay(250_u64.millis()).await;
     }
 }
 
@@ -297,13 +255,13 @@ async fn ina_data_handle(ina260_1: &mut AsyncINA260<ArbiterDevice<'_, AsyncI2c<I
     let p4_ts = Mono::now().ticks();
 
     let mut voltage_slice = [0.0_f32; 4];
-    let v_ts_slice = [v1_ts, v2_ts, v3_ts, v4_ts];
+    let mut v_ts_slice = [v1_ts, v2_ts, v3_ts, v4_ts];
 
     let mut current_slice = [0.0_f32; 4];
-    let i_ts_slice = [i1_ts, i2_ts, i3_ts, i4_ts];
+    let mut i_ts_slice = [i1_ts, i2_ts, i3_ts, i4_ts];
 
     let mut power_slice = [0.0_f32; 4];
-    let p_ts_slice = [p1_ts, p2_ts, p3_ts, p4_ts];
+    let mut p_ts_slice = [p1_ts, p2_ts, p3_ts, p4_ts];
 
     match voltage_1 {
         Ok(voltage)=>{
