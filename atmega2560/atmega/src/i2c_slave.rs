@@ -489,8 +489,333 @@ impl<'a> I2cSlave<'a> {
                         break Err(I2CSlaveError::UnknownState(status));
                     }
                 }
-            } else {
-                return Err(I2CSlaveError::InactiveBus);
+            } 
+            // else {
+                // return Err(I2CSlaveError::InactiveBus);
+            // }
+        };
+
+        self.twi.twcr.reset();
+
+        result
+    }
+
+    /// Receive data and write it to buffer
+    pub fn transact(&self, read_buffer: &mut [u8], write_buffer: &mut [u8]) -> Result<(), I2CSlaveError> {
+        let mut i: usize = 0;
+        let read_buffer_len: usize = read_buffer.len();
+        let write_buffer_len: usize = write_buffer.len();
+        let mut status: u8;
+
+        self.arm();
+
+        
+        // Read I2C in blocking mode
+        let result: Result<(), I2CSlaveError> = loop {
+            if self.int_flag.load(Ordering::SeqCst) {
+                // Clearing prescaler bits according to datasheet to read
+                // status codes correctly
+                self.twi.twsr.write(|w| w.twps().bits(0));
+
+                status = self.twi.twsr.read().bits();
+
+                match status {
+                    // READ mode is not expected
+                    0xA8 => {
+                        if write_buffer_len == 0 {
+                            // We have nothing to send
+                            self.twi.twdr.write(|w| w.bits(0x00));
+                            self.twi.twcr.write(|w| {
+                                w.twint()
+                                    .set_bit()
+                                    .twea()
+                                    .clear_bit()
+                                    .twen()
+                                    .set_bit()
+                                    .twie()
+                                    .set_bit()
+                            });
+                        } else {
+                            // Send byte
+                            self.twi.twdr.write(|w| w.bits(write_buffer[i]));
+
+                            i += 1;
+
+                            self.twi.twcr.write(|w| {
+                                w.twint()
+                                    .set_bit()
+                                    .twea()
+                                    .set_bit()
+                                    .twen()
+                                    .set_bit()
+                                    .twie()
+                                    .set_bit()
+                            });
+                        }
+
+
+                        self.int_flag.store(false, Ordering::SeqCst);
+                    }
+
+                    // Own SLA+W has been received; ACK has been returned
+                    0x60 => {
+                        // Continue, wait for data
+                        self.twi.twcr.write(|w| {
+                            w.twint()
+                                .set_bit()
+                                .twea()
+                                .set_bit()
+                                .twie()
+                                .set_bit()
+                                .twen()
+                                .set_bit()
+                        });
+
+                        // Resetting flag
+                        self.int_flag.store(false, Ordering::SeqCst);
+                    }
+
+                    // Arbitration lost in SLA+R/W as Master; own SLA+W has been
+                    // received; ACK has been returned
+                    0x68 => {
+                        // Data byte will be received and NOT ACK will be returned
+                        self.twi
+                            .twcr
+                            .write(|w| w.twint().set_bit().twea().clear_bit());
+
+                        // Resetting flag
+                        self.int_flag.store(false, Ordering::SeqCst);
+
+                        break Err(I2CSlaveError::ArbitrationLost);
+                    }
+
+                    // General call address has been received; ACK has been returned
+                    0x70 => {
+                        // Continue, wait for data
+                        self.twi.twcr.write(|w| {
+                            w.twint()
+                                .set_bit()
+                                .twea()
+                                .set_bit()
+                                .twie()
+                                .set_bit()
+                                .twen()
+                                .set_bit()
+                        });
+                        // Resetting flag
+                        self.int_flag.store(false, Ordering::SeqCst);
+                    }
+
+                    // Arbitration lost in SLA+R/W as Master; General call
+                    // address has been received; ACK has been returned
+                    0x78 => {
+                        // Data byte will be received and NOT ACK will be returned
+                        self.twi
+                            .twcr
+                            .write(|w| w.twint().set_bit().twea().clear_bit());
+
+                        // Resetting flag
+                        self.int_flag.store(false, Ordering::SeqCst);
+
+                        break Err(I2CSlaveError::ArbitrationLost);
+                    }
+
+                    // Previously addressed with own SLA+W; data has been received;
+                    // ACK has been returned
+                    0x80 => {
+                        if i > read_buffer_len - 1 {
+                            // Stop and virtually disconnect
+                            self.twi
+                                .twcr
+                                .write(|w| w.twea().clear_bit().twint().set_bit());
+
+                            // Resetting flag
+                            self.int_flag.store(false, Ordering::SeqCst);
+
+                            break Err(I2CSlaveError::BufferOverflow);
+                        } else {
+                            // Write data to buffer
+                            read_buffer[i] = self.twi.twdr.read().bits();
+
+                            i += 1;
+
+                            // Wait for more
+                            self.twi.twcr.write(|w| {
+                                w.twea()
+                                    .set_bit()
+                                    .twen()
+                                    .set_bit()
+                                    .twint()
+                                    .set_bit()
+                                    .twie()
+                                    .set_bit()
+                            });
+
+                            // Resetting flag
+                            self.int_flag.store(false, Ordering::SeqCst);
+                        }
+                    }
+                    0x88 => {
+                        // Stop and virtually disconnect
+                        self.twi
+                            .twcr
+                            .write(|w| w.twea().clear_bit().twint().set_bit());
+
+                        // Resetting flag
+                        self.int_flag.store(false, Ordering::SeqCst);
+
+                        break Ok(());
+                    }
+                    // Previously addressed with general call; data has been
+                    // received; ACK has been returned
+                    0x90 => {
+                        if i > read_buffer_len - 1 {
+                            // Stop and virtually disconnect
+                            self.twi
+                                .twcr
+                                .write(|w| w.twea().clear_bit().twint().set_bit());
+
+                            // Resetting flag
+                            self.int_flag.store(false, Ordering::SeqCst);
+
+                            break Err(I2CSlaveError::BufferOverflow);
+                        } else {
+                            // Write data to buffer
+                            read_buffer[i] = self.twi.twdr.read().bits();
+
+                            i += 1;
+
+                            // Wait for more
+                            self.twi.twcr.write(|w| {
+                                w.twea()
+                                    .set_bit()
+                                    .twen()
+                                    .set_bit()
+                                    .twint()
+                                    .set_bit()
+                                    .twie()
+                                    .set_bit()
+                            });
+
+                            // Resetting flag
+                            self.int_flag.store(false, Ordering::SeqCst);
+                        }
+                    }
+                    0x98 => {
+                        // Stop and virtually disconnect
+                        self.twi
+                            .twcr
+                            .write(|w| w.twea().clear_bit().twint().set_bit());
+
+                        // Resetting flag
+                        self.int_flag.store(false, Ordering::SeqCst);
+
+                        break Ok(());
+                    }
+                    // A STOP condition or repeated START condition has been
+                    // received while still addressed as Slave
+                    0xA0 => {
+                        // Stop and virtually disconnect
+                        self.twi
+                            .twcr
+                            .write(|w| w.twea().clear_bit().twint().set_bit());
+
+                        // Resetting flag
+                        self.int_flag.store(false, Ordering::SeqCst);
+
+                        break Ok(());
+                    }
+                    0xf8 => {
+                        // Resetting flag
+                        self.int_flag.store(false, Ordering::SeqCst);
+
+                        // ERROR
+                        break Err(I2CSlaveError::UnknownState(status));
+                    }
+                ////////////////////////
+                    // Arbitration lost in SLA+R/W as Master; own SLA+R has been
+                    // received; ACK has been returned
+                    0xB0 => {
+                        self.twi
+                            .twcr
+                            .write(|w| w.twint().set_bit().twea().clear_bit());
+
+                        // Resetting flag
+                        self.int_flag.store(false, Ordering::SeqCst);
+
+                        break Err(I2CSlaveError::ArbitrationLost);
+                    }
+                    // Data byte in TWDR has been transmitted; ACK has been received
+                    0xB8 => {
+                        if i > write_buffer_len - 1 {
+                            self.twi.twdr.write(|w| w.bits(0x00));
+
+                            self.twi.twcr.write(|w| {
+                                w.twint()
+                                    .set_bit()
+                                    .twea()
+                                    .clear_bit()
+                                    .twen()
+                                    .set_bit()
+                                    .twie()
+                                    .set_bit()
+                            });
+
+                            break Ok(());
+                        } else {
+                            self.twi.twdr.write(|w| w.bits(write_buffer[i]));
+
+                            i += 1;
+
+                            self.twi.twcr.write(|w| {
+                                w.twint()
+                                    .set_bit()
+                                    .twea()
+                                    .set_bit()
+                                    .twen()
+                                    .set_bit()
+                                    .twie()
+                                    .set_bit()
+                            });
+                        }
+
+                        self.int_flag.store(false, Ordering::SeqCst);
+                    }
+                    // Data byte in TWDR has been transmitted; NOT ACK has been received
+                    0xC0 => {
+                        self.twi
+                            .twcr
+                            .write(|w| w.twint().set_bit().twea().clear_bit());
+
+                        self.int_flag.store(false, Ordering::SeqCst);
+
+                        break Ok(());
+                    }
+                    // Last data byte in TWDR has been transmitted (TWEA = “0”);
+                    // ACK has been received
+                    0xC8 => {
+                        self.twi
+                            .twcr
+                            .write(|w| w.twint().set_bit().twea().clear_bit());
+
+                        self.int_flag.store(false, Ordering::SeqCst);
+
+                        break Ok(());
+                    }
+                    0xF8 => {
+                        // Resetting flag
+                        self.int_flag.store(false, Ordering::SeqCst);
+
+                        // ERROR
+                        break Err(I2CSlaveError::UnknownState(status));
+                    }
+                    _ => {
+                        // Resetting flag
+                        self.int_flag.store(false, Ordering::SeqCst);
+
+                        break Err(I2CSlaveError::UnknownState(status));
+                    }
+                }
             }
         };
 

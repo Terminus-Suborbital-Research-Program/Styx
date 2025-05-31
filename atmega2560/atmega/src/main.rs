@@ -9,10 +9,11 @@ use atmega_hal::{
     usart::{Baudrate, Usart},
 };
 
+use common::battery_state::BatteryState;
 use common::indicators::IndicatorBuilder;
 use i2c_slave::*;
 use panic_halt as _;
-use ufmt::uwriteln;
+use ufmt::{uwrite, uwriteln};
 
 type CoreClock = MHz16;
 
@@ -27,7 +28,7 @@ fn TWI() {
     });
 }
 
-use arduino_hal as atmega_hal;
+use arduino_hal::{self as atmega_hal, delay_ms};
 
 #[arduino_hal::entry]
 fn main() -> ! {
@@ -44,6 +45,7 @@ fn main() -> ! {
     let mut led = pins.d13.into_output();
 
     let mut battery_latch = pins.d29.into_output();
+    battery_latch.set_low();
 
     let gse1 = pins.d22.into_floating_input().downgrade();
     let gse2 = pins.d23.into_floating_input().downgrade();
@@ -72,7 +74,7 @@ fn main() -> ! {
     // Check in and out of loop
 
     let mut write_buf: [u8; 1] = [0u8; 1];
-    let mut read_buf: [u8; 1] = [0u8; 1];
+    let mut read_buf: [u8; 2] = [0u8; 2];
 
     loop {
         let pins = IndicatorBuilder::new()
@@ -84,12 +86,26 @@ fn main() -> ! {
             .te2(te_2.is_high())
             .te3(te_3.is_high())
             .build();
-
         write_buf[0] = pins.into();
 
-        match i2c_slave.respond(&write_buf) {
-            Ok(bytes_sent) => {
-                uwriteln!(serial, "{} bytes sent", bytes_sent).ok();
+        match i2c_slave.transact(&mut read_buf, &mut write_buf) {
+            Ok(()) => {
+                match BatteryState::from(read_buf[1]) {
+                    BatteryState::LatchOn => {
+                        battery_latch.set_high();
+                        uwriteln!(serial, "Set High").ok();
+                    }
+
+                    BatteryState::LatchOff => {
+                        // Wait 30 seconds and then latch off
+                        // TE 2 is 30 second warning before sutdown
+                        // delay_ms(30_000);
+                        battery_latch.set_low();
+                        uwriteln!(serial, "Set Low").ok();
+                    }
+
+                    BatteryState::Neutral => {}
+                }
             }
 
             Err(err) => {
@@ -97,19 +113,10 @@ fn main() -> ! {
             }
         }
 
-        match i2c_slave.receive(&mut read_buf) {
-            Ok(_) => {
-                uwriteln!(serial, "Succesful read").ok();
-                if read_buf[0] == 1 {
-                    battery_latch.set_high();
-                } else {
-                    battery_latch.set_low();
-                }
-            }
-            Err(err) => {
-                uwriteln!(serial, "Error: {:?}", err).ok();
-            }
+        for b in read_buf {
+            uwrite!(serial, "{}", b).ok();
         }
+        uwriteln!(serial, "").ok();
 
         read_buf.fill(0);
     }

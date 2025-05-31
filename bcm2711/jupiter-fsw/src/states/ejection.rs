@@ -15,11 +15,11 @@ impl ValidState for Ejection {
     }
 
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
-        match ctx.pins.read().te2() {
+        match ctx.atmega.pins().unwrap_or_default().te2() {
             PinState::High => {
                 // Low power warning, go to battery power
                 log::info!("Received LV shutoff signal, triggering battery power");
-                warn!("ATMEGA latch not implemented yet");
+                ctx.atmega.activate_latch();
                 Box::new(BatteryPower::default())
             }
 

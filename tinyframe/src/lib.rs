@@ -120,13 +120,18 @@ pub mod packets {
                 return Err(FrameError::BadStart);
             }
 
-            let needed_len = bytes[1] as usize;
-            if needed_len as u8 != bytes[2].not() {
+            if bytes[1] > MAX_PACKET_LEN as u8 {
+                return Err(FrameError::BadStart);
+            }
+
+            if bytes[1] != bytes[2].not() {
                 return Err(FrameError::BadHeader {
                     first: bytes[1],
                     checksum: bytes[2],
                 });
             }
+
+            let needed_len = bytes[1] as usize;
 
             // Check if enough bytes
             if bytes.len() < needed_len {
