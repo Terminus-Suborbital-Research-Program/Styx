@@ -4,5 +4,5 @@
 use defmt::error;
 #[cfg(feature = "sync")]
 
-pub struct BMM280 {}
-impl BME280 {}
+pub struct BMI323 {}
+impl BMI323 {}

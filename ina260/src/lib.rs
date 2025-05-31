@@ -1,5 +1,6 @@
 #![no_std]
 
+
 // TI INA260 Current Sensor
 #[cfg(feature = "async")]
 use embedded_hal_async::delay::DelayNs;
@@ -174,11 +175,11 @@ where
             .write_read(self.address, &[Register::VOLTAGE.addr()], &mut buffer)
             .await;
         match result {
-            Ok(_) =>{
+            Ok(_) => {
                 let msb = buffer[0];
                 let lsb = buffer[1];
                 Ok(u16::from_be_bytes([msb, lsb]))
-            },
+            }
             Err(e) => Err(e),
         }
     }
