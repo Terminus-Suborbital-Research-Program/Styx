@@ -1,5 +1,5 @@
 [package]
-name = "bmm350"
+name = "bme280"
 version = "0.1.0"
 edition = "2024"
 
@@ -9,8 +9,6 @@ embedded-hal = "1.0.0"
 embedded-hal-async = { version = "1.0.0", features = [
     "defmt-03",
 ], optional = true }
-cast = { version = "*", default-features = false }
-
 [features]
 default = ["async", "defmt"]
 with_defmt = ["defmt"]

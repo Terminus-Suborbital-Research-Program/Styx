@@ -15,7 +15,7 @@ static RELAY_ANGLE_OPEN: u16 = 30;
 static RELAY_ANGLE_CLOSE: u16 = 0;
 
 pub static FLUTTER_START_TIME: u64 = 10000; // milliseconds
-pub static FLUTTER_COUNT: u8 = 3; // (Open&Close desired times * 2)
+pub static FLUTTER_COUNT: u8 = 1; // (Open&Close desired times * 2)
 pub static SERVO_DISABLE_DELAY: u64 = 2000; // milliseconds
 static FLAP_FLUTTER_TIME: u64 = 1000; //milliseconds
 static RELAY_FLUTTER_TIME: u64 = 1000; //milliseconds
@@ -68,7 +68,6 @@ impl Modes{
         let flutter_millis = MicrosDurationU64::millis(FLAP_FLUTTER_TIME);
         let tplus_flap_flutter = now + flutter_millis;
         Mono::delay_until(tplus_flap_flutter).await;
-        
         match status{
             FlapServoStatus::Open=>{
                 match Mono::timeout_at(tplus_flap_flutter, Self::flap_servos_flutter_close(servo)).await{
@@ -143,11 +142,11 @@ impl Modes{
             RelayServoStatus::Close=>{
                 match Mono::timeout_at(tplus_relay_flutter, Self::relay_servos_flutter_open(servo)).await{
                         Ok(_)=>{
-                        info!("FLAP FLUTTER OPENED");
+                        info!("Relay FLUTTER OPENED");
                         return RelayServoStatus::Open;
                     }
                     Err(_)=>{
-                        error!("FLAP FLUTTER ISSUE");
+                        error!("Relay FLUTTER ISSUE");
                         return RelayServoStatus::Error;
                     }
                 }
@@ -155,11 +154,11 @@ impl Modes{
             RelayServoStatus::Open=>{
                 match Mono::timeout_at(tplus_relay_flutter, Self::relay_servos_flutter_close(servo)).await{
                         Ok(_)=>{
-                        info!("FLAP FLUTTER CLOSED");
+                        info!("Relay FLUTTER CLOSED");
                         return RelayServoStatus::Close;
                     }
                     Err(_)=>{
-                        error!("FLAP FLUTTER ISSUE");
+                        error!("Relay FLUTTER ISSUE");
                         return RelayServoStatus::Error;
                     }
                 }
@@ -167,11 +166,11 @@ impl Modes{
             RelayServoStatus::Error=>{
                 match Mono::timeout_at(tplus_relay_flutter, Self::relay_servos_flutter_open(servo)).await{
                     Ok(_)=>{
-                        info!("FLAP FLUTTER CLOSE");
+                        info!("Relay FLUTTER CLOSE");
                         return RelayServoStatus::Error;
                     }
                     Err(_)=>{
-                        error!("FLAP FLUTTER ISSUE");
+                        error!("Relay FLUTTER ISSUE");
                         return RelayServoStatus::Error;
                     }
                 }
