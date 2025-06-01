@@ -51,7 +51,10 @@ impl Atmega {
     }
 
     pub fn pins(&mut self) -> Result<IndicatorStates, IndicatorError> {
-        Ok(IndicatorStates::try_from(self.device.smbus_read_byte()?)?)
+        // Let this error out in order to not crash when battery latch is set.
+        Ok(IndicatorStates::try_from(
+            self.device.smbus_read_byte().unwrap_or(0),
+        )?)
     }
 
     /// Write one byte to register 0x00 (SMBus “command” 0x00).
