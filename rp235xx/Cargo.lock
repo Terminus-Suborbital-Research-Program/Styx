@@ -146,11 +146,11 @@ version = "0.1.1"
 dependencies = [
  "bin-packets",
  "bincode",
- "bme280-rs",
+ "bme280 0.5.1",
  "bmi323",
  "bmm350",
  "cortex-m",
- "defmt 0.3.100",
+ "defmt 1.0.1",
  "defmt-rtt",
  "embedded-hal 1.0.0",
  "embedded-hal-async",
@@ -162,7 +162,7 @@ dependencies = [
  "heapless",
  "ina260_terminus",
  "minikalman",
- "nalgebra 0.32.6",
+ "nalgebra 0.33.2",
  "rp235x-hal",
  "rp235x-pac",
  "rtic",
@@ -1163,7 +1163,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "061507c94fc6ab4ba1c9a0305018408e312e17c041eb63bef8aa726fa33aceae"
 dependencies = [
  "approx",
- "libm",
  "num-complex",
  "num-traits",
  "paste",
