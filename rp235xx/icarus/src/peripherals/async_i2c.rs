@@ -6,7 +6,7 @@ use embedded_hal_async::i2c;
 use futures::pin_mut;
 use rp235x_hal::async_utils::AsyncPeripheral;
 
-/// A generic I2C device that is able to transact without fear of locking the device indefinitly
+/// A generic I2C device that is able to transact without fear of locking the device indefinitely
 #[derive(Clone, Copy, PartialEq, Eq, Debug, defmt::Format)]
 pub enum AsyncI2cError<T: i2c::Error> {
     Timeout,
