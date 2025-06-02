@@ -11,7 +11,7 @@ pub struct BatteryPower {}
 
 // For this - we're going to pull low at estimated T+600 seconds always, it's not informed by a pin
 // the latch is triggered on entering this state, not by this state
-static POWEROFF_T_TIME_SECS: i32 = 600;
+static POWEROFF_T_TIME_SECS: i32 = 570;
 
 impl ValidState for BatteryPower {
     fn phase(&self) -> JupiterPhase {
