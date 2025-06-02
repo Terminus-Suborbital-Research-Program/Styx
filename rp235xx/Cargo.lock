@@ -122,9 +122,16 @@ dependencies = [
 
 [[package]]
 name = "bmm350"
+version = "0.0.2"
+dependencies = [
+ "defmt 1.0.1",
+ "embedded-hal-async",
+]
+
+[[package]]
+name = "bmm350"
 version = "0.1.0"
 dependencies = [
- "cast",
  "defmt 1.0.1",
  "embedded-hal 1.0.0",
  "embedded-hal-async",
@@ -138,7 +145,7 @@ dependencies = [
  "bincode",
  "bme280 0.5.1",
  "bmi323",
- "bmm350",
+ "bmm350 0.1.0",
  "cortex-m",
  "defmt 1.0.1",
  "defmt-rtt",
@@ -571,7 +578,7 @@ dependencies = [
  "bincode",
  "bme280 0.1.0",
  "bmi323",
- "bmm350",
+ "bmm350 0.0.2",
  "cortex-m",
  "defmt 1.0.1",
  "defmt-rtt",

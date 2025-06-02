@@ -122,9 +122,8 @@ dependencies = [
 
 [[package]]
 name = "bmm350"
-version = "0.1.0"
+version = "0.0.2"
 dependencies = [
- "cast",
  "defmt 1.0.1",
  "embedded-hal 1.0.0",
  "embedded-hal-async",
