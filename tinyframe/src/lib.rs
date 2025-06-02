@@ -1,6 +1,5 @@
 #![cfg_attr(not(test), no_std)]
 
-mod bincode;
 mod crc;
 pub mod reader;
 pub mod writer;
