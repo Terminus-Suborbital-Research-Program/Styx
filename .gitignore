@@ -20,4 +20,4 @@ ejector/Cargo.lock
 .orig
 
 # Don't include the result folder
-result/
+result
