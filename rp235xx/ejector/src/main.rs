@@ -44,8 +44,9 @@ mod app {
     use crate::device_constants::packets::RadioInterface;
 
     use crate::actuators::servo::EjectorServo;
+    use crate::device_constants::pins::CamMosfetPin;
     use crate::device_constants::{
-        CamLED, EjectionDetectionPin, EjectorRbf, Heartbeat, JupiterUart, RbfLed,
+        EjectionDetectionPin, GreenLed, JupiterUart, OnboardLED, RedLed, SAMPLE_COUNT,
     };
 
     use super::*;
@@ -56,6 +57,7 @@ mod app {
     use hal::gpio::{self};
 
     use heapless::Deque;
+    use rp235x_hal::adc::AdcFifo;
     use rp235x_hal::uart::UartPeripheral;
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
@@ -70,45 +72,54 @@ mod app {
 
     #[shared]
     pub struct Shared {
-        pub downlink_packets: Deque<ApplicationPacket, 16>,
-        pub ejector_time_millis: u64,
-        pub suspend_packet_handler: bool,
+        pub downlink_packets: Deque<ApplicationPacket, 128>,
         pub radio: RadioInterface,
-        pub rbf: EjectorRbf,
-        pub led: Heartbeat,
+        pub samples_buffer: [u16; SAMPLE_COUNT],
     }
 
     #[local]
     pub struct Local {
+        pub onboard_led: OnboardLED,
         pub ejector_servo: EjectorServo,
-        pub cams_led: CamLED,
-        pub rbf_led: RbfLed,
+        pub arming_led: RedLed,
+        pub packet_led: GreenLed,
         pub ejection_pin: EjectionDetectionPin,
         pub downlink: JupiterUart,
+        pub camera_mosfet: CamMosfetPin,
+        pub geiger_fifo: Option<AdcFifo<'static, u16>>,
     }
 
-    #[init]
+    #[init(local = [adc: Option<hal::Adc> = None])]
     fn init(ctx: init::Context) -> (Shared, Local) {
         startup::startup(ctx)
     }
 
     extern "Rust" {
         // Sequences the ejection
-        #[task(local = [ejection_pin, ejector_servo], shared = [rbf], priority = 2)]
+        #[task(local = [ejection_pin, arming_led, ejector_servo],  priority = 1)]
         async fn ejector_sequencer(mut ctx: ejector_sequencer::Context);
 
-        // Heartbeats the main led
-        #[task(shared = [radio, downlink_packets, ejector_time_millis, led], priority = 2)]
+        // Sequences cameras activation
+        #[task(local = [camera_mosfet], priority = 1)]
+        async fn camera_sequencer(mut ctx: camera_sequencer::Context);
+
+        // Heartbeats the main led (and sends packets after arming)
+        #[task(shared = [radio, downlink_packets], local = [onboard_led], priority = 1)]
         async fn heartbeat(mut ctx: heartbeat::Context);
 
         // Reads incoming packets from the radio
-        #[task(local = [downlink], shared = [radio, downlink_packets, led], priority = 3)]
+        #[task(local = [downlink, packet_led], shared = [radio, downlink_packets], priority = 1)]
         async fn radio_read(mut ctx: radio_read::Context);
 
         // Updates the radio module on the serial interrupt
         #[task(binds = UART1_IRQ, shared = [radio])]
         fn uart_interrupt(mut ctx: uart_interrupt::Context);
 
+        #[task(binds = ADC_IRQ_FIFO, priority = 3, shared = [samples_buffer], local = [geiger_fifo, counter: usize = 1])]
+        fn adc_irq(mut ctx: adc_irq::Context);
+
+        #[task(priority = 2, shared = [samples_buffer, downlink_packets])]
+        async fn geiger_calculator(mut ctx: geiger_calculator::Context);
     }
 
     /// Returns the current time in nanoseconds since power-on

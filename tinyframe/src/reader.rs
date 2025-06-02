@@ -1,6 +1,6 @@
 use bin_packets::packets::ApplicationPacket;
 use bincode::{config::standard, decode_from_slice};
-use defmt::error;
+use defmt::{error, info};
 use embedded_io::{Read, ReadReady};
 use heapless::Vec;
 
@@ -43,20 +43,26 @@ impl<D: Read + ReadReady, const N: usize> BufferedReader<D, N> {
         while !self.incoming_frame_buffer.is_empty() {
             match TinyFrame::decode_from_slice(&self.incoming_frame_buffer) {
                 Ok((frame, bytes_used)) => {
+                    info!("Found! {}", frame);
                     self.incoming_buffer.extend_from_slice(frame.data()).ok();
                     self.incoming_frame_buffer.rotate_left(bytes_used);
                     self.incoming_frame_buffer
                         .truncate(self.incoming_frame_buffer.len() - bytes_used);
+                    return Ok(());
                 }
 
                 Err(e) => {
                     match e {
                         FrameError::UnexpectedEOF => return Ok(()),
 
-                        _ => {
+                        FrameError::BadStart => {
                             // Any other is  a failure
                             self.incoming_frame_buffer.remove(0);
+                        }
+                        _ => {
                             error!("Decoding error on frame! {}", e);
+                            error!("{}", self.incoming_frame_buffer);
+                            self.incoming_frame_buffer.remove(0);
                         }
                     }
                 }

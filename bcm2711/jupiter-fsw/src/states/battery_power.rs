@@ -1,4 +1,5 @@
 use bin_packets::phases::JupiterPhase;
+use common::battery_state::BatteryState;
 use log::{info, warn};
 
 use crate::states::shutdown::Shutdown;
@@ -20,7 +21,7 @@ impl ValidState for BatteryPower {
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
         if ctx.t_time > POWEROFF_T_TIME_SECS {
             info!("Powering off latch");
-            warn!("Power off latch not implemented yet");
+            ctx.atmega.deactivate_latch();
             Box::new(Shutdown::enter())
         } else {
             // No change

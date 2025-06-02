@@ -9,31 +9,12 @@ use i2cdev::{
 };
 use log::{debug, warn};
 
-use common::indicators::{IndicatorStates, MalformedIndicatorError};
-
-#[derive(Clone)]
-pub struct IndicatorsReader {
-    pin_states: Arc<Mutex<IndicatorStates>>,
-}
+use common::{
+    battery_state::BatteryState,
+    indicators::{IndicatorStates, MalformedIndicatorError},
+};
 
 static ATMEGA_ONCE: Once = Once::new();
-impl IndicatorsReader {
-    pub fn new<T: Into<Atmega>>(atmega: T) -> Self {
-        let pins = Arc::new(Mutex::new(IndicatorStates::none()));
-        let c = pins.clone();
-        let atmega = atmega.into();
-        ATMEGA_ONCE.call_once(|| {
-            std::thread::spawn(move || {
-                pin_states_thread(atmega, c);
-            });
-        });
-        Self { pin_states: pins }
-    }
-
-    pub fn read(&self) -> IndicatorStates {
-        *self.pin_states.lock().unwrap()
-    }
-}
 
 /// ATMega abstraction
 pub struct Atmega {
@@ -64,32 +45,43 @@ impl From<MalformedIndicatorError> for IndicatorError {
     }
 }
 
-#[allow(dead_code)]
 impl Atmega {
     pub fn new(device: LinuxI2CDevice) -> Self {
         device.into()
     }
 
     pub fn pins(&mut self) -> Result<IndicatorStates, IndicatorError> {
-        Ok(IndicatorStates::try_from(self.device.smbus_read_byte()?)?)
+        // Let this error out in order to not crash when battery latch is set.
+        Ok(IndicatorStates::try_from(
+            self.device.smbus_read_byte().unwrap_or(0),
+        )?)
     }
-}
 
-// update signature to use SharedPinStates and simplify body
-fn pin_states_thread(mut atmega: Atmega, pins: Arc<Mutex<IndicatorStates>>) -> ! {
-    loop {
-        match atmega.pins() {
-            Ok(new_pins) => {
-                let mut pin_states = pins.lock().unwrap();
-                debug!("New pin states: {new_pins:?}");
-                *pin_states = new_pins;
-            }
+    /// Write one byte to register 0x00 (SMBus “command” 0x00).
+    fn write_reg0(&mut self, value: u8) -> Result<(), IndicatorError> {
+        // LinuxI2CDevice already has smbus_write_byte_data(cmd, value)
+        self.device
+            .smbus_write_byte_data(0x00, value)
+            .map_err(IndicatorError::from)
+    }
 
-            Err(e) => {
-                warn!("Error reading pins: {e:?}");
-            }
-        }
+    /// Write a battery state to the device
+    fn set_battery_latch(&mut self, latch_state: BatteryState) -> Result<(), IndicatorError> {
+        self.write_reg0(latch_state.into())
+    }
 
-        std::thread::sleep(Duration::from_millis(100));
+    /// Activate Latch
+    pub fn activate_latch(&mut self) {
+        self.set_battery_latch(BatteryState::LatchOn).ok();
+    }
+
+    /// Idle latch
+    pub fn idle_latch(&mut self) {
+        self.set_battery_latch(BatteryState::Neutral).ok();
+    }
+
+    /// Send the battery latch low
+    pub fn deactivate_latch(&mut self) {
+        self.set_battery_latch(BatteryState::LatchOff).ok();
     }
 }
