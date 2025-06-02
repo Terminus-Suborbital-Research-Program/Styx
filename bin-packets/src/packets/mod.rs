@@ -6,7 +6,6 @@ use defmt::Format;
 use serde::{Deserialize, Serialize};
 use status::Status;
 
-use core::option::Option;
 
 use crate::commands::CommandPacket;
 

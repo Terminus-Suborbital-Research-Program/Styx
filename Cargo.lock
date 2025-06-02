@@ -531,6 +531,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "tinyframe"
+version = "0.1.0"
+dependencies = [
+ "bin-packets",
+ "bincode",
+ "defmt 1.0.1",
+ "embedded-io",
+ "heapless",
+]
+
+[[package]]
 name = "unescaper"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
