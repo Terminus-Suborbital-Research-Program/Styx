@@ -53,12 +53,12 @@ where
     }
 
     pub async fn initialize(&mut self) -> Result<(), I2C::Error> {
- self.write_register(PAD_CTRL.0, 0x07).await?;
+        self.write_register(PAD_CTRL.0, 0x07).await?;
         self.write_register(PMU_CMD_AXIS_EN.0, PMU_CMD_AXIS_EN.1).await?;
         self.write_register(PMU_CMD_AGGR_SET.0, PMU_CMD_AGGR_SET.1).await?;
         self.write_register(PMU_CMD.0, 0x01).await?;
         self.write_register(CTRL_USER.0, 0x01).await?;
-        self.delay.delay_ms(10).await;
+        self.delay.delay_ms(2).await;
 
         let chip_id = self.read_register(CHIP_ID.0).await?;
         if chip_id != CHIP_ID.1 {
