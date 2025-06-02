@@ -13,6 +13,8 @@ pub enum Error {
     BadPacketLength { first: usize, checksum: usize },
     /// Bad checksum
     BadChecksum { expected: u16, found: u16 },
+    /// Bad end byte
+    BadEnd,
 }
 
 /// Custom result type
