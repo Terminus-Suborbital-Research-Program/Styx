@@ -5,6 +5,7 @@ use bin_packets::devices::DeviceIdentifier;
 use bin_packets::packets::status::Status;
 use bin_packets::packets::ApplicationPacket;
 use bme280::AsyncBME280;
+use bmi323::{AccelConfig, GyroConfig};
 use defmt::{error, info};
 use embedded_hal::digital::StatefulOutputPin;
 use fugit::ExtU64;
@@ -15,7 +16,6 @@ use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
 use uom::si::electric_potential::volt;
 use uom::si::power;
-
 use crate::device_constants::AvionicsI2cBus;
 use crate::phases::{FlapServoStatus, Modes, RelayServoStatus};
 use crate::{app::*, device_constants::MotorI2cBus, Mono};
@@ -181,34 +181,55 @@ pub async fn sample_sensors(
     ctx: sample_sensors::Context<'_>,
     _avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
 ) {
-    ctx.local.bme280.init().await;
-    ctx.local.bmi323.initialize().await;
-    ctx.local.bmm350.initialize().await;
+    // ctx.local.bme280.init().await;
+    ctx.local.bmi323.init().await;
 
+    let accel_config = AccelConfig::builder().mode(bmi323::AccelerometerPowerMode::Normal);
+    ctx.local.bmi323.set_accel_config(accel_config.build()).await;
+    let gyro_config = GyroConfig::builder().mode(bmi323::GyroscopePowerMode::Normal);
+    ctx.local.bmi323.set_gyro_config(gyro_config.build()).await;
     loop {
-        let env = ctx.local.bme280.sample().await;
-        info!("Env: {}, {}, {}", env.1, env.2, env.3);
-        let imu = ctx.local.bmi323.sample().await;
-        match imu{
-            Ok(motion)=>{
-                if let Some(data) = motion {
-                    if let Some(accel) = data.accel {
-                        info!("Accel: [{}, {}, {}] m/s²", accel[0], accel[1], accel[2]);
-                    }
-                    if let Some(gyro) = data.gyro {
-                        info!("Gyro: [{}, {}, {}] rad/s", gyro[0], gyro[1], gyro[2]);
-                    }
-                    info!("Timestamp: {} ticks", data.timestamp_ticks);
-                }
+        let imu_result = ctx.local.bmi323.read_accel_data_scaled().await;
+        match imu_result{
+            Ok(acc)=>{
+                info!("Accel: {}, {}, {}", acc.x, acc.y, acc.z);
             }
-            Err(_)=>{
-                error!("Error of some kind...");
+            Err(i2c_error)=>{
+                info!("BMI: {}", i2c_error);
             }
         }
+        let gyro_result = ctx.local.bmi323.read_gyro_data_scaled().await;
+        match gyro_result{
+            Ok(gyro)=>{
+                info!("Gyro: {}, {}, {}", gyro.x, gyro.y, gyro.z);
+            }
+            Err(i2c_error)=>{
+                info!("BMI: {}", i2c_error);
+            }
+        }
+        // let env = ctx.local.bme280.sample().await;
+        // // info!("Env: {}, {}, {}", env.1, env.2, env.3);
+        // let imu = ctx.local.bmi323.sample().await;
+        // match imu{
+        //     Ok(motion)=>{
+        //         if let Some(data) = motion {
+        //             if let Some(accel) = data.accel {
+        //                 info!("Accel: [{}, {}, {}] m/s²", accel[0], accel[1], accel[2]);
+        //             }
+        //             if let Some(gyro) = data.gyro {
+        //                 info!("Gyro: [{}, {}, {}] rad/s", gyro[0], gyro[1], gyro[2]);
+        //             }
+        //             info!("Timestamp: {} ticks", data.timestamp_ticks);
+        //         }
+        //     }
+        //     Err(_)=>{
+        //         error!("Error of some kind...");
+        //     }
+        // }
 
-        let mag = ctx.local.bmm350.read_calibrated_data().await;
-        info!("Magnetic field: {} µT", mag.mag_ut);
-        info!("Temperature: {} °C", mag.temperature_c);
+        // let mag = ctx.local.bmm350.read_calibrated_data().await;
+        // info!("Magnetic field: {} µT", mag.mag_ut);
+        // info!("Temperature: {} °C", mag.temperature_c);
 
         // let sample = ctx.local.bme280.measure(&mut Mono).await;
         // match sample{
