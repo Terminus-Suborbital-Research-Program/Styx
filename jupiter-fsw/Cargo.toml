@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bin-packets = { path = "../../bin-packets", features = ["std"] }
+bin-packets = { path = "../bin-packets", features = ["std"] }
 env_logger = "0.11.7"
 get_if_addrs = "0.5.3"
 gpio = "0.4.1"
@@ -15,5 +15,5 @@ rppal = "0.22.1"
 serde_json = "1.0.140"
 serialport = "4.7.1"
 ureq = { version = "3.0.10", features = ["json"] }
-common = { path = "../../common" }
+common = { path = "../common" }
 embedded-hal = "1.0.0"
