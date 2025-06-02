@@ -6,10 +6,14 @@
     utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, utils, ... }:
+  outputs = { nixpkgs, utils, ... }:
     utils.lib.eachDefaultSystem (system:
-      let pkgs = import nixpkgs { inherit system; };
+      let
+        pkgs = import nixpkgs { inherit system; };
+        jupiter-fsw = pkgs.callPackage ./jupiter-fsw/jupiter.nix { };
       in {
+        packages = { inherit jupiter-fsw; };
+
         devShell = with pkgs;
           mkShell {
             buildInputs = [
