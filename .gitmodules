@@ -1,0 +1,2 @@
+[submodule "bmi323-rs"]
+	url = git@github.com:AtmoPierce/bmi323-rs.git
