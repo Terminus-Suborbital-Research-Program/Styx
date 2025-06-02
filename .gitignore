@@ -17,4 +17,7 @@ ejector/Cargo.lock
 .direnv
 
 # Wierd original files
-#.orig
+.orig
+
+# Don't include the result folder
+result
