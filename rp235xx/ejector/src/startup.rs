@@ -232,6 +232,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     heartbeat::spawn().ok();
     ejector_sequencer::spawn().ok();
     radio_read::spawn().ok();
+    camera_sequencer::spawn().ok();
 
     (
         Shared {
