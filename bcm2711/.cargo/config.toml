@@ -1,3 +1,0 @@
-# Env-logger level
-[env]
-RUST_LOG = "info"
