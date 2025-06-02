@@ -1,6 +1,4 @@
-use core::num;
 
-use super::MAX_PAYLOAD_LEN_BYTES;
 use crate::{Error, Result};
 
 /// A frame sequence
