@@ -3,7 +3,7 @@ use crate::{Error, Result};
 use super::{MAX_PAYLOAD_LEN_BYTES, crc::crc16_ccitt_false};
 use heapless::Vec;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Payload {
     data: Vec<u8, MAX_PAYLOAD_LEN_BYTES>,
 }
