@@ -1,12 +1,10 @@
 use core::{cmp::min, ops::Not};
 
-use payload::Payload;
 use sequence::Header;
 
 use crate::{Error, Result};
 
 mod crc;
-pub mod payload;
 pub mod sequence;
 
 /// The maximum size of frame data
@@ -22,7 +20,7 @@ pub const END_BYTE: u8 = 0xCF;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Frame {
     header: Header,
-    payload: Payload,
+    payload: heapless::Vec<u8, MAX_PAYLOAD_LEN_BYTES>,
     checksum: u16,
 }
 
@@ -34,7 +32,7 @@ impl Frame {
     pub fn new(data: &[u8], sequence_number: u8) -> (Self, usize) {
         let bytes = min(data.len(), MAX_PAYLOAD_LEN_BYTES);
         // Build a Payload from exactly those bytes:
-        let payload = Payload::try_from_bytes(data).unwrap();
+        let payload = heapless::Vec::from_slice(&data[..bytes]).unwrap();
 
         // Compute CRC16‐CCITT‐FALSE over the raw payload:
         let checksum = crc::crc16_ccitt_false(payload.as_ref());
@@ -54,12 +52,12 @@ impl Frame {
     /// Length of a frame “on the wire”
     fn len_required(&self) -> usize {
         // two bytes for header, one START, one END, two for CRC, two for length fields
-        self.payload.as_ref().len() + 2 + 1 + 1 + 2 + 2
+        self.payload.len() + 2 + 1 + 1 + 2 + 2
     }
 
     /// Payload
     pub fn payload(&self) -> &[u8] {
-        self.payload.data()
+        &self.payload
     }
 
     /// Encodes the current packet into `destination`.
@@ -76,13 +74,13 @@ impl Frame {
         destination[1..3].copy_from_slice(&self.header.into_bytes());
 
         // 3) Length byte + its inverse
-        let payload_len = self.payload.as_ref().len() as u8;
+        let payload_len = self.payload.len() as u8;
         destination[3] = payload_len;
         destination[4] = payload_len.not();
 
         // 4) Copy payload bytes
         let payload_start = 5;
-        let payload_end = payload_start + self.payload.as_ref().len();
+        let payload_end = payload_start + self.payload.len();
         destination[payload_start..payload_end].copy_from_slice(self.payload.as_ref());
 
         // 5) Compute (and write) CRC16‐CCITT‐FALSE here:
@@ -95,13 +93,13 @@ impl Frame {
 
         // We report “payload + 6” (START + header(2) + len(2) + CRC(2) = 7 bytes overhead minus the final END),
         // which is exactly what your tests expect.
-        Ok(payload_end + 2)
+        Ok(payload_end + 3)
     }
 
     /// Try to decode a packet from `source`, returning `(frame, bytes_consumed)`.
     pub fn decode_from_slice(source: &[u8]) -> Result<(Self, usize)> {
         // A minimal frame is 6 bytes (START + header(2) + len + len_not + CRC(2))
-        if source.len() < 6 {
+        if source.len() < 8 {
             return Err(Error::NotEnoughBytes);
         }
 
@@ -131,7 +129,7 @@ impl Frame {
         // 5) Reconstruct payload
         let payload_start = 5;
         let payload_end = payload_start + bytes_required;
-        let payload = Payload::try_from_bytes(&source[payload_start..payload_end])?;
+        let payload = heapless::Vec::from_slice(&source[payload_start..payload_end]).unwrap();
 
         // 6) Read CRC (little‐endian)
         let raw_lo = source[payload_end];
@@ -155,7 +153,7 @@ impl Frame {
         frame.checksum_valid()?;
 
         // 10) Return “bytes consumed = payload_len + 6”
-        Ok((frame, bytes_required + 7))
+        Ok((frame, bytes_required + 8))
     }
 
     /// Check whether `self.checksum == crc16_ccitt_false(self.payload)`.
@@ -169,16 +167,6 @@ impl Frame {
                 found: computed,
             })
         }
-    }
-
-    /// Number of bytes in the frame’s payload
-    pub fn len(&self) -> usize {
-        self.payload.as_ref().len()
-    }
-
-    /// True if the frame’s payload is empty
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
     }
 }
 
@@ -238,7 +226,7 @@ mod tests {
         let mut buf = [0u8; 64];
         let written = frame.encode_into_slice(&mut buf).unwrap();
         // Corrupt END byte
-        buf[written] = 0x55;
+        buf[written - 1] = 0x55;
         let err = Frame::decode_from_slice(&buf[..written + 1]).unwrap_err();
         assert_eq!(err, Error::BadEnd);
     }

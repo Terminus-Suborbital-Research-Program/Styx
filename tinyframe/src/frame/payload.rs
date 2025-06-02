@@ -4,7 +4,7 @@ use super::{MAX_PAYLOAD_LEN_BYTES, crc::crc16_ccitt_false};
 use heapless::Vec;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Payload {
+pub(crate) struct Payload {
     data: Vec<u8, MAX_PAYLOAD_LEN_BYTES>,
 }
 
@@ -35,23 +35,8 @@ impl Payload {
         }
     }
 
-    /// Length of self
-    pub fn len(&self) -> usize {
-        self.data.len()
-    }
-
-    /// If empty returns true
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
     /// Reference to data
     pub fn data(&self) -> &[u8] {
         &self.data
-    }
-
-    /// Checksum of data
-    pub fn checksum(&self) -> u16 {
-        crc16_ccitt_false(&self.data)
     }
 }
