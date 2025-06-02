@@ -6,7 +6,7 @@ members = [
   "bmi323-rs",
   "tinyframe",
   "common",
-  "bmm350",
+  "bmm350-rs",
   "bme280",
 ]
 resolver = "3"

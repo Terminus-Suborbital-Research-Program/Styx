@@ -50,7 +50,7 @@ uom = {version = "*", default-features = false, features = ["si", "f32"]}
 bme280 = {path="../../bme280", features = ["async", "defmt"] }
 ina260_terminus = { path = "../../ina260", features = ["async", "defmt"] }
 bmi323 = {path="../../bmi323-rs", features = ["async", "defmt"]}
-bmm350 = {path="../../bmm350", features = ["async", "defmt"]}
+bmm350 = {path="../../bmm350-rs", features = ["async", "defmt"]}
 
 # Communications
 hc12-rs = { git = "https://github.com/thelenlucas/hc12-rs.git", tag = "v0.0.1" }

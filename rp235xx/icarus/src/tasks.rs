@@ -6,6 +6,7 @@ use bin_packets::packets::status::Status;
 use bin_packets::packets::ApplicationPacket;
 use bme280::AsyncBME280;
 use bmi323::{AccelConfig, GyroConfig};
+use bmm350::{MagConfig};
 use defmt::{error, info};
 use embedded_hal::digital::StatefulOutputPin;
 use fugit::ExtU64;
@@ -181,13 +182,18 @@ pub async fn sample_sensors(
     ctx: sample_sensors::Context<'_>,
     _avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
 ) {
-    // ctx.local.bme280.init().await;
+    ctx.local.bme280.init().await;
     ctx.local.bmi323.init().await;
-
     let accel_config = AccelConfig::builder().mode(bmi323::AccelerometerPowerMode::Normal);
     ctx.local.bmi323.set_accel_config(accel_config.build()).await;
     let gyro_config = GyroConfig::builder().mode(bmi323::GyroscopePowerMode::Normal);
     ctx.local.bmi323.set_gyro_config(gyro_config.build()).await;
+
+    ctx.local.bmm350.init().await;
+    let mag_config = MagConfig::builder().performance(bmm350::PerformanceMode::Regular);
+    ctx.local.bmm350.set_power_mode(bmm350::PowerMode::Normal).await;
+    ctx.local.bmm350.set_mag_config(mag_config.build()).await;
+
     loop {
         let imu_result = ctx.local.bmi323.read_accel_data_scaled().await;
         match imu_result{
@@ -207,42 +213,18 @@ pub async fn sample_sensors(
                 info!("BMI: {}", i2c_error);
             }
         }
-        // let env = ctx.local.bme280.sample().await;
-        // // info!("Env: {}, {}, {}", env.1, env.2, env.3);
-        // let imu = ctx.local.bmi323.sample().await;
-        // match imu{
-        //     Ok(motion)=>{
-        //         if let Some(data) = motion {
-        //             if let Some(accel) = data.accel {
-        //                 info!("Accel: [{}, {}, {}] m/s²", accel[0], accel[1], accel[2]);
-        //             }
-        //             if let Some(gyro) = data.gyro {
-        //                 info!("Gyro: [{}, {}, {}] rad/s", gyro[0], gyro[1], gyro[2]);
-        //             }
-        //             info!("Timestamp: {} ticks", data.timestamp_ticks);
-        //         }
-        //     }
-        //     Err(_)=>{
-        //         error!("Error of some kind...");
-        //     }
-        // }
-
-        // let mag = ctx.local.bmm350.read_calibrated_data().await;
-        // info!("Magnetic field: {} µT", mag.mag_ut);
-        // info!("Temperature: {} °C", mag.temperature_c);
-
-        // let sample = ctx.local.bme280.measure(&mut Mono).await;
-        // match sample{
-        //     Ok(values)=>{
-        //         let temperature = values.temperature;
-        //         let pressure = values.pressure;
-        //         let humidity = values.humidity;
-        //         info!("T/P/H: {}, {}, {}", temperature, pressure, humidity);
-        //     }
-        //     Err(error)=>{
-        //         error!("BME280 Error: {}", error);
-        //     }
-        // }
+        let mag_result = ctx.local.bmm350.read_mag_data_scaled().await;
+        match mag_result{
+            Ok(mag)=>{
+                info!("Mag: {}, {}, {}", mag.x, mag.y, mag.z);
+            }
+            Err(i2c_error)=>{
+                info!("BMM: {}", i2c_error);
+            }        }
+        let env = ctx.local.bme280.sample().await;
+        info!("Temperature: {}", env.1);
+        info!("Pressure: {}", env.2);
+        info!("Humidity: {}", env.3);
         Mono::delay(100_u64.millis()).await;
     }
 }
