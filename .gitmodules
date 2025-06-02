@@ -1,6 +1,2 @@
 [submodule "bmi323-rs"]
-  url = https://github.com/AtmoPierce/bmi323-rs.git
-  path = bmi323-rs
-[submodule "bmm350-rs"]
-	path = bmm350-rs
-	url = https://github.com/AtmoPierce/bmm350-rs.git 
+	url = git@github.com:AtmoPierce/bmi323-rs.git
