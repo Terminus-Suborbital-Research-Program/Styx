@@ -1,0 +1,9 @@
+[workspace]
+<<<<<<< HEAD
+members = ["gs-cli", "bin-packets", "ina260", "bmi323", "tinyframe", "common", "bmm350"]
+
+resolver = "3"
+=======
+members = ["gs-cli", "bin-packets", "ina260", "bmi323", "tinyframe", "common", "bmm350", "bme280"]
+resolver = "3"
+>>>>>>> beca6ae (All Custom Sensors ):)
