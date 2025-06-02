@@ -8,6 +8,5 @@ members = [
   "common",
   "bmm350-rs",
   "bme280",
-  "jupiter-fsw",
 ]
 resolver = "3"

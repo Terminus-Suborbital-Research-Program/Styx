@@ -15,7 +15,7 @@ static RELAY_ANGLE_OPEN: u16 = 30;
 static RELAY_ANGLE_CLOSE: u16 = 0;
 
 pub static FLUTTER_START_TIME: u64 = 10000; // milliseconds
-pub static FLUTTER_COUNT: u8 = 3; // (Open&Close desired times * 2)
+pub static FLUTTER_COUNT: u8 = 1; // (Open&Close desired times * 2)
 pub static SERVO_DISABLE_DELAY: u64 = 2000; // milliseconds
 static FLAP_FLUTTER_TIME: u64 = 200; //milliseconds
 static RELAY_FLUTTER_TIME: u64 = 1000; //milliseconds
