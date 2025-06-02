@@ -18,10 +18,10 @@ use crate::tasks::*;
 use core::mem::MaybeUninit;
 
 // Sensors
-use bme280_rs::AsyncBme280;
-use bmi323::AsyncBMI323;
+use bme280::AsyncBME280;
+use bmi323::AsyncBmi323;
 use ina260_terminus::AsyncINA260;
-use bmm350::AsyncBMM350;
+use bmm350::AsyncBmm350;
 
 // Busses
 use rtic_sync::arbiter::i2c::ArbiterDevice;
@@ -92,9 +92,9 @@ mod app {
         pub relay_servo: RelayServo,
         pub flap_servo: FlapServo,
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
-        pub bmm350: AsyncBMM350<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
-        pub bmi323: AsyncBMI323<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
-        pub bme280: AsyncBme280<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
+        pub bmm350: AsyncBmm350<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
+        pub bmi323: AsyncBmi323<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
+        pub bme280: AsyncBME280<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub ina260_1: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
         pub ina260_2: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
         pub ina260_3: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,

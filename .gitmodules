@@ -1,0 +1,6 @@
+[submodule "bmi323-rs"]
+	url = git@github.com:AtmoPierce/bmi323-rs.git
+  path = bmi323-rs
+[submodule "bmm350-rs"]
+	path = bmm350-rs
+	url = git@github.com:wyatt-mattas/bmm350-rs.git

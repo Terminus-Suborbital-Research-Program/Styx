@@ -1,8 +1,12 @@
+use core::u64;
+
 use bin_packets::device::PacketWriter;
 use bin_packets::devices::DeviceIdentifier;
 use bin_packets::packets::status::Status;
 use bin_packets::packets::ApplicationPacket;
-use bme280_rs::{Configuration, Oversampling, SensorMode};
+use bme280::AsyncBME280;
+use bmi323::{AccelConfig, GyroConfig};
+use bmm350::{MagConfig};
 use defmt::{error, info};
 use embedded_hal::digital::StatefulOutputPin;
 use fugit::ExtU64;
@@ -13,7 +17,6 @@ use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
 use uom::si::electric_potential::volt;
 use uom::si::power;
-
 use crate::device_constants::AvionicsI2cBus;
 use crate::phases::{FlapServoStatus, Modes, RelayServoStatus};
 use crate::{app::*, device_constants::MotorI2cBus, Mono};
@@ -81,37 +84,45 @@ pub async fn mode_sequencer(ctx: mode_sequencer::Context<'_>) {
     let mut relay_flutter_status = RelayServoStatus::Open;
     let mut flap_flutter_status = FlapServoStatus::Open;
     let mut flutter_count = 0;
+    let mut end_task = false;
     loop {
-        if flap_status == false {
-            flap_status = Modes::open_flaps_sequence(mode_start, ctx.local.flap_servo).await;
-            relay_status =
-                Modes::relay_eject_servo_sequence(mode_start, ctx.local.relay_servo).await;
-        } else {
-            Mono::delay(FLUTTER_START_TIME.millis()).await;
-            if flutter_count < FLUTTER_COUNT {
-                mode_start = Mono::now();
-                flap_flutter_status = Modes::flap_flutter_sequence(
-                    mode_start,
-                    flap_flutter_status,
-                    ctx.local.flap_servo,
-                )
-                .await;
-                relay_flutter_status = Modes::relay_flutter_sequence(
-                    mode_start,
-                    relay_flutter_status,
-                    ctx.local.relay_servo,
-                )
-                .await;
-                flutter_count += 1;
+        if end_task == false{
+            if relay_status == false {
+                // flap_status = Modes::open_flaps_sequence(mode_start, ctx.local.flap_servo).await;
+                relay_status =
+                    Modes::relay_eject_servo_sequence(mode_start, ctx.local.relay_servo).await;
             } else {
-                ctx.local.flap_servo.deg_0();
-                ctx.local.relay_servo.deg_0();
-                Mono::delay(SERVO_DISABLE_DELAY.millis()).await;
-                ctx.local.flap_servo.disable();
-                ctx.local.relay_servo.disable();
+                Mono::delay(FLUTTER_START_TIME.millis()).await;
+                if flutter_count < FLUTTER_COUNT {
+                    mode_start = Mono::now();
+                    // flap_flutter_status = Modes::flap_flutter_sequence(
+                    //     mode_start,
+                    //     flap_flutter_status,
+                    //     ctx.local.flap_servo,
+                    // )
+                    // .await;
+                    relay_flutter_status = Modes::relay_flutter_sequence(
+                        mode_start,
+                        relay_flutter_status,
+                        ctx.local.relay_servo,
+                    )
+                    .await;
+                    flutter_count += 1;
+                } else {
+                    // ctx.local.flap_servo.deg_0();
+                    ctx.local.relay_servo.deg_0();
+                    Mono::delay(SERVO_DISABLE_DELAY.millis()).await;
+                    // ctx.local.flap_servo.disable();
+                    ctx.local.relay_servo.disable();
+                    end_task = true;
+                }
             }
+            Mono::delay(5_u64.millis()).await;
         }
-        Mono::delay(5_u64.millis()).await;
+        else{
+            info!("Mode Sequencer Complete");
+            Mono::delay(100000_u64.millis()).await;
+        }
     }
 }
 
@@ -149,11 +160,21 @@ pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter
             let voltages_packet = ApplicationPacket::VoltageData { timestamp: ina_samples.0.0, voltage: ina_samples.1.0};
             let current_packet = ApplicationPacket::CurrentData { timestamp: ina_samples.0.1, current: ina_samples.1.1};
             let power_packet = ApplicationPacket::PowerData { timestamp: ina_samples.0.2, power: ina_samples.1.2};
-            data.push_back(voltages_packet);
-            data.push_back(current_packet);
-            data.push_back(power_packet);
+            info!("Voltage Packet: {}", voltages_packet);
+            info!("Current Packet: {}", current_packet);
+            info!("Power Packet: {}", power_packet);
+            if data.is_full(){
+                data.pop_back();
+                data.pop_back();
+                data.pop_back();
+            }
+            else{
+                data.push_back(voltages_packet);
+                data.push_back(current_packet);
+                data.push_back(power_packet);
+            }
         });
-        Mono::delay(50.millis()).await;
+        Mono::delay(250.millis()).await;
     }
 }
 
@@ -161,75 +182,50 @@ pub async fn sample_sensors(
     ctx: sample_sensors::Context<'_>,
     _avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
 ) {
-    let bme_on = ctx.local.bme280.init().await;
-    match bme_on {
-        Ok(_) => {}
-        Err(i2c_error) => {
-            error!("BME Error: {}", i2c_error);
-        }
-    }
-    Mono::delay(10_u64.millis()).await;
-    ctx.local
-        .bme280
-        .set_sampling_configuration(
-            Configuration::default()
-                .with_temperature_oversampling(Oversampling::Oversample1)
-                .with_pressure_oversampling(Oversampling::Oversample1)
-                .with_humidity_oversampling(Oversampling::Oversample1)
-                .with_sensor_mode(SensorMode::Normal),
-        )
-        .await
-        .expect("Failed to configure BME280");
+    ctx.local.bme280.init().await;
+    ctx.local.bmi323.init().await;
+    let accel_config = AccelConfig::builder().mode(bmi323::AccelerometerPowerMode::Normal);
+    ctx.local.bmi323.set_accel_config(accel_config.build()).await;
+    let gyro_config = GyroConfig::builder().mode(bmi323::GyroscopePowerMode::Normal);
+    ctx.local.bmi323.set_gyro_config(gyro_config.build()).await;
 
-    let bme_id = ctx.local.bme280.chip_id().await;
-    match bme_id {
-        Ok(id) => {
-            info!("BME280 ID: {}", id);
-        }
-        Err(i2c_error) => {
-            info!("I2CError: {}", i2c_error)
-        }
-    }
+    ctx.local.bmm350.init().await;
+    let mag_config = MagConfig::builder().performance(bmm350::PerformanceMode::Regular);
+    ctx.local.bmm350.set_power_mode(bmm350::PowerMode::Normal).await;
+    ctx.local.bmm350.set_mag_config(mag_config.build()).await;
 
-    // TODO: (Remove me if no effect) Delaying preemptive to other processes just in case...
-    Mono::delay(10_u64.millis()).await;
-    let bmi323_init_result = ctx.local.bmi323.init().await;
-    match bmi323_init_result {
-        Ok(_) => {
-            info!("BMI Initialized");
-        }
-        Err(_) => {
-            error!("BMI Unininitialized");
-        }
-    }
-
-    Mono::delay(10_u64.millis()).await; // !TODO (Remove me if no effect) Delaying preemptive to other processes just in case...
-    let bmi323_init_result = ctx.local.bmi323.init().await;
-    match bmi323_init_result{
-        Ok(_)=>{
-            info!("BMI Initialized");
-        }
-        Err(_)=>{
-            error!("BMI Unininitialized");
-        }
-    }
-    Mono::delay(10_u64.millis()).await;
     loop {
-        let sample_result = ctx.local.bme280.read_sample().await;
-        match sample_result {
-            Ok(sample) => {
-                // let temperature = sample.temperature.unwrap();
-                // let humidity = sample.humidity.unwrap();
-                // let pressure = sample.pressure.unwrap();
-            //     info!("Sample: ┳ Temperature: {} C", temperature);
-            //     info!("        ┣ Humidity: {} %", humidity);
-            //     info!("        ┗ Pressure: {} hPa", pressure);
+        let imu_result = ctx.local.bmi323.read_accel_data_scaled().await;
+        match imu_result{
+            Ok(acc)=>{
+                info!("Accel: {}, {}, {}", acc.x, acc.y, acc.z);
             }
-            Err(i2c_error) => {
-                error!("I2C Error: {}", i2c_error)
+            Err(i2c_error)=>{
+                info!("BMI: {}", i2c_error);
             }
         }
-        Mono::delay(250_u64.millis()).await;
+        let gyro_result = ctx.local.bmi323.read_gyro_data_scaled().await;
+        match gyro_result{
+            Ok(gyro)=>{
+                info!("Gyro: {}, {}, {}", gyro.x, gyro.y, gyro.z);
+            }
+            Err(i2c_error)=>{
+                info!("BMI: {}", i2c_error);
+            }
+        }
+        let mag_result = ctx.local.bmm350.read_mag_data_scaled().await;
+        match mag_result{
+            Ok(mag)=>{
+                info!("Mag: {}, {}, {}", mag.x, mag.y, mag.z);
+            }
+            Err(i2c_error)=>{
+                info!("BMM: {}", i2c_error);
+            }        }
+        let env = ctx.local.bme280.sample().await;
+        info!("Temperature: {}", env.1);
+        info!("Pressure: {}", env.2);
+        info!("Humidity: {}", env.3);
+        Mono::delay(100_u64.millis()).await;
     }
 }
 
@@ -283,13 +279,13 @@ async fn ina_data_handle(ina260_1: &mut AsyncINA260<ArbiterDevice<'_, AsyncI2c<I
     let p4_ts = Mono::now().ticks();
 
     let mut voltage_slice = [0.0_f32; 4];
-    let mut v_ts_slice = [v1_ts, v2_ts, v3_ts, v4_ts];
+    let v_ts_slice = [v1_ts, v2_ts, v3_ts, v4_ts];
 
     let mut current_slice = [0.0_f32; 4];
-    let mut i_ts_slice = [i1_ts, i2_ts, i3_ts, i4_ts];
+    let i_ts_slice = [i1_ts, i2_ts, i3_ts, i4_ts];
 
     let mut power_slice = [0.0_f32; 4];
-    let mut p_ts_slice = [p1_ts, p2_ts, p3_ts, p4_ts];
+    let p_ts_slice = [p1_ts, p2_ts, p3_ts, p4_ts];
 
     match voltage_1 {
         Ok(voltage)=>{

@@ -1,3 +1,12 @@
 [workspace]
-members = ["gs-cli", "bin-packets", "ina260", "bmi323", "tinyframe", "common", "bmm350"]
+members = [
+  "gs-cli",
+  "bin-packets",
+  "ina260",
+  "bmi323-rs",
+  "tinyframe",
+  "common",
+  "bmm350-rs",
+  "bme280",
+]
 resolver = "3"

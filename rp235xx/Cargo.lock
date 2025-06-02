@@ -87,23 +87,44 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
-name = "bme280-rs"
-version = "0.3.0"
+name = "bitflags"
+version = "2.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97b9c5f8cda3fc2c518da006efb17147d2814349adf209911141168838ea5b54"
+checksum = "1b8e56985ec62d17e9c1001dc89c88ecd7dc08e47eba5ec7c29c7b5eeecde967"
+
+[[package]]
+name = "bme280"
+version = "0.1.0"
 dependencies = [
+ "defmt 1.0.1",
  "embedded-hal 1.0.0",
  "embedded-hal-async",
- "log",
+]
+
+[[package]]
+name = "bme280"
+version = "0.5.1"
+source = "git+https://git@github.com/VersBinarii/bme280-rs.git#49d179ed48701df444e58c9e591c81355b6b3189"
+dependencies = [
+ "defmt 0.3.100",
+ "embedded-hal 1.0.0",
+ "embedded-hal-async",
+ "maybe-async-cfg",
 ]
 
 [[package]]
 name = "bmi323"
 version = "0.1.0"
 dependencies = [
- "cast",
  "defmt 1.0.1",
- "embedded-hal 1.0.0",
+ "embedded-hal-async",
+]
+
+[[package]]
+name = "bmm350"
+version = "0.0.2"
+dependencies = [
+ "defmt 1.0.1",
  "embedded-hal-async",
 ]
 
@@ -111,7 +132,6 @@ dependencies = [
 name = "bmm350"
 version = "0.1.0"
 dependencies = [
- "cast",
  "defmt 1.0.1",
  "embedded-hal 1.0.0",
  "embedded-hal-async",
@@ -123,11 +143,11 @@ version = "0.1.1"
 dependencies = [
  "bin-packets",
  "bincode",
- "bme280-rs",
+ "bme280 0.5.1",
  "bmi323",
- "bmm350",
+ "bmm350 0.1.0",
  "cortex-m",
- "defmt 0.3.100",
+ "defmt 1.0.1",
  "defmt-rtt",
  "embedded-hal 1.0.0",
  "embedded-hal-async",
@@ -139,7 +159,7 @@ dependencies = [
  "heapless",
  "ina260_terminus",
  "minikalman",
- "nalgebra 0.32.6",
+ "nalgebra 0.33.2",
  "rp235x-hal",
  "rp235x-pac",
  "rtic",
@@ -233,7 +253,7 @@ version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "548d977b6da32fa1d1fda2876453da1e7df63ad0304c8b3dae4dbe7b96f39b78"
 dependencies = [
- "bitflags",
+ "bitflags 1.3.2",
  "defmt-macros",
 ]
 
@@ -556,9 +576,9 @@ version = "0.1.1"
 dependencies = [
  "bin-packets",
  "bincode",
- "bme280-rs",
+ "bme280 0.1.0",
  "bmi323",
- "bmm350",
+ "bmm350 0.0.2",
  "cortex-m",
  "defmt 1.0.1",
  "defmt-rtt",
@@ -622,10 +642,47 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9fbbcab51052fe104eb5e5d351cf728d30a5be1fe14d9be8a3b097481fb97de"
 
 [[package]]
-name = "log"
-version = "0.4.27"
+name = "manyhow"
+version = "0.11.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
+checksum = "b33efb3ca6d3b07393750d4030418d594ab1139cee518f0dc88db70fec873587"
+dependencies = [
+ "manyhow-macros",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+ "syn 2.0.101",
+]
+
+[[package]]
+name = "manyhow-macros"
+version = "0.11.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46fce34d199b78b6e6073abf984c9cf5fd3e9330145a93ee0738a7443e371495"
+dependencies = [
+ "proc-macro-utils",
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
+name = "maybe-async-cfg"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8dbfaa67a76e2623580df07d6bb5e7956c0a4bae4b418314083a9c619bd66627"
+dependencies = [
+ "manyhow",
+ "proc-macro2",
+ "pulldown-cmark",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "memchr"
+version = "2.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
 
 [[package]]
 name = "minikalman"
@@ -797,12 +854,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc-macro-utils"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eeaf08a13de400bc215877b5bdc088f241b12eb42f0a548d3390dc1c56bb7071"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "smallvec",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.95"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "02b3e5e68a3a1a02aad3ec490a98007cbc13c37cbe84a3cd7b8e406d76e7f778"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "pulldown-cmark"
+version = "0.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "679341d22c78c6c649893cbd6c3278dcbe9fc4faa62fea3a9296ae2b50c14625"
+dependencies = [
+ "bitflags 2.9.1",
+ "memchr",
+ "unicase",
 ]
 
 [[package]]
@@ -1081,7 +1160,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "061507c94fc6ab4ba1c9a0305018408e312e17c041eb63bef8aa726fa33aceae"
 dependencies = [
  "approx",
- "libm",
  "num-complex",
  "num-traits",
  "paste",
@@ -1099,6 +1177,12 @@ dependencies = [
  "num-traits",
  "paste",
 ]
+
+[[package]]
+name = "smallvec"
+version = "1.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8917285742e9f3e1683f0a9c4e6b57960b7314d0b08d30d1ecd426713ee2eee9"
 
 [[package]]
 name = "stable_deref_trait"
@@ -1164,6 +1248,12 @@ name = "typenum"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1dccffe3ce07af9386bfd29e80c0ab1a8205a2fc34e4bcd40364df902cfa8f3f"
+
+[[package]]
+name = "unicase"
+version = "2.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75b844d17643ee918803943289730bec8aac480150456169e647ed0b576ba539"
 
 [[package]]
 name = "unicode-ident"
