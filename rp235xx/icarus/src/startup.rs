@@ -37,7 +37,7 @@ use hc12_rs::{
 
 // Sensors
 use bme280::AsyncBME280;
-use bmi323::AsyncBMI323;
+use bmi323::AsyncBmi323;
 use ina260_terminus::AsyncINA260;
 use bmm350::AsyncBMM350;
 
@@ -234,7 +234,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         ctx.device.I2C1,
         avionics_sda_pin,
         avionics_scl_pin,
-        RateExtU32::kHz(100),
+        RateExtU32::kHz(400),
         &mut ctx.device.RESETS,
         clocks.system_clock.freq(),
     );
@@ -249,7 +249,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     // Initialize Avionics Sensors
     let bmm350 = AsyncBMM350::new(ArbiterDevice::new(avionics_i2c_arbiter), 0x14, Mono);
-    let bmi323 = AsyncBMI323::new(ArbiterDevice::new(avionics_i2c_arbiter), 0x69, Mono);
+    let bmi323 = AsyncBmi323::new_with_i2c(ArbiterDevice::new(avionics_i2c_arbiter), 0x69, Mono);
     let bme280 = AsyncBME280::new(ArbiterDevice::new(avionics_i2c_arbiter), 0x76, Mono);
 
     let ina260_1 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x40, Mono);
