@@ -1,4 +1,0 @@
-[workspace]
-members = ["jupiter-fsw"]
-
-resolver = "3"
