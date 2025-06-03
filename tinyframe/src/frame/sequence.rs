@@ -1,4 +1,3 @@
-
 use crate::{Error, Result};
 
 /// A frame sequence
@@ -51,6 +50,8 @@ impl Header {
 
 #[cfg(test)]
 mod tests {
+    use crate::frame::MAX_PAYLOAD_LEN_BYTES;
+
     use super::*;
 
     #[test]
