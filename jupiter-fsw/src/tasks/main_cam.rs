@@ -49,12 +49,12 @@ fn camera_task() -> ! {
         info!("Made it to process");
 
         let mut cmd = std::process::Command::new("ffmpeg")
-            .args(["-t", "10"])
             .args(["-f", "v4l2"])
             .args(["-input_format", "mjpeg"])
             .args(["-framerate", "30"])
             .args(["-video_size", "1920x1080"])
             .args(["-i", "/dev/video0"])
+            .args(["-t", "10"])
             .args(["-c:v", "copy"])
             .args(["-hide_banner", "-loglevel", "error"]) // Silences ffmpeg output
             .arg(&file_path)
