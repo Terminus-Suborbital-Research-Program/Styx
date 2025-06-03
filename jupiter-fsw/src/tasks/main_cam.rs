@@ -44,7 +44,7 @@ fn camera_task() -> ! {
         let mut file_path = video_directory.clone();
         file_path.push(next);
 
-        info!("Made it to process")
+        info!("Made it to process");
 
         let mut cmd = std::process::Command::new("ffmpeg")
             .args(["-f", "v4l2"])
@@ -60,7 +60,7 @@ fn camera_task() -> ! {
             .spawn()
             .unwrap();
 
-        info!("Process Began")
+        info!("Process Began");
 
         // Run until completion, and then restart
         cmd.wait().ok();
