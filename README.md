@@ -8,6 +8,64 @@ Software systems, tools, and libraries for the 2025 AMALTHEA Rocksat-X mission b
 
 In addition, `bin-packets` provides a library for encoding and decoding strongly-typed and effecient packets for communication between AMALTHEA components, and other devices on the TERMINUS stack.
 
+# Embedded Development
+## Installation
+### Rust Installation (Find Good Internet)
+The following script walks you through installing Rust. It takes quite a bit of bandwidth, so I suggest finding good internet, the clean room sucks.
+[Rust Install](https://www.rust-lang.org/tools/install)\
+
+The following is basically all you need to do, you should only have to do normal installation.\
+`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+
+### WSL Instructions
+If you are using windows, if you are not skip to arm installation, you will want to install WSL. This can be done via terminal/powershell/cmd.\
+[Link Just In Case](https://learn.microsoft.com/en-us/windows/wsl/install#change-the-default-linux-distribution-installed) \
+`wsl --install`
+
+Once installed choose a linux distribution, Ubuntu 24 is newest/easiest. 
+
+### USBIPD
+Download and follow the installation instructions for usbipd.\
+[usbipd](https://github.com/dorssel/usbipd-win/releases/tag/v5.1.0)
+As of 06/03/2025 -> 
+usbipd-win_5.1.0_x64.msi is the latest executable.
+
+### VS Code
+Follow their instructions for connecting to WSL. (VSCode Install)[https://code.visualstudio.com/docs/remote/wsl] 
+
+Mainly you should get the wsl extension in VSCode, this will allow you to ssh/use workspaces for development/running.
+
+### Linux Packages (Ubuntu 24 only, others figure it out.)
+
+`sudo apt-get install gcc-arm-none-eabi`
+
+### Add SSH Keys to github 
+Skip to 'generating a new key'
+
+[Adding a SSH Key in Github](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent)
+
+Navigate to where you want to store the AMALTHEA repository in github. 
+
+Run the following (after following the debug instructions)
+
+`git clone git@github.com:Terminus-Suborbital-Research-Program/AMALTHEA.git`
+
+`cd AMALTHEA/rp235xx/icarus`
+
+`cargo make run_debug_probe`
+
+# Embedded Debug Setup
+## Windows
+Follow the how to use: [How to use](https://github.com/dorssel/usbipd-win)
+
+My usual workflow: Start admin powershell then the following image.
+![USBIPD Process](docs/images/embedded_usbipd.png)
+
+## ICARUS Main Tasks
+Comment/Uncomment the following tasks for desired code behavior. If you're just debugging INAs for example, only have the INA task uncommented...
+
+![ICARUS Task Workflow](/docs/images/icarus_tasks.png)
+
 ## Planning
 
 <!--
