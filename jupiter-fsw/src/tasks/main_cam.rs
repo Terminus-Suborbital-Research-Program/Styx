@@ -27,6 +27,9 @@ fn camera_task() -> ! {
     // Create, if it doesn't exist
     create_dir(&video_directory).ok();
 
+    info!("Created or set directory!");
+
+
     loop {
         // Highest integer in directory
         let highest = read_dir(&video_directory)
@@ -41,6 +44,8 @@ fn camera_task() -> ! {
         let mut file_path = video_directory.clone();
         file_path.push(next);
 
+        info!("Made it to process")
+
         let mut cmd = std::process::Command::new("ffmpeg")
             .args(["-f", "v4l2"])
             .args(["-input_format", "mjpeg"])
@@ -54,6 +59,8 @@ fn camera_task() -> ! {
             .stderr(Stdio::null())
             .spawn()
             .unwrap();
+
+        info!("Process Began")
 
         // Run until completion, and then restart
         cmd.wait().ok();
