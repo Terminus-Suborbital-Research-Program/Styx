@@ -17,15 +17,3 @@ pub struct JupiterTelemetry {
     pub pressure_bar: f32, // Placeholder
     pub humidity: f32,     // Placeholder
 }
-
-/// Telemetry information for ICARUS
-#[derive(Debug, Clone, Copy, Encode, Decode, Format)]
-pub struct IcarusTelemetry {
-    pub battery_voltage: f32,
-    pub timestamp: Timestamp,
-    pub packet_number: u16,
-    pub accel: f32,  // Placeholder
-    pub gyro: f32,   // Placeholder
-    pub mag: f32,    // Placeholder
-    pub temp_c: f32, // Placeholder
-}

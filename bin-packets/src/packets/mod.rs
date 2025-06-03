@@ -28,4 +28,32 @@ pub enum ApplicationPacket {
         timestamp_ms: u64,
         recorded_pulses: u16,
     },
+    AccelerationData{
+        device_index: u8,
+        timestamp: u64,
+        x: f32,
+        y: f32,
+        z: f32
+    },
+    GyroscopeData{
+        device_index: u8,
+        timestamp: u64,
+        x: f32,
+        y: f32,
+        z: f32
+    },
+    MagnetometerData{
+        device_index: u8,
+        timestamp: u64,
+        x: f32,
+        y: f32,
+        z: f32
+    },
+    EnvironmentData{
+        device_index: u8,
+        timestamp: u64,
+        temperature: f32,
+        pressure: f32,
+        humidity: f32
+    }
 }

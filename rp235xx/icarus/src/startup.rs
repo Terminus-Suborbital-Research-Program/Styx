@@ -36,7 +36,7 @@ use hc12_rs::{
 };
 
 // Sensors
-use bme280::AsyncBME280;
+use bme280_rs::AsyncBme280;
 use bmi323::AsyncBmi323;
 use ina260_terminus::AsyncINA260;
 use bmm350::AsyncBmm350;
@@ -250,7 +250,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     // Initialize Avionics Sensors
     let bmm350 = AsyncBmm350::new_with_i2c(ArbiterDevice::new(avionics_i2c_arbiter), 0x14, Mono);
     let bmi323 = AsyncBmi323::new_with_i2c(ArbiterDevice::new(avionics_i2c_arbiter), 0x69, Mono);
-    let bme280 = AsyncBME280::new(ArbiterDevice::new(avionics_i2c_arbiter), 0x77, Mono);
+    let bme280 = AsyncBme280::new_with_address(ArbiterDevice::new(avionics_i2c_arbiter), 0x77, Mono);
 
     let ina260_1 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x40, Mono);
     let ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x41, Mono);
@@ -279,10 +279,10 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     info!("Peripherals initialized, spawning tasks...");
     heartbeat::spawn().ok();
-    // mode_sequencer::spawn().ok();
-    // ina_sample::spawn(motor_i2c_arbiter).ok();
+    mode_sequencer::spawn().ok();
+    ina_sample::spawn(motor_i2c_arbiter).ok();
     sample_sensors::spawn(avionics_i2c_arbiter).ok();
-    // inertial_nav::spawn().ok();
+    inertial_nav::spawn().ok();
     // radio_send::spawn().ok();
     info!("Tasks spawned!");
     (
