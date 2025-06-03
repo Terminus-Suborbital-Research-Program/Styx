@@ -41,12 +41,11 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
     dispatchers = [PIO2_IRQ_0, PIO2_IRQ_1, DMA_IRQ_0],
 )]
 mod app {
-    use crate::device_constants::packets::RadioInterface;
 
     use crate::actuators::servo::EjectorServo;
     use crate::device_constants::pins::CamMosfetPin;
     use crate::device_constants::{
-        EjectionDetectionPin, GreenLed, JupiterUart, OnboardLED, RedLed, SAMPLE_COUNT,
+        EjectionDetectionPin, EjectorHC12, GreenLed, JupiterUart, OnboardLED, RedLed, SAMPLE_COUNT,
     };
 
     use super::*;
@@ -73,7 +72,6 @@ mod app {
     #[shared]
     pub struct Shared {
         pub downlink_packets: Deque<ApplicationPacket, 128>,
-        pub radio: RadioInterface,
         pub samples_buffer: [u16; SAMPLE_COUNT],
     }
 
@@ -87,6 +85,7 @@ mod app {
         pub downlink: JupiterUart,
         pub camera_mosfet: CamMosfetPin,
         pub geiger_fifo: Option<AdcFifo<'static, u16>>,
+        pub radio: EjectorHC12,
     }
 
     #[init(local = [adc: Option<hal::Adc> = None])]
@@ -104,16 +103,12 @@ mod app {
         async fn camera_sequencer(mut ctx: camera_sequencer::Context);
 
         // Heartbeats the main led (and sends packets after arming)
-        #[task(shared = [radio, downlink_packets], local = [onboard_led], priority = 1)]
+        #[task(shared = [downlink_packets], local = [onboard_led], priority = 1)]
         async fn heartbeat(mut ctx: heartbeat::Context);
 
         // Reads incoming packets from the radio
-        #[task(local = [downlink, packet_led], shared = [radio, downlink_packets], priority = 1)]
+        #[task(local = [downlink, packet_led, radio], shared = [downlink_packets], priority = 1)]
         async fn radio_read(mut ctx: radio_read::Context);
-
-        // Updates the radio module on the serial interrupt
-        #[task(binds = UART1_IRQ, shared = [radio])]
-        fn uart_interrupt(mut ctx: uart_interrupt::Context);
 
         #[task(binds = ADC_IRQ_FIFO, priority = 3, shared = [samples_buffer], local = [geiger_fifo, counter: usize = 1])]
         fn adc_irq(mut ctx: adc_irq::Context);

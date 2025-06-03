@@ -3,13 +3,15 @@ use bin_packets::{
     devices::DeviceIdentifier,
     packets::{status::Status, ApplicationPacket},
 };
-use bincode::{config::standard, encode_into_slice};
+use bincode::{config::standard, decode_from_slice, encode_into_slice, error::DecodeError};
 use defmt::{debug, info, warn};
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
-use embedded_io::Write;
+use embedded_io::{Read, ReadReady, Write};
 use fugit::ExtU64;
+use heapless::{Deque, Vec};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
+use tinyframe::frame::Frame;
 
 #[cfg(not(feature = "fast-startup"))]
 const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 180;
@@ -82,33 +84,91 @@ pub async fn geiger_calculator(mut ctx: geiger_calculator::Context<'_>) {
     }
 }
 
-pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
+const SCRATCH: usize = 256;
+
+pub async fn radio_read(ctx: radio_read::Context<'_>) {
     let downlink = ctx.local.downlink;
-    // Delay to avoid interference with JUPITER bootloader
+    let radio = ctx.local.radio;
+
+    // Allow the JUPITER bootloader to finish its chatter.
     Mono::delay(JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs()).await;
 
-    // Drain all available packets, one per lock to allow interruption
-    let mut buffer = [0u8; 256];
+    // Static working buffers.
+    let mut tmp_buf = [0u8; SCRATCH];
+    let mut frame_buf: Vec<u8, SCRATCH> = Vec::new();
+    let mut packet_buf: Vec<u8, SCRATCH> = Vec::new();
+    let mut outgoing_pkts: Deque<ApplicationPacket, 16> = Deque::new();
+
     loop {
-        ctx.shared.radio.lock(|x| {
-            x.update().ok();
-
-            for packet in x {
-                info!("Got packet: {}", packet);
-                ctx.local.packet_led.toggle().ok();
-                let bytes = encode_into_slice(packet, &mut buffer, standard()).unwrap_or(0);
-                downlink.write_all(&buffer[0..bytes]).ok();
+        //------------------------------------------------------------------
+        // 1. Pull any newly‑arrived UART bytes.
+        //------------------------------------------------------------------
+        if radio.read_ready().unwrap_or(false) {
+            let space = SCRATCH - frame_buf.len();
+            if space > 0 {
+                let n = radio.read(&mut tmp_buf[..space]).unwrap_or(0);
+                frame_buf.extend_from_slice(&tmp_buf[..n]).ok();
             }
-        });
+        }
 
-        ctx.shared.downlink_packets.lock(|packets| {
-            while let Some(packet) = packets.pop_front() {
-                let bytes = encode_into_slice(packet, &mut buffer, standard()).unwrap_or(0);
-                downlink.write_all(&buffer[0..bytes]).ok();
+        //------------------------------------------------------------------
+        // 2. Decode TinyFrames until we run out of complete ones.
+        //------------------------------------------------------------------
+        'frame: loop {
+            match Frame::decode_from_slice(&frame_buf) {
+                Ok((frame, used)) => {
+                    // Append payload to the packet staging buffer.
+                    packet_buf.extend_from_slice(frame.payload()).ok();
+
+                    // Shift unconsumed bytes left.
+                    let len = frame_buf.len();
+                    frame_buf.copy_within(used..len, 0);
+                    frame_buf.truncate(len - used);
+                }
+                Err(tinyframe::Error::NotEnoughBytes) => break 'frame,
+                Err(_) => {
+                    // Corrupt trailing byte(s) – drop one and retry.
+                    if !frame_buf.is_empty() {
+                        let len = frame_buf.len();
+                        frame_buf.copy_within(1..len, 0);
+                        frame_buf.truncate(len - 1);
+                    }
+                }
             }
-        });
+        }
 
-        Mono::delay(100.millis()).await;
+        //------------------------------------------------------------------
+        // 3. Decode application‑level packets.
+        //------------------------------------------------------------------
+        'packet: loop {
+            match decode_from_slice::<ApplicationPacket, _>(&packet_buf, standard()) {
+                Ok((pkt, used)) => {
+                    outgoing_pkts.push_back(pkt).ok();
+
+                    let len = packet_buf.len();
+                    packet_buf.copy_within(used..len, 0);
+                    packet_buf.truncate(len - used);
+                }
+                Err(DecodeError::UnexpectedEnd { .. }) => break 'packet,
+                Err(_) => {
+                    if !packet_buf.is_empty() {
+                        let len = packet_buf.len();
+                        packet_buf.copy_within(1..len, 0);
+                        packet_buf.truncate(len - 1);
+                    }
+                }
+            }
+        }
+
+        //------------------------------------------------------------------
+        // 4. Flush any packets that are ready for the downlink.
+        //------------------------------------------------------------------
+        let mut enc_buf = [0u8; SCRATCH];
+        while let Some(pkt) = outgoing_pkts.pop_front() {
+            if let Ok(sz) = encode_into_slice(pkt, &mut enc_buf, standard()) {
+                let _ = downlink.write_all(&enc_buf[..sz]);
+            }
+        }
     }
 }
 
@@ -120,10 +180,6 @@ pub async fn camera_sequencer(ctx: camera_sequencer::Context<'_>) {
     Mono::delay(SHUTDOWN_TIME_CAMERAS.secs()).await;
     info!("Shutting down cameras!");
     ctx.local.camera_mosfet.set_low().ok();
-}
-
-pub fn uart_interrupt(_ctx: uart_interrupt::Context<'_>) {
-    radio_read::spawn().ok();
 }
 
 pub async fn ejector_sequencer(ctx: ejector_sequencer::Context<'_>) {
