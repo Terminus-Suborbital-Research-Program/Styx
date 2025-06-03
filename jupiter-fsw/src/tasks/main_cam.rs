@@ -49,6 +49,7 @@ fn camera_task() -> ! {
         info!("Made it to process");
 
         let mut cmd = std::process::Command::new("ffmpeg")
+            .args(["-t", "10"])
             .args(["-f", "v4l2"])
             .args(["-input_format", "mjpeg"])
             .args(["-framerate", "30"])
@@ -63,8 +64,8 @@ fn camera_task() -> ! {
             .unwrap();
 
         info!("Process Began");
-
         // Run until completion, and then restart
+
         cmd.wait().ok();
         error!("Camera thread ended unexpectedly!");
         fail_count += 1;
