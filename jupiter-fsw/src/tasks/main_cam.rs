@@ -42,9 +42,9 @@ fn camera_task() -> ! {
 
         let next = format!("{}.avi", highest + 1);
         let mut file_path = video_directory.clone();
-        info("video name: {}",next);
+        info!("video name: {}",next);
         file_path.push(next);
-        info("file path: {}",file_path);
+        info!("file path: {}",file_path);
 
         info!("Made it to process");
 
