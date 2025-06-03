@@ -44,7 +44,7 @@ fn camera_task() -> ! {
         let mut file_path = video_directory.clone();
         info!("video name: {}",next);
         file_path.push(next);
-        info!("file path: {}",file_path);
+        info!("file path: {}",file_path.display());
 
         info!("Made it to process");
 
