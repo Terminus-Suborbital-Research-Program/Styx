@@ -14,10 +14,8 @@ use rp235x_hal::pwm::Slices;
 use rp235x_hal::uart::{DataBits, StopBits, UartConfig, UartPeripheral};
 use rp235x_hal::{Clock, Sio, Watchdog};
 use rtic_monotonics::Monotonic;
-use tinyframe::reader::BufferedReader;
 
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
-use crate::device_constants::packets::RadioInterface;
 use crate::device_constants::pins::{CamMosfetPin, RadioProgrammingPin};
 use crate::device_constants::{
     EjectionDetectionPin, EjectorHC12, GreenLed, JupiterUart, RadioUart, RedLed, SAMPLE_COUNT,
@@ -195,8 +193,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     };
     let hc: EjectorHC12 = hc.into_fu3_mode().unwrap(); // Infallible
 
-    let radio: RadioInterface = BufferedReader::new(hc);
-
     // Servo
     let pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
     let mut ejection_pwm = pwm_slices.pwm0;
@@ -236,10 +232,10 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     (
         Shared {
             downlink_packets: Deque::new(),
-            radio,
             samples_buffer: [0u16; SAMPLE_COUNT],
         },
         Local {
+            radio: hc,
             geiger_fifo: Some(geiger_fifo),
             camera_mosfet: cam_pin,
             onboard_led: led_pin,

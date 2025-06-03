@@ -93,12 +93,3 @@ pub type EjectorHC12 =
 
 /// Samples per second of the geiger counter
 pub static SAMPLE_COUNT: usize = 100;
-
-pub mod packets {
-    use tinyframe::reader::BufferedReader;
-
-    use super::EjectorHC12;
-
-    /// Packet interface for the radio UART
-    pub type RadioInterface = BufferedReader<EjectorHC12, 256>;
-}

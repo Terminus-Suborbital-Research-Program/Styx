@@ -17,4 +17,3 @@ sync = []
 async = ["embedded-hal-async"]
 std = []
 defmt = ["dep:defmt"]
-
