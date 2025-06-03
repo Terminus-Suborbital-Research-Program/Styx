@@ -20,8 +20,8 @@ use core::mem::MaybeUninit;
 // Sensors
 use bme280::AsyncBME280;
 use bmi323::AsyncBmi323;
-use ina260_terminus::AsyncINA260;
 use bmm350::AsyncBmm350;
+use ina260_terminus::AsyncINA260;
 
 // Busses
 use rtic_sync::arbiter::i2c::ArbiterDevice;
@@ -58,7 +58,7 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 mod app {
     use crate::device_constants::{
         servos::{FlapServo, RelayServo},
-        AvionicsI2cBus, DownlinkBuffer, IcarusRadio, MotorI2cBus,
+        AvionicsI2cBus, DownlinkBuffer, IcarusHC12, MotorI2cBus,
     };
 
     use super::*;
@@ -88,7 +88,7 @@ mod app {
 
     #[local]
     pub struct Local {
-        pub radio: IcarusRadio,
+        pub radio: IcarusHC12,
         pub relay_servo: RelayServo,
         pub flap_servo: FlapServo,
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,

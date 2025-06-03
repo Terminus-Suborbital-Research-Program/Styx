@@ -13,9 +13,11 @@ use rp235x_hal::{
     Clock, Sio, Watchdog, I2C,
 };
 use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
-use tinyframe::writer::BufferingWriter;
 
-use crate::{actuators::servo::Servo, device_constants::DownlinkBuffer};
+use crate::{
+    actuators::servo::Servo,
+    device_constants::{DownlinkBuffer, IcarusHC12},
+};
 use crate::{
     app::*,
     device_constants::{
@@ -24,7 +26,6 @@ use crate::{
             FlapMosfet, FlapServo, FlapServoPwmPin, FlapServoSlice, RelayMosfet, RelayServo,
             RelayServoPwmPin, RelayServoSlice,
         },
-        IcarusRadio,
     },
     peripherals::async_i2c::AsyncI2c,
     Mono,
@@ -38,8 +39,8 @@ use hc12_rs::{
 // Sensors
 use bme280::AsyncBME280;
 use bmi323::AsyncBmi323;
-use ina260_terminus::AsyncINA260;
 use bmm350::AsyncBmm350;
+use ina260_terminus::AsyncINA260;
 
 // Logs our time for demft
 defmt::timestamp!("{=u64:us}", { epoch_ns() });
@@ -172,9 +173,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         }
     };
     timer_two.delay_ms(150);
-    let hc = radio.into_fu3_mode().unwrap(); // Infallible
-
-    let interface: IcarusRadio = BufferingWriter::new(hc);
+    let hc: IcarusHC12 = radio.into_fu3_mode().unwrap(); // Infallible
 
     // Servo mosfets
     let mut flap_mosfet: FlapMosfet = pins.gpio2.into_function();
@@ -288,7 +287,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     (
         Shared { data },
         Local {
-            radio: interface,
+            radio: hc,
             flap_servo,
             relay_servo,
             led: led_pin,
@@ -298,7 +297,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             ina260_1,
             ina260_2,
             ina260_3,
-            ina260_4
+            ina260_4,
         },
     )
 }
