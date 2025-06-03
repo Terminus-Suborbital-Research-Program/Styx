@@ -5,6 +5,7 @@ use sequence::Header;
 use crate::{Error, Result};
 
 mod crc;
+
 pub mod sequence;
 
 /// The maximum size of frame data
