@@ -55,7 +55,7 @@ bmi323 = { path = "../../bmi323-rs", features = ["async", "defmt"] }
 bmm350 = { path = "../../bmm350-rs", features = ["async", "defmt"] }
 
 # Communications
-hc12-rs = { git = "https://github.com/thelenlucas/hc12-rs.git", tag = "v0.3.0-rc1" }
+hc12-rs = "0.3.0"
 
 # Math
 nalgebra = { version = "*", default-features = false, features = [
