@@ -128,8 +128,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         .mode(Fu3::default())
         .program(&mut timer_two)
         .unwrap()
-        .at_mode()
-        .unwrap();
+        .inner();
 
     // Servo mosfets
     let mut flap_mosfet: FlapMosfet = pins.gpio2.into_function();
@@ -205,7 +204,8 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     // Initialize Avionics Sensors
     let bmm350 = AsyncBmm350::new_with_i2c(ArbiterDevice::new(avionics_i2c_arbiter), 0x14, Mono);
     let bmi323 = AsyncBmi323::new_with_i2c(ArbiterDevice::new(avionics_i2c_arbiter), 0x69, Mono);
-    let bme280 = AsyncBme280::new_with_address(ArbiterDevice::new(avionics_i2c_arbiter), 0x77, Mono);
+    let bme280 =
+        AsyncBme280::new_with_address(ArbiterDevice::new(avionics_i2c_arbiter), 0x77, Mono);
 
     let ina260_1 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x40, Mono);
     let ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x41, Mono);

@@ -148,8 +148,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         .mode(Fu3::default())
         .program(&mut timer_two)
         .unwrap()
-        .at_mode()
-        .unwrap();
+        .inner();
 
     // Servo
     let pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
