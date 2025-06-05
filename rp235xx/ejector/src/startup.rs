@@ -2,10 +2,10 @@ use defmt::{info, warn};
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
 use fugit::RateExtU32;
-use hc12_rs::configuration::baudrates::B9600;
-use hc12_rs::configuration::{Channel, HC12Configuration, Power};
-use hc12_rs::device::IntoATMode;
-use hc12_rs::IntoFU3Mode;
+use hc12_rs::modes::Fu3;
+use hc12_rs::paramaters::{Channel, Power};
+use hc12_rs::speeds::B9600;
+use hc12_rs::HC12;
 use heapless::Deque;
 use rp235x_hal::adc::AdcPin;
 use rp235x_hal::clocks::init_clocks_and_plls;
@@ -140,58 +140,16 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             .unwrap();
     radio_uart.enable_rx_interrupt(); // Make sure we can drive our interrupts
     let hc_programming_pin: RadioProgrammingPin = bank0_pins.gpio20.into_push_pull_output();
-    let builder = hc12_rs::device::HC12Builder::<(), (), (), ()>::empty()
-        .uart(radio_uart, B9600)
-        .programming_resources(hc_programming_pin, timer)
-        .fu3(HC12Configuration::default());
-
-    let radio = match builder.attempt_build() {
-        Ok(link) => {
-            info!("HC-12 init, link ready");
-            link
-        }
-        Err(e) => {
-            panic!("Failed to init HC-12: {}", e.0);
-        }
-    };
-
-    // Transition to AT mode
-    info!("Programming HC12...");
-    let radio = radio.into_at_mode().unwrap(); // Infallible
-    timer_two.delay_ms(300);
-    let radio = match radio.set_baudrate(B9600) {
-        Ok(link) => {
-            info!("HC12 baudrate set to 9600");
-            link
-        }
-        Err(e) => {
-            warn!("Failed to set HC12 baudrate: {:?}", e.error);
-            e.hc12
-        }
-    };
-    timer_two.delay_ms(300);
-    let radio = match radio.set_channel(Channel::Channel1) {
-        Ok(link) => {
-            info!("HC12 channel set to 1");
-            link
-        }
-        Err(e) => {
-            warn!("Failed to set HC12 channel: {:?}", e.error);
-            e.hc12
-        }
-    };
-    timer_two.delay_ms(300);
-    let hc = match radio.set_power(Power::P8) {
-        Ok(link) => {
-            info!("HC12 power set to P8");
-            link
-        }
-        Err(e) => {
-            warn!("Failed to set HC12 power: {:?}", e.error);
-            e.hc12
-        }
-    };
-    let hc: EjectorHC12 = hc.into_fu3_mode().unwrap(); // Infallible
+    let hc12 = HC12::new(radio_uart, hc_programming_pin, &mut timer_two)
+        .unwrap()
+        .speed(B9600::default())
+        .channel(Channel::new(15).unwrap())
+        .power(Power::P8)
+        .mode(Fu3::default())
+        .program(&mut timer_two)
+        .unwrap()
+        .at_mode()
+        .unwrap();
 
     // Servo
     let pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
@@ -235,7 +193,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             samples_buffer: [0u16; SAMPLE_COUNT],
         },
         Local {
-            radio: hc,
+            radio: hc12.0,
             geiger_fifo: Some(geiger_fifo),
             camera_mosfet: cam_pin,
             onboard_led: led_pin,

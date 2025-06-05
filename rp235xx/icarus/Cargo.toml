@@ -7,12 +7,12 @@ build = "build.rs"
 [dependencies]
 # HAL for the RP350X architecture
 rp235x-hal = { version = "0.3.0", features = [
-    "binary-info",
-    "critical-section-impl",
-    "rt",
-    "defmt",
-    "rtic-monotonic",
-    "dcp-fast-f64",
+  "binary-info",
+  "critical-section-impl",
+  "rt",
+  "defmt",
+  "rtic-monotonic",
+  "dcp-fast-f64",
 ], optional = true } # Embedded-hal for io traits
 
 embedded-hal-bus = { version = "0.3.0", features = ["async", "defmt-03"] }
@@ -36,33 +36,34 @@ fugit = "0.3.7"
 defmt = "*"
 defmt-rtt = "*"
 heapless = "0.8.0"
-bincode = { version = "2.0.0-rc.3", features = ["derive"], default-features = false }
+bincode = { version = "2.0.0-rc.3", features = [
+  "derive",
+], default-features = false }
 
 # Packets
 bin-packets = { path = "../../bin-packets" }
 futures = { version = "0.3.31", default-features = false, features = [
-    "async-await",
+  "async-await",
 ] }
 rp235x-pac = "0.1.0"
 
 # Sensors
-uom = {version = "*", default-features = false, features = ["si", "f32"]}
-# bme280 = {path="../../bme280", features = ["async", "defmt"] }
-bme280-rs = {version="0.3.0", features = ["async"] }
+uom = { version = "*", default-features = false, features = ["si", "f32"] }
+bme280 = { path = "../../bme280", features = ["async", "defmt"] }
 ina260_terminus = { path = "../../ina260", features = ["async", "defmt"] }
-bmi323 = {path="../../bmi323-rs", features = ["async", "defmt"]}
-bmm350 = {path="../../bmm350-rs", features = ["async", "defmt"]}
+bmi323 = { path = "../../bmi323-rs", features = ["async", "defmt"] }
+bmm350 = { path = "../../bmm350-rs", features = ["async", "defmt"] }
 
 # Communications
-hc12-rs = { git = "https://github.com/thelenlucas/hc12-rs.git", tag = "v0.0.1" }
+hc12-rs = { git = "https://github.com/thelenlucas/hc12-rs.git", tag = "v0.3.0-rc1" }
 
 # Math
 nalgebra = { version = "*", default-features = false, features = [
-    "libm-force",
+  "libm-force",
 ] }
 minikalman = { version = "0.6.0", features = [
-    "nalgebra",
-    "libm",
+  "nalgebra",
+  "libm",
 ] } #https://docs.rs/minikalman/latest/minikalman/
 
 # WGS84
@@ -75,7 +76,7 @@ tinyframe = { version = "0.1.0", path = "../../tinyframe" }
 [features]
 default = ["rp2350"]
 rp2350 = [
-    "dep:rp235x-hal",
-    "rtic-monotonics/rp235x",
-    "rtic/thumbv8main-backend",
+  "dep:rp235x-hal",
+  "rtic-monotonics/rp235x",
+  "rtic/thumbv8main-backend",
 ]

@@ -1,4 +1,3 @@
-use hc12_rs::{configuration::baudrates::B9600, ProgrammingPair, FU3, HC12};
 use pins::{
     EjectionPin, GreenLedPin, JupiterRxPin, JupiterTxPin, OnboardLEDPin, RadioProgrammingPin,
     RadioRxPin, RadioTxPin, RedLedPin,
@@ -88,8 +87,7 @@ pub type EjectorRbf = NoRbf; //ActiveHighRbf<RBFPin>;
 pub type RadioUart = UartPeripheral<Enabled, UART1, (RadioRxPin, RadioTxPin)>;
 
 /// Radio HC12
-pub type EjectorHC12 =
-    HC12<RadioUart, ProgrammingPair<RadioProgrammingPin, Timer<CopyableTimer1>>, FU3<B9600>, B9600>;
+pub type EjectorHC12 = UartPeripheral<Enabled, UART1, (RadioRxPin, RadioTxPin)>;
 
 /// Samples per second of the geiger counter
 pub static SAMPLE_COUNT: usize = 100;
