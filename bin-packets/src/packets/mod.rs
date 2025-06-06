@@ -28,4 +28,8 @@ pub enum ApplicationPacket {
         timestamp_ms: u64,
         recorded_pulses: u16,
     },
+    JupiterAccelerometer {
+        timestamp_ms: u64,
+        vector: [f32; 3],
+    },
 }

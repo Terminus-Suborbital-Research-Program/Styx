@@ -1,5 +1,4 @@
 use bin_packets::phases::JupiterPhase;
-use common::battery_state::BatteryState;
 use embedded_hal::digital::PinState;
 use log::{info, warn};
 

@@ -1,20 +1,12 @@
-use std::{
-    sync::{Arc, Mutex, Once},
-    time::Duration,
-};
-
 use i2cdev::{
     core::I2CDevice as _,
     linux::{LinuxI2CDevice, LinuxI2CError},
 };
-use log::{debug, warn};
 
 use common::{
     battery_state::BatteryState,
     indicators::{IndicatorStates, MalformedIndicatorError},
 };
-
-static ATMEGA_ONCE: Once = Once::new();
 
 /// ATMega abstraction
 pub struct Atmega {
@@ -45,6 +37,7 @@ impl From<MalformedIndicatorError> for IndicatorError {
     }
 }
 
+#[allow(dead_code)]
 impl Atmega {
     pub fn new(device: LinuxI2CDevice) -> Self {
         device.into()

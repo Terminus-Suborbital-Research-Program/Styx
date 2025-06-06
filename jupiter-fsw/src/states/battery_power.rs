@@ -1,6 +1,5 @@
 use bin_packets::phases::JupiterPhase;
-use common::battery_state::BatteryState;
-use log::{info, warn};
+use log::info;
 
 use crate::states::shutdown::Shutdown;
 

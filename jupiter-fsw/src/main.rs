@@ -1,16 +1,25 @@
-use std::{thread::sleep, time::Duration};
+use core::time;
+use std::{
+    thread::sleep,
+    time::{Duration, Instant},
+};
 
-use bin_packets::device::{PacketReader, PacketWriter, std::Device};
+use avionics::lsm6dsl::Lsm6DslAccel;
+use bin_packets::{
+    device::{PacketReader, PacketWriter, std::Device},
+    packets::ApplicationPacket,
+};
 use common::rbf::ActiveHighRbf;
 use constants::{EJECTION_IND_PIN, RBF_PIN};
 use data::packets::OnboardPacketStorage;
 use env_logger::Env;
 
 use gpio::{Pin, read::ReadPin, write::WritePin};
-use i2cdev::{core::I2CDevice, linux::LinuxI2CDevice};
+use i2cdev::linux::LinuxI2CDevice;
 use states::JupiterStateMachine;
 use tasks::{Atmega, spawn_camera_thread};
 
+mod avionics;
 mod constants;
 mod data;
 mod gpio;
@@ -26,6 +35,8 @@ static SERIAL_PORT: &str = "/dev/ttyS0";
 fn main() {
     let env = Env::default().filter_or("LOG_LEVEL", "info");
     env_logger::init_from_env(env);
+
+    let startup = Instant::now();
 
     // Immediantly access POWER_ON_TIME to evaluate the lazy_static
     let _ = timing::POWER_ON_TIME;
@@ -46,28 +57,52 @@ fn main() {
     // Main camera
     spawn_camera_thread();
 
+    // Get accelerometer
+    let accel = Lsm6DslAccel::new().unwrap();
+    info!("Accelerometer read: {:?}", accel.read_data());
+
     let mut onboard_packet_storage = OnboardPacketStorage::get_current_run();
 
     info!("RBF At Boot: {}", rbf.read());
 
     let mut state_machine = JupiterStateMachine::new(atmega, ejection_pin, rbf.clone());
+    let mut counter = 0;
 
     loop {
         while let Some(packet) = interface.read() {
             onboard_packet_storage.write(packet); // Write to the onboard storage
             if let Err(e) = interface.write(packet) {
-                error!("Failed to write packet down: {}", e);
+                error!("Failed to write packet down: {e}");
             }
-            info!("Got a packet: {:?}", packet);
+            info!("Got a packet: {packet:?}");
+        }
+
+        match accel.read_data() {
+            Ok(t) => {
+                let packet = ApplicationPacket::JupiterAccelerometer {
+                    timestamp_ms: std::time::Instant::now()
+                        .duration_since(startup)
+                        .as_millis() as u64,
+                    vector: t,
+                };
+
+                onboard_packet_storage.write(packet);
+                interface.write(packet).ok();
+            }
+            Err(e) => {
+                error!("Issue with the accelerometer: {e:?}");
+            }
         }
 
         state_machine.update();
-
-        info!(
-            "T{}: {:#?}",
-            timing::t_time_estimate(),
-            state_machine.phase()
-        );
-        sleep(Duration::from_millis(1000));
+        if counter % 10 == 0 {
+            info!(
+                "T{}: {:#?}",
+                timing::t_time_estimate(),
+                state_machine.phase()
+            );
+        }
+        counter += 1;
+        sleep(Duration::from_millis(100));
     }
 }
