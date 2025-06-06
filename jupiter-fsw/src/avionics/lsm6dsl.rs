@@ -17,7 +17,7 @@ impl Lsm6DslAccel {
         })
     }
 
-    pub fn read_data(&self) -> Result<Vec<f32>, super::Error> {
+    pub fn read_data(&self) -> Result<[f32; 3], super::Error> {
         let mut x_path: PathBuf = self.iio_device_path.clone();
         x_path.push("in_accel_x_raw");
         let mut y_path: PathBuf = self.iio_device_path.clone();
@@ -35,6 +35,6 @@ impl Lsm6DslAccel {
             readings.push(value as f32 * 0.061 / 1000.0);
         }
 
-        Ok(readings)
+        Ok([readings[0], readings[1], readings[2]])
     }
 }
