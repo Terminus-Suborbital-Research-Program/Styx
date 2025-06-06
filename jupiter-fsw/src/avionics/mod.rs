@@ -56,7 +56,7 @@ pub(super) fn iio_device_directory(sensor_name: &str) -> Result<PathBuf, Error> 
             let mut buffer = Vec::new();
             pair.0.read_to_end(&mut buffer).ok();
             if String::from_utf8_lossy(&buffer).trim() == sensor_name {
-                Some(pair.1)
+                Some(pair.1.parent().unwrap().to_owned())
             } else {
                 None
             }
