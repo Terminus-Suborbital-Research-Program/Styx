@@ -23,7 +23,7 @@ impl Lsm6DslAccel {
         let mut y_path: PathBuf = self.iio_device_path.clone();
         y_path.push("in_accel_y_raw");
         let mut z_path: PathBuf = self.iio_device_path.clone();
-        z_path.push("in_accel_x_raw");
+        z_path.push("in_accel_z_raw");
 
         let paths = [x_path, y_path, z_path];
         let mut readings = Vec::new();
