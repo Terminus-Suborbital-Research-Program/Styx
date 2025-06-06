@@ -38,7 +38,7 @@ impl From<ParseIntError> for Error {
 
 /// Return the iio device directory for a given name, if it exists
 pub(super) fn iio_device_directory(sensor_name: &str) -> Result<PathBuf, Error> {
-    let found = read_dir("/sys/bus/iio/devices/")?
+    match read_dir("/sys/bus/iio/devices/")?
         .filter_map(|x| x.ok())
         .map(|x| x.path())
         .map(|mut x| {
@@ -60,8 +60,8 @@ pub(super) fn iio_device_directory(sensor_name: &str) -> Result<PathBuf, Error> 
             } else {
                 None
             }
-        });
-
-    println!("Found: {found:?}");
-    todo!()
+        }) {
+        Some(val) => Ok(val),
+        _ => Err(Error::SensorNotFound(sensor_name.into())),
+    }
 }
