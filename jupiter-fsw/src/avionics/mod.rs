@@ -41,6 +41,10 @@ pub(super) fn iio_device_directory(sensor_name: &str) -> Result<PathBuf, Error> 
     let found = read_dir("/sys/bus/iio/devices/")?
         .filter_map(|x| x.ok())
         .map(|x| x.path())
+        .map(|mut x| {
+            x.push("name");
+            x
+        })
         .collect::<Vec<PathBuf>>();
 
     println!("Found: {found:?}");
