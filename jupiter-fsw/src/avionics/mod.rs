@@ -45,7 +45,22 @@ pub(super) fn iio_device_directory(sensor_name: &str) -> Result<PathBuf, Error> 
             x.push("name");
             x
         })
-        .collect::<Vec<PathBuf>>();
+        .filter_map(|name_path| {
+            if let Ok(file) = File::open(&name_path) {
+                Some((file, name_path))
+            } else {
+                None
+            }
+        })
+        .find_map(|mut pair| {
+            let mut buffer = Vec::new();
+            pair.0.read_to_end(&mut buffer).ok();
+            if String::from_utf8_lossy(&buffer).trim() == sensor_name {
+                Some(pair.1)
+            } else {
+                None
+            }
+        });
 
     println!("Found: {found:?}");
     todo!()
