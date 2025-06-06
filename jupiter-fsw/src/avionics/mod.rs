@@ -5,6 +5,8 @@ use std::num::ParseIntError;
 use std::path::PathBuf;
 use std::str::Utf8Error;
 
+use log::info;
+
 pub mod lsm6dsl;
 
 #[derive(Debug)]
@@ -36,33 +38,9 @@ impl From<ParseIntError> for Error {
 
 /// Return the iio device directory for a given name, if it exists
 pub(super) fn iio_device_directory(sensor_name: &str) -> Result<PathBuf, Error> {
-    let read_dirs: Result<Vec<_>, _> = read_dir("/sys/bus/iio/devices/")?.collect();
-    let iio_paths_and_names: Result<Vec<_>, io::Error> = read_dirs?
-        .iter()
-        .filter_map(|x| {
-            let mut name_path = x.path();
-            name_path.push("name");
-            match File::open(&name_path) {
-                Ok(file) => Some((file, x.path())),
-                Err(_) => None,
-            }
-        })
-        .map(|mut file| {
-            let mut buff = Vec::new();
-            file.0.read_to_end(&mut buff)?;
-            Ok((String::from_utf8_lossy(&buff).into_owned(), file.1))
-        })
-        .collect();
+    let found = read_dir("/sys/bus/iio/devices/")?
+        .filter_map(|x| x.ok())
+        .map(|x| info!("{:?}", x.path()));
 
-    if let Some(path) = iio_paths_and_names?.into_iter().find_map(|(name, path)| {
-        if name == sensor_name {
-            Some(path)
-        } else {
-            None
-        }
-    }) {
-        Ok(path)
-    } else {
-        Err(Error::SensorNotFound(sensor_name.into()))
-    }
+    todo!()
 }
