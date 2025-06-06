@@ -29,7 +29,9 @@ impl Lsm6DslAccel {
         let mut readings = Vec::new();
         for path in paths {
             let mut buffer = Vec::new();
-            File::open(path)?.read_to_end(&mut buffer)?;
+            File::open(&path)?.read_to_end(&mut buffer)?;
+
+            println!("Path: {:?}: {}", path, String::from_utf8_lossy(&buffer));
 
             let value = str::from_utf8(&buffer)?.parse::<i32>()?;
             println!("{}: {value}", String::from_utf8_lossy(&buffer));
