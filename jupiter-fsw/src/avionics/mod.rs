@@ -5,8 +5,6 @@ use std::num::ParseIntError;
 use std::path::PathBuf;
 use std::str::Utf8Error;
 
-use log::info;
-
 pub mod lsm6dsl;
 
 #[derive(Debug)]
