@@ -22,7 +22,7 @@ impl From<Pin> for WritePin {
 impl WritePin {
     pub fn write(&self, high: bool) -> Result<(), super::PinError> {
         let arg = format!("{}={}", self.pin, if high { "active" } else { "inactive" });
-        info!("Executing command: gpioset {}", arg);
+        info!("Executing command: gpioset {arg}");
         let mut cmd = Command::new("gpioset").arg(arg).spawn().map_err(|e| {
             warn!("Failed to spawn command: {e}");
             super::PinError::IoError(e)

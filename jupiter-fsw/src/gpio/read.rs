@@ -2,7 +2,6 @@ use embedded_hal::digital::{ErrorType, InputPin};
 use log::{debug, error, warn};
 
 use super::{Pin, PinError};
-use std::io::Read;
 use std::process::{Command, Stdio};
 
 pub struct ReadPin {
@@ -18,7 +17,7 @@ impl ReadPin {
 impl From<Pin> for ReadPin {
     fn from(pin: Pin) -> Self {
         let mut cmd = Command::new("gpioget")
-            .arg(format!("{}", pin.pin()))
+            .arg(pin.pin())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
@@ -63,7 +62,7 @@ impl ReadPin {
                     Ok(true)
                 } else {
                     let err = String::from_utf8_lossy(&output.stderr);
-                    error!("Failed to parse pin state: {}", err);
+                    error!("Failed to parse pin state: {err}");
                     Err(PinError::ParseError(err.to_string()))
                 }
             }
