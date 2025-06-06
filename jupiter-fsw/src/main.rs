@@ -7,10 +7,11 @@ use data::packets::OnboardPacketStorage;
 use env_logger::Env;
 
 use gpio::{Pin, read::ReadPin, write::WritePin};
-use i2cdev::{core::I2CDevice, linux::LinuxI2CDevice};
+use i2cdev::linux::LinuxI2CDevice;
 use states::JupiterStateMachine;
 use tasks::{Atmega, spawn_camera_thread};
 
+mod avionics;
 mod constants;
 mod data;
 mod gpio;
@@ -56,9 +57,9 @@ fn main() {
         while let Some(packet) = interface.read() {
             onboard_packet_storage.write(packet); // Write to the onboard storage
             if let Err(e) = interface.write(packet) {
-                error!("Failed to write packet down: {}", e);
+                error!("Failed to write packet down: {e}");
             }
-            info!("Got a packet: {:?}", packet);
+            info!("Got a packet: {packet:?}");
         }
 
         state_machine.update();

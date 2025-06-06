@@ -1,13 +1,9 @@
-use std::{
-    sync::{Arc, Mutex, Once},
-    time::Duration,
-};
+use std::sync::Once;
 
 use i2cdev::{
     core::I2CDevice as _,
     linux::{LinuxI2CDevice, LinuxI2CError},
 };
-use log::{debug, warn};
 
 use common::{
     battery_state::BatteryState,

@@ -1,6 +1,5 @@
 use bin_packets::phases::JupiterPhase;
 use embedded_hal::digital::PinState;
-use log::warn;
 
 use crate::states::battery_power::BatteryPower;
 
