@@ -32,7 +32,7 @@ impl Lsm6DslAccel {
             File::open(path)?.read_to_end(&mut buffer)?;
             println!("{}", String::from_utf8_lossy(&buffer));
 
-            let value = str::from_utf8(&buffer)?.parse::<u32>()?;
+            let value = str::from_utf8(&buffer)?.trim().parse::<i32>()?;
             readings.push(value as f32 * 0.061 / 1000.0);
         }
 
