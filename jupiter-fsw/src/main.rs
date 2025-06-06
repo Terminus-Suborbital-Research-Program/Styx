@@ -1,5 +1,6 @@
 use std::{thread::sleep, time::Duration};
 
+use avionics::lsm6dsl::Lsm6DslAccel;
 use bin_packets::device::{PacketReader, PacketWriter, std::Device};
 use common::rbf::ActiveHighRbf;
 use constants::{EJECTION_IND_PIN, RBF_PIN};
@@ -46,6 +47,10 @@ fn main() {
 
     // Main camera
     spawn_camera_thread();
+
+    // Get accelerometer
+    let accel = Lsm6DslAccel::new().unwrap();
+    info!("Accelerometer read: {:?}", accel.read_data());
 
     let mut onboard_packet_storage = OnboardPacketStorage::get_current_run();
 
