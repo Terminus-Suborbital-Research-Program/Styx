@@ -40,8 +40,8 @@ impl From<ParseIntError> for Error {
 pub(super) fn iio_device_directory(sensor_name: &str) -> Result<PathBuf, Error> {
     let found = read_dir("/sys/bus/iio/devices/")?
         .filter_map(|x| x.ok())
-        .map(|x| println!("{}", String::from(x.path().to_owned().to_string_lossy())))
-        .last();
+        .map(|x| x.path())
+        .collect::<Vec<PathBuf>>();
 
     println!("Found: {found:?}");
     todo!()
