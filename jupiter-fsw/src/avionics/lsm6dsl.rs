@@ -31,7 +31,7 @@ impl Lsm6DslAccel {
             let mut buffer = Vec::new();
             File::open(path)?.read_to_end(&mut buffer)?;
 
-            let value = str::from_utf8(&buffer)?.trim().parse::<i32>()?;
+            let value = str::from_utf8(&buffer)?.parse::<i32>()?;
             println!("{value}");
             readings.push(value as f32 * 0.061 / 1000.0);
         }
