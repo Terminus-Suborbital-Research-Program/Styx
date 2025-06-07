@@ -4,6 +4,7 @@ use std::io::Read;
 use std::num::ParseIntError;
 use std::path::PathBuf;
 use std::str::Utf8Error;
+use std::string::FromUtf8Error;
 
 pub mod lsm6dsl;
 
@@ -13,7 +14,7 @@ pub enum Error {
     Io(io::Error),
     SensorNotFound(String),
     Parse(ParseIntError),
-    Utf(Utf8Error),
+    Utf(FromUtf8Error),
 }
 
 impl From<io::Error> for Error {
@@ -22,8 +23,8 @@ impl From<io::Error> for Error {
     }
 }
 
-impl From<Utf8Error> for Error {
-    fn from(value: Utf8Error) -> Self {
+impl From<std::string::FromUtf8Error> for Error {
+    fn from(value: std::string::FromUtf8Error) -> Self {
         Self::Utf(value)
     }
 }
