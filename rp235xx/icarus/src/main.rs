@@ -106,7 +106,7 @@ mod app {
         pub ina260_3: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
         pub ina260_4: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
         pub adc: hal::adc::Adc,
-        pub adc_photoresistors: AdcPin<gpio::Pin<gpio::bank0::Gpio26, gpio::FunctionNull, gpio::PullDown>>,
+        pub adc_photoresistors: AdcPin<gpio::Pin<gpio::bank0::Gpio40, gpio::FunctionNull, gpio::PullDown>>,
         pub mux: CD74HC4067<Pin<MuxS0Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS1Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS2Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS3Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxEPin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>>
     }
 

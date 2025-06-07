@@ -137,16 +137,18 @@ pub type MotorI2cBus = AsyncI2c<
 >;
 
 use crate::hal::timer::CopyableTimer1;
-use hc12_rs::configuration::baudrates::B9600;
-use hc12_rs::ProgrammingPair;
-use hc12_rs::FU3;
-use hc12_rs::HC12;
+use hc12_rs::*;
 use rp235x_hal::gpio::bank0::{Gpio5, Gpio8, Gpio9};
 use rp235x_hal::gpio::FunctionUart;
 use rp235x_hal::pac::UART1;
 use rp235x_hal::uart::Enabled;
 use rp235x_hal::uart::UartPeripheral;
 use rp235x_hal::Timer;
+
+use hc12_rs::configuration::baudrates::B9600;
+use hc12_rs::configuration::{Channel, HC12Configuration, Power};
+use hc12_rs::device::IntoATMode;
+use hc12_rs::IntoFU3Mode;
 
 pub type IcarusHC12 = HC12<
     UartPeripheral<

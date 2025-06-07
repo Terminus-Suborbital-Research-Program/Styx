@@ -4,7 +4,11 @@ use embedded_hal::{
     digital::{InputPin, OutputPin},
 };
 use fugit::RateExtU32;
-use hc12_rs::IntoFU3Mode;
+use hc12_rs::{
+    configuration::{baudrates::B9600, Channel, HC12Configuration, Power},
+    device::{IntoATMode, IntoFU3Mode},
+    HC12Builder,
+};
 use rp235x_hal::{
     clocks,
     gpio::{FunctionI2C, FunctionPwm, Pin, PullNone, PullUp},
@@ -12,9 +16,11 @@ use rp235x_hal::{
     uart::{DataBits, StopBits, UartConfig, UartPeripheral},
     Clock, Sio, Watchdog, I2C,
 };
+use bin_packets::device::PacketWriter;
 use rtic_monotonics::rp235x;
 use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
-
+use tinyframe::writer::BufferingWriter;
+use heapless::Vec;
 use crate::{actuators::servo::Servo, device_constants::{pins::{MuxEPin, MuxS0Pin, MuxS1Pin, MuxS2Pin, MuxS3Pin}, DownlinkBuffer}};
 use crate::{
     app::*,
@@ -28,11 +34,7 @@ use crate::{
     peripherals::async_i2c::AsyncI2c,
     Mono,
 };
-
-use hc12_rs::{
-    configuration::{baudrates::B9600, Channel, HC12Configuration, Power},
-    device::IntoATMode,
-};
+use embedded_io::Write;
 
 // Sensors
 use bme280::AsyncBME280;
@@ -256,8 +258,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let ina260_4 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x45, Mono);
     
     let mut adc = rp235x_hal::Adc::new(ctx.device.ADC, &mut ctx.device.RESETS);
-    let mut adc_photoresistors: rp235x_hal::adc::AdcPin<Pin<rp235x_hal::gpio::bank0::Gpio26, rp235x_hal::gpio::FunctionNull, rp235x_hal::gpio::PullDown>> = rp235x_hal::adc::AdcPin::new(pins.gpio26).unwrap();    
-    let mut adc_photoresistors_2: rp235x_hal::adc::AdcPin<Pin<rp235x_hal::gpio::bank0::Gpio40, rp235x_hal::gpio::FunctionNull, rp235x_hal::gpio::PullDown>> = rp235x_hal::adc::AdcPin::new(pins.gpio40).unwrap();    
+    let mut adc_photoresistors: rp235x_hal::adc::AdcPin<Pin<rp235x_hal::gpio::bank0::Gpio40, rp235x_hal::gpio::FunctionNull, rp235x_hal::gpio::PullDown>> = rp235x_hal::adc::AdcPin::new(pins.gpio40).unwrap();    
 
     let s0: Pin<MuxS0Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown> = pins.gpio14.into_push_pull_output();    
     let s1: Pin<MuxS1Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown> = pins.gpio13.into_push_pull_output();    

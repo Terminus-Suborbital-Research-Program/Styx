@@ -297,7 +297,6 @@ impl<S0: OutputPin, S1: OutputPin, S2: OutputPin, S3: OutputPin, E: OutputPin> C
                 self.s3.set_high().ok();
                 self.enable.set_low().ok();
             },
-            _ => {}
         }
     }
 }

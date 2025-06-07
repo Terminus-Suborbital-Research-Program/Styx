@@ -32,4 +32,32 @@ pub enum ApplicationPacket {
         timestamp_ms: u64,
         vector: [f32; 3],
     },
+    AccelerometerData{
+        timestamp: u64,
+        x: f32,
+        y: f32,
+        z: f32
+    },
+    MagnetometerData {
+        timestamp: u64,
+        x: f32,
+        y: f32,
+        z: f32
+    },
+    GyroscopeData {
+        timestamp: u64,
+        x: f32,
+        y: f32,
+        z: f32,
+    },
+    EnvironmentData {
+        timestamp: u64,
+        temperature: u32,
+        pressure: u32,
+        humidity: u16,
+    },
+    PhotoresistorData{
+        timestamp: u64,
+        vector: [u16; 8],
+    }
 }

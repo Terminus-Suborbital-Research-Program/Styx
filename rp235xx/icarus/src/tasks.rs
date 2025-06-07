@@ -1,14 +1,15 @@
-use core::u64;
-
-use bin_packets::device::PacketWriter;
 use bin_packets::devices::DeviceIdentifier;
 use bin_packets::packets::status::Status;
 use bin_packets::packets::ApplicationPacket;
-use bme280::AsyncBME280;
+use bincode::config::standard;
+use bincode::encode_into_slice;
+
+use bme280::{AsyncBME280};
 use bmi323::{AccelConfig, GyroConfig};
 use bmm350::{MagConfig};
 use defmt::{error, info};
 use embedded_hal::digital::StatefulOutputPin;
+
 use fugit::ExtU64;
 use embedded_io::Write;
 use futures::join;
@@ -23,7 +24,7 @@ use crate::phases::{FlapServoStatus, Modes, RelayServoStatus};
 use crate::{app::*, device_constants::MotorI2cBus, Mono};
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
-    let mut sequence_number = 0;
+    let mut sequence_number: u16 = 0;
     loop {
         _ = ctx.local.led.toggle();
 
@@ -39,6 +40,7 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     }
 }
 
+use tinyframe::buffer::FrameIter;
 pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
     let radio = ctx.local.radio;
     let mut buf_len = 0;
@@ -85,6 +87,8 @@ pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
         buf_len = 0;
     }
 }
+
+
 
 use rp235x_pac::interrupt;
 use tinyframe::buffer::FrameIter;
@@ -232,6 +236,12 @@ pub async fn sample_sensors(
         match imu_result{
             Ok(acc)=>{
                 info!("Accel: {}, {}, {}", acc.x, acc.y, acc.z);
+                let acceleration_packet = ApplicationPacket::AccelerometerData {
+                    timestamp: now_timestamp().millis(),
+                    x: acc.x,
+                    y: acc.y,
+                    z: acc.z
+                };
             }
             Err(i2c_error)=>{
                 info!("BMI: {}", i2c_error);
@@ -241,6 +251,12 @@ pub async fn sample_sensors(
         match gyro_result{
             Ok(gyro)=>{
                 info!("Gyro: {}, {}, {}", gyro.x, gyro.y, gyro.z);
+                let gyro_packet = ApplicationPacket::GyroscopeData {
+                    timestamp: now_timestamp().millis(),
+                    x: gyro.x,
+                    y: gyro.y,
+                    z: gyro.z
+                };
             }
             Err(i2c_error)=>{
                 info!("BMI: {}", i2c_error);
@@ -250,15 +266,32 @@ pub async fn sample_sensors(
         match mag_result{
             Ok(mag)=>{
                 info!("Mag: {}, {}, {}", mag.x, mag.y, mag.z);
+                let mag_packet = ApplicationPacket::MagnetometerData {
+                    timestamp: now_timestamp().millis(),
+                    x: mag.x,
+                    y: mag.y,
+                    z: mag.z
+                };
             }
             Err(i2c_error)=>{
                 info!("BMM: {}", i2c_error);
-            }        }
+            }
+        }
         let env = ctx.local.bme280.sample().await;
-        info!("Temperature: {}", env.1);
-        info!("Pressure: {}", env.2);
-        info!("Humidity: {}", env.3);
-        Mono::delay(100_u64.millis()).await;
+        let temp_packet = ApplicationPacket::EnvironmentData {
+            timestamp: now_timestamp().millis(),
+            temperature: env.1,
+            pressure: env.2,
+            humidity: env.3
+        };
+        info!("T, P, H: {}, {}, {}", env.1, env.2, env.3);
+        
+        // let (photoresistor_1, photoresistor_2, photoresistor_3, photoresistor_4, photoresistor_5, photoresistor_6, photoresistor_7, photoresistor_8) = photoresistors_handle(ctx.local.adc, ctx.local.adc_photoresistors, ctx.local.mux).await;
+        // info!("Photoresistors:  {}, {}, {}, {}, {}, {}, {}, {}", photoresistor_1, photoresistor_2, photoresistor_3, photoresistor_4, photoresistor_5, photoresistor_6, photoresistor_7, photoresistor_8);
+        // let photoresistor_packet = ApplicationPacket::PhotoresistorData {
+        //     timestamp: now_timestamp().millis(),
+        //     vector: [photoresistor_1,photoresistor_2,photoresistor_3,photoresistor_4,photoresistor_5,photoresistor_6,photoresistor_7,photoresistor_8]
+        // };
     }
 }
 
@@ -269,25 +302,25 @@ pub async fn inertial_nav(_ctx: inertial_nav::Context<'_>) {
     }
 }
 
-use rp235x_hal::adc::{Adc, AdcPin};
-use cd74hc4067::{CD74HC4067, Channel::Channel5, Channel::Channel4, Channel::Channel3, Channel::Channel2, Channel::Channel6, Channel::Channel7, Channel::Channel8, Channel::Channel9};
-use crate::{MuxS0Pin, MuxS1Pin, MuxS2Pin, MuxS3Pin, MuxEPin};
-use embedded_hal_0_2::adc::OneShot;
-async fn photoresistors_handle(mut adc: &mut Adc, mut adc_pin: rp235x_hal::adc::AdcPin<Pin<rp235x_hal::gpio::bank0::Gpio26, rp235x_hal::gpio::FunctionSioInput, rp235x_hal::gpio::PullNone>>, mut mux: CD74HC4067<Pin<MuxS0Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS1Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS2Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS3Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxEPin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>>)->(u16, u16, u16, u16, u16, u16, u16, u16) {
-    // This function should handle the photoresistors and return their values
-    let mut photoresistor_values: [u16; 8] = [0; 8];
-    let mut temperature_sensor = adc.take_temp_sensor().unwrap();
-    let channels = [Channel5, Channel4, Channel3, Channel2, Channel6, Channel7, Channel8, Channel9];
-    for i in 0..8 {
-        let pin = &channels[i];
-        mux.set_pin(pin);
-        Mono::delay(10_u64.millis()).await; // Allow mux to settle
-        let adc_temp = adc.take_temp_sensor().unwrap();
-        let value = adc.read(&mut adc_pin).unwrap_or(0);
-        photoresistor_values[i] = value;
-    }
-    return (photoresistor_values[0], photoresistor_values[1], photoresistor_values[2], photoresistor_values[3], photoresistor_values[4], photoresistor_values[5], photoresistor_values[6], photoresistor_values[7]);
-}
+// use rp235x_hal::adc::{Adc, AdcPin};
+// use cd74hc4067::{CD74HC4067, Channel::Channel5, Channel::Channel4, Channel::Channel3, Channel::Channel2, Channel::Channel6, Channel::Channel7, Channel::Channel8, Channel::Channel9};
+// use crate::{MuxS0Pin, MuxS1Pin, MuxS2Pin, MuxS3Pin, MuxEPin};
+// use embedded_hal_0_2::adc::OneShot;
+// async fn photoresistors_handle(mut adc: &mut Adc, mut adc_pin: rp235x_hal::adc::AdcPin<Pin<rp235x_hal::gpio::bank0::Gpio40, rp235x_hal::gpio::FunctionSioInput, rp235x_hal::gpio::PullNone>>, mut mux: CD74HC4067<Pin<MuxS0Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS1Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS2Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS3Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxEPin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>>)->(u16, u16, u16, u16, u16, u16, u16, u16) {
+//     // This function should handle the photoresistors and return their values
+//     let mut photoresistor_values: [u16; 8] = [0; 8];
+//     let mut temperature_sensor = adc.take_temp_sensor().unwrap();
+//     let channels = [Channel5, Channel4, Channel3, Channel2, Channel6, Channel7, Channel8, Channel9];
+//     for i in 0..8 {
+//         let pin = &channels[i];
+//         mux.set_pin(pin);
+//         Mono::delay(10_u64.millis()).await; // Allow mux to settle
+//         let adc_temp = adc.take_temp_sensor().unwrap();
+//         let value = adc.read(&mut adc_pin).unwrap_or(0);
+//         photoresistor_values[i] = value;
+//     }
+//     return (photoresistor_values[0], photoresistor_values[1], photoresistor_values[2], photoresistor_values[3], photoresistor_values[4], photoresistor_values[5], photoresistor_values[6], photoresistor_values[7]);
+// }
 
 // Sample Functions
 use crate::peripherals::async_i2c::AsyncI2c;
