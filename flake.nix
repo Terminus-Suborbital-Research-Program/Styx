@@ -1,25 +1,24 @@
 {
-  description = "Dev shell for TERMINUS's rust crates";
+  description = "Dev flake for TERMINUS's rust crates + Jupiter-FSW service";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     utils.url = "github:numtide/flake-utils";
   };
 
   outputs = { nixpkgs, utils, ... }:
-    utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = import nixpkgs { inherit system; };
-        jupiter-fsw = pkgs.callPackage ./jupiter-fsw/jupiter.nix { };
-      in {
-        packages = { inherit jupiter-fsw; };
-
-        devShell = with pkgs;
-          mkShell {
-            buildInputs = [
-              darwin.apple_sdk.frameworks.Security
+    let
+      systems = utils.lib.eachDefaultSystem (system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+          jupiter-fsw = pkgs.callPackage ./jupiter-fsw/jupiter.nix { };
+        in {
+          packages = { inherit jupiter-fsw; };
+          devShell.default = pkgs.mkShell {
+            buildInputs = with pkgs; [
               libiconv
               rustup
+              libgpiod
               gcc
               cargo
               rustc
@@ -40,14 +39,13 @@
               gource
               pkgsCross.avr.buildPackages.gcc
             ];
-
-            RUST_SRC_PATH = rustPlatform.rustLibSrc;
-
             shellHook = ''
-              export PATH=$PATH:''${CARGO_HOME:-~/.cargo}/bin
-              export PATH=$PATH:''${RUSTUP_HOME:-~/.rustup}/toolchains/$RUSTC_VERSION-x86_64-unknown-linux-gnu/bin/
+              export PATH=$PATH:${jupiter-fsw}/bin
             '';
           };
-
-      });
+        });
+    in {
+      packages = systems.packages;
+      devShells = systems.devShell;
+    };
 }

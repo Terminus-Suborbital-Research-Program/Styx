@@ -1,4 +1,4 @@
-{ rustPlatform, fetchFromGitHub, pkg-config, libudev-zero, systemd }:
+{ rustPlatform, fetchFromGitHub, pkg-config, libudev-zero, systemd, libgpiod }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "jupiter-fsw";
@@ -6,12 +6,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   nativeBuildInputs = [ pkg-config libudev-zero ];
 
-  buildInputs = [ systemd ];
+  buildInputs = [ systemd libgpiod ];
 
   src = fetchFromGitHub {
     owner = "Terminus-Suborbital-Research-Program";
     repo = "AMALTHEA";
-    rev = "v0.0.1-patch";
+    rev = "v0.0.2";
     fetchSubmodules = true;
     hash = "sha256-o64hjQwn7knPU/icH9dbhJGQXQVHaKnSSF0PiYpbkMU=";
   };
