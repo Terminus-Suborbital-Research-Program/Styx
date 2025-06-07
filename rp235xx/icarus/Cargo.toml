@@ -48,11 +48,11 @@ rp235x-pac = "0.1.0"
 
 # Sensors
 uom = {version = "*", default-features = false, features = ["si", "f32"]}
-bme280 = {path="../../bme280", features = ["async", "defmt"] }
-ina260_terminus = { path = "../../ina260", features = ["async", "defmt"] }
-bmi323 = {path="../../bmi323-rs", features = ["async", "defmt"]}
-bmm350 = {path="../../bmm350-rs", features = ["async", "defmt"]}
-cd74hc4067 = {path="../../cd74hc4067", features = ["defmt"]}
+bme280 = {path="../../sensors/bme280", features = ["async", "defmt"] }
+ina260_terminus = { path = "../../sensors/ina260", features = ["async", "defmt"] }
+bmi323 = {path="../../sensors/bmi323-rs", features = ["async", "defmt"]}
+bmm350 = {path="../../sensors/bmm350-rs", features = ["async", "defmt"]}
+cd74hc4067 = {path="../../sensors/cd74hc4067", features = ["defmt"]}
 
 # Communications
 hc12-rs = { git = "https://github.com/thelenlucas/hc12-rs.git", tag = "v0.0.1" }
