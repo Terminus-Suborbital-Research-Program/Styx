@@ -39,9 +39,6 @@
               gource
               pkgsCross.avr.buildPackages.gcc
             ];
-            shellHook = ''
-              export PATH=$PATH:${jupiter-fsw}/bin
-            '';
           };
         });
     in {
