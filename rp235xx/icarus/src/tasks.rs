@@ -1,20 +1,28 @@
-use crate::device_constants::AvionicsI2cBus;
-use crate::phases::{Modes, RelayServoStatus};
-use crate::{app::*, device_constants::MotorI2cBus, Mono};
+use core::f32::NAN;
+use core::u64;
+use bincode::encode_into_slice;
+use bincode::config::standard;
+use bin_packets::device::PacketWriter;
 use bin_packets::devices::DeviceIdentifier;
 use bin_packets::packets::status::Status;
 use bin_packets::packets::ApplicationPacket;
-use bincode::config::standard;
-use bincode::encode_into_slice;
+use bme280_rs::{AsyncBme280, Configuration, Oversampling, SensorMode};
 use bmi323::{AccelConfig, GyroConfig};
-use bmm350::MagConfig;
+use bmm350::{MagConfig};
 use defmt::{error, info};
 use embedded_hal::digital::StatefulOutputPin;
-use embedded_io::Write;
 use fugit::ExtU64;
+use embedded_io::Write;
+use futures::join;
+use heapless::Vec;
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
+use uom::si::electric_potential::volt;
+use uom::si::power;
+use crate::device_constants::AvionicsI2cBus;
+use crate::phases::{FlapServoStatus, Modes, RelayServoStatus};
+use crate::{app::*, device_constants::MotorI2cBus, Mono};
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     let mut sequence_number = 0;
@@ -218,71 +226,113 @@ pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter
     }
 }
 
-pub async fn sample_sensors(
-    ctx: sample_sensors::Context<'_>,
-    _avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
-) {
-    ctx.local.bme280.init().await.ok();
-    ctx.local.bmi323.init().await.ok();
+pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c: &'static Arbiter<AvionicsI2cBus>,) {
+    ctx.local.bme280.init().await;
+    ctx.local.bme280.set_sampling_configuration(
+    Configuration::default()
+        .with_temperature_oversampling(Oversampling::Oversample1)
+        .with_pressure_oversampling(Oversampling::Oversample1)
+        .with_humidity_oversampling(Oversampling::Oversample1)
+        .with_sensor_mode(SensorMode::Normal)
+    ).await;
+
+    ctx.local.bmi323.init().await;
     let accel_config = AccelConfig::builder().mode(bmi323::AccelerometerPowerMode::Normal);
-    ctx.local
-        .bmi323
-        .set_accel_config(accel_config.build())
-        .await
-        .ok();
+    ctx.local.bmi323.set_accel_config(accel_config.build()).await;
     let gyro_config = GyroConfig::builder().mode(bmi323::GyroscopePowerMode::Normal);
-    ctx.local
-        .bmi323
-        .set_gyro_config(gyro_config.build())
-        .await
-        .ok();
-
-    ctx.local.bmm350.init().await.ok();
+    ctx.local.bmi323.set_gyro_config(gyro_config.build()).await;
+    ctx.local.bmm350.init().await;
     let mag_config = MagConfig::builder().performance(bmm350::PerformanceMode::Regular);
-    ctx.local
-        .bmm350
-        .set_power_mode(bmm350::PowerMode::Normal)
-        .await
-        .ok();
-    ctx.local
-        .bmm350
-        .set_mag_config(mag_config.build())
-        .await
-        .ok();
-
-    loop {
+    ctx.local.bmm350.set_power_mode(bmm350::PowerMode::Normal).await;
+    ctx.local.bmm350.set_mag_config(mag_config.build()).await;
+    loop{
         let imu_result = ctx.local.bmi323.read_accel_data_scaled().await;
-        match imu_result {
-            Ok(acc) => {
+        let imu_ts = Mono::now().ticks();
+        match imu_result{
+            Ok(acc)=>{
+                let imu_packet = ApplicationPacket::AccelerationData { device_index: 0, timestamp: imu_ts, x: acc.x, y: acc.y, z: acc.z };
+                ctx.shared.data.lock(|data|{
+                    data.push_back(imu_packet);
+                });
                 info!("Accel: {}, {}, {}", acc.x, acc.y, acc.z);
             }
-            Err(i2c_error) => {
+            Err(i2c_error)=>{
                 info!("BMI: {}", i2c_error);
             }
         }
 
         let gyro_result = ctx.local.bmi323.read_gyro_data_scaled().await;
-        match gyro_result {
-            Ok(gyro) => {
+        let gyro_ts = Mono::now().ticks();
+        match gyro_result{
+            Ok(gyro)=>{
+                ctx.shared.data.lock(|data|{
+                    let gyro_packet = ApplicationPacket::AccelerationData { device_index: 0, timestamp: gyro_ts, x: gyro.x, y: gyro.y, z: gyro.z };
+                    data.push_back(gyro_packet);
+                });
                 info!("Gyro: {}, {}, {}", gyro.x, gyro.y, gyro.z);
             }
-            Err(i2c_error) => {
+            Err(i2c_error)=>{
                 info!("BMI: {}", i2c_error);
             }
         }
         let mag_result = ctx.local.bmm350.read_mag_data_scaled().await;
-        match mag_result {
-            Ok(mag) => {
+        let mag_ts = Mono::now().ticks();
+        match mag_result{
+            Ok(mag)=>{
+                ctx.shared.data.lock(|data|{
+                    let mag_packet = ApplicationPacket::AccelerationData { device_index: 0, timestamp: mag_ts, x: mag.x, y: mag.y, z: mag.z };
+                    data.push_back(mag_packet);
+                });
                 info!("Mag: {}, {}, {}", mag.x, mag.y, mag.z);
             }
-            Err(i2c_error) => {
+            Err(i2c_error)=>{
                 info!("BMM: {}", i2c_error);
+            }       
+        }
+        let env_result = ctx.local.bme280.read_sample().await;
+        let env_ts = Mono::now().ticks();
+        match env_result{
+            Ok(env)=>{
+                let mut temperature = NAN;
+                let mut pressure = NAN;
+                let mut humidity = NAN;
+                match env.temperature{
+                    Some(temp)=>{
+                        temperature = temp
+                    }
+                    None=>{
+                        temperature = NAN;
+                    }
+                }
+                match env.pressure{
+                    Some(pres)=>{
+                        pressure = pres
+                    }
+                    None=>{
+                        pressure = NAN;
+                    }
+                }
+                match env.humidity{
+                    Some(hum)=>{
+                        humidity = hum
+                    }
+                    None=>{
+                        humidity = NAN;
+                    }
+                }
+                let env_packet = ApplicationPacket::EnvironmentData { device_index: 0, timestamp: env_ts, temperature: temperature , pressure: pressure, humidity: humidity};
+                ctx.shared.data.lock(|data|{
+                    data.push_back(env_packet);
+                });
+                info!("Temperature: {}", env.temperature);
+                info!("Pressure: {}", env.pressure);
+                info!("Humidity: {}", env.humidity);
+            }
+            Err(i2c_error)=>{
+                error!("BME280 Error: {}", i2c_error)
             }
         }
-        let env = ctx.local.bme280.sample().await;
-        info!("Temperature: {}", env.1);
-        info!("Pressure: {}", env.2);
-        info!("Humidity: {}", env.3);
+
         Mono::delay(100_u64.millis()).await;
     }
 }
