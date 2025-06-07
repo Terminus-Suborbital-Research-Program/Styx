@@ -1,4 +1,4 @@
 [workspace]
-members = ["ejector", "icarus", "breakout"]
+members = ["ejector", "icarus"]
 
 resolver = "3"
