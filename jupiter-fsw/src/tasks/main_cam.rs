@@ -29,15 +29,24 @@ fn camera_task() -> ! {
 
     loop {
         // Highest integer in directory
-        let highest = read_dir(&video_directory)
+        let mut max = 0;
+        std::fs::read_dir(&video_directory)
             .unwrap()
-            .filter_map(|x| x.ok())
-            .map(|x| String::from_str(x.path().to_str().unwrap_or("0")).unwrap())
-            .filter_map(|x| x.parse::<u32>().ok())
-            .max()
-            .unwrap_or(0);
+            .for_each(|dir| {
+                if let Ok(name) = dir {
+                    info!("Found {}", name.file_name().to_string_lossy());
+                    let x = name
+                        .file_name()
+                        .to_string_lossy()
+                        .parse::<u32>()
+                        .unwrap_or(0);
+                    if x > max {
+                        max = x;
+                    }
+                }
+            });
 
-        let next = format!("{}.avi", highest + 1);
+        let next = format!("{}.avi", max + 1);
         let mut file_path = video_directory.clone();
         file_path.push(next);
 
