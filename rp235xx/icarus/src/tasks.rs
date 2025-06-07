@@ -212,15 +212,9 @@ pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter
             info!("Voltage Packet: {}", voltages_packet);
             info!("Current Packet: {}", current_packet);
             info!("Power Packet: {}", power_packet);
-            if data.is_full() {
-                data.pop_back();
-                data.pop_back();
-                data.pop_back();
-            } else {
-                data.push_back(voltages_packet).ok();
-                data.push_back(current_packet).ok();
-                data.push_back(power_packet).ok();
-            }
+            data.push_back(voltages_packet).ok();
+            data.push_back(current_packet).ok();
+            data.push_back(power_packet).ok();
         });
         Mono::delay(250.millis()).await;
     }
