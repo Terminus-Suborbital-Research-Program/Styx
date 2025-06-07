@@ -269,6 +269,26 @@ pub async fn inertial_nav(_ctx: inertial_nav::Context<'_>) {
     }
 }
 
+use rp235x_hal::adc::{Adc, AdcPin};
+use cd74hc4067::{CD74HC4067, Channel::Channel5, Channel::Channel4, Channel::Channel3, Channel::Channel2, Channel::Channel6, Channel::Channel7, Channel::Channel8, Channel::Channel9};
+use crate::{MuxS0Pin, MuxS1Pin, MuxS2Pin, MuxS3Pin, MuxEPin};
+use embedded_hal_0_2::adc::OneShot;
+async fn photoresistors_handle(mut adc: &mut Adc, mut adc_pin: rp235x_hal::adc::AdcPin<Pin<rp235x_hal::gpio::bank0::Gpio26, rp235x_hal::gpio::FunctionSioInput, rp235x_hal::gpio::PullNone>>, mut mux: CD74HC4067<Pin<MuxS0Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS1Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS2Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS3Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxEPin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>>)->(u16, u16, u16, u16, u16, u16, u16, u16) {
+    // This function should handle the photoresistors and return their values
+    let mut photoresistor_values: [u16; 8] = [0; 8];
+    let mut temperature_sensor = adc.take_temp_sensor().unwrap();
+    let channels = [Channel5, Channel4, Channel3, Channel2, Channel6, Channel7, Channel8, Channel9];
+    for i in 0..8 {
+        let pin = &channels[i];
+        mux.set_pin(pin);
+        Mono::delay(10_u64.millis()).await; // Allow mux to settle
+        let adc_temp = adc.take_temp_sensor().unwrap();
+        let value = adc.read(&mut adc_pin).unwrap_or(0);
+        photoresistor_values[i] = value;
+    }
+    return (photoresistor_values[0], photoresistor_values[1], photoresistor_values[2], photoresistor_values[3], photoresistor_values[4], photoresistor_values[5], photoresistor_values[6], photoresistor_values[7]);
+}
+
 // Sample Functions
 use crate::peripherals::async_i2c::AsyncI2c;
 use ina260_terminus::AsyncINA260;

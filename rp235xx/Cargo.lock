@@ -159,7 +159,7 @@ dependencies = [
  "ina260_terminus",
  "minikalman",
  "nalgebra 0.33.2",
- "rp235x-hal",
+ "rp235x-hal 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rp235x-pac",
  "rtic",
  "rtic-monotonics",
@@ -183,6 +183,14 @@ name = "cast"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37b2a672a2cb129a2e41c10b1224bb368f9f37a2b16b612598138befd7b37eb5"
+
+[[package]]
+name = "cd74hc4067"
+version = "0.1.0"
+dependencies = [
+ "defmt 1.0.1",
+ "embedded-hal 1.0.0",
+]
 
 [[package]]
 name = "cfg-if"
@@ -308,7 +316,7 @@ dependencies = [
  "fugit",
  "hc12-rs",
  "heapless",
- "rp235x-hal",
+ "rp235x-hal 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rtic",
  "rtic-monotonics",
  "rtic-sync",
@@ -578,9 +586,11 @@ dependencies = [
  "bme280 0.1.0",
  "bmi323",
  "bmm350 0.0.2",
+ "cd74hc4067",
  "cortex-m",
  "defmt 1.0.1",
  "defmt-rtt",
+ "embedded-hal 0.2.7",
  "embedded-hal 1.0.0",
  "embedded-hal-async",
  "embedded-hal-bus 0.3.0",
@@ -592,7 +602,7 @@ dependencies = [
  "ina260_terminus",
  "minikalman",
  "nalgebra 0.33.2",
- "rp235x-hal",
+ "rp235x-hal 0.3.0 (git+https://github.com/cantudo/rp-hal.git)",
  "rp235x-pac",
  "rtic",
  "rtic-monotonics",
@@ -979,10 +989,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "88ed2051a0bf2c726df01cfce378ed8a367be2a6e402fc183857f429a346d429"
 
 [[package]]
+name = "rp-binary-info"
+version = "0.1.1"
+source = "git+https://github.com/cantudo/rp-hal.git#0ae934f95ed901881f2472608d63fc669cd2ae66"
+
+[[package]]
 name = "rp-hal-common"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8288358786b1458fb2caac8c4b40fb529ef4200d6c46467e2695b7a8ba573ae8"
+dependencies = [
+ "fugit",
+]
+
+[[package]]
+name = "rp-hal-common"
+version = "0.1.0"
+source = "git+https://github.com/cantudo/rp-hal.git#0ae934f95ed901881f2472608d63fc669cd2ae66"
 dependencies = [
  "fugit",
 ]
@@ -1014,9 +1037,46 @@ dependencies = [
  "rand_core",
  "riscv",
  "riscv-rt",
- "rp-binary-info",
- "rp-hal-common",
- "rp235x-hal-macros",
+ "rp-binary-info 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rp-hal-common 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rp235x-hal-macros 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rp235x-pac",
+ "rtic-monotonic",
+ "sha2-const-stable",
+ "usb-device",
+ "vcell",
+ "void",
+]
+
+[[package]]
+name = "rp235x-hal"
+version = "0.3.0"
+source = "git+https://github.com/cantudo/rp-hal.git#0ae934f95ed901881f2472608d63fc669cd2ae66"
+dependencies = [
+ "bitfield 0.14.0",
+ "cortex-m",
+ "cortex-m-rt",
+ "critical-section",
+ "defmt 0.3.100",
+ "embedded-dma",
+ "embedded-hal 0.2.7",
+ "embedded-hal 1.0.0",
+ "embedded-hal-async",
+ "embedded-hal-nb",
+ "embedded-io",
+ "frunk",
+ "fugit",
+ "gcd",
+ "itertools",
+ "nb 1.1.0",
+ "paste",
+ "pio",
+ "rand_core",
+ "riscv",
+ "riscv-rt",
+ "rp-binary-info 0.1.1 (git+https://github.com/cantudo/rp-hal.git)",
+ "rp-hal-common 0.1.0 (git+https://github.com/cantudo/rp-hal.git)",
+ "rp235x-hal-macros 0.1.0 (git+https://github.com/cantudo/rp-hal.git)",
  "rp235x-pac",
  "rtic-monotonic",
  "sha2-const-stable",
@@ -1030,6 +1090,16 @@ name = "rp235x-hal-macros"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74edd7a5979e9763bbb98e9746e711bac7464ee3397af7288e6c288ff0d3c764"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.101",
+]
+
+[[package]]
+name = "rp235x-hal-macros"
+version = "0.1.0"
+source = "git+https://github.com/cantudo/rp-hal.git#0ae934f95ed901881f2472608d63fc669cd2ae66"
 dependencies = [
  "proc-macro2",
  "quote",

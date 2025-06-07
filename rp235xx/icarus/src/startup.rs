@@ -12,12 +12,10 @@ use rp235x_hal::{
     uart::{DataBits, StopBits, UartConfig, UartPeripheral},
     Clock, Sio, Watchdog, I2C,
 };
+use rtic_monotonics::rp235x;
 use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
 
-use crate::{
-    actuators::servo::Servo,
-    device_constants::{DownlinkBuffer, IcarusHC12},
-};
+use crate::{actuators::servo::Servo, device_constants::{pins::{MuxEPin, MuxS0Pin, MuxS1Pin, MuxS2Pin, MuxS3Pin}, DownlinkBuffer}};
 use crate::{
     app::*,
     device_constants::{
@@ -41,6 +39,7 @@ use bme280::AsyncBME280;
 use bmi323::AsyncBmi323;
 use ina260_terminus::AsyncINA260;
 use bmm350::AsyncBmm350;
+use cd74hc4067::CD74HC4067;
 
 // Logs our time for demft
 defmt::timestamp!("{=u64:us}", { epoch_ns() });
@@ -68,8 +67,8 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         sio.gpio_bank0,
         &mut ctx.device.RESETS,
     );
-    let mut debug_pin = pins.gpio11.into_push_pull_output();
-    debug_pin.set_high().unwrap();
+    // let mut debug_pin = pins.gpio11.into_push_pull_output();
+    // debug_pin.set_high().unwrap();
     let clocks = match clocks::init_clocks_and_plls(
         12_000_000u32,
         ctx.device.XOSC,
@@ -87,9 +86,9 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
                 clocks::InitError::PllError(_) => false,
                 clocks::InitError::ClockError(_) => false,
             } {
-                debug_pin.set_high().unwrap();
+                // debug_pin.set_high().unwrap();
             } else {
-                debug_pin.set_low().unwrap();
+                // debug_pin.set_low().unwrap();
             }
             warn!("Failed to init clocks: {:?}", e);
             panic!("Failed to init clocks");
@@ -255,9 +254,25 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x41, Mono);
     let ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x44, Mono);
     let ina260_4 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x45, Mono);
+    
+    let mut adc = rp235x_hal::Adc::new(ctx.device.ADC, &mut ctx.device.RESETS);
+    let mut adc_photoresistors: rp235x_hal::adc::AdcPin<Pin<rp235x_hal::gpio::bank0::Gpio26, rp235x_hal::gpio::FunctionNull, rp235x_hal::gpio::PullDown>> = rp235x_hal::adc::AdcPin::new(pins.gpio26).unwrap();    
+    let mut adc_photoresistors_2: rp235x_hal::adc::AdcPin<Pin<rp235x_hal::gpio::bank0::Gpio40, rp235x_hal::gpio::FunctionNull, rp235x_hal::gpio::PullDown>> = rp235x_hal::adc::AdcPin::new(pins.gpio40).unwrap();    
+
+    let s0: Pin<MuxS0Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown> = pins.gpio14.into_push_pull_output();    
+    let s1: Pin<MuxS1Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown> = pins.gpio13.into_push_pull_output();    
+    let s2: Pin<MuxS2Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown> = pins.gpio11.into_push_pull_output();    
+    let s3: Pin<MuxS3Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown> = pins.gpio10.into_push_pull_output();    
+    let e: Pin<MuxEPin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown> = pins.gpio12.into_push_pull_output();    
+    let mux = CD74HC4067::new_enable(
+        s0,
+        s1,
+        s2,
+        s3,
+        e
+    );
 
     let data = DownlinkBuffer::new();
-
     let mut rbf = pins.gpio4.into_pull_down_input();
 
     // Wait for the "Remove Before Flight" (RBF) pin to go low.
@@ -278,11 +293,11 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     info!("Peripherals initialized, spawning tasks...");
     heartbeat::spawn().ok();
-    // mode_sequencer::spawn().ok();
-    // ina_sample::spawn(motor_i2c_arbiter).ok();
+    mode_sequencer::spawn().ok();
+    ina_sample::spawn(motor_i2c_arbiter).ok();
     sample_sensors::spawn(avionics_i2c_arbiter).ok();
-    // inertial_nav::spawn().ok();
-    // radio_send::spawn().ok();
+    inertial_nav::spawn().ok();
+    radio_send::spawn().ok();
     info!("Tasks spawned!");
     (
         Shared { data },
@@ -298,6 +313,9 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             ina260_2,
             ina260_3,
             ina260_4,
+            adc,
+            adc_photoresistors,
+            mux
         },
     )
 }

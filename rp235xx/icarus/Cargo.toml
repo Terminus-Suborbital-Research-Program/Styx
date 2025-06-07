@@ -6,7 +6,7 @@ build = "build.rs"
 
 [dependencies]
 # HAL for the RP350X architecture
-rp235x-hal = { version = "0.3.0", features = [
+rp235x-hal = {git = "https://github.com/cantudo/rp-hal.git", features = [
     "binary-info",
     "critical-section-impl",
     "rt",
@@ -18,6 +18,7 @@ rp235x-hal = { version = "0.3.0", features = [
 embedded-hal-bus = { version = "0.3.0", features = ["async", "defmt-03"] }
 # Rust safe bindings to register-level control
 embedded-hal = "1.0.0"
+embedded_hal_0_2 = {package = "embedded-hal", version = "0.2.7"}
 embedded-hal-async = "1.0"
 embedded-io = "0.6.1"
 
@@ -51,6 +52,7 @@ bme280 = {path="../../bme280", features = ["async", "defmt"] }
 ina260_terminus = { path = "../../ina260", features = ["async", "defmt"] }
 bmi323 = {path="../../bmi323-rs", features = ["async", "defmt"]}
 bmm350 = {path="../../bmm350-rs", features = ["async", "defmt"]}
+cd74hc4067 = {path="../../cd74hc4067", features = ["defmt"]}
 
 # Communications
 hc12-rs = { git = "https://github.com/thelenlucas/hc12-rs.git", tag = "v0.0.1" }

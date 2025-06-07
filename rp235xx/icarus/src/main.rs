@@ -22,6 +22,12 @@ use bme280::AsyncBME280;
 use bmi323::AsyncBmi323;
 use ina260_terminus::AsyncINA260;
 use bmm350::AsyncBmm350;
+use cd74hc4067::CD74HC4067;
+use crate::device_constants::pins::{
+    MuxS0Pin, MuxS1Pin, MuxS2Pin, MuxS3Pin, MuxEPin,
+};
+use rp235x_hal::gpio::{Pin};
+use rp235x_hal::adc::{AdcPin, Adc};
 
 // Busses
 use rtic_sync::arbiter::i2c::ArbiterDevice;
@@ -66,7 +72,7 @@ mod app {
     use bin_packets::{phases::IcarusPhase, time::Timestamp};
 
     use hal::gpio::{self, FunctionSio, PullNone, SioOutput};
-    use rp235x_hal::uart::UartPeripheral;
+    use rp235x_hal::{adc::AdcPin, uart::UartPeripheral};
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
     use rtic_sync::{arbiter::Arbiter, signal::Signal};
@@ -99,6 +105,9 @@ mod app {
         pub ina260_2: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
         pub ina260_3: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
         pub ina260_4: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
+        pub adc: hal::adc::Adc,
+        pub adc_photoresistors: AdcPin<gpio::Pin<gpio::bank0::Gpio26, gpio::FunctionNull, gpio::PullDown>>,
+        pub mux: CD74HC4067<Pin<MuxS0Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS1Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS2Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS3Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxEPin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>>
     }
 
     #[init(
@@ -130,7 +139,7 @@ mod app {
         #[task(priority = 2, shared = [data], local=[ina260_1, ina260_2, ina260_3, ina260_4])]
         async fn ina_sample(&mut ctx: ina_sample::Context, i2c: &'static Arbiter<MotorI2cBus>);
 
-        #[task(shared=[data], local = [bme280, bmi323, bmm350], priority = 2)]
+        #[task(local = [bme280, bmi323, bmm350, adc, adc_photoresistors, mux], priority = 2)]
         async fn sample_sensors(
             mut ctx: sample_sensors::Context,
             avionics_i2c: &'static Arbiter<AvionicsI2cBus>,

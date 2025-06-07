@@ -1,0 +1,12 @@
+[package]
+name = "cd74hc4067"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+defmt = { version = "1.0.1", optional = true }
+embedded-hal = "1.0.0"
+[features]
+default = ["defmt"]
+with_defmt = ["defmt"]
+std = []

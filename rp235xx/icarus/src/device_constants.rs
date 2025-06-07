@@ -10,6 +10,7 @@ use rp235x_hal::{
 
 use crate::{peripherals::async_i2c::AsyncI2c, phases::StateMachine};
 
+
 // State Machine
 pub type IcarusStateMachine = StateMachine<10>;
 
@@ -44,8 +45,12 @@ pub mod pins {
     pub type MuxS2Pin = Gpio11;
     /// Mux S3
     pub type MuxS3Pin = Gpio10;
+    /// Mux Disable
+    pub type MuxEPin = Gpio12;
     /// Mux ADC0
-    pub type MuxADCPin = Gpio40;
+    pub type MuxADCPin = Gpio26;
+    
+    // pub type ADCMux = CD74HC4067<Pin<MuxS0Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS1Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS2Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS3Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxEPin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>>;
 
     /// ESC I2C SDA pin
     pub type EscI2CSdaPin = Gpio16;

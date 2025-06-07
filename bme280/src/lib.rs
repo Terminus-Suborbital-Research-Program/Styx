@@ -1,13 +1,13 @@
 #![no_std]
 // Library
 #[cfg(feature = "sync")]
-pub mod sync_mod;
+pub mod sync;
 #[cfg(feature = "sync")]
-pub use sync_mod::*;
+pub use sync::*;
 #[cfg(feature = "async")]
-pub mod async_mod;
+pub mod r#async;
 #[cfg(feature = "async")]
-pub use async_mod::*;
+pub use r#async::*;
 
 // Types/Constants
 pub type Address = u8;

@@ -1,5 +1,4 @@
 #![no_std]
-// TI INA260 Current Sensor
 use crate::{Register};
 #[cfg(feature = "defmt")]
 use defmt::error;
