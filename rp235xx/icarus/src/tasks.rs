@@ -234,17 +234,17 @@ pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c:
         .with_pressure_oversampling(Oversampling::Oversample1)
         .with_humidity_oversampling(Oversampling::Oversample1)
         .with_sensor_mode(SensorMode::Normal)
-    ).await;
+    ).await.ok();
 
-    ctx.local.bmi323.init().await;
+    ctx.local.bmi323.init().await.ok();
     let accel_config = AccelConfig::builder().mode(bmi323::AccelerometerPowerMode::Normal);
-    ctx.local.bmi323.set_accel_config(accel_config.build()).await;
+    ctx.local.bmi323.set_accel_config(accel_config.build()).await.ok();
     let gyro_config = GyroConfig::builder().mode(bmi323::GyroscopePowerMode::Normal);
-    ctx.local.bmi323.set_gyro_config(gyro_config.build()).await;
-    ctx.local.bmm350.init().await;
+    ctx.local.bmi323.set_gyro_config(gyro_config.build()).await.ok();
+    ctx.local.bmm350.init().await.ok();
     let mag_config = MagConfig::builder().performance(bmm350::PerformanceMode::Regular);
-    ctx.local.bmm350.set_power_mode(bmm350::PowerMode::Normal).await;
-    ctx.local.bmm350.set_mag_config(mag_config.build()).await;
+    ctx.local.bmm350.set_power_mode(bmm350::PowerMode::Normal).await.ok();
+    ctx.local.bmm350.set_mag_config(mag_config.build()).await.ok();
     loop{
         let imu_result = ctx.local.bmi323.read_accel_data_scaled().await;
         let imu_ts = Mono::now().ticks();
@@ -252,7 +252,7 @@ pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c:
             Ok(acc)=>{
                 let imu_packet = ApplicationPacket::AccelerationData { device_index: 0, timestamp: imu_ts, x: acc.x, y: acc.y, z: acc.z };
                 ctx.shared.data.lock(|data|{
-                    data.push_back(imu_packet);
+                    data.push_back(imu_packet).ok();
                 });
                 info!("Accel: {}, {}, {}", acc.x, acc.y, acc.z);
             }
@@ -267,7 +267,7 @@ pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c:
             Ok(gyro)=>{
                 ctx.shared.data.lock(|data|{
                     let gyro_packet = ApplicationPacket::AccelerationData { device_index: 0, timestamp: gyro_ts, x: gyro.x, y: gyro.y, z: gyro.z };
-                    data.push_back(gyro_packet);
+                    data.push_back(gyro_packet).ok();
                 });
                 info!("Gyro: {}, {}, {}", gyro.x, gyro.y, gyro.z);
             }
@@ -281,7 +281,7 @@ pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c:
             Ok(mag)=>{
                 ctx.shared.data.lock(|data|{
                     let mag_packet = ApplicationPacket::AccelerationData { device_index: 0, timestamp: mag_ts, x: mag.x, y: mag.y, z: mag.z };
-                    data.push_back(mag_packet);
+                    data.push_back(mag_packet).ok();
                 });
                 info!("Mag: {}, {}, {}", mag.x, mag.y, mag.z);
             }
@@ -322,7 +322,7 @@ pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c:
                 }
                 let env_packet = ApplicationPacket::EnvironmentData { device_index: 0, timestamp: env_ts, temperature: temperature , pressure: pressure, humidity: humidity};
                 ctx.shared.data.lock(|data|{
-                    data.push_back(env_packet);
+                    data.push_back(env_packet).ok();
                 });
                 info!("Temperature: {}", env.temperature);
                 info!("Pressure: {}", env.pressure);
