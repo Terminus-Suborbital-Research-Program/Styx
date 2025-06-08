@@ -55,7 +55,7 @@ bmm350 = {path="../../sensors/bmm350-rs", features = ["async", "defmt"]}
 cd74hc4067 = {path="../../sensors/cd74hc4067", features = ["defmt"]}
 
 # Communications
-hc12-rs = {version = "0.4.0"}
+hc12-rs = { git = "https://github.com/thelenlucas/hc12-rs.git", tag = "v0.0.1" }
 
 # Math
 nalgebra = { version = "*", default-features = false, features = [
