@@ -19,7 +19,6 @@ use rp235x_hal::{
 use bin_packets::device::PacketWriter;
 use rtic_monotonics::rp235x;
 use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
-use tinyframe::writer::BufferingWriter;
 use heapless::Vec;
 use crate::{actuators::servo::Servo, device_constants::{pins::{MuxEPin, MuxS0Pin, MuxS1Pin, MuxS2Pin, MuxS3Pin}, DownlinkBuffer}};
 use crate::{
@@ -42,6 +41,7 @@ use bmi323::AsyncBmi323;
 use ina260_terminus::AsyncINA260;
 use bmm350::AsyncBmm350;
 use cd74hc4067::CD74HC4067;
+use crate::device_constants::IcarusHC12;
 
 // Logs our time for demft
 defmt::timestamp!("{=u64:us}", { epoch_ns() });
