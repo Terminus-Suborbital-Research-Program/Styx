@@ -154,7 +154,7 @@ mod app {
         async fn heartbeat(ctx: heartbeat::Context);
 
         // Takes care of incoming packets
-        #[task(local = [radio], shared = [data], priority = 1)]
+        #[task(local = [radio], shared = [data], priority = 2)]
         async fn radio_send(mut ctx: radio_send::Context);
 
         #[task(priority = 3, local=[flap_servo, relay_servo])]

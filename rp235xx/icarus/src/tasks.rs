@@ -47,6 +47,7 @@ pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
     let mut outgoing_packet_bytes = [0u8; 512];
 
     loop {
+        // info!("Radio Send Task Operating");
         // First, drain outgoing packets until we run out of space in the outgoing packet bytes
         ctx.shared.data.lock(|data| {
             while let Some(packet) = data.pop_front() {
@@ -63,6 +64,8 @@ pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
                     break;
                 }
             }
+            // info!("Buffer Length: {}", buf_len);
+
         });
 
         if buf_len < 32 {
@@ -77,14 +80,14 @@ pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
 
             for chunk in bytes.chunks(16) {
                 radio.write_all(chunk).ok(); // Infallible
-
-                // TODO: test this duration
-                Mono::delay(50.millis()).await;
+                Mono::delay(1.millis()).await;
+                // info!("Radio Send: {:?}", chunk);
             }
+            info!("Sent Frame");
         }
-
         // Clear outgoing packet bytes
         buf_len = 0;
+        Mono::delay(5.millis()).await;
     }
 }
 
@@ -242,7 +245,7 @@ pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c:
         let imu_result = ctx.local.bmi323.read_accel_data_scaled().await;
         match imu_result {
             Ok(acc) => {
-                info!("Accel: {}, {}, {}", acc.x, acc.y, acc.z);
+                // info!("Accel: {}, {}, {}", acc.x, acc.y, acc.z);
                 let acceleration_packet = ApplicationPacket::AccelerometerData {
                     timestamp: now_timestamp().millis(),
                     x: acc.x,
@@ -254,13 +257,13 @@ pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c:
                 });
             }
             Err(i2c_error) => {
-                info!("BMI: {}", i2c_error);
+                error!("BMI: {}", i2c_error);
             }
         }
         let gyro_result = ctx.local.bmi323.read_gyro_data_scaled().await;
         match gyro_result {
             Ok(gyro) => {
-                info!("Gyro: {}, {}, {}", gyro.x, gyro.y, gyro.z);
+                // info!("Gyro: {}, {}, {}", gyro.x, gyro.y, gyro.z);
                 let gyro_packet = ApplicationPacket::GyroscopeData {
                     timestamp: now_timestamp().millis(),
                     x: gyro.x,
@@ -272,13 +275,13 @@ pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c:
                 });
             }
             Err(i2c_error) => {
-                info!("BMI: {}", i2c_error);
+                error!("BMI: {}", i2c_error);
             }
         }
         let mag_result = ctx.local.bmm350.read_mag_data_scaled().await;
         match mag_result {
             Ok(mag) => {
-                info!("Mag: {}, {}, {}", mag.x, mag.y, mag.z);
+                // info!("Mag: {}, {}, {}", mag.x, mag.y, mag.z);
                 let mag_packet = ApplicationPacket::MagnetometerData {
                     timestamp: now_timestamp().millis(),
                     x: mag.x,
@@ -290,7 +293,7 @@ pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c:
                 });
             }
             Err(i2c_error) => {
-                info!("BMM: {}", i2c_error);
+                error!("BMM: {}", i2c_error);
             }
         }
         let env = ctx.local.bme280.sample().await;
@@ -303,7 +306,7 @@ pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c:
         ctx.shared.data.lock(|data| {
             data.push_back(env_packet);
         });
-        info!("T, P, H: {}, {}, {}", env.1, env.2, env.3);
+        // info!("T, P, H: {}, {}, {}", env.1, env.2, env.3);
 
         // let (photoresistor_1, photoresistor_2, photoresistor_3, photoresistor_4, photoresistor_5, photoresistor_6, photoresistor_7, photoresistor_8) = photoresistors_handle(ctx.local.adc, ctx.local.adc_photoresistors, ctx.local.mux).await;
         // info!("Photoresistors:  {}, {}, {}, {}, {}, {}, {}, {}", photoresistor_1, photoresistor_2, photoresistor_3, photoresistor_4, photoresistor_5, photoresistor_6, photoresistor_7, photoresistor_8);
@@ -311,6 +314,7 @@ pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c:
         //     timestamp: now_timestamp().millis(),
         //     vector: [photoresistor_1,photoresistor_2,photoresistor_3,photoresistor_4,photoresistor_5,photoresistor_6,photoresistor_7,photoresistor_8]
         // };
+        Mono::delay(250_u64.millis()).await;
     }
 }
 

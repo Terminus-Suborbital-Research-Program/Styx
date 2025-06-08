@@ -73,10 +73,10 @@ pub async fn geiger_calculator(mut ctx: geiger_calculator::Context<'_>) {
             debug!("Recorded pulses! {}", pulses);
 
             if ctx.shared.downlink_packets.lock(|packets| packets.push_back(packet)).is_err(){
-                warn!("Packet buffer full!");
+                warn!("Downlink packets full!");
             }
             else{
-                info!("Geiger data packet queued: {} pulses", pulses);
+                info!("Geiger downlink packets queued: {} pulses", pulses);
             }
         }
     }
@@ -84,7 +84,7 @@ pub async fn geiger_calculator(mut ctx: geiger_calculator::Context<'_>) {
 
 const SCRATCH: usize = 256;
 
-pub async fn radio_read(ctx: radio_read::Context<'_>) {
+pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
     let downlink = ctx.local.downlink;
     let radio = ctx.local.radio;
 
@@ -161,10 +161,19 @@ pub async fn radio_read(ctx: radio_read::Context<'_>) {
         }
         info!("Packet Decoded");
 
+        let mut enc_buf = [0u8; SCRATCH];
+        ctx.shared.downlink_packets.lock(|packets| {
+            while let Some(packet) = packets.pop_front() {
+                if let Ok(sz) = encode_into_slice(packet, &mut enc_buf, standard()) {
+                    let _ = downlink.write_all(&enc_buf[..sz]);
+                }
+            }
+        });
+
+
         //------------------------------------------------------------------
         // 4. Flush any packets that are ready for the downlink.
         //------------------------------------------------------------------
-        let mut enc_buf = [0u8; SCRATCH];
         while let Some(pkt) = outgoing_pkts.pop_front() {
             if let Ok(sz) = encode_into_slice(pkt, &mut enc_buf, standard()) {
                 let _ = downlink.write_all(&enc_buf[..sz]);
