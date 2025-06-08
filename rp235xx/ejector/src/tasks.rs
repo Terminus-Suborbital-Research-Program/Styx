@@ -132,11 +132,21 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
                         frame_buf.copy_within(1..len, 0);
                         frame_buf.truncate(len - 1);
                     }
+                    info!("Unexpected frame error, dropping byte");
                 }
             }
         }
         info!("Frame Sent");
 
+        let mut enc_buf = [0u8; SCRATCH];
+        ctx.shared.downlink_packets.lock(|packets| {
+            while let Some(packet) = packets.pop_front() {
+                if let Ok(sz) = encode_into_slice(packet, &mut enc_buf, standard()) {
+                    let _ = downlink.write_all(&enc_buf[..sz]);
+                }
+                info!("Sent packet: {}", packet);
+            }
+        });
         //------------------------------------------------------------------
         // 3. Decode application‑level packets.
         //------------------------------------------------------------------
@@ -148,6 +158,7 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
                     let len = packet_buf.len();
                     packet_buf.copy_within(used..len, 0);
                     packet_buf.truncate(len - used);
+                    info!("Packet decoded: {}", pkt);
                 }
                 Err(DecodeError::UnexpectedEnd { .. }) => break 'packet,
                 Err(_) => {
@@ -159,17 +170,6 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
                 }
             }
         }
-        info!("Packet Decoded");
-
-        let mut enc_buf = [0u8; SCRATCH];
-        ctx.shared.downlink_packets.lock(|packets| {
-            while let Some(packet) = packets.pop_front() {
-                if let Ok(sz) = encode_into_slice(packet, &mut enc_buf, standard()) {
-                    let _ = downlink.write_all(&enc_buf[..sz]);
-                }
-            }
-        });
-
 
         //------------------------------------------------------------------
         // 4. Flush any packets that are ready for the downlink.
