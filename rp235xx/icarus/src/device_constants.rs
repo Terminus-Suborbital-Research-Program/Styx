@@ -1,24 +1,20 @@
-use bin_packets::{device::Device, packets::ApplicationPacket};
+use bin_packets::packets::ApplicationPacket;
 use heapless::Deque;
-use pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin, LedPin};
+use pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin};
+use rp235x_hal::gpio::SioOutput;
 use rp235x_hal::{
-    gpio::{FunctionI2C, FunctionSio, Pin, PullDown, PullNone, PullUp, SioOutput},
+    gpio::{FunctionI2C, FunctionSio, Pin, PullDown, PullUp},
     i2c::Controller,
     pac::{I2C0, I2C1},
     I2C,
 };
 
-use crate::{peripherals::async_i2c::AsyncI2c, phases::StateMachine};
-
+use crate::{hal::timer::CopyableTimer1, peripherals::async_i2c::AsyncI2c};
 
 // State Machine
-pub type IcarusStateMachine = StateMachine<10>;
 
 pub mod pins {
     use rp235x_hal::gpio::bank0::*;
-
-    /// RBF Inhibit pin
-    pub type RBFPin = Gpio4;
 
     /// Flab servo mosfet
     pub type FlapMosfetPin = Gpio2;
@@ -47,18 +43,13 @@ pub mod pins {
     pub type MuxS3Pin = Gpio10;
     /// Mux Disable
     pub type MuxEPin = Gpio12;
-    /// Mux ADC0
-    pub type MuxADCPin = Gpio26;
-    
+
     // pub type ADCMux = CD74HC4067<Pin<MuxS0Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS1Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS2Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS3Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxEPin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>>;
 
     /// ESC I2C SDA pin
     pub type EscI2CSdaPin = Gpio16;
     /// ESC I2C SCL pin
     pub type EscI2CSclPin = Gpio17;
-
-    /// Software controlled LED
-    pub type LedPin = Gpio27;
 }
 
 /// Servo items
@@ -77,7 +68,6 @@ pub mod servos {
     /// Relay mosfet pin
     pub type RelayMosfet = Pin<RelayMosfetPin, FunctionSio<SioOutput>, PullDown>;
 
-    pub static PWM_DIV_INT: u8 = 64;
     /// Flap servo PWM pin
     pub type FlapServoPwmPin = Pin<FlapServoPWMGpio, FunctionPwm, PullDown>;
     /// Relay servo PWM pin
@@ -97,20 +87,7 @@ pub mod servos {
     pub type FlapServo = Servo<Channel<FlapServoSlice, B>, FlapServoPwmPin, FlapMosfet>;
     /// Relay Servo
     pub type RelayServo = Servo<Channel<RelayServoSlice, B>, RelayServoPwmPin, RelayMosfet>;
-
-    /// Flap servo locked
-    pub static FLAP_SERVO_LOCKED: u16 = 0;
-    /// Flap servo unlocked
-    pub static FLAP_SERVO_UNLOCKED: u16 = 180;
-
-    /// Relay servo locked
-    pub static RELAY_SERVO_LOCKED: u16 = 0;
-    /// Relay servo unlocked
-    pub static RELAY_SERVO_UNLOCKED: u16 = 90;
 }
-
-/// Software-controlled LED
-pub type SoftwareLED = Pin<LedPin, FunctionSio<SioOutput>, PullNone>;
 
 // Avionics I2C bus
 pub type AvionicsI2cBus = AsyncI2c<
@@ -136,7 +113,6 @@ pub type MotorI2cBus = AsyncI2c<
     >,
 >;
 
-use crate::hal::timer::CopyableTimer1;
 use hc12_rs::*;
 use rp235x_hal::gpio::bank0::{Gpio5, Gpio8, Gpio9};
 use rp235x_hal::gpio::FunctionUart;
@@ -146,9 +122,6 @@ use rp235x_hal::uart::UartPeripheral;
 use rp235x_hal::Timer;
 
 use hc12_rs::configuration::baudrates::B9600;
-use hc12_rs::configuration::{Channel, HC12Configuration, Power};
-use hc12_rs::device::IntoATMode;
-use hc12_rs::IntoFU3Mode;
 
 pub type IcarusHC12 = HC12<
     UartPeripheral<
@@ -163,9 +136,6 @@ pub type IcarusHC12 = HC12<
     FU3<B9600>,
     B9600,
 >;
-
-/// A motor controller on a shared bus
-pub type ReactionWheelMotor = ();
 
 /// Data buffer for downsyncing ICARUS data
 pub type DownlinkBuffer = Deque<ApplicationPacket, 16>;

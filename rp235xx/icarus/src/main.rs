@@ -3,14 +3,13 @@
 #![no_main]
 
 // Our Modules
-pub mod actuators;
-pub mod device_constants;
-pub mod peripherals;
-pub mod phases;
-pub mod sensors;
-pub mod startup;
-pub mod tasks;
-pub mod utilities;
+mod actuators;
+mod device_constants;
+mod peripherals;
+mod phases;
+mod sensors;
+mod startup;
+mod tasks;
 
 use defmt_rtt as _; // global logger
 
@@ -18,14 +17,10 @@ use crate::tasks::*;
 use core::mem::MaybeUninit;
 
 // Sensors
-use crate::device_constants::pins::{MuxEPin, MuxS0Pin, MuxS1Pin, MuxS2Pin, MuxS3Pin};
 use bme280::AsyncBME280;
 use bmi323::AsyncBmi323;
 use bmm350::AsyncBmm350;
-use cd74hc4067::CD74HC4067;
 use ina260_terminus::AsyncINA260;
-use rp235x_hal::adc::{Adc, AdcPin};
-use rp235x_hal::gpio::Pin;
 
 // Busses
 use rtic_sync::arbiter::i2c::ArbiterDevice;
@@ -70,8 +65,7 @@ mod app {
     use bin_packets::{phases::IcarusPhase, time::Timestamp};
 
     use hal::gpio::{self, FunctionSio, PullNone, SioOutput};
-    use hc12_rs::HC12;
-    use rp235x_hal::{adc::AdcPin, uart::UartPeripheral};
+    use rp235x_hal::uart::UartPeripheral;
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
     use rtic_sync::{arbiter::Arbiter, signal::Signal};
