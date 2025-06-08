@@ -2,8 +2,8 @@ use bin_packets::phases::JupiterPhase;
 use common::rbf::RbfState;
 use log::{info, warn};
 
-use crate::states::ejection::Ejection;
 use crate::timing::t_time_estimate;
+use crate::{states::ejection::Ejection, timing};
 
 use super::traits::{StateContext, ValidState};
 
@@ -16,6 +16,8 @@ pub struct SkirtSeperation {
 
 impl SkirtSeperation {
     pub fn enter() -> Self {
+        // Set internal clock to TE+110
+        timing::calibrate_to(110);
         Self {
             te_recieved_at: t_time_estimate(),
         }

@@ -5,7 +5,7 @@ use crate::timing::t_time_estimate;
 
 use super::traits::{StateContext, ValidState};
 
-static DELAY_TO_SHUTDOWN: i32 = 255;
+static DELAY_TO_SHUTDOWN: i32 = 30;
 
 #[derive(Debug, Clone, Default)]
 pub struct Shutdown {
