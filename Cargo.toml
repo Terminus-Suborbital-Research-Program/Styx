@@ -6,6 +6,7 @@ members = [
   "tinyframe",
   "common",
   "jupiter-fsw",
+  "probe"
 ]
 resolver = "3"
 

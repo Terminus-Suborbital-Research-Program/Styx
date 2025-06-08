@@ -197,16 +197,16 @@ pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter
         .await;
         ctx.shared.data.lock(|data| {
             let voltages_packet = ApplicationPacket::VoltageData {
-                timestamp: ina_samples.0 .0,
-                voltage: ina_samples.1 .0,
+                timestamp: ina_samples.0.0,
+                voltage: ina_samples.1.0,
             };
             let current_packet = ApplicationPacket::CurrentData {
-                timestamp: ina_samples.0 .1,
-                current: ina_samples.1 .1,
+                timestamp: ina_samples.0.1,
+                current: ina_samples.1.1,
             };
             let power_packet = ApplicationPacket::PowerData {
-                timestamp: ina_samples.0 .2,
-                power: ina_samples.1 .2,
+                timestamp: ina_samples.0.2,
+                power: ina_samples.1.2,
             };
             info!("Voltage Packet: {}", voltages_packet);
             info!("Current Packet: {}", current_packet);
@@ -219,10 +219,7 @@ pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter
     }
 }
 
-pub async fn sample_sensors(
-    mut ctx: sample_sensors::Context<'_>,
-    _avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
-) {
+pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c: &'static Arbiter<AvionicsI2cBus>,) {
     ctx.local.bme280.init().await;
     ctx.local.bmi323.init().await;
     let accel_config = AccelConfig::builder().mode(bmi323::AccelerometerPowerMode::Normal);
@@ -418,40 +415,40 @@ async fn ina_data_handle(
     ([f32; 4], [f32; 4], [f32; 4]),
 ) {
     let voltage_1 = ina260_1.voltage().await;
-    let v1_ts = Mono::now().ticks();
+    let v1_ts = now_timestamp().millis();
 
     let voltage_2 = ina260_2.voltage().await;
-    let v2_ts = Mono::now().ticks();
+    let v2_ts = now_timestamp().millis();
 
     let voltage_3 = ina260_3.voltage().await;
-    let v3_ts = Mono::now().ticks();
+    let v3_ts = now_timestamp().millis();
 
     let voltage_4 = ina260_4.voltage().await;
-    let v4_ts = Mono::now().ticks();
+    let v4_ts = now_timestamp().millis();
 
     let current_1 = ina260_1.current().await;
-    let i1_ts = Mono::now().ticks();
+    let i1_ts = now_timestamp().millis();
 
     let current_2 = ina260_2.current().await;
-    let i2_ts = Mono::now().ticks();
+    let i2_ts = now_timestamp().millis();
 
     let current_3 = ina260_3.current().await;
-    let i3_ts = Mono::now().ticks();
+    let i3_ts = now_timestamp().millis();
 
     let current_4 = ina260_4.current().await;
-    let i4_ts = Mono::now().ticks();
+    let i4_ts = now_timestamp().millis();
 
     let power_1 = ina260_1.power().await;
-    let p1_ts = Mono::now().ticks();
+    let p1_ts = now_timestamp().millis();
 
     let power_2 = ina260_2.power().await;
-    let p2_ts = Mono::now().ticks();
+    let p2_ts = now_timestamp().millis();
 
     let power_3 = ina260_3.power().await;
-    let p3_ts = Mono::now().ticks();
+    let p3_ts = now_timestamp().millis();
 
     let power_4 = ina260_4.power().await;
-    let p4_ts = Mono::now().ticks();
+    let p4_ts = now_timestamp().millis();
 
     let mut voltage_slice = [0.0_f32; 4];
     let v_ts_slice = [v1_ts, v2_ts, v3_ts, v4_ts];

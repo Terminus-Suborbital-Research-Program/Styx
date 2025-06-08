@@ -103,36 +103,36 @@ mod app {
         pub ina260_2: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
         pub ina260_3: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
         pub ina260_4: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
-        pub adc: hal::adc::Adc,
-        pub adc_photoresistors:
-            AdcPin<gpio::Pin<gpio::bank0::Gpio40, gpio::FunctionNull, gpio::PullDown>>,
-        pub mux: CD74HC4067<
-            Pin<
-                MuxS0Pin,
-                rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-                rp235x_hal::gpio::PullDown,
-            >,
-            Pin<
-                MuxS1Pin,
-                rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-                rp235x_hal::gpio::PullDown,
-            >,
-            Pin<
-                MuxS2Pin,
-                rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-                rp235x_hal::gpio::PullDown,
-            >,
-            Pin<
-                MuxS3Pin,
-                rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-                rp235x_hal::gpio::PullDown,
-            >,
-            Pin<
-                MuxEPin,
-                rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-                rp235x_hal::gpio::PullDown,
-            >,
-        >,
+        // pub adc: hal::adc::Adc,
+        // pub adc_photoresistors:
+        //     AdcPin<gpio::Pin<gpio::bank0::Gpio40, gpio::FunctionNull, gpio::PullDown>>,
+        // pub mux: CD74HC4067<
+        //     Pin<
+        //         MuxS0Pin,
+        //         rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
+        //         rp235x_hal::gpio::PullDown,
+        //     >,
+        //     Pin<
+        //         MuxS1Pin,
+        //         rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
+        //         rp235x_hal::gpio::PullDown,
+        //     >,
+        //     Pin<
+        //         MuxS2Pin,
+        //         rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
+        //         rp235x_hal::gpio::PullDown,
+        //     >,
+        //     Pin<
+        //         MuxS3Pin,
+        //         rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
+        //         rp235x_hal::gpio::PullDown,
+        //     >,
+        //     Pin<
+        //         MuxEPin,
+        //         rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
+        //         rp235x_hal::gpio::PullDown,
+        //     >,
+        // >,
     }
 
     #[init(
@@ -164,7 +164,7 @@ mod app {
         #[task(priority = 2, shared = [data], local=[ina260_1, ina260_2, ina260_3, ina260_4])]
         async fn ina_sample(&mut ctx: ina_sample::Context, i2c: &'static Arbiter<MotorI2cBus>);
 
-        #[task(local = [bme280, bmi323, bmm350, adc, adc_photoresistors, mux], shared = [data], priority = 2)]
+        #[task(local = [bme280, bmi323, bmm350], shared = [data], priority = 2)]
         async fn sample_sensors(
             mut ctx: sample_sensors::Context,
             avionics_i2c: &'static Arbiter<AvionicsI2cBus>,

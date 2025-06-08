@@ -1,0 +1,7 @@
+[package]
+name = "probe"
+version = "0.1.1"
+edition = "2021"
+
+[dependencies]
+probe-rs={version="0.29.0"}
