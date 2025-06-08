@@ -8,6 +8,7 @@ use rp235x_hal::{
     I2C,
 };
 
+use hc12_rs::speeds::B9600;
 use crate::{peripherals::async_i2c::AsyncI2c, phases::StateMachine};
 
 
@@ -138,6 +139,7 @@ pub type MotorI2cBus = AsyncI2c<
 
 use crate::hal::timer::CopyableTimer1;
 use hc12_rs::*;
+// use hc12_rs::ProgrammingPair;
 use rp235x_hal::gpio::bank0::{Gpio5, Gpio8, Gpio9};
 use rp235x_hal::gpio::FunctionUart;
 use rp235x_hal::pac::UART1;
@@ -145,24 +147,7 @@ use rp235x_hal::uart::Enabled;
 use rp235x_hal::uart::UartPeripheral;
 use rp235x_hal::Timer;
 
-use hc12_rs::configuration::baudrates::B9600;
-use hc12_rs::configuration::{Channel, HC12Configuration, Power};
-use hc12_rs::device::IntoATMode;
-use hc12_rs::IntoFU3Mode;
-
-pub type IcarusHC12 = HC12<
-    UartPeripheral<
-        Enabled,
-        UART1,
-        (
-            Pin<Gpio8, FunctionUart, PullDown>,
-            Pin<Gpio9, FunctionUart, PullDown>,
-        ),
-    >,
-    ProgrammingPair<Pin<Gpio5, FunctionSio<SioOutput>, PullDown>, Timer<CopyableTimer1>>,
-    FU3<B9600>,
-    B9600,
->;
+// pub type IcarusHC12 = HC12<UartPeripheral<rp235x_hal::uart::Enabled, rp235x_pac::UART1, (Pin<_, _, _>, Pin<_, _, _>)>, hc12_rs::ProgrammingPair<Pin<_, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, _>, rp235x_hal::Timer<rp235x_hal::timer::CopyableTimer1>>, hc12_rs::FU3<_>, _>;
 
 /// A motor controller on a shared bus
 pub type ReactionWheelMotor = ();

@@ -61,8 +61,7 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 )]
 mod app {
     use crate::device_constants::{
-        servos::{FlapServo, RelayServo},
-        AvionicsI2cBus, DownlinkBuffer, IcarusHC12, MotorI2cBus,
+        servos::{FlapServo, RelayServo}, AvionicsI2cBus, DownlinkBuffer, IcarusHC12, MotorI2cBus
     };
 
     use super::*;
@@ -70,6 +69,7 @@ mod app {
     use bin_packets::{phases::IcarusPhase, time::Timestamp};
 
     use hal::gpio::{self, FunctionSio, PullNone, SioOutput};
+    use hc12_rs::HC12;
     use rp235x_hal::{adc::AdcPin, uart::UartPeripheral};
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
@@ -154,7 +154,7 @@ mod app {
         async fn heartbeat(ctx: heartbeat::Context);
 
         // Takes care of incoming packets
-        #[task(local = [radio], shared = [data], priority = 2)]
+        #[task(shared = [data], priority = 2)]
         async fn radio_send(mut ctx: radio_send::Context);
 
         #[task(priority = 3, local=[flap_servo, relay_servo])]

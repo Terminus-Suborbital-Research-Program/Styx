@@ -4,11 +4,12 @@ use embedded_hal::{
     digital::{InputPin, OutputPin},
 };
 use fugit::RateExtU32;
-use hc12_rs::{
-    configuration::{baudrates::B9600, Channel, HC12Configuration, Power},
-    device::{IntoATMode, IntoFU3Mode},
-    HC12Builder,
-};
+use hc12_rs::{HC12};
+use hc12_rs::speeds::B9600;
+use hc12_rs::paramaters::{Power, Channel};
+use hc12_rs::modes::Fu3;
+// use hc12_rs::configuration::{Channel, HC12Configuration};
+
 use rp235x_hal::{
     clocks,
     gpio::{FunctionI2C, FunctionPwm, Pin, PullNone, PullUp},
@@ -41,7 +42,7 @@ use bmi323::AsyncBmi323;
 use ina260_terminus::AsyncINA260;
 use bmm350::AsyncBmm350;
 use cd74hc4067::CD74HC4067;
-use crate::device_constants::IcarusHC12;
+// use crate::device_constants::IcarusHC12;
 
 // Logs our time for demft
 defmt::timestamp!("{=u64:us}", { epoch_ns() });
@@ -120,62 +121,16 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let timer = rp235x_hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
     let mut timer_two = timer;
 
-    info!("UART1 configured, assembling HC-12");
-    let builder = hc12_rs::device::HC12Builder::<(), (), (), ()>::empty()
-        .uart(uart1_peripheral, B9600)
-        .programming_resources(programming, timer)
-        .fu3(HC12Configuration::default());
-
-    let radio = match builder.attempt_build() {
-        Ok(link) => {
-            info!("HC-12 init, link ready");
-            link
-        }
-        Err(e) => {
-            panic!("Failed to init HC-12: {}", e.0);
-        }
-    };
-    // Transition to AT mode
     info!("Programming HC12...");
-    let radio = radio.into_at_mode().unwrap(); // Infallible
-    timer_two.delay_ms(100);
-    let radio = match radio.set_baudrate(B9600) {
-        Ok(link) => {
-            info!("HC12 baudrate set to 9600");
-            link
-        }
-        Err(e) => {
-            error!("Failed to set HC12 baudrate: {:?}", e.error);
-            e.hc12
-        }
-    };
+    let hc = HC12::new(uart1_peripheral, programming, &mut timer_two).unwrap()
+        .speed(B9600::default())
+        .channel(Channel::new(15).unwrap())
+        .power(Power::P8)
+        .mode(Fu3::default())
+        .program(&mut timer_two)
+        .unwrap();
 
-    timer_two.delay_ms(150);
-
-    let radio = match radio.set_channel(Channel::Channel1) {
-        Ok(link) => {
-            info!("HC12 channel set to 1");
-            link
-        }
-        Err(e) => {
-            error!("Failed to set HC12 channel: {:?}", e.error);
-            e.hc12
-        }
-    };
-    timer_two.delay_ms(150);
-    let radio = match radio.set_power(Power::P8) {
-        Ok(link) => {
-            info!("HC12 power set to P8");
-            link
-        }
-        Err(e) => {
-            error!("Failed to set HC12 power: {:?}", e.error);
-            e.hc12
-        }
-    };
-    timer_two.delay_ms(150);
-    let hc: IcarusHC12 = radio.into_fu3_mode().unwrap(); // Infallible
-
+        info!("HC-12 programmed, ready to go!");
     // Servo mosfets
     let mut flap_mosfet: FlapMosfet = pins.gpio2.into_function();
     flap_mosfet.set_low().unwrap();

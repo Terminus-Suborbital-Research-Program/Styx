@@ -42,53 +42,53 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 
 use tinyframe::buffer::FrameIter;
 pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
-    let radio = ctx.local.radio;
-    let mut buf_len = 0;
-    let mut outgoing_packet_bytes = [0u8; 512];
+    // let radio = ctx.local.radio;
+    // let mut buf_len = 0;
+    // let mut outgoing_packet_bytes = [0u8; 512];
 
-    loop {
-        // info!("Radio Send Task Operating");
-        // First, drain outgoing packets until we run out of space in the outgoing packet bytes
-        ctx.shared.data.lock(|data| {
-            while let Some(packet) = data.pop_front() {
-                if let Ok(w) =
-                    encode_into_slice(packet, &mut outgoing_packet_bytes[buf_len..], standard())
-                {
-                    buf_len += w;
-                    if buf_len == outgoing_packet_bytes.len() {
-                        break;
-                    }
-                } else {
-                    // no room → push it back and break
-                    data.push_front(packet).ok();
-                    break;
-                }
-            }
-            // info!("Buffer Length: {}", buf_len);
+    // loop {
+    //     // info!("Radio Send Task Operating");
+    //     // First, drain outgoing packets until we run out of space in the outgoing packet bytes
+    //     ctx.shared.data.lock(|data| {
+    //         while let Some(packet) = data.pop_front() {
+    //             if let Ok(w) =
+    //                 encode_into_slice(packet, &mut outgoing_packet_bytes[buf_len..], standard())
+    //             {
+    //                 buf_len += w;
+    //                 if buf_len == outgoing_packet_bytes.len() {
+    //                     break;
+    //                 }
+    //             } else {
+    //                 // no room → push it back and break
+    //                 data.push_front(packet).ok();
+    //                 break;
+    //             }
+    //         }
+    //         // info!("Buffer Length: {}", buf_len);
 
-        });
+    //     });
 
-        if buf_len < 32 {
-            Mono::delay(100.millis()).await;
-        }
+    //     if buf_len < 32 {
+    //         Mono::delay(100.millis()).await;
+    //     }
 
-        // Iter over bytes
-        let mut frame_bytes = [0u8; 200];
-        for frame in FrameIter::first(&outgoing_packet_bytes[..buf_len]) {
-            let written = frame.encode_into_slice(&mut frame_bytes).unwrap();
-            let bytes = &frame_bytes[..written];
+    //     // Iter over bytes
+    //     let mut frame_bytes = [0u8; 200];
+    //     for frame in FrameIter::first(&outgoing_packet_bytes[..buf_len]) {
+    //         let written = frame.encode_into_slice(&mut frame_bytes).unwrap();
+    //         let bytes = &frame_bytes[..written];
 
-            for chunk in bytes.chunks(16) {
-                radio.write_all(chunk).ok(); // Infallible
-                Mono::delay(1.millis()).await;
-                // info!("Radio Send: {:?}", chunk);
-            }
-            info!("Sent Frame");
-        }
-        // Clear outgoing packet bytes
-        buf_len = 0;
-        Mono::delay(5.millis()).await;
-    }
+    //         for chunk in bytes.chunks(16) {
+    //             radio.write_all(chunk).ok(); // Infallible
+    //             Mono::delay(1.millis()).await;
+    //             // info!("Radio Send: {:?}", chunk);
+    //         }
+    //         info!("Sent Frame");
+    //     }
+    //     // Clear outgoing packet bytes
+    //     buf_len = 0;
+    //     Mono::delay(5.millis()).await;
+    // }
 }
 
 use rp235x_pac::interrupt;
