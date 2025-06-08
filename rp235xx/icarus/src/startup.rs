@@ -290,23 +290,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let _mux = CD74HC4067::new_enable(s0, s1, s2, s3, e);
 
     let data = DownlinkBuffer::new();
-    let mut rbf = pins.gpio4.into_pull_down_input();
-
-    // Wait for the "Remove Before Flight" (RBF) pin to go low.
-    // The RBF pin is a safety mechanism that ensures certain tasks
-    // do not start until the pin is removed. This loop continuously
-    // checks the state of the pin and delays task initialization
-    // until the pin is confirmed to be low.
-    let mut rbf_high = true;
-    while rbf_high {
-        if rbf.is_low().unwrap() {
-            rbf_high = false;
-            info!("RBF is low.");
-        } else {
-            rbf_high = true;
-            info!("RBF is high.");
-        }
-    }
+    let rbf = pins.gpio4.into_pull_down_input();
 
     info!("Peripherals initialized, spawning tasks...");
     heartbeat::spawn().ok();
@@ -329,6 +313,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             ina260_1,
             ina260_2,
             ina260_3,
+            rbf,
             ina260_4,
             // adc,
             // adc_photoresistors,

@@ -7,7 +7,7 @@ use bincode::encode_into_slice;
 use bmi323::{AccelConfig, GyroConfig};
 use bmm350::MagConfig;
 use defmt::{error, info};
-use embedded_hal::digital::StatefulOutputPin;
+use embedded_hal::digital::{InputPin, StatefulOutputPin};
 
 use crate::device_constants::AvionicsI2cBus;
 use crate::phases::{Modes, RelayServoStatus};
@@ -109,6 +109,12 @@ pub async fn mode_sequencer(ctx: mode_sequencer::Context<'_>) {
     let mut relay_flutter_status = RelayServoStatus::Open;
     let mut flutter_count = 0;
     let mut end_task = false;
+
+    // Wait for RBF removal
+    while ctx.local.rbf.is_high().unwrap() {
+        Mono::delay(100.millis()).await;
+    }
+
     loop {
         if !end_task {
             if !relay_status {

@@ -65,7 +65,10 @@ mod app {
     use bin_packets::{phases::IcarusPhase, time::Timestamp};
 
     use hal::gpio::{self, FunctionSio, PullNone, SioOutput};
-    use rp235x_hal::uart::UartPeripheral;
+    use rp235x_hal::{
+        gpio::{bank0::Gpio4, Pin, PullDown, SioInput},
+        uart::UartPeripheral,
+    };
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
     use rtic_sync::{arbiter::Arbiter, signal::Signal};
@@ -98,6 +101,7 @@ mod app {
         pub ina260_2: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
         pub ina260_3: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
         pub ina260_4: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
+        pub rbf: Pin<Gpio4, FunctionSio<SioInput>, PullDown>,
         // pub adc: hal::adc::Adc,
         // pub adc_photoresistors:
         //     AdcPin<gpio::Pin<gpio::bank0::Gpio40, gpio::FunctionNull, gpio::PullDown>>,
@@ -152,7 +156,7 @@ mod app {
         #[task(shared = [data], local=[radio], priority = 2)]
         async fn radio_send(mut ctx: radio_send::Context);
 
-        #[task(priority = 3, local=[flap_servo, relay_servo])]
+        #[task(priority = 3, local=[flap_servo, relay_servo, rbf])]
         async fn mode_sequencer(&mut ctx: mode_sequencer::Context);
 
         // Handles INA sensors
