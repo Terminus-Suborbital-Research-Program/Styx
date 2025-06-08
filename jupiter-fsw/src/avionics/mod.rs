@@ -3,7 +3,6 @@ use std::io;
 use std::io::Read;
 use std::num::ParseIntError;
 use std::path::PathBuf;
-use std::str::Utf8Error;
 use std::string::FromUtf8Error;
 
 pub mod lsm6dsl;

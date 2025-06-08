@@ -1,10 +1,12 @@
 [workspace]
 members = [
   "gs-cli",
+  "data-cli",
   "bin-packets",
   "tinyframe",
   "common",
   "jupiter-fsw",
-  "sensors"
 ]
 resolver = "3"
+
+excluded = ["sensors", "rp23xx"]

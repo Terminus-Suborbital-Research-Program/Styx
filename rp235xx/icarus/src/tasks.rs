@@ -4,14 +4,17 @@ use bin_packets::packets::ApplicationPacket;
 use bincode::config::standard;
 use bincode::encode_into_slice;
 
-use bme280::{AsyncBME280};
+use bme280::AsyncBME280;
 use bmi323::{AccelConfig, GyroConfig};
-use bmm350::{MagConfig};
+use bmm350::MagConfig;
 use defmt::{error, info};
 use embedded_hal::digital::StatefulOutputPin;
 
-use fugit::ExtU64;
+use crate::device_constants::AvionicsI2cBus;
+use crate::phases::{FlapServoStatus, Modes, RelayServoStatus};
+use crate::{app::*, device_constants::MotorI2cBus, Mono};
 use embedded_io::Write;
+use fugit::ExtU64;
 use futures::join;
 use heapless::Vec;
 use rtic::Mutex;
@@ -19,9 +22,6 @@ use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
 use uom::si::electric_potential::volt;
 use uom::si::power;
-use crate::device_constants::AvionicsI2cBus;
-use crate::phases::{FlapServoStatus, Modes, RelayServoStatus};
-use crate::{app::*, device_constants::MotorI2cBus, Mono};
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     let mut sequence_number: u16 = 0;
@@ -88,8 +88,6 @@ pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
     }
 }
 
-
-
 use rp235x_pac::interrupt;
 #[interrupt]
 unsafe fn I2C0_IRQ() {
@@ -108,7 +106,7 @@ pub async fn mode_sequencer(ctx: mode_sequencer::Context<'_>) {
     let mut flutter_count = 0;
     let mut end_task = false;
     loop {
-        if end_task == false{
+        if end_task == false {
             if relay_status == false {
                 // flap_status = Modes::open_flaps_sequence(mode_start, ctx.local.flap_servo).await;
                 relay_status =
@@ -140,8 +138,7 @@ pub async fn mode_sequencer(ctx: mode_sequencer::Context<'_>) {
                 }
             }
             Mono::delay(5_u64.millis()).await;
-        }
-        else{
+        } else {
             info!("Mode Sequencer Complete");
             Mono::delay(100000_u64.millis()).await;
         }
@@ -191,11 +188,26 @@ pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter
         .ok();
 
     loop {
-        let ina_samples = ina_data_handle(ctx.local.ina260_1, ctx.local.ina260_2, ctx.local.ina260_3, ctx.local.ina260_4).await;
-        ctx.shared.data.lock(|data|{
-            let voltages_packet = ApplicationPacket::VoltageData { timestamp: ina_samples.0.0, voltage: ina_samples.1.0};
-            let current_packet = ApplicationPacket::CurrentData { timestamp: ina_samples.0.1, current: ina_samples.1.1};
-            let power_packet = ApplicationPacket::PowerData { timestamp: ina_samples.0.2, power: ina_samples.1.2};
+        let ina_samples = ina_data_handle(
+            ctx.local.ina260_1,
+            ctx.local.ina260_2,
+            ctx.local.ina260_3,
+            ctx.local.ina260_4,
+        )
+        .await;
+        ctx.shared.data.lock(|data| {
+            let voltages_packet = ApplicationPacket::VoltageData {
+                timestamp: ina_samples.0 .0,
+                voltage: ina_samples.1 .0,
+            };
+            let current_packet = ApplicationPacket::CurrentData {
+                timestamp: ina_samples.0 .1,
+                current: ina_samples.1 .1,
+            };
+            let power_packet = ApplicationPacket::PowerData {
+                timestamp: ina_samples.0 .2,
+                power: ina_samples.1 .2,
+            };
             info!("Voltage Packet: {}", voltages_packet);
             info!("Current Packet: {}", current_packet);
             info!("Power Packet: {}", power_packet);
@@ -208,73 +220,79 @@ pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter
 }
 
 pub async fn sample_sensors(
-    ctx: sample_sensors::Context<'_>,
+    mut ctx: sample_sensors::Context<'_>,
     _avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
 ) {
     ctx.local.bme280.init().await;
     ctx.local.bmi323.init().await;
     let accel_config = AccelConfig::builder().mode(bmi323::AccelerometerPowerMode::Normal);
-    ctx.local.bmi323.set_accel_config(accel_config.build()).await;
+    ctx.local
+        .bmi323
+        .set_accel_config(accel_config.build())
+        .await;
     let gyro_config = GyroConfig::builder().mode(bmi323::GyroscopePowerMode::Normal);
     ctx.local.bmi323.set_gyro_config(gyro_config.build()).await;
 
     ctx.local.bmm350.init().await;
     let mag_config = MagConfig::builder().performance(bmm350::PerformanceMode::Regular);
-    ctx.local.bmm350.set_power_mode(bmm350::PowerMode::Normal).await;
+    ctx.local
+        .bmm350
+        .set_power_mode(bmm350::PowerMode::Normal)
+        .await;
     ctx.local.bmm350.set_mag_config(mag_config.build()).await;
 
     loop {
         let imu_result = ctx.local.bmi323.read_accel_data_scaled().await;
-        match imu_result{
-            Ok(acc)=>{
+        match imu_result {
+            Ok(acc) => {
                 info!("Accel: {}, {}, {}", acc.x, acc.y, acc.z);
                 let acceleration_packet = ApplicationPacket::AccelerometerData {
                     timestamp: now_timestamp().millis(),
                     x: acc.x,
                     y: acc.y,
-                    z: acc.z
+                    z: acc.z,
                 };
-                ctx.local.data.lock(|data|{
+                ctx.shared.data.lock(|data| {
                     data.push_back(acceleration_packet);
                 });
             }
-            Err(i2c_error)=>{
+            Err(i2c_error) => {
                 info!("BMI: {}", i2c_error);
             }
         }
         let gyro_result = ctx.local.bmi323.read_gyro_data_scaled().await;
-        match gyro_result{
-            Ok(gyro)=>{
+        match gyro_result {
+            Ok(gyro) => {
                 info!("Gyro: {}, {}, {}", gyro.x, gyro.y, gyro.z);
                 let gyro_packet = ApplicationPacket::GyroscopeData {
                     timestamp: now_timestamp().millis(),
                     x: gyro.x,
                     y: gyro.y,
-                    z: gyro.z
+                    z: gyro.z,
                 };
-                ctx.local.data.lock(|data|{
+                ctx.shared.data.lock(|data| {
                     data.push_back(gyro_packet);
                 });
             }
-            Err(i2c_error)=>{
+            Err(i2c_error) => {
                 info!("BMI: {}", i2c_error);
             }
         }
         let mag_result = ctx.local.bmm350.read_mag_data_scaled().await;
-        match mag_result{
-            Ok(mag)=>{
+        match mag_result {
+            Ok(mag) => {
                 info!("Mag: {}, {}, {}", mag.x, mag.y, mag.z);
                 let mag_packet = ApplicationPacket::MagnetometerData {
                     timestamp: now_timestamp().millis(),
                     x: mag.x,
                     y: mag.y,
-                    z: mag.z
+                    z: mag.z,
                 };
-                ctx.local.data.lock(|data|{
+                ctx.shared.data.lock(|data| {
                     data.push_back(mag_packet);
                 });
             }
-            Err(i2c_error)=>{
+            Err(i2c_error) => {
                 info!("BMM: {}", i2c_error);
             }
         }
@@ -283,13 +301,13 @@ pub async fn sample_sensors(
             timestamp: now_timestamp().millis(),
             temperature: env.1,
             pressure: env.2,
-            humidity: env.3
+            humidity: env.3,
         };
-        ctx.local.data.lock(|data|{
+        ctx.shared.data.lock(|data| {
             data.push_back(env_packet);
         });
         info!("T, P, H: {}, {}, {}", env.1, env.2, env.3);
-        
+
         // let (photoresistor_1, photoresistor_2, photoresistor_3, photoresistor_4, photoresistor_5, photoresistor_6, photoresistor_7, photoresistor_8) = photoresistors_handle(ctx.local.adc, ctx.local.adc_photoresistors, ctx.local.mux).await;
         // info!("Photoresistors:  {}, {}, {}, {}, {}, {}, {}, {}", photoresistor_1, photoresistor_2, photoresistor_3, photoresistor_4, photoresistor_5, photoresistor_6, photoresistor_7, photoresistor_8);
         // let photoresistor_packet = ApplicationPacket::PhotoresistorData {

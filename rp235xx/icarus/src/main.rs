@@ -18,16 +18,14 @@ use crate::tasks::*;
 use core::mem::MaybeUninit;
 
 // Sensors
+use crate::device_constants::pins::{MuxEPin, MuxS0Pin, MuxS1Pin, MuxS2Pin, MuxS3Pin};
 use bme280::AsyncBME280;
 use bmi323::AsyncBmi323;
-use ina260_terminus::AsyncINA260;
 use bmm350::AsyncBmm350;
 use cd74hc4067::CD74HC4067;
-use crate::device_constants::pins::{
-    MuxS0Pin, MuxS1Pin, MuxS2Pin, MuxS3Pin, MuxEPin,
-};
-use rp235x_hal::gpio::{Pin};
-use rp235x_hal::adc::{AdcPin, Adc};
+use ina260_terminus::AsyncINA260;
+use rp235x_hal::adc::{Adc, AdcPin};
+use rp235x_hal::gpio::Pin;
 
 // Busses
 use rtic_sync::arbiter::i2c::ArbiterDevice;
@@ -106,8 +104,35 @@ mod app {
         pub ina260_3: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
         pub ina260_4: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
         pub adc: hal::adc::Adc,
-        pub adc_photoresistors: AdcPin<gpio::Pin<gpio::bank0::Gpio40, gpio::FunctionNull, gpio::PullDown>>,
-        pub mux: CD74HC4067<Pin<MuxS0Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS1Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS2Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS3Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxEPin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>>
+        pub adc_photoresistors:
+            AdcPin<gpio::Pin<gpio::bank0::Gpio40, gpio::FunctionNull, gpio::PullDown>>,
+        pub mux: CD74HC4067<
+            Pin<
+                MuxS0Pin,
+                rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
+                rp235x_hal::gpio::PullDown,
+            >,
+            Pin<
+                MuxS1Pin,
+                rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
+                rp235x_hal::gpio::PullDown,
+            >,
+            Pin<
+                MuxS2Pin,
+                rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
+                rp235x_hal::gpio::PullDown,
+            >,
+            Pin<
+                MuxS3Pin,
+                rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
+                rp235x_hal::gpio::PullDown,
+            >,
+            Pin<
+                MuxEPin,
+                rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
+                rp235x_hal::gpio::PullDown,
+            >,
+        >,
     }
 
     #[init(
@@ -139,7 +164,7 @@ mod app {
         #[task(priority = 2, shared = [data], local=[ina260_1, ina260_2, ina260_3, ina260_4])]
         async fn ina_sample(&mut ctx: ina_sample::Context, i2c: &'static Arbiter<MotorI2cBus>);
 
-        #[task(local = [bme280, bmi323, bmm350, adc, adc_photoresistors, mux], priority = 2)]
+        #[task(local = [bme280, bmi323, bmm350, adc, adc_photoresistors, mux], shared = [data], priority = 2)]
         async fn sample_sensors(
             mut ctx: sample_sensors::Context,
             avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
