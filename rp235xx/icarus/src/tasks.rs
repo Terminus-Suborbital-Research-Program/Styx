@@ -234,6 +234,9 @@ pub async fn sample_sensors(
                     y: acc.y,
                     z: acc.z
                 };
+                ctx.local.data.lock(|data|{
+                    data.push_back(acceleration_packet);
+                });
             }
             Err(i2c_error)=>{
                 info!("BMI: {}", i2c_error);
@@ -249,6 +252,9 @@ pub async fn sample_sensors(
                     y: gyro.y,
                     z: gyro.z
                 };
+                ctx.local.data.lock(|data|{
+                    data.push_back(gyro_packet);
+                });
             }
             Err(i2c_error)=>{
                 info!("BMI: {}", i2c_error);
@@ -264,18 +270,24 @@ pub async fn sample_sensors(
                     y: mag.y,
                     z: mag.z
                 };
+                ctx.local.data.lock(|data|{
+                    data.push_back(mag_packet);
+                });
             }
             Err(i2c_error)=>{
                 info!("BMM: {}", i2c_error);
             }
         }
         let env = ctx.local.bme280.sample().await;
-        let temp_packet = ApplicationPacket::EnvironmentData {
+        let env_packet = ApplicationPacket::EnvironmentData {
             timestamp: now_timestamp().millis(),
             temperature: env.1,
             pressure: env.2,
             humidity: env.3
         };
+        ctx.local.data.lock(|data|{
+            data.push_back(env_packet);
+        });
         info!("T, P, H: {}, {}, {}", env.1, env.2, env.3);
         
         // let (photoresistor_1, photoresistor_2, photoresistor_3, photoresistor_4, photoresistor_5, photoresistor_6, photoresistor_7, photoresistor_8) = photoresistors_handle(ctx.local.adc, ctx.local.adc_photoresistors, ctx.local.mux).await;
