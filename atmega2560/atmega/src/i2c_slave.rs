@@ -9,10 +9,10 @@ use arduino_hal::port::{
 use arduino_hal::pac::TWI;
 use ufmt::{uDebug, uwrite};
 
+#[allow(dead_code)]
 pub enum I2CSlaveError {
     BufferOverflow,
     UnknownState(u8), // Hex state
-    #[allow(dead_code)]
     NotImplemented,
     NotExpectedTransactionDirection,
     ArbitrationLost,
@@ -48,6 +48,7 @@ pub struct I2cSlave<'a> {
     int_flag: &'a AtomicBool,
 }
 
+#[allow(dead_code)]
 impl<'a> I2cSlave<'a> {
     pub fn new(
         twi: TWI,
@@ -76,8 +77,6 @@ impl<'a> I2cSlave<'a> {
         }
 
         self.twi.twcr.reset();
-
-        
     }
 
     /// Set TWCR registers enabling TWI to respond [`I2cSlave`].
@@ -100,7 +99,7 @@ impl<'a> I2cSlave<'a> {
     }
 
     /// release moved values
-    #[allow(dead_code)]
+    #[allow(clippy::type_complexity)]
     pub fn split(
         self,
     ) -> (
@@ -118,8 +117,6 @@ impl<'a> I2cSlave<'a> {
         let mut status: u8;
 
         self.arm();
-
-        
 
         // TODO loop may be reworked into something different
         let result: Result<usize, I2CSlaveError> = loop {
@@ -280,8 +277,6 @@ impl<'a> I2cSlave<'a> {
 
         self.arm();
 
-        
-
         // Read I2C in blocking mode
         let result: Result<(), I2CSlaveError> = loop {
             if self.int_flag.load(Ordering::SeqCst) {
@@ -489,9 +484,9 @@ impl<'a> I2cSlave<'a> {
                         break Err(I2CSlaveError::UnknownState(status));
                     }
                 }
-            } 
+            }
             // else {
-                // return Err(I2CSlaveError::InactiveBus);
+            // return Err(I2CSlaveError::InactiveBus);
             // }
         };
 
@@ -501,7 +496,11 @@ impl<'a> I2cSlave<'a> {
     }
 
     /// Receive data and write it to buffer
-    pub fn transact(&self, read_buffer: &mut [u8], write_buffer: &mut [u8]) -> Result<(), I2CSlaveError> {
+    pub fn transact(
+        &self,
+        read_buffer: &mut [u8],
+        write_buffer: &mut [u8],
+    ) -> Result<(), I2CSlaveError> {
         let mut i: usize = 0;
         let read_buffer_len: usize = read_buffer.len();
         let write_buffer_len: usize = write_buffer.len();
@@ -509,7 +508,6 @@ impl<'a> I2cSlave<'a> {
 
         self.arm();
 
-        
         // Read I2C in blocking mode
         let result: Result<(), I2CSlaveError> = loop {
             if self.int_flag.load(Ordering::SeqCst) {
@@ -552,7 +550,6 @@ impl<'a> I2cSlave<'a> {
                                     .set_bit()
                             });
                         }
-
 
                         self.int_flag.store(false, Ordering::SeqCst);
                     }
@@ -732,7 +729,7 @@ impl<'a> I2cSlave<'a> {
                         // ERROR
                         break Err(I2CSlaveError::UnknownState(status));
                     }
-                ////////////////////////
+                    ////////////////////////
                     // Arbitration lost in SLA+R/W as Master; own SLA+R has been
                     // received; ACK has been returned
                     0xB0 => {
@@ -801,13 +798,6 @@ impl<'a> I2cSlave<'a> {
                         self.int_flag.store(false, Ordering::SeqCst);
 
                         break Ok(());
-                    }
-                    0xF8 => {
-                        // Resetting flag
-                        self.int_flag.store(false, Ordering::SeqCst);
-
-                        // ERROR
-                        break Err(I2CSlaveError::UnknownState(status));
                     }
                     _ => {
                         // Resetting flag

@@ -72,10 +72,14 @@ pub async fn geiger_calculator(mut ctx: geiger_calculator::Context<'_>) {
 
             debug!("Recorded pulses! {}", pulses);
 
-            if ctx.shared.downlink_packets.lock(|packets| packets.push_back(packet)).is_err(){
+            if ctx
+                .shared
+                .downlink_packets
+                .lock(|packets| packets.push_back(packet))
+                .is_err()
+            {
                 warn!("Downlink packets full!");
-            }
-            else{
+            } else {
                 info!("Geiger downlink packets queued: {} pulses", pulses);
             }
         }

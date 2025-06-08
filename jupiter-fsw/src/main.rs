@@ -73,6 +73,7 @@ fn main() {
             if let Err(e) = interface.write(packet) {
                 error!("Failed to write packet down: {e}");
             }
+            #[cfg(feature = "packet_logging")]
             info!("Got a packet: {packet:?}");
         }
 
