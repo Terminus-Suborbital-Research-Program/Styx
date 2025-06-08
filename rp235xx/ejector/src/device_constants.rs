@@ -54,10 +54,10 @@ pub mod pins {
     /// Radio Programming Pin
     pub type RadioProgrammingPin = Pin<Gpio20, FunctionSio<SioOutput>, PullDown>;
 
-    /// GUARD SDA
-    pub type GuardSda = Pin<Gpio26, FunctionI2C, PullUp>;
-    /// GUARD SCL
-    pub type GuardScl = Pin<Gpio27, FunctionI2C, PullUp>;
+    // /// GUARD SDA
+    // pub type GuardSda = Pin<Gpio26, FunctionI2C, PullUp>;
+    // /// GUARD SCL
+    // pub type GuardScl = Pin<Gpio27, FunctionI2C, PullUp>;
 }
 
 // SI1145

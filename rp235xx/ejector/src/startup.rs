@@ -90,7 +90,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     // Geiger counter
     *ctx.local.adc = Some(hal::Adc::new(ctx.device.ADC, &mut ctx.device.RESETS));
     let adc = ctx.local.adc.as_mut().unwrap();
-    let mut gegier_pin = AdcPin::new(bank0_pins.gpio28).unwrap();
+    let mut gegier_pin = AdcPin::new(bank0_pins.gpio27).unwrap();
 
     // adc.free_running(&gegier_pin);
     // loop {
