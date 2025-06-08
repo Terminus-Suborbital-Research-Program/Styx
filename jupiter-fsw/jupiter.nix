@@ -16,6 +16,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
     hash = "sha256-bFDU4HTSjYYyJQoNjb5eZUbjTeCN0T9FixVGzXHISLE=";
   };
 
+  buildFeatures = [ "packet_logging" ];
+
   cargoHash = "sha256-N0N3SPfofK4pfurJb60zew731LqvQeflF2XK1fJwIGU=";
 
   doCheck = false;
