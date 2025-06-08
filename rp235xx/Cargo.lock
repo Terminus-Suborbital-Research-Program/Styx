@@ -253,7 +253,7 @@ dependencies = [
  "embedded-hal 1.0.0",
  "embedded-io",
  "fugit",
- "hc12-rs 0.1.0",
+ "hc12-rs",
  "heapless",
  "rp235x-hal 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rtic",
@@ -506,17 +506,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hc12-rs"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40e6009968a735bd9c91a43557dab3496c80f9cfe2953f9a385d337665690dea"
-dependencies = [
- "embedded-hal 1.0.0",
- "embedded-io",
- "heapless",
-]
-
-[[package]]
 name = "heapless"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -547,7 +536,7 @@ dependencies = [
  "embedded-io",
  "fugit",
  "futures",
- "hc12-rs 0.4.0",
+ "hc12-rs",
  "heapless",
  "ina260_terminus",
  "minikalman",

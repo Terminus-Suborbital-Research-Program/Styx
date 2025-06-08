@@ -82,7 +82,7 @@ pub async fn geiger_calculator(mut ctx: geiger_calculator::Context<'_>) {
     }
 }
 
-const SCRATCH: usize = 256;
+const SCRATCH: usize = 512;
 
 pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
     let downlink = ctx.local.downlink;
@@ -103,6 +103,7 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
         //------------------------------------------------------------------
         if radio.read_ready().unwrap_or(false) {
             let space = SCRATCH - frame_buf.len();
+            info!("Space: {}", space);
             if space > 0 {
                 let n = radio.read(&mut tmp_buf[..space]).unwrap_or(0);
                 frame_buf.extend_from_slice(&tmp_buf[..n]).ok();

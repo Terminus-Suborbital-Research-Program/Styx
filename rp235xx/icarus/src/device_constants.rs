@@ -9,7 +9,7 @@ use rp235x_hal::{
 };
 
 use crate::{peripherals::async_i2c::AsyncI2c, phases::StateMachine};
-use hc12_rs::speeds::B9600;
+
 
 // State Machine
 pub type IcarusStateMachine = StateMachine<10>;
@@ -49,7 +49,7 @@ pub mod pins {
     pub type MuxEPin = Gpio12;
     /// Mux ADC0
     pub type MuxADCPin = Gpio26;
-
+    
     // pub type ADCMux = CD74HC4067<Pin<MuxS0Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS1Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS2Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS3Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxEPin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>>;
 
     /// ESC I2C SDA pin
@@ -138,7 +138,6 @@ pub type MotorI2cBus = AsyncI2c<
 
 use crate::hal::timer::CopyableTimer1;
 use hc12_rs::*;
-// use hc12_rs::ProgrammingPair;
 use rp235x_hal::gpio::bank0::{Gpio5, Gpio8, Gpio9};
 use rp235x_hal::gpio::FunctionUart;
 use rp235x_hal::pac::UART1;
@@ -146,15 +145,23 @@ use rp235x_hal::uart::Enabled;
 use rp235x_hal::uart::UartPeripheral;
 use rp235x_hal::Timer;
 
-// pub type IcarusHC12 = HC12<UartPeripheral<rp235x_hal::uart::Enabled, rp235x_pac::UART1, (Pin<_, _, _>, Pin<_, _, _>)>, hc12_rs::ProgrammingPair<Pin<_, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, _>, rp235x_hal::Timer<rp235x_hal::timer::CopyableTimer1>>, hc12_rs::FU3<_>, _>;
+use hc12_rs::configuration::baudrates::B9600;
+use hc12_rs::configuration::{Channel, HC12Configuration, Power};
+use hc12_rs::device::IntoATMode;
+use hc12_rs::IntoFU3Mode;
 
-pub type IcarusHC12 = UartPeripheral<
-    Enabled,
-    UART1,
-    (
-        Pin<Gpio8, FunctionUart, PullDown>,
-        Pin<Gpio9, FunctionUart, PullDown>,
-    ),
+pub type IcarusHC12 = HC12<
+    UartPeripheral<
+        Enabled,
+        UART1,
+        (
+            Pin<Gpio8, FunctionUart, PullDown>,
+            Pin<Gpio9, FunctionUart, PullDown>,
+        ),
+    >,
+    ProgrammingPair<Pin<Gpio5, FunctionSio<SioOutput>, PullDown>, Timer<CopyableTimer1>>,
+    FU3<B9600>,
+    B9600,
 >;
 
 /// A motor controller on a shared bus
