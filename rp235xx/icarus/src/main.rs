@@ -61,7 +61,8 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 )]
 mod app {
     use crate::device_constants::{
-        servos::{FlapServo, RelayServo}, AvionicsI2cBus, DownlinkBuffer, IcarusHC12, MotorI2cBus
+        servos::{FlapServo, RelayServo},
+        AvionicsI2cBus, DownlinkBuffer, IcarusHC12, MotorI2cBus,
     };
 
     use super::*;

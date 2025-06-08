@@ -8,9 +8,8 @@ use rp235x_hal::{
     I2C,
 };
 
-use hc12_rs::speeds::B9600;
 use crate::{peripherals::async_i2c::AsyncI2c, phases::StateMachine};
-
+use hc12_rs::speeds::B9600;
 
 // State Machine
 pub type IcarusStateMachine = StateMachine<10>;
@@ -50,7 +49,7 @@ pub mod pins {
     pub type MuxEPin = Gpio12;
     /// Mux ADC0
     pub type MuxADCPin = Gpio26;
-    
+
     // pub type ADCMux = CD74HC4067<Pin<MuxS0Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS1Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS2Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS3Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxEPin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>>;
 
     /// ESC I2C SDA pin
@@ -148,6 +147,15 @@ use rp235x_hal::uart::UartPeripheral;
 use rp235x_hal::Timer;
 
 // pub type IcarusHC12 = HC12<UartPeripheral<rp235x_hal::uart::Enabled, rp235x_pac::UART1, (Pin<_, _, _>, Pin<_, _, _>)>, hc12_rs::ProgrammingPair<Pin<_, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, _>, rp235x_hal::Timer<rp235x_hal::timer::CopyableTimer1>>, hc12_rs::FU3<_>, _>;
+
+pub type IcarusHC12 = UartPeripheral<
+    Enabled,
+    UART1,
+    (
+        Pin<Gpio8, FunctionUart, PullDown>,
+        Pin<Gpio9, FunctionUart, PullDown>,
+    ),
+>;
 
 /// A motor controller on a shared bus
 pub type ReactionWheelMotor = ();
