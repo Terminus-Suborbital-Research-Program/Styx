@@ -1,26 +1,10 @@
-use defmt::{error, info, warn};
-use embedded_hal::{
-    delay::DelayNs,
-    digital::{InputPin, OutputPin},
+use crate::{
+    actuators::servo::Servo,
+    device_constants::{
+        pins::{MuxEPin, MuxS0Pin, MuxS1Pin, MuxS2Pin, MuxS3Pin},
+        DownlinkBuffer,
+    },
 };
-use fugit::RateExtU32;
-use hc12_rs::{
-    configuration::{baudrates::B9600, Channel, HC12Configuration, Power},
-    device::{IntoATMode, IntoFU3Mode},
-    HC12Builder,
-};
-use rp235x_hal::{
-    clocks,
-    gpio::{FunctionI2C, FunctionPwm, Pin, PullNone, PullUp},
-    pwm::Slices,
-    uart::{DataBits, StopBits, UartConfig, UartPeripheral},
-    Clock, Sio, Watchdog, I2C,
-};
-use bin_packets::device::PacketWriter;
-use rtic_monotonics::rp235x;
-use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
-use heapless::Vec;
-use crate::{actuators::servo::Servo, device_constants::{pins::{MuxEPin, MuxS0Pin, MuxS1Pin, MuxS2Pin, MuxS3Pin}, DownlinkBuffer}};
 use crate::{
     app::*,
     device_constants::{
@@ -33,15 +17,32 @@ use crate::{
     peripherals::async_i2c::AsyncI2c,
     Mono,
 };
-use embedded_io::Write;
+use defmt::{error, info, warn};
+use embedded_hal::{
+    delay::DelayNs,
+    digital::{InputPin, OutputPin},
+};
+use fugit::RateExtU32;
+use hc12_rs::{
+    configuration::{baudrates::B9600, Channel, HC12Configuration, Power},
+    device::{IntoATMode, IntoFU3Mode},
+};
+use rp235x_hal::{
+    clocks,
+    gpio::{FunctionI2C, FunctionPwm, Pin, PullNone, PullUp},
+    pwm::Slices,
+    uart::{DataBits, StopBits, UartConfig, UartPeripheral},
+    Clock, Sio, Watchdog, I2C,
+};
+use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
 
 // Sensors
+use crate::device_constants::IcarusHC12;
 use bme280::AsyncBME280;
 use bmi323::AsyncBmi323;
-use ina260_terminus::AsyncINA260;
 use bmm350::AsyncBmm350;
 use cd74hc4067::CD74HC4067;
-use crate::device_constants::IcarusHC12;
+use ina260_terminus::AsyncINA260;
 
 // Logs our time for demft
 defmt::timestamp!("{=u64:us}", { epoch_ns() });
@@ -256,22 +257,37 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x41, Mono);
     let ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x44, Mono);
     let ina260_4 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x45, Mono);
-    
-    // let mut adc = rp235x_hal::Adc::new(ctx.device.ADC, &mut ctx.device.RESETS);
-    // let mut adc_photoresistors: rp235x_hal::adc::AdcPin<Pin<rp235x_hal::gpio::bank0::Gpio40, rp235x_hal::gpio::FunctionNull, rp235x_hal::gpio::PullDown>> = rp235x_hal::adc::AdcPin::new(pins.gpio40).unwrap();    
 
-    let s0: Pin<MuxS0Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown> = pins.gpio14.into_push_pull_output();    
-    let s1: Pin<MuxS1Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown> = pins.gpio13.into_push_pull_output();    
-    let s2: Pin<MuxS2Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown> = pins.gpio11.into_push_pull_output();    
-    let s3: Pin<MuxS3Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown> = pins.gpio10.into_push_pull_output();    
-    let e: Pin<MuxEPin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown> = pins.gpio12.into_push_pull_output();    
-    let mux = CD74HC4067::new_enable(
-        s0,
-        s1,
-        s2,
-        s3,
-        e
-    );
+    // let mut adc = rp235x_hal::Adc::new(ctx.device.ADC, &mut ctx.device.RESETS);
+    // let mut adc_photoresistors: rp235x_hal::adc::AdcPin<Pin<rp235x_hal::gpio::bank0::Gpio40, rp235x_hal::gpio::FunctionNull, rp235x_hal::gpio::PullDown>> = rp235x_hal::adc::AdcPin::new(pins.gpio40).unwrap();
+
+    let s0: Pin<
+        MuxS0Pin,
+        rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
+        rp235x_hal::gpio::PullDown,
+    > = pins.gpio14.into_push_pull_output();
+    let s1: Pin<
+        MuxS1Pin,
+        rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
+        rp235x_hal::gpio::PullDown,
+    > = pins.gpio13.into_push_pull_output();
+    let s2: Pin<
+        MuxS2Pin,
+        rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
+        rp235x_hal::gpio::PullDown,
+    > = pins.gpio11.into_push_pull_output();
+    let s3: Pin<
+        MuxS3Pin,
+        rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
+        rp235x_hal::gpio::PullDown,
+    > = pins.gpio10.into_push_pull_output();
+    let e: Pin<
+        MuxEPin,
+        rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
+        rp235x_hal::gpio::PullDown,
+    > = pins.gpio12.into_push_pull_output();
+    // TODO: Maybe?
+    let _mux = CD74HC4067::new_enable(s0, s1, s2, s3, e);
 
     let data = DownlinkBuffer::new();
     let mut rbf = pins.gpio4.into_pull_down_input();

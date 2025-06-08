@@ -4,24 +4,19 @@ use bin_packets::packets::ApplicationPacket;
 use bincode::config::standard;
 use bincode::encode_into_slice;
 
-use bme280::AsyncBME280;
 use bmi323::{AccelConfig, GyroConfig};
 use bmm350::MagConfig;
 use defmt::{error, info};
 use embedded_hal::digital::StatefulOutputPin;
 
 use crate::device_constants::AvionicsI2cBus;
-use crate::phases::{FlapServoStatus, Modes, RelayServoStatus};
+use crate::phases::{Modes, RelayServoStatus};
 use crate::{app::*, device_constants::MotorI2cBus, Mono};
 use embedded_io::Write;
 use fugit::ExtU64;
-use futures::join;
-use heapless::Vec;
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
-use uom::si::electric_potential::volt;
-use uom::si::power;
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     let mut sequence_number: u16 = 0;
@@ -115,8 +110,8 @@ pub async fn mode_sequencer(ctx: mode_sequencer::Context<'_>) {
     let mut flutter_count = 0;
     let mut end_task = false;
     loop {
-        if end_task == false {
-            if relay_status == false {
+        if !end_task {
+            if !relay_status {
                 // flap_status = Modes::open_flaps_sequence(mode_start, ctx.local.flap_servo).await;
                 relay_status =
                     Modes::relay_eject_servo_sequence(mode_start, ctx.local.relay_servo).await;
@@ -206,46 +201,59 @@ pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter
         .await;
         ctx.shared.data.lock(|data| {
             let voltages_packet = ApplicationPacket::VoltageData {
-                timestamp: ina_samples.0.0,
-                voltage: ina_samples.1.0,
+                timestamp: ina_samples.0 .0,
+                voltage: ina_samples.1 .0,
             };
             let current_packet = ApplicationPacket::CurrentData {
-                timestamp: ina_samples.0.1,
-                current: ina_samples.1.1,
+                timestamp: ina_samples.0 .1,
+                current: ina_samples.1 .1,
             };
             let power_packet = ApplicationPacket::PowerData {
-                timestamp: ina_samples.0.2,
-                power: ina_samples.1.2,
+                timestamp: ina_samples.0 .2,
+                power: ina_samples.1 .2,
             };
             info!("Voltage Packet: {}", voltages_packet);
             info!("Current Packet: {}", current_packet);
             info!("Power Packet: {}", power_packet);
-            data.push_back(voltages_packet);
-            data.push_back(current_packet);
-            data.push_back(power_packet);
+            data.push_back(voltages_packet).ok();
+            data.push_back(current_packet).ok();
+            data.push_back(power_packet).ok();
         });
         Mono::delay(250.millis()).await;
     }
 }
 
-pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c: &'static Arbiter<AvionicsI2cBus>,) {
-    ctx.local.bme280.init().await;
-    ctx.local.bmi323.init().await;
+pub async fn sample_sensors(
+    mut ctx: sample_sensors::Context<'_>,
+    _avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
+) {
+    ctx.local.bme280.init().await.ok();
+    ctx.local.bmi323.init().await.ok();
     let accel_config = AccelConfig::builder().mode(bmi323::AccelerometerPowerMode::Normal);
     ctx.local
         .bmi323
         .set_accel_config(accel_config.build())
-        .await;
+        .await
+        .ok();
     let gyro_config = GyroConfig::builder().mode(bmi323::GyroscopePowerMode::Normal);
-    ctx.local.bmi323.set_gyro_config(gyro_config.build()).await;
+    ctx.local
+        .bmi323
+        .set_gyro_config(gyro_config.build())
+        .await
+        .ok();
 
-    ctx.local.bmm350.init().await;
+    ctx.local.bmm350.init().await.ok();
     let mag_config = MagConfig::builder().performance(bmm350::PerformanceMode::Regular);
     ctx.local
         .bmm350
         .set_power_mode(bmm350::PowerMode::Normal)
-        .await;
-    ctx.local.bmm350.set_mag_config(mag_config.build()).await;
+        .await
+        .ok();
+    ctx.local
+        .bmm350
+        .set_mag_config(mag_config.build())
+        .await
+        .ok();
 
     loop {
         let imu_result = ctx.local.bmi323.read_accel_data_scaled().await;
@@ -259,7 +267,7 @@ pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c:
                     z: acc.z,
                 };
                 ctx.shared.data.lock(|data| {
-                    data.push_back(acceleration_packet);
+                    data.push_back(acceleration_packet).ok();
                 });
             }
             Err(i2c_error) => {
@@ -277,7 +285,7 @@ pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c:
                     z: gyro.z,
                 };
                 ctx.shared.data.lock(|data| {
-                    data.push_back(gyro_packet);
+                    data.push_back(gyro_packet).ok();
                 });
             }
             Err(i2c_error) => {
@@ -295,7 +303,7 @@ pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c:
                     z: mag.z,
                 };
                 ctx.shared.data.lock(|data| {
-                    data.push_back(mag_packet);
+                    data.push_back(mag_packet).ok();
                 });
             }
             Err(i2c_error) => {
@@ -310,7 +318,7 @@ pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c:
             humidity: env.3,
         };
         ctx.shared.data.lock(|data| {
-            data.push_back(env_packet);
+            data.push_back(env_packet).ok();
         });
         // info!("T, P, H: {}, {}, {}", env.1, env.2, env.3);
 
@@ -359,6 +367,7 @@ use rp235x_hal::{
     I2C,
 };
 use rtic_sync::arbiter::i2c::ArbiterDevice;
+#[allow(clippy::type_complexity)]
 async fn ina_data_handle(
     ina260_1: &mut AsyncINA260<
         ArbiterDevice<

@@ -11,14 +11,12 @@ use rp235x_hal::{
     Timer,
 };
 
-use common::rbf::NoRbf;
-
 #[allow(dead_code)]
 pub mod pins {
     use rp235x_hal::gpio::{
         bank0::{
-            Gpio10, Gpio11, Gpio12, Gpio13, Gpio15, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio25,
-            Gpio26, Gpio27, Gpio8, Gpio9,
+            Gpio10, Gpio11, Gpio12, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio25, Gpio26, Gpio27,
+            Gpio8, Gpio9,
         },
         FunctionI2C, FunctionSio, FunctionUart, Pin, PullDown, PullUp, SioInput, SioOutput,
     };
@@ -79,10 +77,6 @@ pub type EjectionDetectionPin = Pin<EjectionPin, FunctionSio<SioInput>, PullDown
 
 // JUPITER Uart
 pub type JupiterUart = UartPeripheral<Enabled, UART0, (JupiterRxPin, JupiterTxPin)>;
-
-/// Ejector RBF
-/// Represents the active-high Remove Before Flight (RBF) input.
-pub type EjectorRbf = NoRbf; //ActiveHighRbf<RBFPin>;
 
 /// Radio UART
 pub type RadioUart = UartPeripheral<Enabled, UART1, (RadioRxPin, RadioTxPin)>;

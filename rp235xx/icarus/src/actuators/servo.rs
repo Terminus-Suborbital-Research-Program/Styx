@@ -41,21 +41,24 @@ where
         self.channel.set_duty_cycle(duty).unwrap();
     }
 
-    pub fn deg_0(&mut self){
-        self.channel.set_duty_cycle(MIN_DUTY);
+    pub fn deg_0(&mut self) {
+        self.channel.set_duty_cycle(MIN_DUTY).ok();
     }
 
-    pub fn deg_90(&mut self){
-        self.channel.set_duty_cycle(HALF_DUTY);
+    pub fn deg_90(&mut self) {
+        self.channel.set_duty_cycle(HALF_DUTY).ok();
     }
-    pub fn deg_180(&mut self){
-        self.channel.set_duty_cycle(HALF_DUTY);
+    pub fn deg_180(&mut self) {
+        self.channel.set_duty_cycle(HALF_DUTY).ok();
     }
     pub fn enable(&mut self) {
+        // Safe - we're infallible
         self.mosfet_pin.set_high().unwrap();
     }
 
     pub fn disable(&mut self) {
+        // Safe - we're infallible
         self.mosfet_pin.set_low().unwrap();
     }
 }
+
