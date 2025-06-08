@@ -72,13 +72,11 @@ pub async fn geiger_calculator(mut ctx: geiger_calculator::Context<'_>) {
 
             debug!("Recorded pulses! {}", pulses);
 
-            if ctx
-                .shared
-                .downlink_packets
-                .lock(|packets| packets.push_back(packet))
-                .is_err()
-            {
+            if ctx.shared.downlink_packets.lock(|packets| packets.push_back(packet)).is_err(){
                 warn!("Packet buffer full!");
+            }
+            else{
+                info!("Geiger data packet queued: {} pulses", pulses);
             }
         }
     }
@@ -110,6 +108,7 @@ pub async fn radio_read(ctx: radio_read::Context<'_>) {
                 frame_buf.extend_from_slice(&tmp_buf[..n]).ok();
             }
         }
+        info!("Radio buffer size: {}", frame_buf.len());
 
         //------------------------------------------------------------------
         // 2. Decode TinyFrames until we run out of complete ones.
@@ -136,6 +135,7 @@ pub async fn radio_read(ctx: radio_read::Context<'_>) {
                 }
             }
         }
+        info!("Frame Sent");
 
         //------------------------------------------------------------------
         // 3. Decode application‑level packets.
@@ -159,6 +159,7 @@ pub async fn radio_read(ctx: radio_read::Context<'_>) {
                 }
             }
         }
+        info!("Packet Decoded");
 
         //------------------------------------------------------------------
         // 4. Flush any packets that are ready for the downlink.
@@ -167,8 +168,10 @@ pub async fn radio_read(ctx: radio_read::Context<'_>) {
         while let Some(pkt) = outgoing_pkts.pop_front() {
             if let Ok(sz) = encode_into_slice(pkt, &mut enc_buf, standard()) {
                 let _ = downlink.write_all(&enc_buf[..sz]);
+                info!("Sent packet: {:?}", pkt);
             }
         }
+        Mono::delay(100.millis()).await;
     }
 }
 
