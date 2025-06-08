@@ -24,16 +24,19 @@ fn camera_task() -> ! {
 
     create_dir(VIDEO_DIRECTORY).ok();
 
-    run_recording_segment(true);
+    // T+ 302 stop for TE-2
+    run_recording_segment(Some(302));
+
+    // T+570 stop
+    run_recording_segment(Some(570));
 
     loop {
-        run_recording_segment(false);
+        run_recording_segment(None);
     }
 }
 
-fn run_recording_segment(stop_at_shutdown: bool) {
+fn run_recording_segment(stop_at_t: Option<i32>) {
     let mut fail_count = 0;
-    let stop_time = 570;
 
     'retry: loop {
         // figure out next filename
@@ -80,7 +83,7 @@ fn run_recording_segment(stop_at_shutdown: bool) {
             .expect("failed to spawn ffmpeg");
 
         // if we should auto-stop, spin up a little watcher
-        if stop_at_shutdown {
+        if let Some(stop_time) = stop_at_t {
             if let Some(mut stdin) = child.stdin.take() {
                 std::thread::spawn(move || {
                     // wait until we hit your 570 s mark
