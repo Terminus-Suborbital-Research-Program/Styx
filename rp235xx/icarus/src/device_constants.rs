@@ -1,5 +1,5 @@
 use bin_packets::{device::Device, packets::ApplicationPacket};
-use heapless::Deque;
+use heapless::{Deque, HistoryBuffer};
 use pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin, LedPin};
 use rp235x_hal::{
     gpio::{FunctionI2C, FunctionSio, Pin, PullDown, PullNone, PullUp, SioOutput},
@@ -169,3 +169,7 @@ pub type ReactionWheelMotor = ();
 
 /// Data buffer for downsyncing ICARUS data
 pub type DownlinkBuffer = Deque<ApplicationPacket, 16>;
+
+// Buffer for inertial data
+use ngc::state::State;
+pub type NavBuffer = HistoryBuffer<State, 10>;

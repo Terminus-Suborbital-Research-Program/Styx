@@ -9,6 +9,7 @@ use bmi323::{AccelConfig, GyroConfig};
 use bmm350::MagConfig;
 use defmt::{error, info};
 use embedded_hal::digital::StatefulOutputPin;
+use rp235x_hal::pll::State;
 
 use crate::device_constants::AvionicsI2cBus;
 use crate::phases::{FlapServoStatus, Modes, RelayServoStatus};
@@ -231,23 +232,25 @@ pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter
 pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c: &'static Arbiter<AvionicsI2cBus>,) {
     ctx.local.bme280.init().await;
     ctx.local.bmi323.init().await;
-    let accel_config = AccelConfig::builder().mode(bmi323::AccelerometerPowerMode::Normal);
+    let accel_config = AccelConfig::builder().mode(bmi323::AccelerometerPowerMode::HighPerf);
     ctx.local
         .bmi323
         .set_accel_config(accel_config.build())
         .await;
-    let gyro_config = GyroConfig::builder().mode(bmi323::GyroscopePowerMode::Normal);
+    let gyro_config = GyroConfig::builder().mode(bmi323::GyroscopePowerMode::HighPerf);
     ctx.local.bmi323.set_gyro_config(gyro_config.build()).await;
 
     ctx.local.bmm350.init().await;
-    let mag_config = MagConfig::builder().performance(bmm350::PerformanceMode::Regular);
+    let mag_config = MagConfig::builder().performance(bmm350::PerformanceMode::Enhanced);
     ctx.local
         .bmm350
         .set_power_mode(bmm350::PowerMode::Normal)
         .await;
     ctx.local.bmm350.set_mag_config(mag_config.build()).await;
 
+    let mut relayed_state = ngc::state::IMUState::default();
     loop {
+        let now_timestamp = now_timestamp().millis();
         let imu_result = ctx.local.bmi323.read_accel_data_scaled().await;
         match imu_result {
             Ok(acc) => {
@@ -261,6 +264,10 @@ pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c:
                 ctx.shared.data.lock(|data| {
                     data.push_back(acceleration_packet);
                 });
+                relayed_state.lin_acc.x = acc.x;
+                relayed_state.lin_acc.y = acc.y;
+                relayed_state.lin_acc.z = acc.z;
+
             }
             Err(i2c_error) => {
                 error!("BMI: {}", i2c_error);
@@ -279,6 +286,9 @@ pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c:
                 ctx.shared.data.lock(|data| {
                     data.push_back(gyro_packet);
                 });
+                relayed_state.ang_vel.x = gyro.x;
+                relayed_state.ang_vel.y = gyro.y;
+                relayed_state.ang_vel.z = gyro.z;
             }
             Err(i2c_error) => {
                 error!("BMI: {}", i2c_error);
@@ -312,23 +322,81 @@ pub async fn sample_sensors(mut ctx: sample_sensors::Context<'_>, _avionics_i2c:
         ctx.shared.data.lock(|data| {
             data.push_back(env_packet);
         });
-        // info!("T, P, H: {}, {}, {}", env.1, env.2, env.3);
-
-        // let (photoresistor_1, photoresistor_2, photoresistor_3, photoresistor_4, photoresistor_5, photoresistor_6, photoresistor_7, photoresistor_8) = photoresistors_handle(ctx.local.adc, ctx.local.adc_photoresistors, ctx.local.mux).await;
-        // info!("Photoresistors:  {}, {}, {}, {}, {}, {}, {}, {}", photoresistor_1, photoresistor_2, photoresistor_3, photoresistor_4, photoresistor_5, photoresistor_6, photoresistor_7, photoresistor_8);
-        // let photoresistor_packet = ApplicationPacket::PhotoresistorData {
-        //     timestamp: now_timestamp().millis(),
-        //     vector: [photoresistor_1,photoresistor_2,photoresistor_3,photoresistor_4,photoresistor_5,photoresistor_6,photoresistor_7,photoresistor_8]
-        // };
-        Mono::delay(250_u64.millis()).await;
+        ctx.shared.data_internal.lock(|data_internal| {
+            data_internal.push_back(relayed_state);
+        });
+        Mono::delay(10_u64.millis()).await;
     }
 }
 
+
+const NUM_STATES: usize = 15;
+const NUM_CONTROLS: usize = 0;
+const NUM_OBSERVATIONS: usize = 1;
+use minikalman::buffers::types::*;
+use minikalman::prelude::*;
+use minikalman::regular::{RegularKalmanBuilder, RegularObservationBuilder};
 pub async fn inertial_nav(_ctx: inertial_nav::Context<'_>) {
-    loop {
-        // info!("Inertial Navigation");
-        Mono::delay(250_u64.millis()).await;
-    }
+    // impl_buffer_x!(static mut state, NUM_STATES, f32, 0.0);
+    // impl_buffer_A!(static mut model, NUM_STATES, f32, 0.0);
+    // impl_buffer_P!(static mut , covariance, f32, 0.0);
+    // impl_buffer_Q_direct!(static mut process_noise, NUM_STATES, f32, 0.0);
+
+    // impl_buffer_z!(static mut state_z, NUM_OBSERVATIONS, f32, 0.0);
+    // impl_buffer_H!(static mut state_H, NUM_OBSERVATIONS, NUM_STATES, f32, 0.0);
+    // impl_buffer_R!(static mut state_R, NUM_OBSERVATIONS, f32, 0.0);
+    // impl_buffer_y!(static mut state_y, NUM_OBSERVATIONS, f32, 0.0);
+    // impl_buffer_S!(static mut state_S, NUM_OBSERVATIONS, f32, 0.0);
+    // impl_buffer_K!(static mut state_K, NUM_STATES, NUM_OBSERVATIONS, f32, 0.0);
+
+    // // Filter temporaries.
+    // impl_buffer_temp_x!(static mut state_temp_x, NUM_STATES, f32, 0.0);
+    // impl_buffer_temp_P!(static mut state_temp_P, NUM_STATES, f32, 0.0);
+
+    // // Observation temporaries.
+    // impl_buffer_temp_S_inv!(static mut state_temp_S_inv, NUM_OBSERVATIONS, f32, 0.0);
+
+    // // Observation temporaries.
+    // impl_buffer_temp_HP!(static mut state_temp_HP, NUM_OBSERVATIONS, NUM_STATES, f32, 0.0);
+    // impl_buffer_temp_PHt!(static mut state_temp_PHt, NUM_STATES, NUM_OBSERVATIONS, f32, 0.0);
+    // impl_buffer_temp_KHP!(static mut state_temp_KHP, NUM_STATES, f32, 0.0);
+
+
+    // let mut filter = RegularKalmanBuilder::new::<NUM_STATES, f32>(
+    //     StateTransitionMatrixMutBuffer::from(unsafe { model.as_mut_slice() }),
+    //     StateVectorBuffer::from(unsafe { state.as_mut_slice() }),
+    //     EstimateCovarianceMatrixBuffer::from(unsafe { covariance.as_mut_slice() }),
+    //     DirectProcessNoiseCovarianceMatrixBuffer::from(unsafe { process_noise.as_mut_slice() }),
+    //     PredictedStateEstimateVectorBuffer::from(unsafe { state_temp_x.as_mut_slice() }),
+    //     TemporaryStateMatrixBuffer::from(unsafe { state_temp_P.as_mut_slice() }),
+    // );
+
+    // let mut measurement = RegularObservationBuilder::new::<NUM_STATES, NUM_OBSERVATIONS, f32>(
+    //     ObservationMatrixMutBuffer::from(unsafe { state_H.as_mut_slice() }),
+    //     MeasurementVectorBuffer::from(unsafe { state_z.as_mut_slice() }),
+    //     MeasurementNoiseCovarianceMatrixBuffer::from(unsafe { state_R.as_mut_slice() }),
+    //     InnovationVectorBuffer::from(unsafe { state_y.as_mut_slice() }),
+    //     InnovationCovarianceMatrixBuffer::from(unsafe { state_S.as_mut_slice() }),
+    //     KalmanGainMatrixBuffer::from(unsafe { state_K.as_mut_slice() }),
+    //     TemporaryResidualCovarianceInvertedMatrixBuffer::from(unsafe {
+    //         state_temp_S_inv.as_mut_slice()
+    //     }),
+    //     TemporaryHPMatrixBuffer::from(unsafe { state_temp_HP.as_mut_slice() }),
+    //     TemporaryPHTMatrixBuffer::from(unsafe { state_temp_PHt.as_mut_slice() }),
+    //     TemporaryKHPMatrixBuffer::from(unsafe { state_temp_KHP.as_mut_slice() }),
+    // );
+    
+    // loop {
+    //     info!("Inertial Navigation");
+    //     ctx.shared.data_internal.lock(|data_internal| {
+    //         // First element in history buffer is the oldest
+    //         for state in data_internal.as_slice(){
+    //             info!("State: {:?}", state);
+
+    //         }
+    //     });
+    //     Mono::delay(1000_u64.millis()).await;
+    // }
 }
 
 // use rp235x_hal::adc::{Adc, AdcPin};

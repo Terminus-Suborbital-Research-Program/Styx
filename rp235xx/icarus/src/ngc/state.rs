@@ -27,16 +27,28 @@ impl AssetState{
 }
 
 #[derive(Clone, Debug)]
+pub struct IMUState{
+    pub time:               u64,
+    pub lin_acc:            Matrix3x1<f64>,
+    pub ang_vel:            Matrix3x1<f64>,
+}
+
+impl Default for IMUState{
+    fn default()-> IMUState{
+        IMUState{
+            time:               0_u64,
+            lin_acc:            Matrix3x1::zeros(),
+            ang_vel:            Matrix3x1::zeros(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct State{
-    pub time_last_output:   f64,
-    pub output_rate:        f64,
-    pub time:               f64,
-    pub force:              Matrix3x1<f64>,
+    pub time:               f32,
     pub lin_acc:            Matrix3x1<f64>,
     pub lin_vel:            Matrix3x1<f64>,
     pub lin_pos:            Matrix3x1<f64>,
-    pub torque:             Matrix3x1<f64>,
-    pub ang_acc:            Matrix3x1<f64>,
     pub ang_vel:            Matrix3x1<f64>,
     pub ang_pos:            Matrix3x1<f64>,
     pub quaternion:         Quaternion<f64>
@@ -45,15 +57,10 @@ pub struct State{
 impl Default for State{
     fn default()-> State{
         State{
-            time_last_output:   0.0_f64,
-            output_rate:        0.0_f64,
             time:               0.0_f64,
-            force:              Matrix3x1::zeros(),
             lin_acc:            Matrix3x1::zeros(),
             lin_vel:            Matrix3x1::zeros(),
             lin_pos:            Matrix3x1::zeros(),
-            torque:             Matrix3x1::zeros(),
-            ang_acc:            Matrix3x1::zeros(),
             ang_vel:            Matrix3x1::zeros(),
             ang_pos:            Matrix3x1::zeros(),
             quaternion:         Quaternion::identity(),
@@ -74,7 +81,6 @@ impl State{
 
     pub fn integrate_linear(&mut self, state_last: &State){
         let dt = self.time - state_last.time;
-
         self.lin_vel += self.integrate(dt, self.lin_acc, state_last.lin_acc);
         self.lin_pos += self.integrate(dt, self.lin_vel, state_last.lin_vel);
     }
@@ -101,10 +107,10 @@ impl State{
         // Quaternion Integration
         let q_dot = 0.5 * q_quat * ang_vel_quat;
         let q_ddot = 0.25 * q_quat * ang_vel_quat * ang_vel_quat + 0.5 * q_quat * ang_acc_quat;
-        let q_dddot = 1.0 / 6.0 * q_quat * ang_vel_quat * ang_vel_quat * ang_vel_quat + 0.25 * q_quat * ang_acc_quat * ang_vel_quat + 0.5 * q_quat * ang_vel_quat * ang_acc_quat;
+        // let q_dddot = 1.0 / 6.0 * q_quat * ang_vel_quat * ang_vel_quat * ang_vel_quat + 0.25 * q_quat * ang_acc_quat * ang_vel_quat + 0.5 * q_quat * ang_vel_quat * ang_acc_quat;
  
-        let new_quaternion = q_quat + q_dot * dt + 1.0 / 4.0 * q_ddot * dt.powf(2.0) + 1.0 / 9.0 * q_dddot * dt.powf(3.0);
-        self.quaternion = new_quaternion.normalize();
+        let new_quaternion = q_quat + q_dot * dt + 1.0 / 4.0 * q_ddot * dt.powf(2.0); //+ 1.0 / 9.0 * q_dddot * dt.powf(3.0);
+        // self.quaternion = new_quaternion.normalize();
 
         let unit_quaternion = UnitQuaternion::from_quaternion(self.quaternion);
         let euler_angles = unit_quaternion.euler_angles();

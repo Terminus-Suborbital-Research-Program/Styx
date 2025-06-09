@@ -297,11 +297,12 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     mode_sequencer::spawn().ok();
     ina_sample::spawn(motor_i2c_arbiter).ok();
     sample_sensors::spawn(avionics_i2c_arbiter).ok();
-    inertial_nav::spawn().ok();
     radio_send::spawn().ok();
     info!("Tasks spawned!");
     (
-        Shared { data },
+        Shared { 
+            data,
+         },
         Local {
             radio: hc,
             flap_servo,
@@ -313,10 +314,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             ina260_1,
             ina260_2,
             ina260_3,
-            ina260_4,
-            // adc,
-            // adc_photoresistors,
-            // mux
+            ina260_4
         },
     )
 }
