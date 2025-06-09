@@ -146,6 +146,7 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
         let mut enc_buf = [0u8; SCRATCH];
         ctx.shared.downlink_packets.lock(|packets| {
             while let Some(packet) = packets.pop_front() {
+                ctx.local.packet_led.toggle().ok();
                 if let Ok(sz) = encode_into_slice(packet, &mut enc_buf, standard()) {
                     let _ = downlink.write_all(&enc_buf[..sz]);
                 }
