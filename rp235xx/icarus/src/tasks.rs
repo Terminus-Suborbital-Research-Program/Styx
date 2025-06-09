@@ -78,7 +78,7 @@ pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
                     }
                 }
 
-                Mono::delay(80.millis()).await;
+                Mono::delay(40.millis()).await;
             }
             // info!("Sent Frame");
         }
