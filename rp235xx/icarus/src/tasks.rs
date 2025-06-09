@@ -61,10 +61,6 @@ pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
             }
         });
 
-        if buf_len < 32 {
-            Mono::delay(100.millis()).await;
-        }
-
         // Iter over bytes
         let mut frame_bytes = [0u8; 200];
         for frame in FrameIter::first(&outgoing_packet_bytes[..buf_len]) {
@@ -82,7 +78,7 @@ pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
                     }
                 }
 
-                Mono::delay(100.millis()).await;
+                Mono::delay(50.millis()).await;
             }
             // info!("Sent Frame");
         }
