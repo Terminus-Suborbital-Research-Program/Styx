@@ -221,7 +221,7 @@ pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter
             data.push_back(current_packet).ok();
             data.push_back(power_packet).ok();
         });
-        Mono::delay(50.millis()).await;
+        Mono::delay(250.millis()).await;
     }
 }
 
@@ -231,13 +231,22 @@ pub async fn sample_sensors(
 ) {
     ctx.local.bme280.init().await.ok();
     ctx.local.bmi323.init().await.ok();
-    let accel_config = AccelConfig::builder().mode(bmi323::AccelerometerPowerMode::HighPerf);
+    let accel_config = AccelConfig::builder()
+        .mode(bmi323::AccelerometerPowerMode::HighPerf)
+        .range(bmi323::AccelerometerRange::G8)
+        .odr(bmi323::AccelerometerOdr::Hz100)
+        .avg_num(bmi323::AverageNum::Avg8);
     ctx.local
         .bmi323
         .set_accel_config(accel_config.build())
         .await
         .ok();
-    let gyro_config = GyroConfig::builder().mode(bmi323::GyroscopePowerMode::HighPerf);
+    let gyro_config = GyroConfig::builder()
+        .mode(bmi323::GyroscopePowerMode::HighPerf)
+        .range(bmi323::GyroscopeRange::DPS125)
+        .odr(bmi323::GyroscopeOdr::Hz100)
+        .avg_num(bmi323::AverageNum::Avg8);
+
     ctx.local
         .bmi323
         .set_gyro_config(gyro_config.build())
@@ -322,7 +331,7 @@ pub async fn sample_sensors(
         ctx.shared.data.lock(|data| {
             data.push_back(env_packet).ok();
         });
-        Mono::delay(16.millis()).await;
+        Mono::delay(100.millis()).await;
     }
 }
 
