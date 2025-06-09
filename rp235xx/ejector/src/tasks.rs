@@ -186,7 +186,7 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
                 info!("Sent packet: {:?}", pkt);
             }
         }
-        Mono::delay(100.millis()).await;
+        Mono::delay(10.millis()).await;
     }
 }
 
