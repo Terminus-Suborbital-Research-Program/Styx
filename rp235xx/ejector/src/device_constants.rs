@@ -31,10 +31,10 @@ pub mod pins {
     pub type CamMosfetPin = Pin<Gpio12, FunctionSio<SioOutput>, PullDown>;
 
     // Camera LED Pin
-    pub type RedLedPin = Gpio10;
+    pub type RedLedPin = Gpio11;
 
     // RBF LED PIN
-    pub type GreenLedPin = Gpio11;
+    pub type GreenLedPin = Gpio10;
 
     // RBF PIN
     pub type RBFPin = Pin<Gpio2, FunctionSio<SioInput>, PullDown>;

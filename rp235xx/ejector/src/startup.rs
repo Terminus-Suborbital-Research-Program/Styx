@@ -72,7 +72,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     // Red led pin - gets set high when armed
     let red_led_pin: RedLed = bank0_pins
-        .gpio10
+        .gpio11
         .into_push_pull_output_in_state(PinState::High)
         .reconfigure();
 
@@ -83,7 +83,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     // Frame received indicator
     let packet_indicator: GreenLed = bank0_pins
-        .gpio11
+        .gpio10
         .into_push_pull_output_in_state(PinState::High)
         .reconfigure();
 
