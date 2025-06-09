@@ -234,7 +234,7 @@ pub async fn sample_sensors(
     let accel_config = AccelConfig::builder()
         .mode(bmi323::AccelerometerPowerMode::HighPerf)
         .range(bmi323::AccelerometerRange::G8)
-        .odr(bmi323::AccelerometerOdr::Hz100)
+        .odr(bmi323::OutputDataRate::Odr100hz)
         .avg_num(bmi323::AverageNum::Avg8);
     ctx.local
         .bmi323
@@ -244,7 +244,7 @@ pub async fn sample_sensors(
     let gyro_config = GyroConfig::builder()
         .mode(bmi323::GyroscopePowerMode::HighPerf)
         .range(bmi323::GyroscopeRange::DPS125)
-        .odr(bmi323::GyroscopeOdr::Hz100)
+        .odr(bmi323::OutputDataRate::Odr100hz)
         .avg_num(bmi323::AverageNum::Avg8);
 
     ctx.local
