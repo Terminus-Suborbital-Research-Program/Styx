@@ -138,4 +138,4 @@ pub type IcarusHC12 = HC12<
 >;
 
 /// Data buffer for downsyncing ICARUS data
-pub type DownlinkBuffer = Deque<ApplicationPacket, 16>;
+pub type DownlinkBuffer = Deque<ApplicationPacket, 64>;
