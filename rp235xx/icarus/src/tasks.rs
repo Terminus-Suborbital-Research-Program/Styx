@@ -330,7 +330,7 @@ pub async fn sample_sensors(
         //     timestamp: now_timestamp().millis(),
         //     vector: [photoresistor_1,photoresistor_2,photoresistor_3,photoresistor_4,photoresistor_5,photoresistor_6,photoresistor_7,photoresistor_8]
         // };
-        Mono::delay(250_u64.millis()).await;
+        Mono::delay(100.millis()).await;
     }
 }
 
