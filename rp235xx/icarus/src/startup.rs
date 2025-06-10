@@ -297,7 +297,6 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     mode_sequencer::spawn().ok();
     ina_sample::spawn(motor_i2c_arbiter).ok();
     sample_sensors::spawn(avionics_i2c_arbiter).ok();
-    inertial_nav::spawn().ok();
     radio_send::spawn().ok();
     info!("Tasks spawned!");
     (
