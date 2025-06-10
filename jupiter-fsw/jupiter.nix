@@ -2,7 +2,7 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "jupiter-fsw";
-  version = "0.1.0";
+  version = "0.1.1";
 
   nativeBuildInputs = [ pkg-config libudev-zero ];
 
@@ -11,7 +11,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
   src = fetchFromGitHub {
     owner = "Terminus-Suborbital-Research-Program";
     repo = "AMALTHEA";
-    rev = "v0.1.0";
+    rev = "v0.1.1";
     fetchSubmodules = true;
     hash = "sha256-bFDU4HTSjYYyJQoNjb5eZUbjTeCN0T9FixVGzXHISLE=";
   };
