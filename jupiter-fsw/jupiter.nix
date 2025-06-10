@@ -13,7 +13,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     repo = "AMALTHEA";
     rev = "v0.1.1";
     fetchSubmodules = true;
-    hash = "sha256-bFDU4HTSjYYyJQoNjb5eZUbjTeCN0T9FixVGzXHISLE=";
+    hash = "sha256-vQ1VyzQO8snWWEJGL5C5xQ04BUl+KoX+GeqJ1bgS8ZE=";
   };
 
   buildFeatures = [ "packet_logging" ];
