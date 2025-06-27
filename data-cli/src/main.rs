@@ -8,7 +8,7 @@ use std::{
     collections::{HashMap, HashSet}, 
     fs::{read_dir, File, OpenOptions}, 
     io::{self, BufReader, BufWriter, ErrorKind, Read, Write}, 
-    path::Path
+    path::{Path, PathBuf}
 };
 
 #[derive(Parser)]
@@ -38,8 +38,9 @@ enum Commands {
 }
 
 struct CSVPacketTranslator {
-    writer: Writer<File>,
+    // writer_list: Vec<Writer<File>>,
     file_list: HashSet<String>,
+    output_directory: PathBuf
      // Later on this should be done by querying instead of reading all file names every time
 }
 
@@ -72,18 +73,27 @@ impl CSVPacketTranslator {
             }
         }).collect();
 
+        let mut csv_dir = PathBuf::new();
+        csv_dir.push(output_path);
+
+
         match file_list {
             Ok(list) => {
+                // Remove
+                // for file_name in list.clone() {
+                //     println!("File name read:{file_name}")
+                // }
+                //
                 Ok(CSVPacketTranslator {
-                    writer: Writer::from_path(output_path).expect("Error Creating CSV File"),
-                    file_list: list
+                    output_directory: csv_dir,
+                    file_list: list,
                 })
+
             }
             Err(e) => Err(e)
         }
     }
 
-    // pub fn translate_packet
 
     fn parse_packet(&self, packet: &serde_json::Value) -> Option<HashMap<String, String>> {
 
@@ -108,7 +118,7 @@ impl CSVPacketTranslator {
         result
     }
 
-    pub fn file_write(&self, packet: ApplicationPacket) {
+    pub fn file_write(&mut self, packet: ApplicationPacket) {
         // Turn the packet into a serde JSON value, from which we can recieve 
         // - the struct name (for determining if a csv file already exists for this struct)
         // - a map of the keys (struct field names) and values (primitives) contained within the struct
@@ -116,21 +126,55 @@ impl CSVPacketTranslator {
 
         // Get a map of the serde JSON value
         if let Some(field) = packet_struct.as_object(){
+
             // Get the title of the serde Json value
             match field.keys().next() {
                 // If we get a name for the struct, fine if we have a matching csv filename already in the 
                 // provided directory
                 Some(struct_name) => {
-                    if self.file_list.contains(struct_name) {
-                        // If we do, get the map of all struct values and append the values in csv format to the file
-                        if let Some(headers_map) = self.parse_packet(&packet_struct) {
-                            
+                    // Create the writer to write to the csv file for this specific struct
+                    // self.output_directory.push(format!("/{struct_name}.csv"));
+
+                    // Inefficient dogshit, rework this later
+                    let mut file_path = self.output_directory.clone().into_os_string();
+                    let file_name = format!("{struct_name}.csv");
+                    file_path.push(&file_name);
+                    // let b = file_path.to_str().unwrap();
+                    // let c = String::from(b);
+                    // println!("{}",c);
+                    //
+
+                    // Remove
+                    println!("{}",file_path.clone().into_string().unwrap());
+                    //
+
+                    let output_file = OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open(file_path)
+                        .expect("Uh oh, output file couldn't open");
+
+                    let mut writer = Writer::from_writer(output_file);
+                    // Check if the path buf is mutated or not later
+                    
+                    // Get the map of all struct values and append the values in csv format to the file
+                    if let Some(headers_map) = self.parse_packet(&packet_struct) {
+                        if self.file_list.contains(&file_name) {
+                            println!("Old File");
+                            writer.write_record(headers_map.values()).unwrap();
+                        } else {
+                            println!("New File");
+
+                            // This may be detrimental if values are consumed, so cloning on keys may be neccessary,
+                            // also this requires index map to order properly
+                            writer.write_record(headers_map.keys()).unwrap();
+                            writer.write_record(headers_map.values()).unwrap();
 
                         }
-
-                    } else {
-
-                    }}
+                    }
+                    // If the struct name is known in our internal list, we can safely assume we have an old file
+                    // and just append the values to the existing csv without adding the headers
+                }
 
                 None => {
                     eprintln!("Error parsing struct name of recieved packet");
@@ -138,38 +182,6 @@ impl CSVPacketTranslator {
             }
         }
 
-        if let Some(headers_map) = self.parse_packet(&packet_struct) {
-
-            
-            ///
-            /// Need to name new csv file as the name of the struct.
-            /// If the name already exists, we can writing the headers and only write the values
-            /// of the current iteration.
-            /// Also needs some mechanism for when to start and stop some new iteration of a 
-            /// csv file for the same struct.
-            /// 
-
-            // headers_map.iter().map(|k,v| {
-            // if headers_map.keys().next()
-            // })
-
-            // let mut headers_keys = headers_map.keys();
-            // println!("{headers_keys:#?}");
-            // // headers_map.values();
-            // wrt.write_record(headers_keys.clone()).expect("Ooops, failure writing headers");
-            // let mut output_buf = Vec::new();
-            // // println!("{headers_keys:#?}");
-
-            // for key in &mut headers_keys {
-            //     output_buf.push(&headers_map[key]);
-            //     // wrt.write_record(headers_keys)key
-            // }
-            // // println!("{output_buf:#?}");
-            // wrt.write_record(output_buf).expect("Ooops, failure writing values");
-            // if let Err(e) = writeln!(file_writer, "{packet:#?}") {
-            //     eprintln!("Error appending to output file: {e}")
-            // }
-        }
     }
 
 }
@@ -255,3 +267,19 @@ fn main() {
     let cli = Cli::parse();
     cli.command.execute();
 }
+
+// #[cfg(test)]
+// mod tests {
+//     // use super::*;
+
+//     use std::path::Path;
+
+//     use crate::CSVPacketTranslator;
+
+//     #[test]
+//     fn it_works() {
+//         CSVPacketTranslator::new(Path::new("/home/supergoodname77/Desktop/Final Flash/AMALTHEA/data-cli/temp"));
+
+        
+//     }
+// }
