@@ -95,13 +95,13 @@ impl CSVPacketTranslator {
     }
 
 
-    fn parse_packet(&self, packet: &serde_json::Value) -> Option<HashMap<String, String>> {
+    fn parse_packet(&self, packet: &serde_json::Value) -> Option<IndexMap<String, String>> {
 
         let mut result = None;
 
         if let Some(field) = packet.as_object(){
 
-            let mut incomplete_map = HashMap::new();
+            let mut incomplete_map = IndexMap::new();
             for key in field.keys() {
                 if let Some(map) = self.parse_packet(&field[key]) {
                     // Over here an insertion would have to be added if we also want to view the name
@@ -109,7 +109,8 @@ impl CSVPacketTranslator {
                     // format of CSV files
                     incomplete_map.extend(map);
                 } else {
-                    incomplete_map.insert(key.to_string(), field[key].to_string());
+                    // Add in primitive values with any quotes removed
+                    incomplete_map.insert(key.to_string(), field[key].to_string().replace(&['(', ')', ',', '\"', ';', ':', '\''][..], ""));
                 }
             }
             result = Some(incomplete_map);
@@ -133,42 +134,33 @@ impl CSVPacketTranslator {
                 // provided directory
                 Some(struct_name) => {
                     // Create the writer to write to the csv file for this specific struct
-                    // self.output_directory.push(format!("/{struct_name}.csv"));
 
                     // Inefficient dogshit, rework this later
                     let mut file_path = self.output_directory.clone().into_os_string();
                     let file_name = format!("{struct_name}.csv");
                     file_path.push(&file_name);
-                    // let b = file_path.to_str().unwrap();
-                    // let c = String::from(b);
-                    // println!("{}",c);
-                    //
 
-                    // Remove
-                    println!("{}",file_path.clone().into_string().unwrap());
-                    //
-
+                    // Open file and csv writer in append mode
                     let output_file = OpenOptions::new()
                         .create(true)
                         .append(true)
                         .open(file_path)
                         .expect("Uh oh, output file couldn't open");
-
                     let mut writer = Writer::from_writer(output_file);
-                    // Check if the path buf is mutated or not later
                     
                     // Get the map of all struct values and append the values in csv format to the file
                     if let Some(headers_map) = self.parse_packet(&packet_struct) {
                         if self.file_list.contains(&file_name) {
                             println!("Old File");
                             writer.write_record(headers_map.values()).unwrap();
+                            
                         } else {
                             println!("New File");
-
-                            // This may be detrimental if values are consumed, so cloning on keys may be neccessary,
-                            // also this requires index map to order properly
+                            // Create new file with headers, and list 
                             writer.write_record(headers_map.keys()).unwrap();
                             writer.write_record(headers_map.values()).unwrap();
+                            self.file_list.insert(file_name);
+
 
                         }
                     }
@@ -212,12 +204,6 @@ impl Commands {
 
                 if output {
                     if let Some(output_path) = write_file_path {
-                        // let output_file = OpenOptions::new()
-                        //     .create(true)
-                        //     .append(true)
-                        //     .open(output_path)
-                        //     .expect("Uh oh, output file couldn't open");
-                        // writer = Some(BufWriter::new(output_file));
                         writer = Some(CSVPacketTranslator::new(Path::new(&output_path))
                                        .expect("Error Creating Packet Translator: "));
                     }
@@ -257,29 +243,9 @@ impl Commands {
     }
 
     
-      
-
-
-
     
 }
 fn main() {
     let cli = Cli::parse();
     cli.command.execute();
 }
-
-// #[cfg(test)]
-// mod tests {
-//     // use super::*;
-
-//     use std::path::Path;
-
-//     use crate::CSVPacketTranslator;
-
-//     #[test]
-//     fn it_works() {
-//         CSVPacketTranslator::new(Path::new("/home/supergoodname77/Desktop/Final Flash/AMALTHEA/data-cli/temp"));
-
-        
-//     }
-// }
