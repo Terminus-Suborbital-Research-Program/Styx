@@ -3,6 +3,7 @@ use bincode::{config::standard, decode_from_std_read};
 use clap::{Parser, Subcommand};
 use csv::Writer;
 use indexmap::IndexMap;
+use chrono::prelude::*;
 
 use std::{
     collections::{HashMap, HashSet}, 
@@ -25,34 +26,30 @@ enum Commands {
         read_file_path: String,
         #[arg(long, short, help = "Output to file flag")]
         output: bool,
-        #[arg(help = "Path for file of readable data")]
+        #[arg(help = "Path for the directory to save readable data (folder, not file)")]
         write_file_path: Option<String>,
     },
 
     Write {
         #[arg(help = "Raw binary file to convert")]
         read_file_path: String,
-        #[arg(help = "Path for file of readable data")]
+        #[arg(help = "Path for the directory to save readable data (folder, not file)")]
         write_file_path: String,
     },
 }
 
 struct CSVPacketTranslator {
-    // writer_list: Vec<Writer<File>>,
     file_list: HashSet<String>,
-    output_directory: PathBuf
-     // Later on this should be done by querying instead of reading all file names every time
+    output_directory: PathBuf,
+    current_time: DateTime<Local>,
 }
 
 
 impl CSVPacketTranslator {
     pub fn new(output_path: &Path) -> Result<Self, std::io::Error> {
-        // This shouldn't be required unlist a specific file name is requested, but handling that
-        // extraneous case can be done later
-
-        // let csv_directory = output_path.parent().expect("Oops, listed directory does not exist");
         let path_iter = read_dir(output_path).expect("Failure to create directory iterator");
 
+        // Collect file names of files in provided directory to check against later
         let file_list: Result<HashSet<String>,std::io::Error> =
         path_iter.map(|file_query| {
             match file_query {
@@ -79,14 +76,10 @@ impl CSVPacketTranslator {
 
         match file_list {
             Ok(list) => {
-                // Remove
-                // for file_name in list.clone() {
-                //     println!("File name read:{file_name}")
-                // }
-                //
                 Ok(CSVPacketTranslator {
                     output_directory: csv_dir,
                     file_list: list,
+                    current_time: Local::now()
                 })
 
             }
@@ -94,6 +87,7 @@ impl CSVPacketTranslator {
         }
     }
 
+    
 
     fn parse_packet(&self, packet: &serde_json::Value) -> Option<IndexMap<String, String>> {
 
@@ -135,9 +129,24 @@ impl CSVPacketTranslator {
                 Some(struct_name) => {
                     // Create the writer to write to the csv file for this specific struct
 
+                    // Find if csv files have previously been created in this directory
+                    // if so, increment a new csv file for the packet
+                    // let file_iteration = self.file_list
+                    //                                     .iter()
+                    //                                     .filter(|file| file.starts_with(struct_name))
+                    //                                     .count() + 1;
+
+                    
+
                     // Inefficient dogshit, rework this later
+                    // let time = &self.current_time.format("%m/%d/%Y %H:%M").to_string();
+                    let time = &self.current_time;
+
+                    let formatted_time = time.format("%m-%d-%Y %H:%M:%S").to_string();
+
                     let mut file_path = self.output_directory.clone().into_os_string();
-                    let file_name = format!("{struct_name}.csv");
+                    // println!("{formatted_time}");
+                    let file_name = format!("{struct_name} - {formatted_time} .csv");
                     file_path.push(&file_name);
 
                     // Open file and csv writer in append mode
@@ -150,18 +159,20 @@ impl CSVPacketTranslator {
                     
                     // Get the map of all struct values and append the values in csv format to the file
                     if let Some(headers_map) = self.parse_packet(&packet_struct) {
+
+                        
+                        // match file_iteration {
+                        //     1 => 
+                        // }
+
                         if self.file_list.contains(&file_name) {
-                            println!("Old File");
                             writer.write_record(headers_map.values()).unwrap();
                             
                         } else {
-                            println!("New File");
                             // Create new file with headers, and list 
                             writer.write_record(headers_map.keys()).unwrap();
                             writer.write_record(headers_map.values()).unwrap();
                             self.file_list.insert(file_name);
-
-
                         }
                     }
                     // If the struct name is known in our internal list, we can safely assume we have an old file
@@ -194,6 +205,7 @@ impl Commands {
     }
 
     fn read(read_file_path: String, stdout: bool, output: bool, write_file_path: Option<String>) {
+        // Open file for reading and create file reader
         let file = File::open(&read_file_path);
 
         match file {
@@ -201,7 +213,7 @@ impl Commands {
                 let mut reader = BufReader::new(file);
 
                 let mut writer: Option<CSVPacketTranslator> = None;
-
+                // Prepare CSV writer if we are outputting
                 if output {
                     if let Some(output_path) = write_file_path {
                         writer = Some(CSVPacketTranslator::new(Path::new(&output_path))
@@ -209,15 +221,17 @@ impl Commands {
                     }
                 }
                 loop {
+                    // decode packet
                     let data: Result<ApplicationPacket, bincode::error::DecodeError> =
                         decode_from_std_read(&mut reader, standard());
 
                     match data {
                         Ok(packet) => {
-
+                            // Print to console in read mode
                             if stdout {
                                 println!("{packet:#?}");
                             }
+                            // Write csv files to directory in read mode with -o flag, or in write mode
                             if output {
                                 if let Some(ref mut file_writer) = writer {
                                     file_writer.file_write(packet);
