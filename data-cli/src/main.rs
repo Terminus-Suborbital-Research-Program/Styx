@@ -140,13 +140,11 @@ impl CSVPacketTranslator {
 
                     // Inefficient dogshit, rework this later
                     // let time = &self.current_time.format("%m/%d/%Y %H:%M").to_string();
-                    let time = &self.current_time;
-
-                    let formatted_time = time.format("%m-%d-%Y %H:%M:%S").to_string();
-
+                    let time = &self.current_time.format("%m-%d-%Y %H:%M:%S").to_string();
+;
                     let mut file_path = self.output_directory.clone().into_os_string();
                     // println!("{formatted_time}");
-                    let file_name = format!("{struct_name} - {formatted_time} .csv");
+                    let file_name = format!("{struct_name} - {time} .csv");
                     file_path.push(&file_name);
 
                     // Open file and csv writer in append mode
