@@ -42,112 +42,15 @@ enum Commands {
     },
 }
 
-
-// Manage the process of writing lines to an existing file
-// if the packet was already written during the duration of execution
-// or writing to a new file if the packet is newly recieved in this run of the CLI,
-// and in this case determining whether to write the new file with an increment format
-// or a datetime stamp
 struct CSVPacketTranslator {
     created_file_list: HashSet<String>,
     output_directory: PathBuf,
     current_time: DateTime<Local>,
 }
 
-enum FileNameFormat {
-    Iterate,
-    Timestamp,
-}
-
-enum WriteState {
-    Stdout,
-    File,
-    Both,
-}
-
-// 
-struct DataParser {
-
-    write_state: WriteState,
-    csv_packet_translator: Option<CSVPacketTranslator>,
-    file_name_format: FileNameFormat,
-
-}
-
-struct DataParserBuilder {
-    data_parser: DataParser,
-    write_to_stdout: bool,
-    write_to_file: bool,
-    time: bool,
-    iterate: bool,
-}
-
-impl DataParserBuilder {
-
-    // In the future this could have read file and listen_to_serial
-
-    fn write_to_stdout(mut self, write_to_stdout: bool) -> Self {
-        self.write_to_stdout = write_to_stdout;
-        self
-    }
-
-    fn write_to_file(mut self, write_to_file: bool) -> Self  {
-        self.write_to_file = write_to_file;
-        self
-    }
-
-    fn time(mut self, time: bool) -> Self {
-        self.time = time;
-        self
-    }
-
-    fn iterate(mut self, iterate: bool) -> Self {
-        self.iterate = iterate;
-        self
-    }
-
-    fn build(self, output_path: Option<&Path>) -> DataParser {
-
-        let mut write_state = WriteState::Stdout;
-        let mut csv_packet_translator: Option<CSVPacketTranslator> = None;
-
-        if self.write_to_file && self.write_to_stdout {
-            write_state = WriteState::Both;
-        } else if self.write_to_file {
-           write_state = WriteState::File;
-           if self.time {
-                if let Some(output_path) = output_path {
-                    csv_packet_translator = Some(CSVPacketTranslator::new(output_path, FileNameFormat::Timestamp)
-                                            .expect("Error generating CSV Packet Translator"));
-                } else {
-                        panic!("Write flag included but output path not present")
-                }
-           } else {
-                // The iterate flag can be treated as the default option, so does not need to be called on
-                // but it is useful to exist so that there is an awareness of timestamp vs filename iteration
-                if let Some(output_path) = output_path {
-                    csv_packet_translator = Some(CSVPacketTranslator::new(output_path, FileNameFormat::Iterate)
-                                            .expect("Error generating CSV Packet Translator"));
-                } else {
-                        panic!("Write flag included but output path not present")
-                }
-           }
-           
-        } else if self.write_to_stdout {
-            write_state = WriteState::Stdout;
-        }
-        // Panic case should not be neccessary because the default of each command should
-        // include at least one method of output, be it console or file
-
-        DataParser { write_state: write_state, csv_packet_translator: csv_packet_translator }
-    }
-}
-
-// Determine whether 
-
 
 impl CSVPacketTranslator {
-    pub fn new(output_path: &Path, file_name_format: FileNameFormat) -> Result<Self, std::io::Error> {
+    pub fn new(output_path: &Path) -> Result<Self, std::io::Error> {
         let path_iter = read_dir(output_path).expect("Failure to create directory iterator");
 
         // Collect file names of files in provided directory to check against later
