@@ -1,4 +1,5 @@
 
+use clap::builder::Str;
 use indexmap::IndexMap;
 use chrono::prelude::*;
 use bin_packets::packets::ApplicationPacket;
@@ -35,37 +36,22 @@ impl CSVPacketTranslator {
         let path_iter = read_dir(&output_path).expect("Failure to create directory iterator");
 
         // Collect file names of files in provided directory to check against later
-        let file_list: Result<HashSet<String>,std::io::Error> =
-        path_iter.map(|file_query| {
-            match file_query {
-                Ok(file_entry) => {
-                    match file_entry.file_name().into_string() {
-                        Ok(file_string) => Ok(file_string),
 
-                        Err(os_string) => {
-                            Err(io::Error::other("Error converting filename to program readable string"))
-                        }
+        let original_file_iterations = path_iter.fold(HashMap::new(),|mut original_file_iterations, file_query | {
+            if let Ok(dir_entry) = file_query {
+                if let Ok(file_name) = dir_entry.file_name().into_string() {
+                    let (struct_name, _time_or_iter) = file_name.split_once('-').unwrap();
+                    let struct_name: String = struct_name.chars().filter(|c| !c.is_whitespace()).collect();
+
+                    if original_file_iterations.contains_key(&struct_name) {
+                        original_file_iterations.entry(struct_name).and_modify(|index| *index += 1);
+                    } else {
+                        original_file_iterations.insert(struct_name, 1);
                     }
                 }
-
-                Err(e) => {
-                    eprintln!("Error reading directory entr: {}",e);
-                    Err(e)
-                }
             }
-        }).collect();
-
-        let path_iter = read_dir(&output_path).expect("Failure to create directory iterator");
-
-        let mut original_file_iterations: HashMap<String,i32> = file_list.unwrap().iter().map(|file|{(file.clone(), 0)} ).collect();
-
-        for file_entry in path_iter {
-            if let Ok(file_name) = file_entry.unwrap().file_name().into_string() {
-                if original_file_iterations.contains_key(&file_name) {
-                    original_file_iterations.entry(file_name).and_modify(|iteration| *iteration += 1);
-                }
-            }
-        }
+            original_file_iterations
+        });
 
 
         Ok(CSVPacketTranslator {
@@ -123,18 +109,34 @@ impl CSVPacketTranslator {
 
                     // Find if csv files have previously been created in this directory
                     // if so, increment a new csv file for the packet
-                    let file_iteration = self.created_file_list
-                                                        .iter()
-                                                        .filter(|file| file.starts_with(struct_name))
-                                                        .count() + 1;
+                    let file_name: String = match self.file_name_format {
+                        FileNameFormat::Iterate => {
+                            if !self.created_file_list.contains(struct_name) {
+                                if self.original_file_iterations.contains_key(struct_name) {
+                                    self.original_file_iterations.entry(struct_name.clone()).and_modify(|index| *index += 1);
+                                } else {
+                                    self.original_file_iterations.insert(struct_name.clone(), 1);
+                                }
+                                
+                            }
+                            let file_iteration = self.original_file_iterations
+                                                                .get(struct_name)
+                                                                .copied()
+                                                                .unwrap_or(1);
 
-                    // Inefficient dogshit, rework this later
-                    // let time = &self.current_time.format("%m/%d/%Y %H:%M").to_string();
-                    let time = &self.current_time.format("%m-%d-%Y %H:%M:%S").to_string();
+                            // self.original_file_iterations.insert(struct_name, file_iteration)
 
+                            format!("{struct_name} - {file_iteration} .csv")
+                        }
+                        
+
+                        FileNameFormat::Timestamp => {
+                            let time = &self.current_time.format("%m-%d-%Y %H:%M:%S").to_string();
+                            format!("{struct_name} - {time} .csv")
+                        }
+                    };
+                    
                     let mut file_path = self.output_directory.clone().into_os_string();
-
-                    let file_name = format!("{struct_name} - {time} .csv");
                     file_path.push(&file_name);
 
                     // Open file and csv writer in append mode
@@ -147,14 +149,15 @@ impl CSVPacketTranslator {
                 
                     // Get the map of all struct values and append the values in csv format to the file
                     if let Some(headers_map) = self.collect_packet_headers(&packet_struct) {
-                        if self.created_file_list.contains(&file_name) {
+                        if self.created_file_list.contains(struct_name) {
                             writer.write_record(headers_map.values()).unwrap();
                         } else {
                             // Create new file with headers, and list 
                             writer.write_record(headers_map.keys()).unwrap();
                             writer.write_record(headers_map.values()).unwrap();
                             
-                            self.created_file_list.insert(file_name);
+                            self.created_file_list.insert(struct_name.clone());
+                            
                         }
                     }
                     // If the struct name is known in our internal list, we can safely assume we have an old file
