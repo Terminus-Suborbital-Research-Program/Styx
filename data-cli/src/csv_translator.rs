@@ -2,14 +2,12 @@
 use indexmap::IndexMap;
 use chrono::prelude::*;
 use bin_packets::packets::ApplicationPacket;
-use bincode::{config::standard, decode_from_std_read};
 use csv::Writer;
-
 use std::{
-    collections::{HashMap, HashSet}, 
-    fs::{read_dir, File, OpenOptions}, 
-    io::{self, BufReader, BufWriter, ErrorKind, Read, Write}, 
-    path::{Path, PathBuf}
+    collections::HashSet, 
+    fs::{read_dir, OpenOptions}, 
+    io,
+    path::PathBuf,
 };
 
 // Manage the process of writing lines to an existing file

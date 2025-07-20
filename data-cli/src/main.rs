@@ -1,24 +1,10 @@
-use bin_packets::packets::ApplicationPacket;
-use bincode::{config::standard, decode_from_std_read};
-use clap::{Parser, Subcommand};
-use csv::Writer;
-use indexmap::IndexMap;
-use chrono::prelude::*;
-
 mod csv_translator;
 mod parser;
 mod parser_builder;
-use crate::csv_translator::{CSVPacketTranslator, FileNameFormat};
-use crate::parser::DataParser;
 use crate::parser_builder::DataParserBuilder;
 
-
-use std::{
-    collections::{HashMap, HashSet}, 
-    fs::{read_dir, File, OpenOptions}, 
-    io::{self, BufReader, BufWriter, ErrorKind, Read, Write}, 
-    path::{Path, PathBuf}
-};
+use clap::{Parser, Subcommand};
+use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
 #[command(name = "data")]
@@ -49,9 +35,6 @@ enum Commands {
         iterate: bool,
     },
 }
-
-
-
 
 impl Commands {
     fn execute(self) {
