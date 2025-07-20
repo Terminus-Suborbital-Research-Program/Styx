@@ -1,9 +1,9 @@
-use bin_packets::packets::ApplicationPacket;
-use bincode::{config::standard, decode_from_std_read};
-use clap::{Parser, Subcommand};
-use csv::Writer;
+
 use indexmap::IndexMap;
 use chrono::prelude::*;
+use bin_packets::packets::ApplicationPacket;
+use bincode::{config::standard, decode_from_std_read};
+use csv::Writer;
 
 use std::{
     collections::{HashMap, HashSet}, 
@@ -12,46 +12,29 @@ use std::{
     path::{Path, PathBuf}
 };
 
-#[derive(Parser)]
-#[command(name = "data")]
-struct Cli {
-    #[command(subcommand)]
-    command: Commands,
-}
-#[derive(Subcommand, Debug, Clone)]
-enum Commands {
-    /// Read a bincode file to terminal
-    Read {
-        #[arg(help = "Raw binary file to convert")]
-        read_file_path: String,
-        #[arg(long, short, help = "Output to file flag")]
-        output: bool,
-        #[arg(help = "Path for the directory to save readable data (folder, not file)")]
-        write_file_path: Option<String>,
-    },
-
-    Write {
-        #[arg(help = "Raw binary file to convert")]
-        read_file_path: String,
-        #[arg(help = "Path for the directory to save readable data (folder, not file)")]
-        write_file_path: String,
-        #[arg(long, short, help = "Date and Timestamp the File")]
-        time: bool,
-        #[arg(long, short, help = "Iterate the filename or overwrite?")]
-        iterate: bool,
-    },
-}
-
-struct CSVPacketTranslator {
+// Manage the process of writing lines to an existing file
+// if the packet was already written during the duration of execution
+// or writing to a new file if the packet is newly recieved in this run of the CLI,
+// and in this case determining whether to write the new file with an increment format
+// or a datetime stamp
+pub struct CSVPacketTranslator {
     created_file_list: HashSet<String>,
     output_directory: PathBuf,
     current_time: DateTime<Local>,
+    file_name_format: FileNameFormat,
 }
 
+pub enum FileNameFormat {
+    Iterate,
+    Timestamp,
+}
 
+// Handles the logic behind dynamically generating csv headers, 
+// lines, and different files based on newly received packet types
 impl CSVPacketTranslator {
-    pub fn new(output_path: &Path) -> Result<Self, std::io::Error> {
-        let path_iter = read_dir(output_path).expect("Failure to create directory iterator");
+    pub fn new(output_path: PathBuf, file_name_format: FileNameFormat) -> Result<Self, std::io::Error> {
+        let path_iter = read_dir(&output_path).expect("Failure to create directory iterator");
+
 
         // Collect file names of files in provided directory to check against later
         let file_list: Result<HashSet<String>,std::io::Error> =
@@ -74,16 +57,13 @@ impl CSVPacketTranslator {
             }
         }).collect();
 
-        let mut csv_dir = PathBuf::new();
-        csv_dir.push(output_path);
-
-
         match file_list {
             Ok(list) => {
                 Ok(CSVPacketTranslator {
-                    output_directory: csv_dir,
+                    output_directory: output_path,
                     created_file_list: list,
-                    current_time: Local::now()
+                    current_time: Local::now(),
+                    file_name_format: file_name_format,
                 })
 
             }
@@ -92,8 +72,10 @@ impl CSVPacketTranslator {
     }
 
     
-
-    fn parse_packet(&self, packet: &serde_json::Value) -> Option<IndexMap<String, String>> {
+    // Recursively collect the headers of a struct
+    // This is recursive because some structs can have many layers of substructs
+    // with their own headers that must also be collected
+    fn collect_packet_headers(&self, packet: &serde_json::Value) -> Option<IndexMap<String, String>> {
 
         let mut result = None;
 
@@ -101,7 +83,7 @@ impl CSVPacketTranslator {
 
             let mut incomplete_map = IndexMap::new();
             for key in field.keys() {
-                if let Some(map) = self.parse_packet(&field[key]) {
+                if let Some(map) = self.collect_packet_headers(&field[key]) {
                     // Over here an insertion would have to be added if we also want to view the name
                     // of sub_structs, but this might be unneccessary because it is counter intuitive to the
                     // format of CSV files
@@ -146,7 +128,7 @@ impl CSVPacketTranslator {
 
                     let mut file_path = self.output_directory.clone().into_os_string();
 
-                    let file_name = format!("{struct_name} - {file_iteration} .csv");
+                    let file_name = format!("{struct_name} - {time} .csv");
                     file_path.push(&file_name);
 
                     // Open file and csv writer in append mode
@@ -158,7 +140,7 @@ impl CSVPacketTranslator {
                     let mut writer = Writer::from_writer(output_file);
                 
                     // Get the map of all struct values and append the values in csv format to the file
-                    if let Some(headers_map) = self.parse_packet(&packet_struct) {
+                    if let Some(headers_map) = self.collect_packet_headers(&packet_struct) {
 
                         if self.created_file_list.contains(&file_name) {
                             writer.write_record(headers_map.values()).unwrap();
@@ -167,7 +149,7 @@ impl CSVPacketTranslator {
                             writer.write_record(headers_map.keys()).unwrap();
                             writer.write_record(headers_map.values()).unwrap();
                             
-                            // self.file_list.insert(file_name);
+                            self.created_file_list.insert(file_name);
                         }
                     }
                     // If the struct name is known in our internal list, we can safely assume we have an old file
@@ -182,81 +164,4 @@ impl CSVPacketTranslator {
 
     }
 
-}
-
-impl Commands {
-    fn execute(self) {
-        match self {
-            Commands::Read {
-                read_file_path,
-                output,
-                write_file_path,
-            } => Self::read(read_file_path, true, output, write_file_path),
-            Commands::Write {
-                read_file_path,
-                write_file_path,
-                time,
-                iterate
-            } => Self::read(read_file_path, false, true, Some(write_file_path)),
-        }
-    }
-
-    fn read(read_file_path: String, stdout: bool, output: bool, write_file_path: Option<String>) {
-        // Open file for reading and create file reader
-        let file = File::open(&read_file_path);
-
-        match file {
-            Ok(file) => {
-                let mut reader = BufReader::new(file);
-
-                let mut writer: Option<CSVPacketTranslator> = None;
-                // Prepare CSV writer if we are outputting
-                if output {
-                    if let Some(output_path) = write_file_path {
-                        writer = Some(CSVPacketTranslator::new(Path::new(&output_path))
-                                       .expect("Error Creating Packet Translator: "));
-                    }
-                }
-                loop {
-                    // decode packet
-                    let data: Result<ApplicationPacket, bincode::error::DecodeError> =
-                        decode_from_std_read(&mut reader, standard());
-
-                    match data {
-                        Ok(packet) => {
-                            // Print to console in read mode
-                            if stdout {
-                                println!("{packet:#?}");
-                            }
-                            // Write csv files to directory in read mode with -o flag, or in write mode
-                            if output {
-                                if let Some(ref mut file_writer) = writer {
-                                    file_writer.file_write(packet);
-                                }
-                            }
-                        }
-                        Err(e) => match e {
-                            bincode::error::DecodeError::Io { inner, .. } => {
-                                if inner.kind() == ErrorKind::UnexpectedEof {
-                                    break;
-                                }
-                            }
-                            _ => eprintln!("Nooo error {e}"),
-                        },
-                    }
-                }
-            }
-
-            Err(e) => {
-                eprintln!("Error reading raw data from file: {e}")
-            }
-        }
-    }
-
-    
-    
-}
-fn main() {
-    let cli = Cli::parse();
-    cli.command.execute();
 }
