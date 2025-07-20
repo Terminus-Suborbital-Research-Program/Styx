@@ -4,7 +4,7 @@ use chrono::prelude::*;
 use bin_packets::packets::ApplicationPacket;
 use csv::Writer;
 use std::{
-    collections::HashSet, 
+    collections::{HashMap, HashSet}, 
     fs::{read_dir, OpenOptions}, 
     io,
     path::PathBuf,
@@ -17,6 +17,7 @@ use std::{
 // or a datetime stamp
 pub struct CSVPacketTranslator {
     created_file_list: HashSet<String>,
+    original_file_iterations: HashMap<String,i32>,
     output_directory: PathBuf,
     current_time: DateTime<Local>,
     file_name_format: FileNameFormat,
@@ -32,7 +33,6 @@ pub enum FileNameFormat {
 impl CSVPacketTranslator {
     pub fn new(output_path: PathBuf, file_name_format: FileNameFormat) -> Result<Self, std::io::Error> {
         let path_iter = read_dir(&output_path).expect("Failure to create directory iterator");
-
 
         // Collect file names of files in provided directory to check against later
         let file_list: Result<HashSet<String>,std::io::Error> =
@@ -55,18 +55,26 @@ impl CSVPacketTranslator {
             }
         }).collect();
 
-        match file_list {
-            Ok(list) => {
-                Ok(CSVPacketTranslator {
+        let path_iter = read_dir(&output_path).expect("Failure to create directory iterator");
+
+        let mut original_file_iterations: HashMap<String,i32> = file_list.unwrap().iter().map(|file|{(file.clone(), 0)} ).collect();
+
+        for file_entry in path_iter {
+            if let Ok(file_name) = file_entry.unwrap().file_name().into_string() {
+                if original_file_iterations.contains_key(&file_name) {
+                    original_file_iterations.entry(file_name).and_modify(|iteration| *iteration += 1);
+                }
+            }
+        }
+
+
+        Ok(CSVPacketTranslator {
                     output_directory: output_path,
-                    created_file_list: list,
+                    original_file_iterations: original_file_iterations,
+                    created_file_list: HashSet::new(),
                     current_time: Local::now(),
                     file_name_format: file_name_format,
                 })
-
-            }
-            Err(e) => Err(e)
-        }
     }
 
     
@@ -139,7 +147,6 @@ impl CSVPacketTranslator {
                 
                     // Get the map of all struct values and append the values in csv format to the file
                     if let Some(headers_map) = self.collect_packet_headers(&packet_struct) {
-
                         if self.created_file_list.contains(&file_name) {
                             writer.write_record(headers_map.values()).unwrap();
                         } else {
