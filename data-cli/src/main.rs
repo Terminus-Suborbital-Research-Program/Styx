@@ -44,8 +44,7 @@ impl Commands {
                 output,
                 write_file_path,
             } => {
-                let data_parser = 
-                DataParserBuilder::new()
+                let data_parser = DataParserBuilder::new()
                     .write_to_file(output, PathBuf::from(write_file_path.unwrap()))
                     .write_to_stdout(true)
                     .build();
@@ -57,10 +56,9 @@ impl Commands {
                 read_file_path,
                 write_file_path,
                 time,
-                iterate
+                iterate,
             } => {
-                let data_parser = 
-                DataParserBuilder::new()
+                let data_parser = DataParserBuilder::new()
                     .write_to_file(true, PathBuf::from(write_file_path))
                     .write_to_stdout(false)
                     .iterate(iterate)
@@ -69,11 +67,8 @@ impl Commands {
 
                 data_parser.parse_file(Path::new(&read_file_path));
             }
-            
         }
     }
-
-
 }
 fn main() {
     let cli = Cli::parse();

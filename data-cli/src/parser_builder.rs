@@ -1,6 +1,5 @@
-
-use crate::parser::DataParser;
 use crate::csv_translator::{CSVPacketTranslator, FileNameFormat};
+use crate::parser::DataParser;
 use std::path::PathBuf;
 
 // Manage the process of w
@@ -16,7 +15,6 @@ pub struct DataParserBuilder {
 }
 
 impl DataParserBuilder {
-
     // In the future this could have read file and listen_to_serial
 
     pub fn new() -> DataParserBuilder {
@@ -27,17 +25,15 @@ impl DataParserBuilder {
             // For now leaving this as a default option, but eventually might turn this to a None option variant
             // if the dataparser grows and I want to just have a default config
             file_name_format: FileNameFormat::Iterate,
-
         }
     }
-
 
     pub fn write_to_stdout(mut self, write_to_stdout: bool) -> Self {
         self.write_to_stdout = write_to_stdout;
         self
     }
 
-    pub fn write_to_file(mut self, write_to_file: bool, output_path: PathBuf) -> Self  {
+    pub fn write_to_file(mut self, write_to_file: bool, output_path: PathBuf) -> Self {
         self.write_to_file = write_to_file;
         self.output_file_path = Some(output_path);
         self
@@ -58,14 +54,15 @@ impl DataParserBuilder {
     }
 
     pub fn build<'a>(self) -> DataParser {
-
         let mut csv_packet_translator: Option<CSVPacketTranslator> = None;
 
         if self.write_to_file {
             match self.output_file_path {
                 Some(path) => {
-                    csv_packet_translator = Some(CSVPacketTranslator::new(path, self.file_name_format)
-                                            .expect("Error creating csv translator: "))
+                    csv_packet_translator = Some(
+                        CSVPacketTranslator::new(path, self.file_name_format)
+                            .expect("Error creating csv translator: "),
+                    )
                 }
 
                 None => {
@@ -76,9 +73,9 @@ impl DataParserBuilder {
         // Panic case should not be neccessary because the default of each command should
         // include at least one method of output, be it console or file
 
-        DataParser { 
+        DataParser {
             write_to_stdout: self.write_to_stdout,
-            csv_packet_translator: csv_packet_translator,
+            csv_packet_translator,
         }
     }
 }

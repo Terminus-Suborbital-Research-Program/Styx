@@ -1,4 +1,3 @@
-
 use crate::csv_translator::CSVPacketTranslator;
 
 use bin_packets::packets::ApplicationPacket;
@@ -6,8 +5,8 @@ use bincode::{config::standard, decode_from_std_read};
 
 use std::{
     fs::File,
-    io::{BufReader, ErrorKind}, 
-    path::Path
+    io::{BufReader, ErrorKind},
+    path::Path,
 };
 
 // Responsible to determine where we're writing to (currently either stdout or another file)
@@ -19,8 +18,7 @@ pub struct DataParser {
 
 impl DataParser {
     pub fn parse_file(mut self, read_file_path: &Path) {
-
-        let file = File::open(&read_file_path);
+        let file = File::open(read_file_path);
 
         match file {
             Ok(file) => {
@@ -33,7 +31,7 @@ impl DataParser {
 
                     match data {
                         Ok(packet) => {
-                           self.write_decoded_packet(packet);
+                            self.write_decoded_packet(packet);
                         }
                         Err(e) => match e {
                             bincode::error::DecodeError::Io { inner, .. } => {
