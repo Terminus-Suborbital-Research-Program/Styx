@@ -1,0 +1,140 @@
+@startuml
+title <color:#CFECE7>Parallel Pointing + Streaming to Sounding Rocket (Relay)</color>
+
+skinparam backgroundColor #1E2230
+skinparam defaultFontColor #EAEAEA
+skinparam note {
+  BackgroundColor #5D6A87
+  BorderColor #CFECE7
+  FontColor #EAEAEA
+}
+skinparam sequence {
+  ArrowColor #CFECE7
+  LifeLineBorderColor #CFECE7
+  LifeLineBackgroundColor #5D6A87
+  ParticipantBorderColor #CFECE7
+  ParticipantBackgroundColor #2B3045
+  ParticipantFontColor #EAEf@startuml
+title <color:#CFECE7>Activity – Track Target & Transmit to Sounding Rocket in Parallel</color>
+skinparam shadowing false
+
+' ---- Global Colors ----
+skinparam backgroundColor #1E2230
+skinparam defaultFontColor #EAEAEA
+
+skinparam activity {
+  StartColor #4CAF50
+  EndColor #4CAF50
+  BackgroundColor #2B3045
+  BorderColor #CFECE7
+  FontColor #EAEAEA
+}
+skinparam partition {
+  BackgroundColor #2B3045
+  BorderColor #5D6A87
+  FontColor #CFECE7
+}
+skinparam diamond {
+  BackgroundColor #2B3045
+  BorderColor #CFECE7
+  FontColor #EAEAEA
+}
+skinparam arrow {
+  Color #CFECE7
+}
+skinparam note {
+  BackgroundColor #5D6A87
+  BorderColor #CFECE7
+  FontColor #EAEAEA
+}
+
+start
+:Enter science window;
+:Configure RF link (PLL, power, coding, Doppler);
+
+fork
+  partition "ADCS" {
+    :Fine pointing loop (10-20 Hz);
+    repeat
+      :Read sensors (q, omega);
+      :Apply wheel torques;
+      :MTQ desat when near-saturation;
+    repeat while (Window active)
+  }
+fork again
+  partition "Payload → OBC" {
+    :Start RF acquisition;
+    repeat
+      :Receive radio frames;
+      :CRC + packetize + prioritize;
+      :Enqueue to TX buffer;
+    repeat while (Window active)
+  }
+fork again
+  partition "RF Link ↔ Sounding Rocket" {
+    repeat
+      if (SR visible & link margin > thresh?) then (yes)
+        :Pull buffered chunks;
+        :Transmit to SR; receive ACK/NACK;
+        :Requeue NACK; update link stats;
+      else (no)
+        :Idle TX; continue buffering (drop low-pri if full);
+      endif
+    repeat while (Window active)
+  }
+end fork
+
+:Stop acquisition; close files;
+:Exit pointing loop;
+:Transmit leftovers on next SR contact;
+stop
+@enduml
+AEA
+  GroupBorderColor #5D6A87
+  GroupBackgroundColor #2B3045
+  GroupHeaderFontColor #CFECE7
+}
+
+participant OBC
+participant ADCS
+participant SNS as "Sensors"
+participant ACT as "Actuators"
+participant PAY as "Radio Payload"
+participant DHS as "Storage/Buffer"
+participant RF as "RF Link\n(UHF/S-band)"
+participant SR as "Sounding Rocket\n(Relay/Receiver)"
+
+== Start science window ==
+OBC -> ADCS : Begin target tracking
+OBC -> PAY  : Start RF acquisition (IQ/spectra)
+OBC -> RF   : Configure link (freq, power, modulation)
+OBC -> SR   : Link check / ranging
+
+par Pointing control loop
+  loop 10-20 Hz until window end
+    SNS --> ADCS : q, omega, status
+    ADCS -> ACT  : Wheel torques
+  end
+else Science data pipeline
+  loop continuous
+    PAY --> OBC : Radio data frames
+    OBC -> DHS  : Buffer + CRC + chunk + priority tags
+    alt SR in view & link OK
+      DHS -> RF : Dequeue chunks (rate-limit if needed)
+      RF --> SR : Stream science + TM
+      SR --> RF : ACK / NACK / rate hints
+      RF -> DHS : Re-queue NACKed chunks
+    else SR occluded / link bad
+      OBC -> DHS : Retain in ring buffer (QoS, drop oldest low-pri if full)
+    end
+  end
+end
+
+== Window end ==
+OBC -> PAY : Stop acquisition
+OBC -> ADCS: Exit tracking
+note over DHS,RF
+Remaining buffered chunks sent
+on next SR visibility
+end note
+@enduml
