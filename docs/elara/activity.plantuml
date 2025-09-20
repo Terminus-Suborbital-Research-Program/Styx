@@ -1,0 +1,75 @@
+@startuml
+title <color:#CFECE7>Activity – Track Target & Transmit to Sounding Rocket in Parallel</color>
+skinparam shadowing false
+
+' ---- Global Colors ----
+skinparam backgroundColor #1E2230
+skinparam defaultFontColor #EAEAEA
+
+skinparam activity {
+  StartColor #4CAF50
+  EndColor #4CAF50
+  BackgroundColor #2B3045
+  BorderColor #CFECE7
+  FontColor #EAEAEA
+}
+skinparam partition {
+  BackgroundColor #2B3045
+  BorderColor #5D6A87
+  FontColor #CFECE7
+}
+skinparam diamond {
+  BackgroundColor #2B3045
+  BorderColor #CFECE7
+  FontColor #EAEAEA
+}
+skinparam arrow {
+  Color #CFECE7
+}
+skinparam note {
+  BackgroundColor #5D6A87
+  BorderColor #CFECE7
+  FontColor #EAEAEA
+}
+
+start
+:Enter science window;
+:Configure RF link (PLL, power, coding, Doppler);
+
+fork
+  partition "ADCS" {
+    :Fine pointing loop (10-20 Hz);
+    repeat
+      :Read sensors (q, omega);
+      :Apply wheel torques;
+      :MTQ desat when near-saturation;
+    repeat while (Window active)
+  }
+fork again
+  partition "Payload → OBC → DHS" {
+    :Start RF acquisition;
+    repeat
+      :Receive radio frames;
+      :CRC + packetize + prioritize;
+      :Enqueue to TX buffer;
+    repeat while (Window active)
+  }
+fork again
+  partition "RF Link ↔ Sounding Rocket" {
+    repeat
+      if (SR visible & link margin > thresh?) then (yes)
+        :Pull buffered chunks;
+        :Transmit to SR; receive ACK/NACK;
+        :Requeue NACK; update link stats;
+      else (no)
+        :Idle TX; continue buffering (drop low-pri if full);
+      endif
+    repeat while (Window active)
+  }
+end fork
+
+:Stop acquisition; close files;
+:Exit pointing loop;
+:Transmit leftovers on next SR contact;
+stop
+@enduml
