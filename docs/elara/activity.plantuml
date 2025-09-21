@@ -1,11 +1,12 @@
 @startuml
-title <color:#CFECE7>Activity – Track Target & Transmit to Sounding Rocket in Parallel</color>
-skinparam shadowing false
+title <color:#CFECE7>Activity – Track Target & Transmit (Local Sub-GHz Wi-Fi)</color>
 
-' ---- Global Colors ----
+' --------- Global look ---------
+skinparam shadowing false
 skinparam backgroundColor #1E2230
 skinparam defaultFontColor #EAEAEA
 
+' --------- Activity theming ---------
 skinparam activity {
   StartColor #4CAF50
   EndColor #4CAF50
@@ -13,19 +14,15 @@ skinparam activity {
   BorderColor #CFECE7
   FontColor #EAEAEA
 }
+skinparam activityDiamondBackgroundColor #2B3045
+skinparam activityDiamondBorderColor #CFECE7
+skinparam activityDiamondFontColor #EAEAEA
 skinparam partition {
   BackgroundColor #2B3045
   BorderColor #5D6A87
   FontColor #CFECE7
 }
-skinparam diamond {
-  BackgroundColor #2B3045
-  BorderColor #CFECE7
-  FontColor #EAEAEA
-}
-skinparam arrow {
-  Color #CFECE7
-}
+skinparam ArrowColor #CFECE7
 skinparam note {
   BackgroundColor #5D6A87
   BorderColor #CFECE7
@@ -34,20 +31,20 @@ skinparam note {
 
 start
 :Enter science window;
-:Configure RF link (PLL, power, coding, Doppler);
+:Configure local sub-GHz Wi-Fi link;
 
 fork
   partition "ADCS" {
-    :Fine pointing loop (10-20 Hz);
+    :Fine pointing loop (10–20 Hz);
     repeat
-      :Read sensors (q, omega);
+      :Read sensors (q, ω);
       :Apply wheel torques;
-      :MTQ desat when near-saturation;
+      :MTQ desat near saturation;
     repeat while (Window active)
   }
 fork again
   partition "Payload → OBC → DHS" {
-    :Start RF acquisition;
+    :Start acquisition;
     repeat
       :Receive radio frames;
       :CRC + packetize + prioritize;
@@ -55,12 +52,12 @@ fork again
     repeat while (Window active)
   }
 fork again
-  partition "RF Link ↔ Sounding Rocket" {
+  partition "Local Wi-Fi ↔ Sounding Rocket" {
     repeat
       if (SR visible & link margin > thresh?) then (yes)
         :Pull buffered chunks;
-        :Transmit to SR; receive ACK/NACK;
-        :Requeue NACK; update link stats;
+        :Transmit; receive ACK/NACK;
+        :Re-queue NACK; update stats;
       else (no)
         :Idle TX; continue buffering (drop low-pri if full);
       endif
