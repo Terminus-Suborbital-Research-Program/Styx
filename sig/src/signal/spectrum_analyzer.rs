@@ -1,5 +1,5 @@
+use rustfft::{Fft, FftPlanner, num_complex::Complex};
 use std::sync::Arc;
-use rustfft::{FftPlanner, num_complex::Complex, Fft};
 
 use crate::signal::signal_config::SignalConfig;
 
@@ -26,12 +26,14 @@ impl SpectrumAnalyzer {
     // Note that this currently will scramble the time series vec so use only after original time series is logged
     // this way there is zero copy
     pub fn psd(&mut self, time_series: &mut Vec<Complex<f32>>) -> Vec<f32> {
-        self.fft.process_with_scratch(time_series, &mut self.scratch);
-        let mut power_spectrum: Vec<f32> = time_series.iter()
+        self.fft
+            .process_with_scratch(time_series, &mut self.scratch);
+        let mut power_spectrum: Vec<f32> = time_series
+            .iter()
             .map(|complex| complex.norm_sqr())
             .collect();
 
-        // Used to norm by signal length but that may be worse for chi - square 
+        // Used to norm by signal length but that may be worse for chi - square
         // because it allows signal loudness to affect fit, so normalizing by total energy for now instead
         let total_energy: f32 = power_spectrum.iter().sum();
         if total_energy > 0.0 {
@@ -56,5 +58,4 @@ impl SpectrumAnalyzer {
         }
         spectral_average
     }
-
 }

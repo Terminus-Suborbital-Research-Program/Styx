@@ -33,7 +33,7 @@ impl Cli {
         (radio_config, signal_config)
     }
 
-    pub fn run_commands() -> (bool, PathBuf){
+    pub fn run_commands() -> (bool, PathBuf) {
         let cli = Cli::parse();
         match &cli.command {
             Commands::Capture { output } => {

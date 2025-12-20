@@ -1,2 +1,2 @@
-pub mod sdr;
 pub mod radio_config;
+pub mod sdr;

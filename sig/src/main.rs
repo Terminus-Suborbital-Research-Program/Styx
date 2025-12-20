@@ -1,26 +1,25 @@
 use bincode::{Decode, Encode};
-use soapysdr::{Device, Direction, RxStream};
+use bincode::{
+    config::standard,
+    decode_from_slice, encode_into_slice,
+    serde::{decode_from_std_read, encode_into_std_write},
+};
 use core::{f32, num};
-use std::{fs, io::{BufWriter, Write, BufReader}};
-use bincode::{config::standard, encode_into_slice, decode_from_slice, serde::{encode_into_std_write, decode_from_std_read} };
 use rustfft::num_complex::Complex;
-
-
+use soapysdr::{Device, Direction, RxStream};
+use std::{
+    fs,
+    io::{BufReader, BufWriter, Write},
+};
 
 use sig::{
+    record::{
+        log::{SignalLogger, SignalReader},
+        packet::SdrPacket,
+    },
+    sdr::{radio_config::RadioConfig, sdr::SDR},
     signal::{estimator::MatchingEstimator, spectrum_analyzer::SpectrumAnalyzer},
     tools::cli::{Cli, Commands},
-    sdr::{
-        radio_config::RadioConfig,
-        sdr::SDR
-    },
-    record::{
-        log::{
-            SignalLogger,
-            SignalReader,
-        },
-        packet::SdrPacket,
-    }
 };
 
 fn main() {
@@ -30,7 +29,10 @@ fn main() {
     let (record_baseline, psd_path) = Cli::run_commands();
 
     let mut sdr = SDR::new(radio_config).unwrap();
-    let mut spectrum_analyzer = SpectrumAnalyzer::new(signal_config.down_size, radio_config.target_packet_size.clone());
+    let mut spectrum_analyzer = SpectrumAnalyzer::new(
+        signal_config.down_size,
+        radio_config.target_packet_size.clone(),
+    );
 
     let mut accumulator: Vec<Complex<f32>> = Vec::with_capacity(radio_config.target_packet_size);
 
@@ -57,12 +59,15 @@ fn main() {
 
         let power_spectrum = spectrum_analyzer.psd(&mut accumulator);
         let current_average = spectrum_analyzer.spectral_bin_avg(power_spectrum);
-       
-        let mut matching = MatchingEstimator::new(current_average, expected_average.clone(), signal_config.search_size.clone());
+
+        let mut matching = MatchingEstimator::new(
+            current_average,
+            expected_average.clone(),
+            signal_config.search_size.clone(),
+        );
         let estimate = matching.match_estimate_advanced();
-        
+
         println!("Estimate {}", estimate);
         accumulator.clear();
     }
 }
-        

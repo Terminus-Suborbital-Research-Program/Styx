@@ -15,17 +15,17 @@ impl SignalConfig {
         Self {
             capture_output,
             down_size,
-            search_size
+            search_size,
         }
     }
 }
 
 impl Default for SignalConfig {
     fn default() -> Self {
-        Self { 
+        Self {
             capture_output: PathBuf::from("capture.iq"),
-            down_size: 64, 
-            search_size: 100 
+            down_size: 64,
+            search_size: 100,
         }
     }
 }

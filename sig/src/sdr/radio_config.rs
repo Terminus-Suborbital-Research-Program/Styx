@@ -8,7 +8,6 @@ pub struct RadioConfig {
 }
 
 impl RadioConfig {
-
     /// Specify frequency and sample rate, gain and sizes controlled with builder functions
     pub fn new(frequency: f64, sample_rate: f64) -> Self {
         Self {
