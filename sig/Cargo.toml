@@ -1,0 +1,14 @@
+[package]
+name = "sig"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bincode = { version = "2.0.1", features = ["serde"] }
+clap = { version = "4.5.41", features = ["derive"] }
+heapless = "0.9.1"
+hypors = "0.3.0"
+num-complex = { version = "0.4.6", features = ["serde"] }
+rustfft = "6.4.1"
+serde = "1.0.228"
+soapysdr = "0.4.4"
