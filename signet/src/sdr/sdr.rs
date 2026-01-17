@@ -9,11 +9,12 @@ pub struct SDR {
     device: Device,
     stream: RxStream<Complex<f32>>,
     buffer: Vec<Complex<f32>>,
+    radio_conf: RadioConfig,
 }
 
 impl SDR {
     pub fn new(config: RadioConfig) -> Result<Self, String> {
-        let device = Device::new("").map_err(|e| e.to_string())?;
+        let device = Device::new("biastee=true").map_err(|e| e.to_string())?;
 
         device
             .set_frequency(Direction::Rx, 0, config.frequency, "")
@@ -37,13 +38,14 @@ impl SDR {
             device,
             stream,
             buffer: vec![Complex::new(0.0, 0.0); config.read_chunk_size],
+            radio_conf: config,
         })
     }
 
     pub fn fill_buffer(&mut self, accumulator: &mut Vec<Complex<f32>>) -> Result<u128, String> {
         let mut time_stamp = None;
 
-        while accumulator.len() < accumulator.capacity() {
+        while accumulator.len() < self.radio_conf.target_packet_size {
             let len = self
                 .stream
                 .read(&mut [&mut self.buffer], 100_000)

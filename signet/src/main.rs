@@ -21,7 +21,7 @@ fn main() {
         radio_config.target_packet_size.clone(),
     );
 
-    let mut accumulator: Vec<Complex<f32>> = Vec::with_capacity(radio_config.target_packet_size);
+    let mut accumulator: Vec<Complex<f32>> = Vec::with_capacity(radio_config.target_packet_size + radio_config.read_chunk_size);
 
     if record_baseline {
         let mut psd_recorder = SignalLogger::new(psd_path);

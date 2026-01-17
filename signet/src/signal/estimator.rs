@@ -189,8 +189,8 @@ impl MatchingEstimator {
 
         // if chi square is below 2.2, the exponentiated value is a small positive number
         // causing the result to be 1 / 1 + almost 1
-        let cutoff = 2.2;
-        let slope = 3.0;
+        let cutoff = 0.5;
+        let slope = 2.0;
         1.0 / (1.0 + (slope * (chi_square - cutoff)).exp())
     }
 
