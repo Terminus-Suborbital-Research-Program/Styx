@@ -2,6 +2,7 @@ use rustfft::{Fft, FftPlanner, num_complex::Complex};
 use std::sync::Arc;
 
 use crate::signal::signal_config::SignalConfig;
+use crate::sdr::radio_config::BUFF_SIZE;
 
 pub struct SpectrumAnalyzer {
     fft: Arc<dyn Fft<f32>>,
@@ -25,7 +26,7 @@ impl SpectrumAnalyzer {
     // Power Spectrum Density -> Take time series signal, convert to an fft power spectrum that can be compared with chi - square
     // Note that this currently will scramble the time series vec so use only after original time series is logged
     // this way there is zero copy
-    pub fn psd(&mut self, time_series: &mut Vec<Complex<f32>>) -> Vec<f32> {
+    pub fn psd(&mut self, time_series: &mut [Complex<f32>; BUFF_SIZE]) -> Vec<f32> {
         self.fft
             .process_with_scratch(time_series, &mut self.scratch);
         let mut power_spectrum: Vec<f32> = time_series

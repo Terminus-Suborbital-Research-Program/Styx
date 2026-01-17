@@ -12,3 +12,4 @@ num-complex = { version = "0.4.6", features = ["serde"] }
 rustfft = "6.4.1"
 serde = "1.0.228"
 soapysdr = "0.4.4"
+thiserror = "2.0.17"

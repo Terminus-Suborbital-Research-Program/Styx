@@ -4,7 +4,11 @@ use signet::{
         log::{SignalLogger, SignalReader},
         packet::SdrPacket,
     },
-    sdr::{radio_config::RadioConfig, sdr::SDR},
+    sdr::{radio_config::{
+        RadioConfig,
+        TARGET_PACKET_SIZE,
+        
+    }, sdr::SDR},
     signal::{estimator::MatchingEstimator, spectrum_analyzer::SpectrumAnalyzer},
     tools::cli::{Cli, Commands},
 };
@@ -18,15 +22,16 @@ fn main() {
     let mut sdr = SDR::new(radio_config).unwrap();
     let mut spectrum_analyzer = SpectrumAnalyzer::new(
         signal_config.down_size,
-        radio_config.target_packet_size.clone(),
+        TARGET_PACKET_SIZE,
     );
 
-    let mut accumulator: Vec<Complex<f32>> = Vec::with_capacity(radio_config.target_packet_size + radio_config.read_chunk_size);
+    // let mut accumulator: Vec<Complex<f32>> = Vec::with_capacity(radio_config.target_packet_size + radio_config.read_chunk_size);
 
+    // let mut accumulator: [Complex<f32>,radio_config.target_packet_size + radio_config.read_chunk_size] = []
     if record_baseline {
         let mut psd_recorder = SignalLogger::new(psd_path);
-        let _ = sdr.fill_buffer(&mut accumulator);
-        let power_spectrum = spectrum_analyzer.psd(&mut accumulator);
+        let (samples, time_stamp, samples_read) = sdr.read_and_timestamp().unwrap();
+        let power_spectrum = spectrum_analyzer.psd(&mut samples);
         let power_spectrum_bin_averaged = spectrum_analyzer.spectral_bin_avg(power_spectrum);
 
         psd_recorder.record_psd(power_spectrum_bin_averaged);
@@ -39,10 +44,10 @@ fn main() {
     let mut iq_recorder = SignalLogger::new(signal_config.capture_output.clone());
 
     loop {
-        let timestamp = sdr.fill_buffer(&mut accumulator).unwrap();
-        let packet = SdrPacket::new(timestamp, &accumulator);
+        let (samples, time_stamp, samples_read) = sdr.read_and_timestamp().unwrap();
+        let packet = SdrPacket::new(time_stamp, &samples);
         iq_recorder.log_packet(packet);
-        println!(" wrote packet: {} samples", accumulator.len());
+        println!(" wrote packet: {} samples", samples_read);
 
         let power_spectrum = spectrum_analyzer.psd(&mut accumulator);
         let current_average = spectrum_analyzer.spectral_bin_avg(power_spectrum);
