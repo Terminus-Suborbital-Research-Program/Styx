@@ -15,7 +15,6 @@ pub struct SDR {
     device: Device,
     stream: RxStream<Complex<f32>>,
     read_buffer: [Complex<f32>; READ_CHUNK_SIZE],
-    accumulator: [Complex<f32>; BUFF_SIZE],
 }
 
 impl SDR {
@@ -44,11 +43,10 @@ impl SDR {
             device,
             stream,
             read_buffer: [Complex::new(0.0, 0.0); READ_CHUNK_SIZE],
-            accumulator: [Complex::new(0.0, 0.0); BUFF_SIZE],
         })
     }
 
-    pub fn read_and_timestamp(&mut self) -> Result<([Complex<f32>; BUFF_SIZE], u128, usize), SignalError> {
+    pub fn read_and_timestamp(&mut self, slice: &mut [Complex<f32>]) -> Result<(u128, usize), SignalError> {
         let mut time_stamp = None;
         let mut head: usize = 0;
 
@@ -68,8 +66,8 @@ impl SDR {
                 );
             }
 
-            if end <= BUFF_SIZE {
-                self.accumulator[head..end].copy_from_slice(&self.read_buffer[..read_len]);
+            if end <= slice.len() {
+                slice[head..end].copy_from_slice(&self.read_buffer[..read_len]);
                 head = end;
             } else {
                 return Err(SignalError::PacketBufferOverflow(end));
@@ -79,6 +77,6 @@ impl SDR {
             // accumulator.extend_from_slice(&self.buffer[..len]);
         }
 
-        Ok((self.accumulator.clone(),time_stamp.unwrap_or(0), head))
+        Ok((time_stamp.unwrap_or(0), head))
     }
 }

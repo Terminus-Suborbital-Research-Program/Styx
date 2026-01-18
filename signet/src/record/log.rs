@@ -1,4 +1,4 @@
-use crate::record::packet::SdrPacket;
+use crate::record::packet::SdrPacketLog;
 use bincode::{
     config::standard,
     decode_from_slice, encode_into_slice,
@@ -23,7 +23,7 @@ impl SignalLogger {
         }
     }
 
-    pub fn log_packet(&mut self, packet: SdrPacket) {
+    pub fn log_packet(&mut self, packet: SdrPacketLog) {
         encode_into_std_write(&packet, &mut self.writer, standard()).unwrap();
     }
 

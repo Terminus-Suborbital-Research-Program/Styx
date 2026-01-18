@@ -2,11 +2,12 @@ use rustfft::num_complex::Complex;
 use signet::{
     record::{
         log::{SignalLogger, SignalReader},
-        packet::SdrPacket,
+        packet::SdrPacketLog,
     },
     sdr::{radio_config::{
         RadioConfig,
         TARGET_PACKET_SIZE,
+        BUFF_SIZE
         
     }, sdr::SDR},
     signal::{estimator::MatchingEstimator, spectrum_analyzer::SpectrumAnalyzer},
@@ -27,10 +28,10 @@ fn main() {
 
     // let mut accumulator: Vec<Complex<f32>> = Vec::with_capacity(radio_config.target_packet_size + radio_config.read_chunk_size);
 
-    // let mut accumulator: [Complex<f32>,radio_config.target_packet_size + radio_config.read_chunk_size] = []
+    let mut samples: [Complex<f32>;BUFF_SIZE] = [Complex::new(0.0, 0.0); BUFF_SIZE];
     if record_baseline {
         let mut psd_recorder = SignalLogger::new(psd_path);
-        let (samples, time_stamp, samples_read) = sdr.read_and_timestamp().unwrap();
+        let (time_stamp, samples_read) = sdr.read_and_timestamp(&mut samples).unwrap();
         let power_spectrum = spectrum_analyzer.psd(&mut samples);
         let power_spectrum_bin_averaged = spectrum_analyzer.spectral_bin_avg(power_spectrum);
 
@@ -44,12 +45,12 @@ fn main() {
     let mut iq_recorder = SignalLogger::new(signal_config.capture_output.clone());
 
     loop {
-        let (samples, time_stamp, samples_read) = sdr.read_and_timestamp().unwrap();
-        let packet = SdrPacket::new(time_stamp, &samples);
+        let (time_stamp, samples_read) = sdr.read_and_timestamp(&mut samples).unwrap();
+        let packet = SdrPacketLog::new(time_stamp, samples_read,&samples);
         iq_recorder.log_packet(packet);
         println!(" wrote packet: {} samples", samples_read);
 
-        let power_spectrum = spectrum_analyzer.psd(&mut accumulator);
+        let power_spectrum = spectrum_analyzer.psd(&mut samples);
         let current_average = spectrum_analyzer.spectral_bin_avg(power_spectrum);
 
         let mut matching = MatchingEstimator::new(
@@ -60,6 +61,5 @@ fn main() {
         let estimate = matching.match_estimate_advanced();
 
         println!("Estimate {}", estimate);
-        accumulator.clear();
     }
 }

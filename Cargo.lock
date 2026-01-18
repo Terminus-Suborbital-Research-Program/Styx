@@ -1111,6 +1111,8 @@ dependencies = [
 name = "odin-compute"
 version = "0.1.0"
 dependencies = [
+ "rtrb",
+ "rustfft",
  "signet",
 ]
 
@@ -1370,6 +1372,12 @@ checksum = "c1ce3b019009cff02cb6b0e96e7cc2e5c5b90187dc1a490f8ef1521d0596b026"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "rtrb"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad8388ea1a9e0ea807e442e8263a699e7edcb320ecbcd21b4fa8ff859acce3ba"
 
 [[package]]
 name = "rustc-hash"
