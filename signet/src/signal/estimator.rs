@@ -1,8 +1,8 @@
 use hypors::chi_square;
 
 pub struct MatchingEstimator {
-    expected_power_spectrum: Vec<f32>,
-    current_power_spectrum: Vec<f32>,
+    pub expected_power_spectrum: Vec<f32>,
+    pub current_power_spectrum: Vec<f32>,
     max_shift: usize,
 }
 

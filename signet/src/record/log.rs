@@ -16,15 +16,15 @@ pub struct SignalLogger {
 }
 
 impl SignalLogger {
-    pub fn new(file_path: PathBuf) -> Self {
+    pub fn new(file_path: &str) -> Self {
         let file = File::create(file_path).expect("Could not open baseline file!");
         Self {
             writer: BufWriter::new(file),
         }
     }
 
-    pub fn log_packet(&mut self, packet: SdrPacketLog) {
-        encode_into_std_write(&packet, &mut self.writer, standard()).unwrap();
+    pub fn log_packet(&mut self, packet: &SdrPacketLog) {
+        encode_into_std_write(packet, &mut self.writer, standard()).unwrap();
     }
 
     pub fn record_psd(&mut self, power_spectrum_bin_averaged: Vec<f32>) {
@@ -36,7 +36,7 @@ pub struct SignalReader {
     reader: BufReader<File>,
 }
 impl SignalReader {
-    pub fn new(file_path: PathBuf) -> Self {
+    pub fn new(file_path: &str) -> Self {
         let file = File::open(file_path).expect("Could not open baseline file!");
         Self {
             reader: BufReader::new(file),

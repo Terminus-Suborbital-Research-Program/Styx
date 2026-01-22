@@ -6,4 +6,5 @@ edition = "2024"
 [dependencies]
 rtrb = "0.3.2"
 rustfft = "6.4.1"
+serde_arrays = "0.2.0"
 signet = { path="../signet"}

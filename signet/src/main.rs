@@ -30,7 +30,7 @@ fn main() {
 
     let mut samples: [Complex<f32>;BUFF_SIZE] = [Complex::new(0.0, 0.0); BUFF_SIZE];
     if record_baseline {
-        let mut psd_recorder = SignalLogger::new(psd_path);
+        let mut psd_recorder = SignalLogger::new(psd_path.to_str().unwrap());
         let (time_stamp, samples_read) = sdr.read_and_timestamp(&mut samples).unwrap();
         let power_spectrum = spectrum_analyzer.psd(&mut samples);
         let power_spectrum_bin_averaged = spectrum_analyzer.spectral_bin_avg(power_spectrum);
@@ -38,16 +38,16 @@ fn main() {
         psd_recorder.record_psd(power_spectrum_bin_averaged);
         return;
     }
-    let mut signal_reader = SignalReader::new(psd_path);
+    let mut signal_reader = SignalReader::new(psd_path.to_str().unwrap());
     let expected_average = signal_reader.read_psd();
     println!("Baseline loaded: {} bins", expected_average.len());
 
-    let mut iq_recorder = SignalLogger::new(signal_config.capture_output.clone());
+    let mut iq_recorder = SignalLogger::new(signal_config.capture_output.clone().to_str().unwrap());
 
     loop {
         let (time_stamp, samples_read) = sdr.read_and_timestamp(&mut samples).unwrap();
-        let packet = SdrPacketLog::new(time_stamp, samples_read,&samples);
-        iq_recorder.log_packet(packet);
+        let packet = SdrPacketLog::new(time_stamp, samples_read,samples);
+        iq_recorder.log_packet(&packet);
         println!(" wrote packet: {} samples", samples_read);
 
         let power_spectrum = spectrum_analyzer.psd(&mut samples);

@@ -11,5 +11,6 @@ hypors = "0.3.0"
 num-complex = { version = "0.4.6", features = ["serde"] }
 rustfft = "6.4.1"
 serde = "1.0.228"
+serde_arrays = "0.2.0"
 soapysdr = "0.4.4"
 thiserror = "2.0.17"
