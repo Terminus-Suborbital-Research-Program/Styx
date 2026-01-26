@@ -1,8 +1,17 @@
 {
     "rust-analyzer.linkedProjects": [
         "Cargo.toml",
-        "atmega2560/Cargo.toml",
-        "bcm2711/Cargo.toml",
-        "rp235xx/Cargo.toml",
+        "machines/atmega2560/Cargo.toml",
+        "machines/pi-5/jupiter-fsw/Cargo.toml",
+        "machines/pi-5/odin/Cargo.toml",
+        "machines/rp235xx/Cargo.toml",
+        "sensors/bme280/Cargo.toml",
+        "sensors/bmi323-rs/Cargo.toml",
+        "sensors/bmm350/Cargo.toml",
+        "sensors/bmm350-rs/Cargo.toml",
+        "sensors/cd74hc4067/Cargo.toml",
+        "sensors/ina260/Cargo.toml",
+        "common/signet/Cargo.toml",
+        "common/messages/Cargo.toml",
     ]
 }

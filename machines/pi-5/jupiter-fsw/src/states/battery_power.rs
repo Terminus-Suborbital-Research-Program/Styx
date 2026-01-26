@@ -1,0 +1,35 @@
+#![warn(missing_docs)]
+
+use bin_packets::phases::JupiterPhase;
+use log::info;
+
+use crate::states::shutdown::Shutdown;
+
+use super::traits::{StateContext, ValidState};
+
+/// JUPITER PHASE: Battery Power
+///
+/// S
+#[derive(Debug, Clone, Default)]
+pub struct BatteryPower {}
+
+// For this - we're going to pull low at estimated T+600 seconds always, it's not informed by a pin
+// the latch is triggered on entering this state, not by this state
+static POWEROFF_T_TIME_SECS: i32 = 570;
+
+impl ValidState for BatteryPower {
+    fn phase(&self) -> JupiterPhase {
+        JupiterPhase::BatteryPower
+    }
+
+    fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
+        if ctx.t_time > POWEROFF_T_TIME_SECS {
+            info!("Powering off latch");
+            ctx.atmega.deactivate_latch();
+            Box::new(Shutdown::enter())
+        } else {
+            // No change
+            Box::new(Self::default())
+        }
+    }
+}

@@ -1,0 +1,84 @@
+[package]
+name = "icarus"
+version = "0.1.1"
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+# HAL for the RP350X architecture
+rp235x-hal = {git = "https://github.com/cantudo/rp-hal.git", features = [
+    "binary-info",
+    "critical-section-impl",
+    "rt",
+    "defmt",
+    "rtic-monotonic",
+    "dcp-fast-f64",
+], optional = true } # Embedded-hal for io traits
+
+embedded-hal-bus = { version = "0.3.0", features = ["async", "defmt-03"] }
+# Rust safe bindings to register-level control
+embedded-hal = "1.0.0"
+embedded_hal_0_2 = {package = "embedded-hal", version = "0.2.7"}
+embedded-hal-async = "1.0"
+embedded-io = "0.6.1"
+
+# Cortex-M peripherals
+cortex-m = "0.7.7"
+# RTIC for real-time operations
+rtic = { version = "2.1.2" }
+rtic-monotonics = "2.0.3"
+
+rtic-sync = "*"
+# USB Device Support
+usb-device = "0.3.2"
+usbd-serial = "0.2.2"
+fugit = "0.3.7"
+
+# logging
+defmt = {workspace = true}
+defmt-rtt = {workspace = true}
+heapless = {workspace = true}
+bincode = { workspace = true, features = ["derive"], default-features = false }
+
+# Packets
+bin-packets = { path = "../../../common/messages/bin-packets" }
+futures = { version = "0.3.31", default-features = false, features = [
+    "async-await",
+] }
+rp235x-pac = "0.1.0"
+
+# Sensors
+uom = {version = "*", default-features = false, features = ["si", "f32"]}
+bme280 = {path="../../../sensors/bme280", features = ["async", "defmt"] }
+ina260_terminus = { path = "../../../sensors/ina260", features = ["async", "defmt"] }
+bmi323 = {path="../../../sensors/bmi323-rs", features = ["async", "defmt"]}
+bmm350 = {path="../../../sensors/bmm350-rs", features = ["async", "defmt"]}
+cd74hc4067 = {path="../../../sensors/cd74hc4067", features = ["defmt"]}
+
+
+# Communications
+hc12-rs = { git = "https://github.com/thelenlucas/hc12-rs.git", tag = "v0.0.1" }
+
+# Math
+nalgebra = { version = "*", default-features = false, features = [
+    "libm-force",
+] }
+minikalman = { version = "0.6.0", features = [
+    "nalgebra",
+    "libm",
+] } #https://docs.rs/minikalman/latest/minikalman/
+
+# WGS84
+wgs84 = { git = "https://github.com/MeechaelA/WGS84.git" }
+# Earth Atmosphere
+united_states_standard_atmosphere = { git = "https://github.com/MeechaelA/UnitedStatesStandardAtmosphere.git" }
+tinyframe = { version = "0.1.0", path = "../../tinyframe" }
+
+# Target features
+[features]
+default = ["rp2350"]
+rp2350 = [
+    "dep:rp235x-hal",
+    "rtic-monotonics/rp235x",
+    "rtic/thumbv8main-backend",
+]
