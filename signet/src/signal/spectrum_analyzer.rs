@@ -2,7 +2,10 @@ use rustfft::{Fft, FftPlanner, num_complex::Complex};
 use std::sync::Arc;
 
 use crate::signal::signal_config::SignalConfig;
-use crate::sdr::radio_config::BUFF_SIZE;
+use crate::sdr::radio_config::{
+    BUFF_SIZE,
+    TARGET_PACKET_SIZE,
+};
 
 pub struct SpectrumAnalyzer {
     fft: Arc<dyn Fft<f32>>,
@@ -27,9 +30,9 @@ impl SpectrumAnalyzer {
     // Note that this currently will scramble the time series vec so use only after original time series is logged
     // this way there is zero copy
     // Fine not being fixed size?
-    pub fn psd(&mut self, time_series: &mut [Complex<f32>]) -> Vec<f32> {
+    pub fn psd(&mut self, time_series: &mut [Complex<f32>; BUFF_SIZE]) -> Vec<f32> {
         self.fft
-            .process_with_scratch(time_series, &mut self.scratch);
+            .process_with_scratch(&mut time_series[..TARGET_PACKET_SIZE], &mut self.scratch);
         let mut power_spectrum: Vec<f32> = time_series
             .iter()
             .map(|complex| complex.norm_sqr())

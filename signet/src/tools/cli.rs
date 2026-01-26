@@ -9,7 +9,7 @@ pub struct Cli {
     #[arg(short, long, default_value_t = 101.1e6)]
     pub frequency: f64,
 
-    #[arg(short, long, default_value_t = 2.048e6)]
+    #[arg(short, long, default_value_t = 3.0e6)]
     pub sample_rate: f64,
 
     #[arg(short, long, default_value_t = 64)]

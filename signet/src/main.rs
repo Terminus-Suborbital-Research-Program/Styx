@@ -44,6 +44,11 @@ fn main() {
 
     let mut iq_recorder = SignalLogger::new(signal_config.capture_output.clone().to_str().unwrap());
 
+    let mut matching = MatchingEstimator::new(
+            expected_average.clone(),
+            signal_config.search_size.clone(),
+        );
+
     loop {
         let (time_stamp, samples_read) = sdr.read_and_timestamp(&mut samples).unwrap();
         let packet = SdrPacketLog::new(time_stamp, samples_read,samples);
@@ -51,14 +56,10 @@ fn main() {
         println!(" wrote packet: {} samples", samples_read);
 
         let power_spectrum = spectrum_analyzer.psd(&mut samples);
-        let current_average = spectrum_analyzer.spectral_bin_avg(power_spectrum);
+        let mut current_average = spectrum_analyzer.spectral_bin_avg(power_spectrum);
 
-        let mut matching = MatchingEstimator::new(
-            current_average,
-            expected_average.clone(),
-            signal_config.search_size.clone(),
-        );
-        let estimate = matching.match_estimate_advanced();
+        
+        let estimate = matching.match_estimate_advanced(&mut current_average);
 
         println!("Estimate {}", estimate);
     }

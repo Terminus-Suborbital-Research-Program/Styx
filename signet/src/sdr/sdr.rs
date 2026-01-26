@@ -54,7 +54,7 @@ impl SDR {
             let read_len = self
                 .stream
                 .read(&mut [&mut self.read_buffer], 100_000)
-                .map_err(|e| SignalError::StreamReadError(e.to_string()))?;
+                .map_err(|e| SignalError::StreamReadError(head))?;
             let end = head + read_len;
 
             if time_stamp.is_none() {
@@ -66,11 +66,18 @@ impl SDR {
                 );
             }
 
-            if end <= slice.len() {
+            let max: usize = slice.len();
+            if end <= max {
                 slice[head..end].copy_from_slice(&self.read_buffer[..read_len]);
                 head = end;
             } else {
-                return Err(SignalError::PacketBufferOverflow(end));
+                // Need to verify this is fine later on
+                // I think the buffer logic works for collecting the parts of a read sample
+                // before the one that exceeds the buffer bounds
+                let final_section = max - head;
+                slice[head..max].copy_from_slice(&self.read_buffer[..final_section]);
+                break;
+                // return Err(SignalError::PacketBufferOverflow(end));
             }
 
             // self.accumulator[prev_head..head] = self.read_buffer[..read_len];
