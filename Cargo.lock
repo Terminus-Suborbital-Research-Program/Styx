@@ -11,7 +11,7 @@ checksum = "512761e0bb2578dd7380c6baaa0f4ce03e84f95e960231d1dec8bf4d7d6e2627"
 [[package]]
 name = "aether"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#8d07347b4302c98520450c933dc102bd258eb6c8"
+source = "git+https://github.com/Ethan-Pascuales/aether.git#e5ecea902143f71238cd0aeb05399e6831fc56f2"
 dependencies = [
  "aether_benchmark",
  "aether_core",
@@ -29,7 +29,7 @@ dependencies = [
 [[package]]
 name = "aether_benchmark"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#8d07347b4302c98520450c933dc102bd258eb6c8"
+source = "git+https://github.com/Ethan-Pascuales/aether.git#e5ecea902143f71238cd0aeb05399e6831fc56f2"
 dependencies = [
  "minstant",
  "once_cell",
@@ -38,8 +38,9 @@ dependencies = [
 [[package]]
 name = "aether_core"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#8d07347b4302c98520450c933dc102bd258eb6c8"
+source = "git+https://github.com/Ethan-Pascuales/aether.git#e5ecea902143f71238cd0aeb05399e6831fc56f2"
 dependencies = [
+ "bincode",
  "num-traits",
  "serde",
 ]
@@ -47,7 +48,7 @@ dependencies = [
 [[package]]
 name = "aether_examples"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#8d07347b4302c98520450c933dc102bd258eb6c8"
+source = "git+https://github.com/Ethan-Pascuales/aether.git#e5ecea902143f71238cd0aeb05399e6831fc56f2"
 dependencies = [
  "aether_core",
 ]
@@ -55,12 +56,12 @@ dependencies = [
 [[package]]
 name = "aether_fluids"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#8d07347b4302c98520450c933dc102bd258eb6c8"
+source = "git+https://github.com/Ethan-Pascuales/aether.git#e5ecea902143f71238cd0aeb05399e6831fc56f2"
 
 [[package]]
 name = "aether_graphics"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#8d07347b4302c98520450c933dc102bd258eb6c8"
+source = "git+https://github.com/Ethan-Pascuales/aether.git#e5ecea902143f71238cd0aeb05399e6831fc56f2"
 dependencies = [
  "aether_core",
  "num-traits",
@@ -69,7 +70,7 @@ dependencies = [
 [[package]]
 name = "aether_ml"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#8d07347b4302c98520450c933dc102bd258eb6c8"
+source = "git+https://github.com/Ethan-Pascuales/aether.git#e5ecea902143f71238cd0aeb05399e6831fc56f2"
 dependencies = [
  "aether_core",
  "aether_opt",
@@ -83,7 +84,7 @@ dependencies = [
 [[package]]
 name = "aether_models"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#8d07347b4302c98520450c933dc102bd258eb6c8"
+source = "git+https://github.com/Ethan-Pascuales/aether.git#e5ecea902143f71238cd0aeb05399e6831fc56f2"
 dependencies = [
  "aether_core",
 ]
@@ -91,7 +92,7 @@ dependencies = [
 [[package]]
 name = "aether_opt"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#8d07347b4302c98520450c933dc102bd258eb6c8"
+source = "git+https://github.com/Ethan-Pascuales/aether.git#e5ecea902143f71238cd0aeb05399e6831fc56f2"
 dependencies = [
  "aether_core",
  "aether_rand",
@@ -101,12 +102,12 @@ dependencies = [
 [[package]]
 name = "aether_rand"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#8d07347b4302c98520450c933dc102bd258eb6c8"
+source = "git+https://github.com/Ethan-Pascuales/aether.git#e5ecea902143f71238cd0aeb05399e6831fc56f2"
 
 [[package]]
 name = "aether_shapes"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#8d07347b4302c98520450c933dc102bd258eb6c8"
+source = "git+https://github.com/Ethan-Pascuales/aether.git#e5ecea902143f71238cd0aeb05399e6831fc56f2"
 dependencies = [
  "aether_core",
  "num-traits",
@@ -115,7 +116,7 @@ dependencies = [
 [[package]]
 name = "aether_stats"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#8d07347b4302c98520450c933dc102bd258eb6c8"
+source = "git+https://github.com/Ethan-Pascuales/aether.git#e5ecea902143f71238cd0aeb05399e6831fc56f2"
 dependencies = [
  "aether_core",
  "aether_opt",

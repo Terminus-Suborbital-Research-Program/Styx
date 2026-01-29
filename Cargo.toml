@@ -7,7 +7,7 @@ members = [
   "common",
   "jupiter-fsw",
   "signet"
-, "odin-compute"]
+, "odin/odin-compute"]
 resolver = "3"
 
 excluded = ["sensors", "rp23xx"]

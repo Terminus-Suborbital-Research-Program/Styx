@@ -15,10 +15,10 @@ use bincode::serde::{encode_into_slice, EncodeError};
 //Fake number for now
 const JUPITER_ADDRESS: &str = "127.0.0.1:34254";
 
-use std::net::UdpSocket;
+use std::{net::UdpSocket, time::Duration};
 
 use std::thread;
-use rtrb::{RingBuffer, PushError, PopError, PeekError};
+use rtrb::{PeekError, PopError, PushError, RingBuffer, chunks::ChunkError};
 mod tasks;
 use tasks::signal_read::SDRListener;
 fn main() {
@@ -59,33 +59,45 @@ fn main() {
     // let (amt, src) = socket.recv_from(&mut buf)?;
     let signal_process_task = thread::spawn(move || {
         let mut cnt = 0;
-        match samples_consumer.read_chunk(1) {
-            Ok(mut read_chunk) => {
-                let (slc_1, slc_2) = read_chunk.as_mut_slices();
-                let sdr_packet = &mut slc_1[0];
-                // signal_logger.log_packet(sdr_packet);
-                // let  buf: &mut [u8] = ;
-                encode_into_slice(&sdr_packet,  packet_buf.as_mut_slice(), standard());
-                socket.send(&packet_buf);
+        loop {
+            match samples_consumer.read_chunk(1) {
+                Ok(mut read_chunk) => {
+                    let (slc_1, slc_2) = read_chunk.as_mut_slices();
+                    let sdr_packet = &mut slc_1[0];
+                    // signal_logger.log_packet(sdr_packet);
+                    
+                    if let Ok(bytes_written) = encode_into_slice(&sdr_packet,  packet_buf.as_mut_slice(), standard()) {
+                        if let Err(e) = socket.send(&packet_buf) {
+                            eprintln!("Error sending packet: {}", e);
+                        }
+                    } else {
+                        eprintln!("Error encoding packet");
+                    }
 
-                cnt += 1;
-                if cnt > 30 {
-                    // In theory this should never have samples below target packet size, so this should be valid
-                    // but need to recheck later
-                    // let mut samples = &mut sdr_packet.samples[..sdr_packet.sample_count];
+                    cnt += 1;
+                    if cnt > 30 {
+                        // In theory this should never have samples below target packet size, so this should be valid
+                        // but need to recheck later
+                        // let mut samples = &mut sdr_packet.samples[..sdr_packet.sample_count];
 
-                    // This is not reresentative of how we should actually do it because we need to downa
-                    let power_spectrum = spectrum_analyzer.psd(&mut sdr_packet.samples);
-                    let mut current_average = spectrum_analyzer.spectral_bin_avg(power_spectrum);
+                        // This is not reresentative of how we should actually do it because we need to downa
+                        let power_spectrum = spectrum_analyzer.psd(&mut sdr_packet.samples);
+                        let mut current_average = spectrum_analyzer.spectral_bin_avg(power_spectrum);
 
-                    let estimate = matching.match_estimate_advanced(&mut current_average);
+                        let estimate = matching.match_estimate_advanced(&mut current_average);
 
-                    println!("Estimate {}", estimate);
-                    cnt = 0;
+                        println!("Estimate {}", estimate);
+                        cnt = 0;
+                    }
+
+                    read_chunk.commit(1);
                 }
-            }
-            Err(e) => {
-                eprintln!("Error getting read chunk {}", e)
+                Err(e) => {
+                    eprintln!("Error getting read chunk {}, likely consuming too fast", e);
+                    // Need to benchmark to see if this case ever comes up, and if so can I introduce minor buffering
+                    // with a sleep so that read thread can catch up
+                    // std::thread::sleep(Duration::from_millis(10));
+                }
             }
         }
     });

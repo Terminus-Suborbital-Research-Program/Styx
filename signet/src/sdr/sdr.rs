@@ -46,7 +46,7 @@ impl SDR {
         })
     }
 
-    pub fn read_and_timestamp(&mut self, slice: &mut [Complex<f32>]) -> Result<(u128, usize), SignalError> {
+    pub fn read_and_timestamp(&mut self, slice: &mut [Complex<f32>; BUFF_SIZE]) -> Result<(u128, usize), SignalError> {
         let mut time_stamp = None;
         let mut head: usize = 0;
 
