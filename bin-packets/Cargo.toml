@@ -5,11 +5,16 @@ edition = "2021"
 publish = false
 
 [dependencies]
+# Interim this points to Ethan's fork, but should be restored to the main branch in the future
+aether = {git = "https://github.com/Ethan-Pascuales/aether.git", features = ["serde", "bincode"]}
+
+# , features = ["serde"]
 bincode = { version = "*", features = ["derive"], default-features = false }
 defmt = { version = "*" }
 embedded-io = { version = "0.6.1", features = ["defmt-03"] }
 heapless = { version = "0.8.0", features = ["defmt-03"] }
 serde = { version = "*", features = ["derive"], default-features = false }
+
 
 [features]
 default = []
