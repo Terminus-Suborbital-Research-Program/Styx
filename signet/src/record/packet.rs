@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use crate::sdr::radio_config::BUFF_SIZE;
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone, Copy)]
 pub struct SdrPacketLog{
     pub timestamp: u128,
     pub sample_count: usize,

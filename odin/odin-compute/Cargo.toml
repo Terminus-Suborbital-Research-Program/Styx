@@ -9,3 +9,7 @@ rustfft = "6.4.1"
 serde_arrays = "0.2.0"
 bincode = { version = "2.0.1", features = ["serde"] }
 signet = { path="../../signet"}
+bin-packets = { path = "../../bin-packets", features = ["std"] }
+thiserror = "2.0.18"
+wayfarer = { git = "https://github.com/Terminus-Suborbital-Research-Program/Wayfarer.git", version = "0.1.0" }
+

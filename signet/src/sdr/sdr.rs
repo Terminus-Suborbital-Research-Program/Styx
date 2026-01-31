@@ -71,6 +71,8 @@ impl SDR {
                 slice[head..end].copy_from_slice(&self.read_buffer[..read_len]);
                 head = end;
             } else {
+
+                eprintln!("This should not be hit");
                 // Need to verify this is fine later on
                 // I think the buffer logic works for collecting the parts of a read sample
                 // before the one that exceeds the buffer bounds

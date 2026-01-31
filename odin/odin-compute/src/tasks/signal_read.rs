@@ -49,7 +49,7 @@ impl SDRListener {
                             }
 
                             Err(e) => {
-                                eprintln!("{}",e)
+                                eprintln!("Error reading signal from SDR: {}",e)
                             }
                         }
                     }
