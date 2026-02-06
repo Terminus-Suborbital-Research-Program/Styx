@@ -1,13 +1,39 @@
 [workspace]
 members = [
-  "gs-cli",
-  "data-cli",
-  "bin-packets",
-  "tinyframe",
-  "common",
-  "jupiter-fsw",
-  "signet"
-, "odin/odin-compute"]
+  "common/messages/bin-packets",
+  "common/messages/tinyframe",
+  "common/signet",
+  "common/states",
+  "ground/data-cli",
+  "ground/gs-cli",
+  "machines/pi-5/jupiter-fsw",
+  "machines/pi-5/odin-compute",
+  # "machines/rp235xx/elara",
+  # "machines/rp235xx/elara",
+  # "machines/rp235xx/ejector",
+  "sensors/bme280",
+  "sensors/bmi323-rs",
+  "sensors/bmm350-rs",
+  "sensors/cd74hc4067",
+  "sensors/ina260",
+]
 resolver = "3"
 
-excluded = ["sensors", "rp23xx"]
+[workspace.dependencies]
+bincode = {version = "2.0.1"}
+aether_core = {git = "https://github.com/AtmoPierce/aether.git", "package" = "aether_core"}
+defmt = {version = "*"}
+defmt-rtt = {version = "*"}
+heapless = {version = "*"}
+
+[profile.dev]
+panic = "abort"
+lto = true
+opt-level = "s"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+debug = true
+lto = true
+opt-level = "s"
