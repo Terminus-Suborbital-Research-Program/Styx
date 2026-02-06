@@ -17,7 +17,7 @@ use signet::{
 };
 
 pub struct SignalProcessor {
-    packet_receiver: Receiver<SdrPacketLog>,
+    packet_receiver: Receiver<Box<SdrPacketLog>>,
     quality_estimate_sender: Sender<f32>,
     spectrum_analyzer: SpectrumAnalyzer,
     matching: MatchingEstimator,
@@ -28,8 +28,8 @@ impl SignalProcessor{
     pub fn new(
         spectrum_analyzer: SpectrumAnalyzer,
         matching: MatchingEstimator,
-    ) -> (Self, Sender<SdrPacketLog>, Receiver<f32>) {
-        // Channel for sending raw SDR packets TO the worker
+    ) -> (Self, Sender<Box<SdrPacketLog>>, Receiver<f32>) {
+        // Channel for sending boxed SDR packets TO the worker (avoids 557KB stack copies)
         let (packet_tx, packet_rx) = channel();
         // Channel for receiving quality estimates FROM the worker
         let (estimate_tx, estimate_rx) = channel();
@@ -47,7 +47,7 @@ impl SignalProcessor{
     // Not true default as it does not implement the trait. This simply hides away the logic of 
     // initiallizing signal processing components like the analyzer and estimator, for convenience
     // of reading in the main loop.
-    pub fn default() -> (Self, Sender<SdrPacketLog>, Receiver<f32>) {
+    pub fn default() -> (Self, Sender<Box<SdrPacketLog>>, Receiver<f32>) {
         // Initialize resources - where do we get a comparison from, by what factor do 
         // we bin our psd?
         let psd_path = "./comp.psd";
@@ -65,24 +65,27 @@ impl SignalProcessor{
         SignalProcessor::new(spectrum_analyzer, matching)
     }
 
-    pub fn begin_signal_processing(mut self)  -> JoinHandle<()>  {
-        let signal_process_task = thread::spawn(move || {
-            loop {
-                if let Ok(mut sdr_packet) = self.packet_receiver.recv_timeout(Duration::from_micros(100)){
-                    // Process
-                    let power_spectrum = self.spectrum_analyzer.psd(&mut sdr_packet.samples);
-                    let mut current_average = self.spectrum_analyzer.spectral_bin_avg(power_spectrum);
+    pub fn begin_signal_processing(mut self) -> JoinHandle<()> {
+        let signal_process_task = thread::Builder::new()
+            .name("signal-processor".into())
+            .stack_size(4 * 1024 * 1024) 
+            .spawn(move || {
+                loop {
+                    if let Ok(mut sdr_packet) = self.packet_receiver.recv_timeout(Duration::from_micros(100)) {
+                        let power_spectrum = self.spectrum_analyzer.psd(&mut sdr_packet.samples);
+                        let mut current_average = self.spectrum_analyzer.spectral_bin_avg(power_spectrum);
 
                     // Estimate
                     let estimate = self.matching.match_estimate_advanced(&mut current_average);
 
                     // Send Results
                     if let Err(e) = self.quality_estimate_sender.send(estimate) {
-                        eprintln!("Error sending packet: {}", e);
+                        eprintln!("Error sending estimate: {}", e);
                     }
                 }
             }
-        });
+        })
+        .expect("Failed to spawn signal processing thread");
         signal_process_task
     }
 }

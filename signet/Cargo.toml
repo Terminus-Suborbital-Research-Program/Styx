@@ -5,10 +5,12 @@ edition = "2024"
 
 [dependencies]
 bincode = { version = "2.0.1", features = ["serde"] }
+bytemuck = { version = "1.21.0", features = ["derive"] }
+bytemuck_derive = "1.10.2"
 clap = { version = "4.5.41", features = ["derive"] }
 heapless = "0.9.1"
 hypors = "0.3.0"
-num-complex = { version = "0.4.6", features = ["serde"] }
+num-complex = { version = "0.4.6", features = ["serde", "bytemuck"] }
 rustfft = "6.4.1"
 serde = "1.0.228"
 serde_arrays = "0.2.0"
