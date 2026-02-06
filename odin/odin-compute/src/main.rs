@@ -2,17 +2,11 @@ mod networking;
 mod tasks;
 
 use std::{
-    fs::{File, OpenOptions},
-    io::{BufReader, BufWriter, Read, Write},
-    mem,
-    net::{TcpListener, TcpStream, UdpSocket},
-    thread,
-    time::Duration,
+   fs::{File, OpenOptions}, io::{BufReader, BufWriter, Read, Write}, mem, net::{TcpListener, TcpStream, UdpSocket}, thread, time::Duration
 };
 
 use bincode::{
-    config::standard,
-    serde::{decode_from_reader, decode_from_slice, encode_into_slice},
+    config::{standard, Configuration, LittleEndian, NoLimit, Varint}, error::DecodeError, serde::{decode_from_reader, decode_from_slice, encode_into_slice}
 };
 use env_logger::{Builder, Target};
 use log::{error, info, LevelFilter};
@@ -45,6 +39,7 @@ fn main() {
 
     // start_test_tcp_receiver();
     verify_recording("sdr_recording.bin");
+    info!("Passed");
     start_file_recorder();
 
     std::thread::sleep(Duration::from_millis(500));
@@ -53,6 +48,8 @@ fn main() {
     let mut stream = TcpStream::connect("127.0.0.1:7878").expect("Failed to connect to Jupiter");
     stream.set_nonblocking(true).expect("Failed to set non-blocking");
     stream.set_write_timeout(Some(Duration::from_micros(100))).unwrap();
+    
+    std::thread::sleep(Duration::from_millis(500));
 
     // Increase TCP buffer size for throughput
     // let _ = stream.set_write_timeout(Some(Duration::from_micros(100)));
@@ -77,25 +74,18 @@ fn main() {
                         let (slc_1, _slc_2) = read_chunk.as_mut_slices();
                         let sdr_packet = &mut slc_1[0];
 
-                        // let byte_slice = bytes_of(sdr_packet);
-                        // let packet: &SdrPacketLog = from_bytes(byte_slice);
-                        // assert_eq!(sdr_packet, packet, "Byte casting must be guaranteed");
 
                         if let Ok(bytes_written) = encode_into_slice(&sdr_packet,  packet_buf.as_mut_slice(), standard()) {
                             // if let Err(e) = socket.send(&packet_buf) {
                             //     error!("Error sending packet: {}", e);
                             // }
-
                             if let Err(e) = stream.write_all(&packet_buf[..bytes_written]) {
                                 error!("Error sending packet: {}", e);
                             }
 
-
                         } else {
                             error!("Error encoding packet");
                         }
-
-
 
                         cnt += 1;
                         if cnt % 30 == 0 {
@@ -120,84 +110,17 @@ fn main() {
     
     // Main thread waits for IO thread (which runs forever)
     io_handle.join().expect("IO thread panicked");
-
-
-    
 }
-
-
-
-fn start_test_receiver() {
-    thread::spawn(move || {
-        let receiver_socket = UdpSocket::bind("127.0.0.1:34254").expect("Failed to bind receiver");
-        let mut buf = [0u8; BUFF_SIZE];
-
-        info!("Test receiver listening on 127.0.0.1:34254...");
-
-        loop {
-            match receiver_socket.recv_from(&mut buf) {
-                Ok((amt, _src)) => {
-                    // Decode the packet to verify integrity
-                    let config = bincode::config::standard();
-                    match bincode::serde::decode_from_slice::<SdrPacketOwned, _>(&buf[..amt], config) {
-                        Ok((packet, _len)) => {
-                            info!("Received packet at time: {}. Samples: {}", 
-                                packet.timestamp, 
-                                packet.sample_count);
-                        }
-                        Err(e) => error!("Failed to decode test packet: {}", e),
-                    }
-                }
-                Err(e) => error!("Receiver error: {}", e),
-            }
-        }
-    });
-}
-
-
-fn start_test_tcp_receiver() {
-    thread::Builder::new()
-        .name("tcp-receiver".into())
-        .stack_size(8 * 1024 * 1024) 
-        .spawn(move || {
-        // let listener = TcpListener::bind("127.0.0.1:34254").expect("Failed to bind TCP listener");
-        let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
-        info!("Test TCP receiver listening on 127.0.0.1:34254...");
-
-        // Accept incoming connections
-        for stream in listener.incoming() {
-            match stream {
-                Ok(stream) => {
-                    info!("New connection established: {:?}", stream.peer_addr());
-                    let mut reader = BufReader::new(stream);
-                    loop {
-                        // std::thread::sleep(Duration::from_micros(500));
-                        info!("ALive");
-                        if let Ok(sdr_packet_owned)  = decode_from_reader::<SdrPacketLog,_,_>(&mut reader, standard()) {
-                            info!("Decoded");
-
-                        } else {
-                            // std::thread::sleep(Duration::from_millis(500));
-
-                            error!("Not decoded");
-                        }
-                    }
-                    
-                },
-                Err(e) => error!("Connection failed: {}", e),
-            }
-        }
-    }).unwrap();
-}
-
-
 
 fn start_file_recorder() {
     thread::Builder::new()
         .name("tcp-recorder".into())
+        .stack_size(4 * 1024 * 1024) 
         .spawn(move || {
             let listener = TcpListener::bind("127.0.0.1:7878").expect("Failed to bind");
             info!("Recorder listening on 127.0.0.1:7878...");
+
+            let mut buffer = [0u8; BUFF_SIZE * 10];
 
             for stream in listener.incoming() {
                 match stream {
@@ -205,21 +128,33 @@ fn start_file_recorder() {
                         info!("Connection established: {:?}", stream.peer_addr());
 
                         let file = OpenOptions::new()
-                            .create(true)
                             .write(true)
-                            .append(true) 
+                            .create(true)
+                            .truncate(true)
+                            // .append(true) 
                             .open("sdr_recording.bin")
                             .expect("Failed to open recording file");
 
+
                         let mut writer = BufWriter::with_capacity(1 * 1024 * 1024, file);
 
-                        match std::io::copy(&mut stream, &mut writer) {
-                            Ok(bytes_count) => {
-                                info!("Connection closed. Wrote {} bytes to disk.", bytes_count);
-                            },
-                            Err(e) => error!("Stream interrupted: {}", e),
+                        loop {
+                            match stream.read(&mut buffer) {
+                                Ok(0) => {
+                                    info!("Sender disconnected. Closing file.");
+                                    break;
+                                }
+                                Ok(bytes_read) => {
+                                    if let Err(e) = writer.write(&buffer[..bytes_read])  {
+                                        error!("Error writing encoded data {}", e);
+                                    }
+                                }
+
+                                Err(e) => {
+                                    error!("Error reading from socket{}", e);
+                                }
+                            }
                         }
-                        
                         let _ = writer.flush();
                     },
                     Err(e) => error!("Connection failed: {}", e),
@@ -232,52 +167,29 @@ fn start_file_recorder() {
 fn verify_recording(filepath: &str) {
     info!("Verifying recording from: {}", filepath);
     let file = File::open(filepath).expect("File not found");
+
+    let mut reader = BufReader::new(file);
+
+    let packet_size = mem::size_of::<SdrPacketLog>();
     
-    thread::Builder::new()
-        .name("Verifier".into())
-        .stack_size(8 * 1024 * 1024)
-        .spawn(move || {
+    let mut buffer = vec![0u8; packet_size];
+    let mut count = 0;
 
-        let mut reader = BufReader::new(file);
+    let config = standard();
 
-        let packet_size = mem::size_of::<SdrPacketLog>();
-        
-        let mut buffer = vec![0u8; packet_size];
-        let mut count = 0;
-
-        loop {
-            match reader.read_exact(&mut buffer) {
-                Ok(_) => {
-                    
-                    match decode_from_slice::<SdrPacketLog, _>(&buffer, standard()) {
-                        Ok((packet, _len)) => {
-                            if count % 10 == 0 {
-                                info!("Packet #{}: TS={} SampleCount={}", 
-                                    count, packet.timestamp, packet.sample_count);
-                            }
-                            count += 1;
-                        },
-                        Err(e) => {
-                            error!("Corrupt packet at index {}: {}", count, e);
-                            // break;
-                        }
-                    }
-                }
-                Err(e) => {
-                    if e.kind() == std::io::ErrorKind::UnexpectedEof {
-                        info!("End of file reached. Total verified packets: {}", count);
-                    } else {
-                        error!("File read error: {}", e);
-                    }
-                    break;
-                }
+    loop {
+        count += 1;
+        match  decode_from_reader::<SdrPacketLog,&mut BufReader<File>,Configuration<LittleEndian, Varint, NoLimit>>(&mut reader, config) {
+            Ok(sdr_packet) => {
+            info!("Packet #{}: TS={} SampleCount={}", 
+                                count, sdr_packet.timestamp, sdr_packet.sample_count);
             }
-        }
-
-            
-    }).unwrap();
-
-    
+            Err(e) => {
+                error!("File read error: {}", e);
+                break;
+            }
+        } 
+    }
 }
 
 

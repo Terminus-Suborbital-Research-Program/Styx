@@ -14,9 +14,12 @@ use rustfft::{num_complex::Complex, num_traits::{Zero, zero}};
 use std::thread;
 // use rtrb::{RingBuffer, PushError, PopError, PeekError};
 use rtrb::{Producer, PushError, PopError, PeekError};
+use log::{error, info, LevelFilter};
 
 
-
+use bincode::{
+    config::standard, serde::{decode_from_reader, decode_from_slice, encode_into_slice}
+};
 
 pub struct SDRListener {}
 
@@ -34,7 +37,10 @@ impl SDRListener {
         let mut sdr = SDR::new(mini_config).map_err(|s| format!("SDR Not Found {s}"))?;
 
         // Repeatedly push to spsc with new data
-        let signal_read_handle = thread::spawn(move || {
+        let signal_read_handle = thread::Builder::new()
+        .name("Signal Read".into())
+        .stack_size(2 * 1024 * 1024)
+        .spawn(move || {
             loop {
                 match samples_producer.write_chunk(1) {
                     Ok(mut write_chunk) => {
@@ -58,7 +64,7 @@ impl SDRListener {
                     }
                 }
             }
-        });
+        }).unwrap();
         Ok(signal_read_handle)
     }
 

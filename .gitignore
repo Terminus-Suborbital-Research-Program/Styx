@@ -21,3 +21,5 @@ ejector/Cargo.lock
 
 # Don't include the result folder
 result
+
+*.txt
