@@ -1,9 +1,0 @@
-[build]
-target = "avr-none"
-rustflags = ["-C", "target-cpu=atmega2560"]
-
-[target.avr-none]
-runner = "ravedude"
-
-[unstable]
-build-std = ["core"]

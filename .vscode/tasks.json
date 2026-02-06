@@ -10,7 +10,7 @@
                 "isDefault": true
             },
             "options": {
-                "cwd": "${workspaceFolder}/rp235xx"
+                "cwd": "${workspaceFolder}/machines/rp235xx"
             },
             "problemMatcher": []
         }
