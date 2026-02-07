@@ -1,41 +1,29 @@
 use embedded_hal::{digital::OutputPin, pwm::SetDutyCycle};
-use rp235x_hal::pwm::Channel;
+use rp235x_hal::pwm::{Channel, FreeRunning, Slice, A};
 
 pub enum ElectroMagnetPolarity {
     State1,
     State2,
 }
 
-pub struct HBridge<P1, P2, P3> 
+pub struct HBridge<C1, C2, P3>
 where
-    P1: OutputPin,
-    P2: OutputPin,
+    C1: SetDutyCycle,
+    C2: SetDutyCycle,
     P3: OutputPin,
 {
-    input_pin1: P1,
-    input_pin2: P2,
-    sleep_pin : P3,
+    input_pin1: C1,
+    input_pin2: C2,
+    sleep_pin: P3,
 }
 
-impl<P1, P2, P3> HBridge<P1, P2, P3> {
-    pub fn new(_in_pin1: P1, _in_pin2: P2, _in_pin3: P3) -> Self {
-        Self { input_pin1: _in_pin1, input_pin2: _in_pin2, sleep_pin: _in_pin3 }
-    }
-
-    pub fn pin1_high(&mut self) -> () {
-        self.input_pin1.set_high().unwrap();
-    }
-
-    pub fn pin1_low(&mut self) -> () {
-        self.input_pin1.set_low().unwrap();
-    }
-
-    pub fn pin2_high(&mut self) -> () {
-        self.input_pin2.set_high().unwrap();
-    }
-
-    pub fn pin2_low(&mut self) -> () {
-        self.input_pin2.set_low().unwrap();
+impl<C1: SetDutyCycle, C2: SetDutyCycle, P3: OutputPin> HBridge<C1, C2, P3> {
+    pub fn new(_in_pin1: C1, _in_pin2: C2, _in_pin3: P3) -> Self {
+        Self {
+            input_pin1: _in_pin1,
+            input_pin2: _in_pin2,
+            sleep_pin: _in_pin3,
+        }
     }
 
     pub fn sleep_pin_high(&mut self) -> () {
@@ -47,38 +35,43 @@ impl<P1, P2, P3> HBridge<P1, P2, P3> {
     }
 }
 
-pub struct ElectroMagnet<C, P1, P2, P3> {
-    channel: C,
-    h_bridge: HBridge<P1, P2, P3>,
+pub struct ElectroMagnet<C1, C2, P3>
+where
+    C1: SetDutyCycle,
+    C2: SetDutyCycle,
+    P3: OutputPin,
+{
+    duty_cycle_: u16,
+    h_bridge: HBridge<C1, C2, P3>,
     polarity: ElectroMagnetPolarity,
 }
 
-impl<C, P1, P2, P3> ElectroMagnet<C, P1, P2, P3>
+impl<C1, C2, P3> ElectroMagnet<C1, C2, P3>
 where
-C: Channel,
-    P1: OutputPin,
-    P2: OutputPin,
+    C1: SetDutyCycle,
+    C2: SetDutyCycle,
     P3: OutputPin,
 {
-    pub fn new(channel: C, _h: HBridge<P1, P2, P3>, _polarity: ElectroMagnetPolarity) -> Self {
+    pub fn new(_hbridge: HBridge<C1, C2, P3>, _polarity: ElectroMagnetPolarity) -> Self {
         Self {
-            channel,
-            h_bridge: _h,
+            duty_cycle_: 0,
+            h_bridge: _hbridge,
             polarity: _polarity,
         }
     }
 
+    // TODO: Make sure th electromag starts in attract mode
     pub fn polarity_switch(&mut self) -> () {
         match self.polarity {
-            (ElectroMagnetPolarity::State1) => {
+            ElectroMagnetPolarity::State1 => {
                 self.polarity = ElectroMagnetPolarity::State2;
-                self.h_bridge.pin1_low();
-                self.h_bridge.pin2_high();
+                self.h_bridge.input_pin1.set_duty_cycle(self.duty_cycle_);
+                self.h_bridge.input_pin2.set_duty_cycle(0);
             }
-            (ElectroMagnetPolarity::State2) => {
+            ElectroMagnetPolarity::State2 => {
                 self.polarity = ElectroMagnetPolarity::State1;
-                self.h_bridge.pin1_high();
-                self.h_bridge.pin2_low();
+                self.h_bridge.input_pin1.set_duty_cycle(0);
+                self.h_bridge.input_pin2.set_duty_cycle(self.duty_cycle_);
             }
         }
     }
@@ -91,8 +84,23 @@ C: Channel,
         self.h_bridge.sleep_pin.set_high().unwrap();
     }
 
-    pub fn set_duty_cycle(&mut self, _duty_cycle: f32) -> () {
-        self.channel.set_duty_cycle(_duty_cycle).unwrap();
+    pub fn set_duty_cycle(&mut self, _duty_cycle: u16) -> () {
+        self.duty_cycle_ = _duty_cycle;
+        match self.polarity {
+            ElectroMagnetPolarity::State1 => {
+                self.h_bridge
+                    .input_pin1
+                    .set_duty_cycle(self.duty_cycle_)
+                    .unwrap();
+                self.h_bridge.input_pin2.set_duty_cycle(0).unwrap();
+            }
+            ElectroMagnetPolarity::State2 => {
+                self.h_bridge.input_pin1.set_duty_cycle(0).unwrap();
+                self.h_bridge
+                    .input_pin2
+                    .set_duty_cycle(self.duty_cycle_)
+                    .unwrap();
+            }
+        }
     }
-
 }
