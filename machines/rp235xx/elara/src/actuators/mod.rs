@@ -1,2 +1,2 @@
-pub mod servo;
 pub mod electromag;
+pub mod servo;

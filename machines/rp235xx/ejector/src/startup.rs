@@ -148,7 +148,74 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         clocks.peripheral_clock.freq(),
     )
     .unwrap();
-    
+
+    // Pin setup for UART1
+    let uart1_pins = (
+        bank0_pins.gpio8.into_function(),
+        bank0_pins.gpio9.into_function(),
+    );
+    let mut radio_uart: RadioUart =
+        UartPeripheral::new(ctx.device.UART1, uart1_pins, &mut ctx.device.RESETS)
+            .enable(
+                UartConfig::new(9600_u32.Hz(), DataBits::Eight, None, StopBits::One),
+                clocks.peripheral_clock.freq(),
+            )
+            .unwrap();
+    radio_uart.enable_rx_interrupt(); // Make sure we can drive our interrupts
+    //let hc_programming_pin: RadioProgrammingPin = bank0_pins.gpio20.into_push_pull_output();
+    //let builder = hc12_rs::device::HC12Builder::<(), (), (), ()>::empty()
+    //    .uart(radio_uart, B9600)
+    //    .programming_resources(hc_programming_pin, timer)
+    //    .fu3(HC12Configuration::default());
+
+    //let radio = match builder.attempt_build() {
+    //    Ok(link) => {
+    //        info!("HC-12 init, link ready");
+    //        link
+    //    }
+    //    Err(e) => {
+    //        panic!("Failed to init HC-12: {}", e.0);
+    //    }
+    //};
+
+    // Transition to AT mode
+    info!("Programming HC12...");
+    //let radio = radio.into_at_mode().unwrap(); // Infallible
+    timer_two.delay_ms(300);
+    //let radio = match radio.set_baudrate(B9600) {
+    //    Ok(link) => {
+    //        info!("HC12 baudrate set to 9600");
+    //        link
+    //    }
+    //    Err(e) => {
+    //        warn!("Failed to set HC12 baudrate: {:?}", e.error);
+    //        e.hc12
+    //    }
+    //};
+    timer_two.delay_ms(300);
+    //let radio = match radio.set_channel(Channel::Channel1) {
+    //    Ok(link) => {
+    //        info!("HC12 channel set to 1");
+    //        link
+    //    }
+    //    Err(e) => {
+    //        warn!("Failed to set HC12 channel: {:?}", e.error);
+    //        e.hc12
+    //    }
+    //};
+    timer_two.delay_ms(300);
+   // let hc = match radio.set_power(Power::P8) {
+   //     Ok(link) => {
+   //         info!("HC12 power set to P8");
+   //         link
+   //     }
+   //     Err(e) => {
+   //         warn!("Failed to set HC12 power: {:?}", e.error);
+   //         e.hc12
+   //     }
+   // };
+   // let hc: EjectorHC12 = hc.into_fu3_mode().unwrap(); // Infallible
+
     // Servo
     let pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
     let mut ejection_servo_pwm = pwm_slices.pwm0;
@@ -179,6 +246,29 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     let mut ejector_magnet = ElectroMagnet::new(
         HBridge::new(echannel_a, echannel_b, emag_arming_pin),
+        ElectroMagnetPolarity::State1,
+    );
+
+    // Add emag variable
+    let mut echannel_a = ejection_emag_pwm.channel_a;
+    let mut echannel_b = ejection_emag_pwm.channel_b;
+
+    //let mut rt = bank0_pins.gpio20.into_push_pull_output();
+
+    let emag_pwm_pin1 = echannel_b.output_to(bank0_pins.gpio21);
+    let emag_pwm_pin2 = echannel_a.output_to(bank0_pins.gpio20);
+    //emag_pwm_pin1.
+    let emag_arming_pin = bank0_pins.gpio22.into_push_pull_output();
+
+    //let emag_channels = (echannel_a, echannel_b);
+
+    let mut ejector_magnet = ElectroMagnet::new(
+        
+        HBridge::new(
+            echannel_a,
+        echannel_b,
+            emag_arming_pin,
+        ),
         ElectroMagnetPolarity::State1,
     );
     // Create ejector servo
