@@ -17,6 +17,9 @@ pub struct SDR {
     read_buffer: [Complex<f32>; READ_CHUNK_SIZE],
 }
 
+use log::{error, info, LevelFilter};
+
+
 impl SDR {
     pub fn new(config: RadioConfig) -> Result<Self, String> {
         let device = Device::new("biastee=true").map_err(|e| e.to_string())?;
@@ -70,15 +73,7 @@ impl SDR {
             if end <= max {
                 slice[head..end].copy_from_slice(&self.read_buffer[..read_len]);
                 head = end;
-            } else {
-                // Need to verify this is fine later on
-                // I think the buffer logic works for collecting the parts of a read sample
-                // before the one that exceeds the buffer bounds
-                let final_section = max - head;
-                slice[head..max].copy_from_slice(&self.read_buffer[..final_section]);
-                break;
-                // return Err(SignalError::PacketBufferOverflow(end));
-            }
+            } 
 
             // self.accumulator[prev_head..head] = self.read_buffer[..read_len];
             // accumulator.extend_from_slice(&self.buffer[..len]);
