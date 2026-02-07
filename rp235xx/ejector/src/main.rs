@@ -42,6 +42,7 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 )]
 mod app {
 
+    use crate::actuators::electromag::ElectroMagnet;
     use crate::actuators::servo::EjectorServo;
     use crate::device_constants::pins::CamMosfetPin;
     use crate::device_constants::{
@@ -57,6 +58,7 @@ mod app {
 
     use heapless::Deque;
     use rp235x_hal::adc::AdcFifo;
+    use rp235x_hal::pwm::{Channel, FreeRunning, Slice, A, B};
     use rp235x_hal::uart::UartPeripheral;
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
@@ -69,6 +71,13 @@ mod app {
         ),
     >;
 
+    // TODO: Set proper pins
+    pub type EjectorMagnet = ElectroMagnet<
+        Channel<Slice<rp235x_hal::pwm::Pwm2, FreeRunning>, A>,
+        Channel<Slice<rp235x_hal::pwm::Pwm2, FreeRunning>, B>,
+        gpio::Pin<gpio::bank0::Gpio22, gpio::FunctionSioOutput, gpio::PullDown>,
+    >;
+
     #[shared]
     pub struct Shared {
         pub downlink_packets: Deque<ApplicationPacket, 128>,
@@ -77,15 +86,17 @@ mod app {
 
     #[local]
     pub struct Local {
+        // TODO: Add
         pub onboard_led: OnboardLED,
         pub ejector_servo: EjectorServo,
+        pub ejecctor_magnet: EjectorMagnet,
         pub arming_led: RedLed,
         pub packet_led: GreenLed,
         pub ejection_pin: EjectionDetectionPin,
         pub downlink: JupiterUart,
         pub camera_mosfet: CamMosfetPin,
         pub geiger_fifo: Option<AdcFifo<'static, u16>>,
-        pub radio: EjectorHC12,
+        //pub radio: EjectorHC12,
     }
 
     #[init(local = [adc: Option<hal::Adc> = None])]
@@ -95,7 +106,7 @@ mod app {
 
     extern "Rust" {
         // Sequences the ejection
-        #[task(local = [ejection_pin, arming_led, ejector_servo],  priority = 1)]
+        #[task(local = [ejection_pin, arming_led, ejector_servo, ejecctor_magnet],  priority = 1)]
         async fn ejector_sequencer(mut ctx: ejector_sequencer::Context);
 
         // Sequences cameras activation
@@ -107,7 +118,7 @@ mod app {
         async fn heartbeat(mut ctx: heartbeat::Context);
 
         // Reads incoming packets from the radio
-        #[task(local = [downlink, packet_led, radio], shared = [downlink_packets], priority = 1)]
+        #[task(local = [downlink, packet_led, /*radio*/], shared = [downlink_packets], priority = 1)]
         async fn radio_read(mut ctx: radio_read::Context);
 
         #[task(binds = ADC_IRQ_FIFO, priority = 3, shared = [samples_buffer], local = [geiger_fifo, counter: usize = 1])]

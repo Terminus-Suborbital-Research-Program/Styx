@@ -15,6 +15,7 @@ use rp235x_hal::uart::{DataBits, StopBits, UartConfig, UartPeripheral};
 use rp235x_hal::{Clock, Sio, Watchdog};
 use rtic_monotonics::Monotonic;
 
+use crate::actuators::electromag::{ElectroMagnet, ElectroMagnetPolarity, HBridge};
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
 use crate::device_constants::pins::{CamMosfetPin, RadioProgrammingPin};
 use crate::device_constants::{
@@ -139,72 +140,100 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             )
             .unwrap();
     radio_uart.enable_rx_interrupt(); // Make sure we can drive our interrupts
-    let hc_programming_pin: RadioProgrammingPin = bank0_pins.gpio20.into_push_pull_output();
-    let builder = hc12_rs::device::HC12Builder::<(), (), (), ()>::empty()
-        .uart(radio_uart, B9600)
-        .programming_resources(hc_programming_pin, timer)
-        .fu3(HC12Configuration::default());
+    //let hc_programming_pin: RadioProgrammingPin = bank0_pins.gpio20.into_push_pull_output();
+    //let builder = hc12_rs::device::HC12Builder::<(), (), (), ()>::empty()
+    //    .uart(radio_uart, B9600)
+    //    .programming_resources(hc_programming_pin, timer)
+    //    .fu3(HC12Configuration::default());
 
-    let radio = match builder.attempt_build() {
-        Ok(link) => {
-            info!("HC-12 init, link ready");
-            link
-        }
-        Err(e) => {
-            panic!("Failed to init HC-12: {}", e.0);
-        }
-    };
+    //let radio = match builder.attempt_build() {
+    //    Ok(link) => {
+    //        info!("HC-12 init, link ready");
+    //        link
+    //    }
+    //    Err(e) => {
+    //        panic!("Failed to init HC-12: {}", e.0);
+    //    }
+    //};
 
     // Transition to AT mode
     info!("Programming HC12...");
-    let radio = radio.into_at_mode().unwrap(); // Infallible
+    //let radio = radio.into_at_mode().unwrap(); // Infallible
     timer_two.delay_ms(300);
-    let radio = match radio.set_baudrate(B9600) {
-        Ok(link) => {
-            info!("HC12 baudrate set to 9600");
-            link
-        }
-        Err(e) => {
-            warn!("Failed to set HC12 baudrate: {:?}", e.error);
-            e.hc12
-        }
-    };
+    //let radio = match radio.set_baudrate(B9600) {
+    //    Ok(link) => {
+    //        info!("HC12 baudrate set to 9600");
+    //        link
+    //    }
+    //    Err(e) => {
+    //        warn!("Failed to set HC12 baudrate: {:?}", e.error);
+    //        e.hc12
+    //    }
+    //};
     timer_two.delay_ms(300);
-    let radio = match radio.set_channel(Channel::Channel1) {
-        Ok(link) => {
-            info!("HC12 channel set to 1");
-            link
-        }
-        Err(e) => {
-            warn!("Failed to set HC12 channel: {:?}", e.error);
-            e.hc12
-        }
-    };
+    //let radio = match radio.set_channel(Channel::Channel1) {
+    //    Ok(link) => {
+    //        info!("HC12 channel set to 1");
+    //        link
+    //    }
+    //    Err(e) => {
+    //        warn!("Failed to set HC12 channel: {:?}", e.error);
+    //        e.hc12
+    //    }
+    //};
     timer_two.delay_ms(300);
-    let hc = match radio.set_power(Power::P8) {
-        Ok(link) => {
-            info!("HC12 power set to P8");
-            link
-        }
-        Err(e) => {
-            warn!("Failed to set HC12 power: {:?}", e.error);
-            e.hc12
-        }
-    };
-    let hc: EjectorHC12 = hc.into_fu3_mode().unwrap(); // Infallible
+   // let hc = match radio.set_power(Power::P8) {
+   //     Ok(link) => {
+   //         info!("HC12 power set to P8");
+   //         link
+   //     }
+   //     Err(e) => {
+   //         warn!("Failed to set HC12 power: {:?}", e.error);
+   //         e.hc12
+   //     }
+   // };
+   // let hc: EjectorHC12 = hc.into_fu3_mode().unwrap(); // Infallible
 
     // Servo
     let pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
-    let mut ejection_pwm = pwm_slices.pwm0;
-    ejection_pwm.enable();
-    ejection_pwm.set_div_int(48);
+    let mut ejection_servo_pwm = pwm_slices.pwm0;
+    ejection_servo_pwm.enable();
+    ejection_servo_pwm.set_div_int(48);
+
+    let mut ejection_emag_pwm = pwm_slices.pwm2;
+    ejection_emag_pwm.enable();
+    ejection_emag_pwm.set_div_int(48);
+
     // Pin for servo mosfet digital
     let mut mosfet_pin: EjectionServoMosfet = bank0_pins.gpio1.into_push_pull_output();
     mosfet_pin.set_low().unwrap();
-    let mut channel_a = ejection_pwm.channel_a;
+    let mut channel_a = ejection_servo_pwm.channel_a;
     let channel_pin = channel_a.output_to(bank0_pins.gpio0);
     channel_a.set_enabled(true);
     let ejection_servo = Servo::new(channel_a, channel_pin, mosfet_pin);
+
+    // Add emag variable
+    let mut echannel_a = ejection_emag_pwm.channel_a;
+    let mut echannel_b = ejection_emag_pwm.channel_b;
+
+    //let mut rt = bank0_pins.gpio20.into_push_pull_output();
+
+    let emag_pwm_pin1 = echannel_b.output_to(bank0_pins.gpio21);
+    let emag_pwm_pin2 = echannel_a.output_to(bank0_pins.gpio20);
+    //emag_pwm_pin1.
+    let emag_arming_pin = bank0_pins.gpio22.into_push_pull_output();
+
+    //let emag_channels = (echannel_a, echannel_b);
+
+    let mut ejector_magnet = ElectroMagnet::new(
+        
+        HBridge::new(
+            echannel_a,
+        echannel_b,
+            emag_arming_pin,
+        ),
+        ElectroMagnetPolarity::State1,
+    );
     // Create ejector servo
     let mut ejector_servo: EjectorServo = EjectorServo::new(ejection_servo);
     ejector_servo.enable();
@@ -236,13 +265,14 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             samples_buffer: [0u16; SAMPLE_COUNT],
         },
         Local {
-            radio: hc,
+            //radio: hc,
             geiger_fifo: Some(geiger_fifo),
             camera_mosfet: cam_pin,
             onboard_led: led_pin,
             downlink: jupiter_uart,
             ejector_servo,
             ejection_pin: gpio_detect,
+            ejecctor_magnet: ejector_magnet,
             arming_led: red_led_pin,
             packet_led: packet_indicator,
         },
