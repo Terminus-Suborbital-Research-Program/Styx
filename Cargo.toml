@@ -25,6 +25,8 @@ aether_core = {git = "https://github.com/AtmoPierce/aether.git", "package" = "ae
 defmt = {version = "*"}
 defmt-rtt = {version = "*"}
 heapless = {version = "*"}
+bin-packets = {path="common/messages/bin-packets"}
+
 
 [profile.dev]
 panic = "abort"

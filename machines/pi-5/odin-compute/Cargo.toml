@@ -10,7 +10,7 @@ serde_arrays = "0.2.0"
 serde = "1.0.228"
 bincode = { version = "2.0.1", features = ["serde"] }
 signet = { path="../../../common/signet"}
-bin-packets = { path = "../../bin-packets", features = ["std"] }
+bin-packets = { workspace = true, features = ["std"] }
 thiserror = "2.0.18"
 wayfarer = { git = "https://github.com/Terminus-Suborbital-Research-Program/Wayfarer.git", version = "0.1.0" }
 bytemuck = "1.25.0"
