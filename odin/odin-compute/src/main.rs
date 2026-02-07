@@ -113,6 +113,11 @@ fn main() {
 }
 
 fn start_file_recorder() {
+
+    if std::path::Path::new("sdr_recording.bin").exists() {
+        let _ = std::fs::remove_file("sdr_recording.bin");
+    }
+
     thread::Builder::new()
         .name("tcp-recorder".into())
         .stack_size(4 * 1024 * 1024) 
@@ -145,7 +150,7 @@ fn start_file_recorder() {
                                     break;
                                 }
                                 Ok(bytes_read) => {
-                                    if let Err(e) = writer.write(&buffer[..bytes_read])  {
+                                    if let Err(e) = writer.write_all(&buffer[..bytes_read])  {
                                         error!("Error writing encoded data {}", e);
                                     }
                                 }
@@ -165,9 +170,14 @@ fn start_file_recorder() {
 }
 
 fn verify_recording(filepath: &str) {
+
+    if !std::path::Path::new(filepath).exists() {
+        info!("No recording file found to verify.");
+        return;
+    }
+    
     info!("Verifying recording from: {}", filepath);
     let file = File::open(filepath).expect("File not found");
-
     let mut reader = BufReader::new(file);
 
     let packet_size = mem::size_of::<SdrPacketLog>();
