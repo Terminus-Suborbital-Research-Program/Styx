@@ -1,6 +1,4 @@
-//! Code for the Ejector's servo control
-
-#![warn(missing_docs, clippy::unwrap_used)]
+#![warn(missing_docs)]
 
 use embedded_hal::{digital::OutputPin, pwm::SetDutyCycle};
 use rp235x_hal::{

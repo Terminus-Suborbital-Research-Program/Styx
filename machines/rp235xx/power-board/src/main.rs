@@ -1,6 +1,7 @@
 #![warn(missing_docs)]
 #![no_std]
 #![no_main]
+#![warn(missing_docs)]
 
 
 pub mod device_constants;

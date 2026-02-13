@@ -1,6 +1,4 @@
-//! Guard code for the Ejector
-
-#![warn(missing_docs, clippy::unwrap_used)]
+#![warn(missing_docs)]
 
 use embedded_hal::i2c::I2c;
 
