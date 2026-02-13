@@ -1,5 +1,6 @@
 #![no_std]
 #![no_main]
+#![warn(missing_docs)]
 
 // Our Modules
 pub mod actuators;

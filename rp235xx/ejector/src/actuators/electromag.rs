@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use embedded_hal::{digital::OutputPin, pwm::SetDutyCycle};
 use rp235x_hal::pwm::{Channel, FreeRunning, Slice, A};
 

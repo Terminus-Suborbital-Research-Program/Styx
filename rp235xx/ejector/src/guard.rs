@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use embedded_hal::i2c::I2c;
 
 const SENSOR_ADDRESS: u8 = 0x60;
