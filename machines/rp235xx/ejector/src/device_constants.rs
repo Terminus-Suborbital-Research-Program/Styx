@@ -1,5 +1,7 @@
 #![warn(missing_docs)]
 
+#![warn(missing_docs)]
+
 use pins::{
     EjectionPin, GreenLedPin, JupiterRxPin, JupiterTxPin, OnboardLEDPin,
    RedLedPin,

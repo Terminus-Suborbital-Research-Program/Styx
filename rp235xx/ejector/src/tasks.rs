@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use crate::{app::*, device_constants::SAMPLE_COUNT, Mono};
 use bin_packets::{
     devices::DeviceIdentifier,
