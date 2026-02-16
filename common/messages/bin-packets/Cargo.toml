@@ -6,7 +6,8 @@ publish = false
 
 [dependencies]
 # Interim this points to Ethan's fork, but should be restored to the main branch in the future
-aether = {git = "https://github.com/Ethan-Pascuales/aether.git", features = ["serde", "bincode"]}
+#aether = {git = "https://github.com/Ethan-Pascuales/aether.git", features = ["serde", "bincode"]}
+aether = {git = "https://github.com/AtmoPierce/aether.git", features = ["serde", "bincode"]}
 
 # , features = ["serde"]
 bincode = { workspace = true, features = ["derive"], default-features = false }
