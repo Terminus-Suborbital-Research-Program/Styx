@@ -1,6 +1,7 @@
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
+use log::{error, info, LevelFilter};
 
 use signet::{
     record::{
@@ -80,7 +81,7 @@ impl SignalProcessor{
 
                     // Send Results
                     if let Err(e) = self.quality_estimate_sender.send(estimate) {
-                        eprintln!("Error sending estimate: {}", e);
+                        error!("Error sending estimate: {}", e);
                     }
                 }
             }

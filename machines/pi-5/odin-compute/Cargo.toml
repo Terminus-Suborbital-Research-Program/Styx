@@ -12,8 +12,13 @@ bincode = { version = "2.0.1", features = ["serde"] }
 signet = { path="../../../common/signet"}
 bin-packets = { workspace = true, features = ["std"] }
 thiserror = "2.0.18"
-wayfarer = { git = "https://github.com/Terminus-Suborbital-Research-Program/Wayfarer.git", version = "0.1.0" }
 bytemuck = "1.25.0"
 env_logger = "0.11.8"
 log = "0.4.29"
+v4l = {version = "0.14.0", features = ["v4l2"]}
+image = "0.25.9"
+wayfarer = { git = "https://github.com/Terminus-Suborbital-Research-Program/Wayfarer.git", version = "0.1.0" }
+aether = { git = "https://github.com/AtmoPierce/aether.git", features = ["serde"]}
+serialport = "4.8.1"
+
 
