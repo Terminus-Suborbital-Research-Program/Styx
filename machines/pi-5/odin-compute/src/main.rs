@@ -41,7 +41,7 @@ fn main() {
 
     // Refactor to be one combined call, but not ugly.
     let (startracking_thread, quaternion_reciever) =  StartrackerThread::new();
-    let startracking_thread_handle = startracking_thread.startrack();
+    let startracking_thread_handle = startracking_thread.begin_startracking();
     
 
     // start_test_tcp_receiver();

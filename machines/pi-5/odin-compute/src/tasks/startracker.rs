@@ -52,7 +52,7 @@ impl StartrackerThread {
         (startracker, quaternion_rx)
     }
     
-    pub fn startrack(self)  -> JoinHandle<()> {
+    pub fn begin_startracking(self)  -> JoinHandle<()> {
 
         let mut dev = Device::new(0).expect("Failed to open device");
         let fmt = dev.format().expect("Failed to read format");
