@@ -14,13 +14,15 @@ use rtrb::RingBuffer;
 
 use crate::tasks::{
     signal_process::SignalProcessor,
-    signal_read::SDRListener,
+    signal_read::SDRListener, startracker::StartrackerThread,
 };
 
 use signet::{
     record::packet::{SdrPacketLog, SdrPacketOwned},
     sdr::radio_config::BUFF_SIZE,
 };
+
+
 
 fn main() {
 
@@ -35,10 +37,15 @@ fn main() {
 
     let (mut samples_producer, mut samples_consumer) = RingBuffer::<SdrPacketLog>::new(100);
 
-    let sampling_task = SDRListener::begin_sampling(samples_producer);
+    let sampling_task = SDRListener::begin_sampling(samples_producer).unwrap();
+
+    // Refactor to be one combined call, but not ugly.
+    let (startracking_thread, quaternion_reciever) =  StartrackerThread::new();
+    let startracking_thread_handle = startracking_thread.begin_startracking();
+    
 
     // start_test_tcp_receiver();
-    verify_recording("sdr_recording.bin");
+    // verify_recording("sdr_recording.bin");
     start_file_recorder();
 
     std::thread::sleep(Duration::from_millis(500));
@@ -50,11 +57,7 @@ fn main() {
     
     std::thread::sleep(Duration::from_millis(500));
 
-    // Increase TCP buffer size for throughput
-    // let _ = stream.set_write_timeout(Some(Duration::from_micros(100)));
-
     let (signal_processor, packet_tx, estimate_rx) = SignalProcessor::default();
-    // start_test_receiver();
     
     signal_processor.begin_signal_processing();
 
