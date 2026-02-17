@@ -23,3 +23,6 @@ ejector/Cargo.lock
 result
 
 *.txt
+
+*.dat
+*.psd
