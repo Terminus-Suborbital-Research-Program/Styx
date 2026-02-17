@@ -4,6 +4,7 @@ members = [
   "data-cli",
   "bin-packets",
   "tinyframe",
+  "testing-cli",
   "common",
   "jupiter-fsw",
   "signet"

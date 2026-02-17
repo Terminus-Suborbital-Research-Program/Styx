@@ -10,8 +10,10 @@ defmt = { version = "*" }
 embedded-io = { version = "0.6.1", features = ["defmt-03"] }
 heapless = { version = "0.8.0", features = ["defmt-03"] }
 serde = { version = "*", features = ["derive"], default-features = false }
+clap = {version = "*", features = ["derive"], optional = true}
 
 [features]
 default = []
 std = ["bincode/std", "serde/std", "embedded-io/std"]
+testing = ["dep:clap"]
 
