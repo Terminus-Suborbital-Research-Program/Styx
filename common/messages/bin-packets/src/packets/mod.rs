@@ -1,15 +1,18 @@
 #![warn(missing_docs)]
 
 pub mod status;
+pub mod testing;
 
 use bincode::{Decode, Encode};
 use defmt::Format;
 
 use serde::{Deserialize, Serialize};
 use status::Status;
+//use testing::JupiterTestingPacket;
 
 use crate::commands::CommandPacket;
 // use crate::data::adcs::AttitudeMetrics;
+use crate::{commands::CommandPacket, packets::testing::{EjectorPicoTestingPacket, JupiterTestingPacket, OdinPiTestingPacket, OdinPicoTestingPacket, PowerPicoTestingPacket}};
 
 #[derive(Debug, Clone, Copy, Encode, Decode, Format, Serialize, Deserialize)]
 pub enum ApplicationPacket {
