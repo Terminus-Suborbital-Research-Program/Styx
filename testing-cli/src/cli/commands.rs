@@ -1,24 +1,18 @@
 #![warn(missing_docs)]
 
-use crate::{Protocol, Tests, serial};
+use crate::{ElaraTests, Protocol, cli::bincode_serialize, serial};
+use chrono::{DateTime, Local, NaiveTime, TimeDelta};
 use clap::Subcommand;
 use std::{ops::Sub, path::PathBuf};
-use chrono::{DateTime, Local, NaiveTime, TimeDelta};
 
 #[derive(Subcommand)]
 pub enum Commands {
-
     /// Command to listen to a serial device
     #[command(name = "listen")]
     SerailListen {
-        #[arg(
-            help = "Device path. Does not accept partial names."
-        )]
-        device: String,
+        
 
-        #[arg(
-            help = "Integer for the baud_rate."
-        )]
+        #[arg(help = "Integer for the baud_rate.")]
         baud_rate: u32,
     },
 
@@ -35,27 +29,42 @@ pub enum Commands {
     #[command(name = "test")]
     Test {
         #[arg(help = "")]
-        test: Tests,
+        test: Option<ElaraTests>,
     },
 
-
+    #[command(name = "version")]
+    Version {},
 }
 
 impl Commands {
-    pub fn execute(self) -> () {
+    pub fn execute(
+        self,
+        file: Option<PathBuf>,
+        protocol: Option<Protocol>,
+        test_: Option<ElaraTests>,
+        device_p: Option<String>
+    ) -> () {
         match self {
-            Commands::SerailListen { device, baud_rate } => {
-                serial::USB::read_serial(&device, baud_rate);
+            Commands::SerailListen {baud_rate } => {
+                serial::USB::read_serial(&device_p.expect("You must porvide a serial device path"), baud_rate);
             }
             Commands::List { filter } => {
-                    serial::USB::list_all_devices();
+                serial::USB::list_all_devices();
             }
-            Commands::Test { test } => {
-                println!("{:?}", test);
-            }
-            Commands::SshListen {  } => {
-                println!("Not implemented yet!")
+            Commands::Test { test } => match test_ {
+                Some(test_packet) => {
+                    println!("Running Test: {:?}", test_packet);
+bincode_serialize::send_packet(device_p.expect("Serial device path is needed").as_str(), 9600, test_packet);                }
+                None => {
+                    println!("No test provided.");
+                }
             },
+            Commands::SshListen {} => {
+                println!("Not implemented yet!");
+            }
+            Commands::Version {} => {
+                println!("{}: {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+            }
         }
     }
 }
@@ -69,7 +78,7 @@ pub struct TimeoutTimer {
 impl TimeoutTimer {
     /// Creates a Timer with a timeout_duration of 5 minutes
     pub fn new() -> Self {
-       return Self {
+        return Self {
             last_recieve_time: Local::now().time(),
             timeout_duriation: TimeDelta::seconds(10),
         };
@@ -86,7 +95,7 @@ impl TimeoutTimer {
         self.last_recieve_time = Local::now().time();
     }
 
-    /// cChecks if a set ammount of time has passed since a packet was recieved
+    /// Checks if a set ammount of time has passed since a packet was recieved
     pub fn timeout_check(&self) -> bool {
         if self.last_recieve_time.sub(Local::now().time()) >= self.timeout_duriation {
             return true;
