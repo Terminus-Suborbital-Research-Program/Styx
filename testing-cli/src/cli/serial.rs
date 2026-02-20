@@ -75,7 +75,6 @@ impl USB {
     /// or usize:MAX if unsucessful since it's
     /// unlikely that the you ever tranfer 2^64 bytes of data
 
-
     pub fn read_serial(port_path: &str, baud_rate: u32) -> () {
         let port = serialport::new(port_path, baud_rate)
             .timeout(std::time::Duration::from_millis(100))
@@ -101,9 +100,27 @@ impl USB {
             }
         }
     }
-    fn valid_baud(val: &str) -> Result<(), String> {
+
+    pub fn valid_baud(val: &str) -> Result<(), String> {
         val.parse::<u32>()
             .map(|_| ())
             .map_err(|_| format!("Invalid baud rate '{}' specified", val))
+    }
+
+    pub fn write_serail(port_path: &str, baud_rate: u32, data: Vec<u8>) -> () {
+        let port = serialport::new(port_path, baud_rate)
+            .timeout(std::time::Duration::from_millis(100))
+            .open();
+        match port {
+            Ok(mut port) => {
+                println!("Writing data on {} at {} baud:", &port_path, &baud_rate);
+                port.write_all(data.as_slice());
+                //port.write();
+            }
+            Err(e) => {
+                eprintln!("Failed to open \"{}\". Error: {}", port_path, e);
+                std::process::exit(1);
+            }
+        }
     }
 }
