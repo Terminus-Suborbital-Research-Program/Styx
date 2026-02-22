@@ -3,10 +3,8 @@
 #![no_main]
 
 // Our Modules
-mod actuators;
 mod device_constants;
 mod peripherals;
-mod phases;
 mod sensors;
 mod startup;
 mod tasks;
@@ -20,6 +18,7 @@ use core::mem::MaybeUninit;
 use bme280::AsyncBME280;
 use bmi323::AsyncBmi323;
 use bmm350::AsyncBmm350;
+use bmp5::i2c::Bmp5;
 use ina260_terminus::AsyncINA260;
 
 // Busses
@@ -56,8 +55,7 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 )]
 mod app {
     use crate::device_constants::{
-        servos::{FlapServo, RelayServo},
-        AvionicsI2cBus, DownlinkBuffer, IcarusHC12, MotorI2cBus,
+        AvionicsI2cBus, DownlinkBuffer, ComputeI2cBus,
     };
 
     use super::*;
@@ -90,48 +88,11 @@ mod app {
 
     #[local]
     pub struct Local {
-        pub radio: IcarusHC12,
-        pub relay_servo: RelayServo,
-        pub flap_servo: FlapServo,
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
         pub bmm350: AsyncBmm350<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub bmi323: AsyncBmi323<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub bme280: AsyncBME280<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
-        pub ina260_1: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
-        pub ina260_2: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
-        pub ina260_3: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
-        pub ina260_4: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
-        pub rbf: Pin<Gpio4, FunctionSio<SioInput>, PullDown>,
-        // pub adc: hal::adc::Adc,
-        // pub adc_photoresistors:
-        //     AdcPin<gpio::Pin<gpio::bank0::Gpio40, gpio::FunctionNull, gpio::PullDown>>,
-        // pub mux: CD74HC4067<
-        //     Pin<
-        //         MuxS0Pin,
-        //         rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-        //         rp235x_hal::gpio::PullDown,
-        //     >,
-        //     Pin<
-        //         MuxS1Pin,
-        //         rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-        //         rp235x_hal::gpio::PullDown,
-        //     >,
-        //     Pin<
-        //         MuxS2Pin,
-        //         rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-        //         rp235x_hal::gpio::PullDown,
-        //     >,
-        //     Pin<
-        //         MuxS3Pin,
-        //         rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-        //         rp235x_hal::gpio::PullDown,
-        //     >,
-        //     Pin<
-        //         MuxEPin,
-        //         rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-        //         rp235x_hal::gpio::PullDown,
-        //     >,
-        // >,
+        pub bmp5: Bmp5<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
     }
 
     #[init(
@@ -139,7 +100,7 @@ mod app {
             // Task local initialized resources are static Here we use MaybeUninit to allow for initialization in init()
             // This enables its usage in driver initialization
             i2c_avionics_bus: MaybeUninit<Arbiter<AvionicsI2cBus>> = MaybeUninit::uninit(),
-            i2c_motor_bus: MaybeUninit<Arbiter<MotorI2cBus>> = MaybeUninit::uninit(),
+            i2c_compute_bus: MaybeUninit<Arbiter<ComputeI2cBus>> = MaybeUninit::uninit(),
             esc_state_signal: MaybeUninit<Signal<IcarusPhase>> = MaybeUninit::uninit(),
         ]
     )]
@@ -152,25 +113,14 @@ mod app {
         #[task(local = [led], shared = [data], priority = 1)]
         async fn heartbeat(ctx: heartbeat::Context);
 
-        // Takes care of incoming packets
-        #[task(shared = [data], local=[radio], priority = 2)]
-        async fn radio_send(mut ctx: radio_send::Context);
 
-        #[task(priority = 3, local=[flap_servo, relay_servo, rbf])]
-        async fn mode_sequencer(&mut ctx: mode_sequencer::Context);
-
-        // Handles INA sensors
-        #[task(priority = 2, shared = [data], local=[ina260_1, ina260_2, ina260_3, ina260_4])]
-        async fn ina_sample(&mut ctx: ina_sample::Context, i2c: &'static Arbiter<MotorI2cBus>);
-
-        #[task(local = [bme280, bmi323, bmm350], shared = [data], priority = 2)]
+        #[task(local = [bme280, bmi323, bmm350, bmp5], shared = [data], priority = 2)]
         async fn sample_sensors(
             mut ctx: sample_sensors::Context,
             avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
         );
 
-        #[task(priority = 2)]
-        async fn inertial_nav(mut ctx: inertial_nav::Context);
+  
     }
 
     /// Returns the current time in nanoseconds since power-on

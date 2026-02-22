@@ -38,7 +38,9 @@ fugit = "0.3.7"
 defmt = {workspace = true}
 defmt-rtt = {workspace = true}
 heapless = {workspace = true}
-bincode = { workspace = true, features = ["derive"], default-features = false }
+#bincode = { workspace = true, features = ["derive"], default-features = false }
+bincode = {version = "2.0.1", default-features = false, features = ["derive"]}
+
 
 # Packets
 bin-packets = { path = "../../../common/messages/bin-packets" }
@@ -48,30 +50,12 @@ futures = { version = "0.3.31", default-features = false, features = [
 rp235x-pac = "0.1.0"
 
 # Sensors
-uom = {version = "*", default-features = false, features = ["si", "f32"]}
 bme280 = {path="../../../sensors/bme280", features = ["async", "defmt"] }
 ina260_terminus = { path = "../../../sensors/ina260", features = ["async", "defmt"] }
 bmi323 = {path="../../../sensors/bmi323-rs", features = ["async", "defmt"]}
 bmm350 = {path="../../../sensors/bmm350-rs", features = ["async", "defmt"]}
-cd74hc4067 = {path="../../../sensors/cd74hc4067", features = ["defmt"]}
-
-# Communications
-hc12-rs = { git = "https://github.com/thelenlucas/hc12-rs.git", tag = "v0.0.1" }
-
-# Math
-nalgebra = { version = "*", default-features = false, features = [
-    "libm-force",
-] }
-minikalman = { version = "0.6.0", features = [
-    "nalgebra",
-    "libm",
-] } #https://docs.rs/minikalman/latest/minikalman/
-
-# WGS84
-wgs84 = { git = "https://github.com/MeechaelA/WGS84.git" }
-# Earth Atmosphere
-united_states_standard_atmosphere = { git = "https://github.com/MeechaelA/UnitedStatesStandardAtmosphere.git" }
-tinyframe = { version = "0.1.0", path = "../../../common/messages/tinyframe" }
+adxl345-eh-driver = "0.2.2"
+bmp5 = "0.2.2"
 
 # Target features
 [features]

@@ -16,15 +16,6 @@ use crate::{hal::timer::CopyableTimer1, peripherals::async_i2c::AsyncI2c};
 pub mod pins {
     use rp235x_hal::gpio::bank0::*;
 
-    /// Flab servo mosfet
-    pub type FlapMosfetPin = Gpio2;
-    /// Relay servo mosfet
-    pub type RelayMosfetPin = Gpio0;
-
-    /// Flap servo PWM
-    pub type FlapServoPWMGpio = Gpio3;
-    /// Flap servo PWM
-    pub type RelayServoPWMGpio = Gpio1;
 
     /// I2C SDA pin
     pub type AvionicsI2CSdaPin = Gpio6;
@@ -52,42 +43,7 @@ pub mod pins {
     pub type EscI2CSclPin = Gpio17;
 }
 
-/// Servo items
-pub mod servos {
-    use rp235x_hal::{
-        gpio::{FunctionPwm, FunctionSio, Pin, PullDown, SioOutput},
-        pwm::{Channel, FreeRunning, Pwm0, Pwm1, Slice, B},
-    };
 
-    use crate::actuators::servo::Servo;
-
-    use super::pins::{FlapMosfetPin, FlapServoPWMGpio, RelayMosfetPin, RelayServoPWMGpio};
-
-    /// Flap mosfet pin
-    pub type FlapMosfet = Pin<FlapMosfetPin, FunctionSio<SioOutput>, PullDown>;
-    /// Relay mosfet pin
-    pub type RelayMosfet = Pin<RelayMosfetPin, FunctionSio<SioOutput>, PullDown>;
-
-    /// Flap servo PWM pin
-    pub type FlapServoPwmPin = Pin<FlapServoPWMGpio, FunctionPwm, PullDown>;
-    /// Relay servo PWM pin
-    pub type RelayServoPwmPin = Pin<RelayServoPWMGpio, FunctionPwm, PullDown>;
-
-    /// Flap servo PWM
-    pub type FlapServoPwm = Pwm1;
-    /// Relay servo PWM
-    pub type RelayServoPwm = Pwm0;
-
-    /// Flap servo slice
-    pub type FlapServoSlice = Slice<FlapServoPwm, FreeRunning>;
-    /// Relay servo slice
-    pub type RelayServoSlice = Slice<RelayServoPwm, FreeRunning>;
-
-    /// Flap Servo
-    pub type FlapServo = Servo<Channel<FlapServoSlice, B>, FlapServoPwmPin, FlapMosfet>;
-    /// Relay Servo
-    pub type RelayServo = Servo<Channel<RelayServoSlice, B>, RelayServoPwmPin, RelayMosfet>;
-}
 
 // Avionics I2C bus
 pub type AvionicsI2cBus = AsyncI2c<
@@ -102,7 +58,7 @@ pub type AvionicsI2cBus = AsyncI2c<
 >;
 
 /// ACS ESC I2C bus
-pub type MotorI2cBus = AsyncI2c<
+pub type ComputeI2cBus = AsyncI2c<
     I2C<
         I2C0,
         (
@@ -113,7 +69,6 @@ pub type MotorI2cBus = AsyncI2c<
     >,
 >;
 
-use hc12_rs::*;
 use rp235x_hal::gpio::bank0::{Gpio5, Gpio8, Gpio9};
 use rp235x_hal::gpio::FunctionUart;
 use rp235x_hal::pac::UART1;
@@ -121,21 +76,7 @@ use rp235x_hal::uart::Enabled;
 use rp235x_hal::uart::UartPeripheral;
 use rp235x_hal::Timer;
 
-use hc12_rs::configuration::baudrates::B9600;
 
-pub type IcarusHC12 = HC12<
-    UartPeripheral<
-        Enabled,
-        UART1,
-        (
-            Pin<Gpio8, FunctionUart, PullDown>,
-            Pin<Gpio9, FunctionUart, PullDown>,
-        ),
-    >,
-    ProgrammingPair<Pin<Gpio5, FunctionSio<SioOutput>, PullDown>, Timer<CopyableTimer1>>,
-    FU3<B9600>,
-    B9600,
->;
 
 /// Data buffer for downsyncing ICARUS data
 pub type DownlinkBuffer = Deque<ApplicationPacket, 64>;
