@@ -10,7 +10,7 @@ use serde::{Serialize, Deserialize};
 // #[derive(Debug, Clone, Copy, Encode, Decode, Format, Serialize, Deserialize)]
 #[derive(Debug, Clone, Copy, Encode, Decode)]
 pub struct AttitudeMetrics {
-    timestamp: Timestamp,
-    quaternion: Quaternion<f32, ICRF<f32>,Body<f32>>,
-    signal_match: f32,
+    pub timestamp: Timestamp,
+    pub quaternion: Quaternion<f32, ICRF<f32>,Body<f32>>,
+    pub signal_match: f32,
 }

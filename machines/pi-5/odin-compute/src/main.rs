@@ -22,7 +22,10 @@ use signet::{
     sdr::radio_config::BUFF_SIZE,
 };
 
+use bin_packets::data::adcs::AttitudeMetrics;
+use bin_packets::time::Timestamp;
 
+use serialport;
 
 fn main() {
 
@@ -34,6 +37,11 @@ fn main() {
         })
         .target(env_logger::Target::Stdout) // Explicitly set the target to stdout
         .init();
+
+    let mut uart_port = serialport::new("/dev/ttyAMA0", 115_200)
+        .timeout(Duration::from_millis(10))
+        .open()
+        .expect("Failed to open UART port");
 
     let (mut samples_producer, mut samples_consumer) = RingBuffer::<SdrPacketLog>::new(100);
 
@@ -63,7 +71,7 @@ fn main() {
 
     let mut packet_buf: [u8;BUFF_SIZE * 10] = [0; BUFF_SIZE * 10];
 
-    
+    let mut adcs_buffer: [u8; 1000] = [0; 1000];
     // Run main IO loop in a thread with larger stack to handle large fixed-size arrays
     let io_handle = thread::Builder::new()
         .name("io-loop".into())
@@ -95,6 +103,21 @@ fn main() {
                                 error!("Error Sending Packet Data {}", e);
                             };
                             if let Ok(estimate) = estimate_rx.recv_timeout(Duration::from_micros(20)) {
+
+                                if let Ok(quaternion) = quaternion_reciever.recv() {
+                                    let adcs_packet = AttitudeMetrics {
+                                        timestamp: Timestamp::new(sdr_packet.timestamp as u64),
+                                        quaternion,
+                                        signal_match: estimate
+                                    };
+                                    if let Ok(bytes_written) = bincode::encode_into_slice(adcs_packet, &mut adcs_buffer, standard()) {
+                                        if let Err(serial_write_error) = uart_port.write_all(&adcs_buffer) {
+                                            error!("Serial Write Error to Uart {}", serial_write_error);
+                                        }
+                                    };
+                                }
+                                
+                                // bincode::encode_into_slice(val, dst, config)
                                 info!("Estimate: {}", estimate);
                             };
                         }
