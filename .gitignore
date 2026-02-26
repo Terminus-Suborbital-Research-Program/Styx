@@ -23,3 +23,7 @@ ejector/Cargo.lock
 result
 
 *.txt
+
+# Don't include signal processing and startracking data files
+*.dat
+*.psd
