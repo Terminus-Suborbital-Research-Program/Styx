@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use status::Status;
 
 use crate::commands::CommandPacket;
-// use crate::data::adcs::AttitudeMetrics;
+use crate::data::adcs::AttitudeMetrics;
 
 #[derive(Debug, Clone, Copy, Encode, Decode, Format, Serialize, Deserialize)]
 pub enum ApplicationPacket {

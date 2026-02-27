@@ -9,19 +9,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
-name = "adxl345-eh-driver"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9df82a42060a3e64a5f1768747e7cb7b2c6155c9dace0f127c4284e68ab7c8ee"
-dependencies = [
- "bitfield 0.17.0",
- "embedded-hal 1.0.0",
-]
-
-[[package]]
 name = "aether"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#2efb4e484b107965218a1e09a5bf7d37578c0ac5"
+source = "git+https://github.com/AtmoPierce/aether.git#9c3b92da6535818f555aee576ecf2546b5f38c20"
 dependencies = [
  "aether_benchmark",
  "aether_core",
@@ -39,7 +29,7 @@ dependencies = [
 [[package]]
 name = "aether_benchmark"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#2efb4e484b107965218a1e09a5bf7d37578c0ac5"
+source = "git+https://github.com/AtmoPierce/aether.git#9c3b92da6535818f555aee576ecf2546b5f38c20"
 dependencies = [
  "minstant",
  "once_cell",
@@ -48,17 +38,17 @@ dependencies = [
 [[package]]
 name = "aether_core"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#2efb4e484b107965218a1e09a5bf7d37578c0ac5"
+source = "git+https://github.com/AtmoPierce/aether.git#9c3b92da6535818f555aee576ecf2546b5f38c20"
 dependencies = [
+ "bincode",
  "num-traits",
  "serde",
- "serde-json-core",
 ]
 
 [[package]]
 name = "aether_examples"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#2efb4e484b107965218a1e09a5bf7d37578c0ac5"
+source = "git+https://github.com/AtmoPierce/aether.git#9c3b92da6535818f555aee576ecf2546b5f38c20"
 dependencies = [
  "aether_core",
 ]
@@ -66,12 +56,12 @@ dependencies = [
 [[package]]
 name = "aether_fluids"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#2efb4e484b107965218a1e09a5bf7d37578c0ac5"
+source = "git+https://github.com/AtmoPierce/aether.git#9c3b92da6535818f555aee576ecf2546b5f38c20"
 
 [[package]]
 name = "aether_graphics"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#2efb4e484b107965218a1e09a5bf7d37578c0ac5"
+source = "git+https://github.com/AtmoPierce/aether.git#9c3b92da6535818f555aee576ecf2546b5f38c20"
 dependencies = [
  "aether_core",
  "num-traits",
@@ -80,7 +70,7 @@ dependencies = [
 [[package]]
 name = "aether_ml"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#2efb4e484b107965218a1e09a5bf7d37578c0ac5"
+source = "git+https://github.com/AtmoPierce/aether.git#9c3b92da6535818f555aee576ecf2546b5f38c20"
 dependencies = [
  "aether_core",
  "aether_opt",
@@ -94,7 +84,7 @@ dependencies = [
 [[package]]
 name = "aether_models"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#2efb4e484b107965218a1e09a5bf7d37578c0ac5"
+source = "git+https://github.com/AtmoPierce/aether.git#9c3b92da6535818f555aee576ecf2546b5f38c20"
 dependencies = [
  "aether_core",
 ]
@@ -102,7 +92,7 @@ dependencies = [
 [[package]]
 name = "aether_opt"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#2efb4e484b107965218a1e09a5bf7d37578c0ac5"
+source = "git+https://github.com/AtmoPierce/aether.git#9c3b92da6535818f555aee576ecf2546b5f38c20"
 dependencies = [
  "aether_core",
  "aether_rand",
@@ -112,12 +102,12 @@ dependencies = [
 [[package]]
 name = "aether_rand"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#2efb4e484b107965218a1e09a5bf7d37578c0ac5"
+source = "git+https://github.com/AtmoPierce/aether.git#9c3b92da6535818f555aee576ecf2546b5f38c20"
 
 [[package]]
 name = "aether_shapes"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#2efb4e484b107965218a1e09a5bf7d37578c0ac5"
+source = "git+https://github.com/AtmoPierce/aether.git#9c3b92da6535818f555aee576ecf2546b5f38c20"
 dependencies = [
  "aether_core",
  "num-traits",
@@ -126,7 +116,7 @@ dependencies = [
 [[package]]
 name = "aether_stats"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#2efb4e484b107965218a1e09a5bf7d37578c0ac5"
+source = "git+https://github.com/AtmoPierce/aether.git#9c3b92da6535818f555aee576ecf2546b5f38c20"
 dependencies = [
  "aether_core",
  "aether_opt",
@@ -350,6 +340,7 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 name = "bin-packets"
 version = "0.1.2"
 dependencies = [
+ "aether",
  "bincode",
  "defmt 1.0.1",
  "embedded-io 0.6.1",
@@ -1578,7 +1569,6 @@ checksum = "0bfb9eb618601c89945a70e254898da93b13be0388091d42117462b265bb3fad"
 dependencies = [
  "defmt 0.3.100",
  "hash32",
- "serde",
  "stable_deref_trait",
 ]
 
@@ -3103,9 +3093,9 @@ dependencies = [
 
 [[package]]
 name = "rkyv"
-version = "0.8.15"
+version = "0.8.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a30e631b7f4a03dee9056b8ef6982e8ba371dd5bedb74d3ec86df4499132c70"
+checksum = "360b333c61ae24e5af3ae7c8660bd6b21ccd8200dbbc5d33c2454421e85b9c69"
 dependencies = [
  "bytecheck",
  "bytes",
@@ -3122,9 +3112,9 @@ dependencies = [
 
 [[package]]
 name = "rkyv_derive"
-version = "0.8.15"
+version = "0.8.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8100bb34c0a1d0f907143db3149e6b4eea3c33b9ee8b189720168e818303986f"
+checksum = "7c02f8cdd12b307ab69fe0acf4cd2249c7460eb89dce64a0febadf934ebb6a9e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3535,17 +3525,6 @@ checksum = "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
 dependencies = [
  "serde_core",
  "serde_derive",
-]
-
-[[package]]
-name = "serde-json-core"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b81787e655bd59cecadc91f7b6b8651330b2be6c33246039a65e5cd6f4e0828"
-dependencies = [
- "heapless 0.8.0",
- "ryu",
- "serde",
 ]
 
 [[package]]
@@ -4289,7 +4268,7 @@ dependencies = [
 [[package]]
 name = "wayfarer"
 version = "0.1.0"
-source = "git+https://github.com/Terminus-Suborbital-Research-Program/Wayfarer.git#b1d461d00655ec1cbec9243778b2c52103c85970"
+source = "git+https://github.com/Terminus-Suborbital-Research-Program/Wayfarer.git?branch=main#b1d461d00655ec1cbec9243778b2c52103c85970"
 dependencies = [
  "aether",
  "bincode",
