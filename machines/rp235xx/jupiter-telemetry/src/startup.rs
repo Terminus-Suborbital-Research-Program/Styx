@@ -168,6 +168,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     info!("Peripherals initialized, spawning tasks...");
     heartbeat::spawn().ok();
     sample_sensors::spawn(avionics_i2c_arbiter).ok();
+    get_data_response::spawn().ok();
     info!("Tasks spawned!");
     (
         Shared { data },

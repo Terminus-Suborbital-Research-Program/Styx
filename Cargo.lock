@@ -9,6 +9,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
+name = "adxl345-eh-driver"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9df82a42060a3e64a5f1768747e7cb7b2c6155c9dace0f127c4284e68ab7c8ee"
+dependencies = [
+ "bitfield 0.17.0",
+ "embedded-hal 1.0.0",
+]
+
+[[package]]
 name = "aether"
 version = "0.1.1"
 source = "git+https://github.com/AtmoPierce/aether.git#9c3b92da6535818f555aee576ecf2546b5f38c20"
@@ -1032,13 +1042,13 @@ dependencies = [
  "bin-packets",
  "bincode",
  "common-states",
- "defmt 0.3.100",
+ "defmt 1.0.1",
  "defmt-rtt",
- "embedded-hal 0.2.7",
- "embedded-io 0.6.1",
+ "embedded-hal 1.0.0",
+ "embedded-io 0.7.1",
  "fugit",
  "hc12-rs",
- "heapless 0.8.0",
+ "heapless 0.9.2",
  "rp235x-hal 0.4.0",
  "rtic",
  "rtic-monotonics",
@@ -4340,7 +4350,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
