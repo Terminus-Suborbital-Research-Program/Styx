@@ -8,6 +8,7 @@ use bmi323::{AccelConfig, GyroConfig};
 use bmm350::MagConfig;
 use defmt::{error, info};
 use embedded_hal::digital::{InputPin, StatefulOutputPin};
+use rp235x_hal::async_utils::AsyncPeripheral;
 
 use crate::device_constants::AvionicsI2cBus;
 use crate::{app::*, device_constants::ComputeI2cBus, Mono};
@@ -85,7 +86,6 @@ pub async fn sample_sensors(
     loop {
         ctx.shared.data.lock(|data| {
                     data.clear();
-                    // data[0] = acceleration_packet;
                 });
         let imu_result = ctx.local.bmi323.read_accel_data_scaled().await;
         match imu_result {
@@ -99,7 +99,6 @@ pub async fn sample_sensors(
                 };
                 ctx.shared.data.lock(|data| {
                     data.push_back(acceleration_packet).ok();
-                    // data[0] = acceleration_packet;
                 });
             }
             Err(i2c_error) => {
@@ -137,7 +136,6 @@ pub async fn sample_sensors(
                 };
                 ctx.shared.data.lock(|data| {
                     data.push_back(mag_packet).ok();
-                    // data[2] = mag_packet;
 
                 });
             }
@@ -166,7 +164,6 @@ pub async fn sample_sensors(
 
          ctx.shared.data.lock(|data| {
             data.push_back(env_packet).ok();
-            // data[4] = bmp_5_packet;
         });
 
         // info!("BMP 5 temp: {:?}", );
@@ -184,7 +181,7 @@ unsafe fn I2C0_IRQ() {
     ComputeI2cBus::on_interrupt();
 }
 pub async fn get_data_response( mut ctx: get_data_response::Context<'_>) {
-    let mut outgoing_packet_bytes = [0u8; 512];
+    let mut outgoing_buf = [0u8; 512];
     let mut buf_len = 0;
 
     let mut read_pos = 0; // Current outgoing packet byte 
@@ -212,7 +209,7 @@ pub async fn get_data_response( mut ctx: get_data_response::Context<'_>) {
             Event::TransferRead => {
                 if read_pos < write_pos {
                     // Send the next byte to the controller 
-                    ctx.local.compute_i2c.write(outgoing_buf[read_pos]);
+                    ctx.local.compute_i2c.write(&[outgoing_buf[read_pos]]);
                     read_pos += 1;
                 } else {
                     // Send padding byte
