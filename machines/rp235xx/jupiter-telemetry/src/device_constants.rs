@@ -4,7 +4,7 @@ use pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin};
 use rp235x_hal::gpio::SioOutput;
 use rp235x_hal::{
     gpio::{FunctionI2C, FunctionSio, Pin, PullDown, PullUp},
-    i2c::Controller,
+    i2c::{Controller, Peripheral},
     pac::{I2C0, I2C1},
     I2C,
 };
@@ -58,16 +58,18 @@ pub type AvionicsI2cBus = AsyncI2c<
 >;
 
 /// ACS ESC I2C bus
-pub type ComputeI2cBus = AsyncI2c<
+pub type ComputeI2cBus = 
     I2C<
         I2C0,
         (
             Pin<EscI2CSdaPin, FunctionI2C, PullUp>,
             Pin<EscI2CSclPin, FunctionI2C, PullUp>,
         ),
-        Controller,
-    >,
+        Peripheral,
+    
 >;
+
+pub const TELEMETRY_PERIPHERAL_ADDRESS: u16 = 66;
 
 use rp235x_hal::gpio::bank0::{Gpio5, Gpio8, Gpio9};
 use rp235x_hal::gpio::FunctionUart;
@@ -79,4 +81,4 @@ use rp235x_hal::Timer;
 
 
 /// Data buffer for downsyncing ICARUS data
-pub type DownlinkBuffer = Deque<ApplicationPacket, 64>;
+pub type DownlinkBuffer = Deque<ApplicationPacket, 5>;

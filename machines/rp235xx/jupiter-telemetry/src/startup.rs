@@ -2,6 +2,7 @@ use crate::{
     device_constants::{
         pins::{MuxEPin, MuxS0Pin, MuxS1Pin, MuxS2Pin, MuxS3Pin},
         DownlinkBuffer,
+        TELEMETRY_PERIPHERAL_ADDRESS,
     },
 };
 use crate::{
@@ -120,21 +121,20 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let compute_sda_pin: Pin<EscI2CSdaPin, FunctionI2C, PullUp> = pins.gpio16.reconfigure();
     let compute_scl_pin: Pin<EscI2CSclPin, FunctionI2C, PullUp> = pins.gpio17.reconfigure();
 
-    let compute_i2c = I2C::new_controller(
+    let compute_i2c = I2C::new_peripheral_event_iterator(
         ctx.device.I2C0,
         compute_sda_pin,
         compute_scl_pin,
-        RateExtU32::kHz(400),
         &mut ctx.device.RESETS,
-        clocks.system_clock.freq(),
+        TELEMETRY_PERIPHERAL_ADDRESS,
     );
 
     // let mut accel = adxl345_eh_driver::Driver::new(compute_i2c, None).unwrap();
     // let (x, y, z) = accel.get_accel_raw().unwrap();
 
 
-    let async_compute_i2c = AsyncI2c::new(compute_i2c, 10);
-    let compute_i2c_arbiter = ctx.local.i2c_compute_bus.write(Arbiter::new(async_compute_i2c));
+    // let async_compute_i2c = AsyncI2c::new(compute_i2c, 10);
+    // let compute_i2c_arbiter = ctx.local.i2c_compute_bus.write(Arbiter::new(async_compute_i2c));
 
     let avionics_sda_pin: Pin<AvionicsI2CSdaPin, FunctionI2C, PullUp> = pins.gpio6.reconfigure();
     let avionics_scl_pin: Pin<AvionicsI2CSclPin, FunctionI2C, PullUp> = pins.gpio7.reconfigure();
@@ -177,6 +177,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             bmi323,
             bme280,
             bmp5,
+            compute_i2c,
         },
     )
 }

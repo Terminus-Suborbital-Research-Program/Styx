@@ -93,6 +93,7 @@ mod app {
         pub bmi323: AsyncBmi323<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub bme280: AsyncBME280<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub bmp5: Bmp5<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
+        pub compute_i2c: ComputeI2cBus, 
     }
 
     #[init(
@@ -110,7 +111,7 @@ mod app {
 
     extern "Rust" {
         // Heartbeats the main led
-        #[task(local = [led], shared = [data], priority = 1)]
+        #[task(local = [led], shared = [data], priority = 3)]
         async fn heartbeat(ctx: heartbeat::Context);
 
 
@@ -119,6 +120,9 @@ mod app {
             mut ctx: sample_sensors::Context,
             avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
         );
+
+        #[task(local = [compute_i2c], shared = [data], priority = 1)]
+        async fn get_data_response(ctx: get_data_response::Context);
 
   
     }
