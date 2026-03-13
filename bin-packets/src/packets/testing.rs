@@ -2,11 +2,9 @@ use bincode::Decode;
 use defmt::Format;
 use serde::{Deserialize, Serialize};
 
-use crate::packets::Encode;
+use crate::{devices::DeviceIdentifier, packets::Encode};
 
 #[derive(Copy, Clone, Encode, Decode, Format, Serialize, Deserialize, Debug)]
-#[cfg_attr(feature = "testing", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "testing", value(rename_all = "kebab-case"))]
 pub enum JupiterTestingPacket {
     SanityTest,
     SystemTest,
@@ -16,16 +14,41 @@ pub enum JupiterTestingPacket {
 }
 
 #[derive(Copy, Clone, Encode, Decode, Format, Serialize, Deserialize, Debug)]
-#[cfg_attr(feature = "testing", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "testing", value(rename_all = "kebab-case"))]
+pub struct TestingPacket {
+    system: DeviceIdentifier,
+    test_type: TestType,
+}
+
+#[derive(Copy, Clone, Encode, Decode, Format, Serialize, Deserialize, Debug)]
+pub struct TestingStatusPacket {
+    system: DeviceIdentifier,
+    test_type: TestType,
+    status: TestStatus,
+}
+
+#[derive(Copy, Clone, Encode, Decode, Format, Serialize, Deserialize, Debug)]
+pub enum TestType{
+    SanityTest,
+    SystemTest,
+    RadioTest, 
+    ThremocoupleTest,
+    MotorSpinTest,
+    PhotoDiodeTest,
+    EjectorCommsTest,
+    OdinCommsTest, 
+    OdinStreamingTest,
+    PowerLatchTest,
+    EjectionTest,
+    UartTest,
+}
+
+#[derive(Copy, Clone, Encode, Decode, Format, Serialize, Deserialize, Debug)]
 pub enum OdinPiTestingPacket {
     SanityTest,
     RadioTest,
 }
 
 #[derive(Copy, Clone, Encode, Decode, Format, Serialize, Deserialize, Debug)]
-#[cfg_attr(feature = "testing", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "testing", value(rename_all = "kebab-case"))]
 pub enum OdinPicoTestingPacket {
     SanityTest,
     MotorSpinTest,
@@ -33,8 +56,6 @@ pub enum OdinPicoTestingPacket {
 }
 
 #[derive(Copy, Clone, Encode, Decode, Format, Serialize, Deserialize, Debug)]
-#[cfg_attr(feature = "testing", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "testing", value(rename_all = "kebab-case"))]
 pub enum PowerPicoTestingPacket {
     SanityTest,
     ThremocoupleTest,
@@ -42,8 +63,6 @@ pub enum PowerPicoTestingPacket {
 }
 
 #[derive(Copy, Clone, Encode, Decode, Format, Serialize, Deserialize, Debug)]
-#[cfg_attr(feature = "testing", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "testing", value(rename_all = "kebab-case"))]
 pub enum EjectorPicoTestingPacket {
     SanityTest,
     UartTest,
@@ -51,10 +70,15 @@ pub enum EjectorPicoTestingPacket {
 }
 
 #[derive(Copy, Clone, Encode, Decode, Format, Serialize, Deserialize, Debug)]
-#[cfg_attr(feature = "testing", derive(clap::ValueEnum))]
-#[cfg_attr(feature = "testing", value(rename_all = "kebab-case"))]
 pub enum TelemetryPicoTestingPacket {
     SanityTest,
     UartTest,
     EjectionTest,
+}
+
+#[derive(Copy, Clone, Encode, Decode, Format, Serialize, Deserialize, Debug)]
+pub enum TestStatus {
+    Success, 
+    Failure, 
+    NotTested,
 }

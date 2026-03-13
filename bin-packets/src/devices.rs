@@ -8,6 +8,7 @@ pub enum DeviceIdentifier {
     Jupiter,
     Icarus,
     Ejector,
+    Odin,
     Atmega,
     Relay,
     Debug,

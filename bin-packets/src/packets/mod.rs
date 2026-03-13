@@ -11,20 +11,21 @@ use status::Status;
 use crate::{
     commands::CommandPacket,
     packets::testing::{
-        EjectorPicoTestingPacket, JupiterTestingPacket, OdinPiTestingPacket, OdinPicoTestingPacket,
-        PowerPicoTestingPacket,
+        TestingPacket, TestingStatusPacket, EjectorPicoTestingPacket, JupiterTestingPacket, OdinPiTestingPacket, OdinPicoTestingPacket, PowerPicoTestingPacket
     },
 };
 
 #[derive(Debug, Clone, Copy, Encode, Decode, Format, Serialize, Deserialize)]
 pub enum ApplicationPacket {
     Command(CommandPacket),
+    TestingCommand(TestingPacket),
+    TestingStatus(TestingStatusPacket),
     Status(Status),
-    JupiterTestingPacket(JupiterTestingPacket),
-    OdinPiTestingPacket(OdinPiTestingPacket),
-    OdinPicoTestingPacket(OdinPicoTestingPacket),
-    EjectorPicoTesting(EjectorPicoTestingPacket),
-    PowerPicoTesting(PowerPicoTestingPacket),
+    //JupiterTestingPacket(JupiterTestingPacket),
+    //OdinPiTestingPacket(OdinPiTestingPacket),
+    //OdinPicoTestingPacket(OdinPicoTestingPacket),
+    //EjectorPicoTesting(EjectorPicoTestingPacket),
+    //PowerPicoTesting(PowerPicoTestingPacket),
     VoltageData {
         timestamp: [u64; 4],
         voltage: [f32; 4],
