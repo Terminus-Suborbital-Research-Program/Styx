@@ -16,6 +16,8 @@ pub mod tasks;
 
 use tasks::*;
 
+use bin_packets::;
+
 // HAL Access
 use rp235x_hal as hal;
 
@@ -84,6 +86,8 @@ mod app {
     pub struct Shared {
         pub downlink_packets: Deque<ApplicationPacket, 128>,
         pub samples_buffer: [u16; SAMPLE_COUNT],
+
+        pub tests:  ;
     }
 
     #[local]
