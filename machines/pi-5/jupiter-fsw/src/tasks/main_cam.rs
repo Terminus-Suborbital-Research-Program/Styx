@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use std::{
     fs::{create_dir, read_dir},
     io::Write,

@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use std::fs::{File, read_dir};
 use std::io;
 use std::io::Read;

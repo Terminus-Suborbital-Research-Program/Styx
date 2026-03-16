@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use crate::csv_translator::{CSVPacketTranslator, FileNameFormat};
 use crate::parser::DataParser;
 use std::path::PathBuf;

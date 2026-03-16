@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use bincode::{Decode, Encode};
 use defmt::Format;
 

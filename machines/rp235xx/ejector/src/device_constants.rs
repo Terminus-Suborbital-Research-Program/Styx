@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use hc12_rs::{configuration::baudrates::B9600, ProgrammingPair, FU3, HC12};
 use pins::{
     EjectionPin, GreenLedPin, JupiterRxPin, JupiterTxPin, OnboardLEDPin, RadioProgrammingPin,
@@ -14,11 +16,9 @@ use rp235x_hal::{
 #[allow(dead_code)]
 pub mod pins {
     use rp235x_hal::gpio::{
-        bank0::{
-            Gpio10, Gpio11, Gpio12, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio25, Gpio26, Gpio27,
-            Gpio8, Gpio9,
-        },
-        FunctionI2C, FunctionSio, FunctionUart, Pin, PullDown, PullUp, SioInput, SioOutput,
+        FunctionI2C, FunctionSio, FunctionUart, Pin, PullDown, PullUp, SioInput, SioOutput, bank0::{
+            Gpio2, Gpio8, Gpio9, Gpio10, Gpio11, Gpio12, Gpio16, Gpio17, Gpio20, Gpio21, Gpio24, Gpio25, Gpio26, Gpio27
+        }
     };
 
     // Ejector Heartbeat Output
@@ -40,7 +40,7 @@ pub mod pins {
     pub type RBFPin = Pin<Gpio2, FunctionSio<SioInput>, PullDown>;
 
     /// Ejection detection pin
-    pub type EjectionPin = Gpio21;
+    pub type EjectionPin = Gpio24;
 
     /// UART RX
     pub type JupiterRxPin = Pin<Gpio16, FunctionUart, PullDown>;

@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use std::{
     fs::File,
     path::{Path, PathBuf},

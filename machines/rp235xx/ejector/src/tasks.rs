@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use crate::{app::*, device_constants::SAMPLE_COUNT, Mono};
 use bin_packets::{
     devices::DeviceIdentifier,
@@ -90,7 +92,7 @@ const SCRATCH: usize = 512;
 
 pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
     let downlink = ctx.local.downlink;
-    let radio = ctx.local.radio;
+    //let radio = ctx.local.radio;
 
     // Allow the JUPITER bootloader to finish its chatter.
     Mono::delay(JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs()).await;
@@ -105,14 +107,14 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
         //------------------------------------------------------------------
         // 1. Pull any newly‑arrived UART bytes.
         //------------------------------------------------------------------
-        if radio.read_ready().unwrap_or(false) {
-            let space = SCRATCH - frame_buf.len();
-            info!("Space: {}", space);
-            if space > 0 {
-                let n = radio.read(&mut tmp_buf[..space]).unwrap_or(0);
-                frame_buf.extend_from_slice(&tmp_buf[..n]).ok();
-            }
-        }
+        //if radio.read_ready().unwrap_or(false) {
+        //    let space = SCRATCH - frame_buf.len();
+        //    info!("Space: {}", space);
+        //    if space > 0 {
+        //        let n = radio.read(&mut tmp_buf[..space]).unwrap_or(0);
+        //        frame_buf.extend_from_slice(&tmp_buf[..n]).ok();
+        //    }
+        //}
         info!("Radio buffer size: {}", frame_buf.len());
 
         //------------------------------------------------------------------
@@ -201,10 +203,16 @@ pub async fn camera_sequencer(ctx: camera_sequencer::Context<'_>) {
 }
 
 pub async fn ejector_sequencer(ctx: ejector_sequencer::Context<'_>) {
+    // TODO: Update to use elctromag
+
     let servo = ctx.local.ejector_servo;
+    let e_magnet = ctx.local.ejecctor_magnet;
     // Latch ejector servos closed
-    servo.enable();
     servo.hold();
+    servo.enable();
+
+    e_magnet.enable();
+    e_magnet.polarity_switch(); // Maybe
 
     let ejection_pin = ctx.local.ejection_pin;
 
@@ -224,6 +232,7 @@ pub async fn ejector_sequencer(ctx: ejector_sequencer::Context<'_>) {
 
     // Eject, wait 5 seconds, then retract
     info!("Ejecting!");
+    e_magnet.polarity_switch();
     servo.eject();
     Mono::delay(5000_u64.millis()).await;
     servo.hold();
@@ -231,5 +240,6 @@ pub async fn ejector_sequencer(ctx: ejector_sequencer::Context<'_>) {
     // Give three seconds to retract, then disable to save power
     Mono::delay(3000_u64.millis()).await;
     servo.disable();
-    info!("Ejector disabled, servo disabled. Ejector sequencing complete.");
+    e_magnet.disable();
+    info!("Ejector disabled, servo and magnet disabled. Ejector sequencing complete.");
 }

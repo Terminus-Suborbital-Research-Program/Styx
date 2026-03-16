@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use bincode::{BorrowDecode, Decode, Encode};
 use embedded_hal::digital::PinState;
 

@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use embedded_hal::digital::{Error, ErrorKind};
 
 pub mod read;
