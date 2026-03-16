@@ -1,8 +1,8 @@
 ![status](https://github.com/Terminus-Suborbital-Research-Program/AMALTHEA/actions/workflows/rust.yml/badge.svg)
-# AMALTHEA
-Software systems, tools, and libraries for the 2025 AMALTHEA Rocksat-X mission by the University of Alabama in Huntsville. The AMALTHEA mission consists of several components. The ones listed under this repositoy include binaries for:
+# ELARA
+Software systems, tools, and libraries for the 2026 ELARA Rocksat mission by the University of Alabama in Huntsville. The ELARA mission consists of several components. The ones listed under this repositoy include binaries for:
 
-- ICARUS:   The deployable 1.5U CubeSat experiment to demonstrate active control and reentry of a CubeSat on a suborbital scale
+- ODIN:   The deployable 1.5U CubeSat experiment to demonstrate low cost interferometry using a CubeSat on a suborbital scale
 - Ejector:  The add-on to the JUPITER stack reponsible for deployment and communicataion of ICARUS
 - gs-cli:   A command line interface for ground station testing and operation
 
