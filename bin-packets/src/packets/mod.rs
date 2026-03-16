@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 pub mod status;
 
 use bincode::{Decode, Encode};

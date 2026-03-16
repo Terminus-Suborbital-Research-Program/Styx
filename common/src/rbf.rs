@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use bincode::{Decode, Encode};
 use embedded_hal::digital::InputPin;
 

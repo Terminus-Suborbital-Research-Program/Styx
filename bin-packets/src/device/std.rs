@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use std::io::{Read, Write};
 
 use bincode::{config::standard, decode_from_slice, encode_into_std_write, error::DecodeError};

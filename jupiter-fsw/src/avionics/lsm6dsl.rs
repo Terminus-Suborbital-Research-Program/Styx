@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use std::{fs::File, io::Read, path::PathBuf};
 
 use super::iio_device_directory;

@@ -1,6 +1,8 @@
 #![no_std]
 #![no_main]
 #![feature(abi_avr_interrupt)]
+#![warn(missing_docs)]
+
 
 use core::sync::atomic::{AtomicBool, Ordering};
 

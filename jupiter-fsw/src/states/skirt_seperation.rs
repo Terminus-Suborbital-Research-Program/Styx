@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use bin_packets::phases::JupiterPhase;
 use common::rbf::RbfState;
 use log::{info, warn};

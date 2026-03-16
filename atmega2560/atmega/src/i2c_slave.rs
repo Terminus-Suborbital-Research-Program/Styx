@@ -1,4 +1,5 @@
-#![warn(clippy::todo, clippy::unimplemented)]
+#![warn(clippy::todo, missing_docs, clippy::unimplemented)]
+
 use core::sync::atomic::{AtomicBool, Ordering};
 
 use arduino_hal::port::{

@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 mod main_cam;
 mod pins;
 mod rbf;

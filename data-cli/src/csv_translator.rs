@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use bin_packets::packets::ApplicationPacket;
 use chrono::prelude::*;
 use csv::Writer;

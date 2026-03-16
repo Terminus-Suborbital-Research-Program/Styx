@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use lazy_static::lazy_static;
 use log::info;
 use std::sync::atomic::{AtomicI32, Ordering};
