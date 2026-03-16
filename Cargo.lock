@@ -1071,6 +1071,44 @@ dependencies = [
 ]
 
 [[package]]
+name = "elara"
+version = "0.1.1"
+dependencies = [
+ "bin-packets",
+ "bincode",
+ "bme280",
+ "bmi323",
+ "bmm350",
+ "cd74hc4067",
+ "cortex-m",
+ "defmt 1.0.1",
+ "defmt-rtt",
+ "embedded-hal 0.2.7",
+ "embedded-hal 1.0.0",
+ "embedded-hal-async",
+ "embedded-hal-bus",
+ "embedded-io 0.6.1",
+ "fugit",
+ "futures",
+ "hc12-rs",
+ "heapless 0.9.2",
+ "ina260_terminus",
+ "minikalman",
+ "nalgebra 0.33.2",
+ "rp235x-hal 0.3.0",
+ "rp235x-pac 0.1.0",
+ "rtic",
+ "rtic-monotonics 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rtic-sync",
+ "tinyframe",
+ "united_states_standard_atmosphere",
+ "uom",
+ "usb-device",
+ "usbd-serial",
+ "wgs84",
+]
+
+[[package]]
 name = "embedded-dma"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1576,6 +1614,18 @@ name = "hashbrown"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
+
+[[package]]
+name = "hc12-rs"
+version = "0.1.0"
+source = "git+https://github.com/thelenlucas/hc12-rs.git?tag=v0.0.1#fba4ad9a122d0fe7592883067ab6ef2c53b8440e"
+dependencies = [
+ "defmt 0.3.100",
+ "embedded-hal 1.0.0",
+ "embedded-io 0.6.1",
+ "heapless 0.8.0",
+ "seq-macro",
+]
 
 [[package]]
 name = "heapless"
@@ -2204,6 +2254,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
 
 [[package]]
+name = "minikalman"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7493dfdf176e7728ed1e4430bd8d19797f1372c39a21e183d0e197e76530fe1"
+dependencies = [
+ "libm",
+ "nalgebra 0.32.6",
+ "num-traits",
+]
+
+[[package]]
 name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2261,6 +2322,20 @@ dependencies = [
 
 [[package]]
 name = "nalgebra"
+version = "0.32.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b5c17de023a86f59ed79891b2e5d5a94c705dbe904a5b5c9c952ea6221b03e4"
+dependencies = [
+ "approx",
+ "num-complex 0.4.6",
+ "num-rational 0.4.2",
+ "num-traits",
+ "simba 0.8.1",
+ "typenum",
+]
+
+[[package]]
+name = "nalgebra"
 version = "0.33.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26aecdf64b707efd1310e3544d709c5c0ac61c13756046aaaba41be5c4f66a3b"
@@ -2272,7 +2347,7 @@ dependencies = [
  "num-traits",
  "rand 0.8.5",
  "rand_distr",
- "simba",
+ "simba 0.9.1",
  "typenum",
 ]
 
@@ -3578,6 +3653,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
+name = "seq-macro"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1bc711410fbe7399f390ca1c3b60ad0f53f80e95c5eb935e52268a0e2cd49acc"
+
+[[package]]
 name = "serde"
 version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3701,11 +3782,24 @@ dependencies = [
 
 [[package]]
 name = "simba"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "061507c94fc6ab4ba1c9a0305018408e312e17c041eb63bef8aa726fa33aceae"
+dependencies = [
+ "approx",
+ "num-complex 0.4.6",
+ "num-traits",
+ "paste",
+]
+
+[[package]]
+name = "simba"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c99284beb21666094ba2b75bbceda012e610f5479dfcc2d6e2426f53197ffd95"
 dependencies = [
  "approx",
+ "libm",
  "num-complex 0.4.6",
  "num-traits",
  "paste",
@@ -3780,7 +3874,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2a3fe7c28c6512e766b0874335db33c94ad7b8f9054228ae1c2abd47ce7d335e"
 dependencies = [
  "approx",
- "nalgebra",
+ "nalgebra 0.33.2",
  "num-traits",
  "rand 0.8.5",
 ]
@@ -4075,6 +4169,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 
 [[package]]
+name = "united_states_standard_atmosphere"
+version = "0.1.0"
+source = "git+https://github.com/MeechaelA/UnitedStatesStandardAtmosphere.git#339ab749f9d637e6173e553a56616fe67708efc1"
+dependencies = [
+ "libm",
+]
+
+[[package]]
 name = "untrusted"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4085,6 +4187,16 @@ name = "unty"
 version = "0.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d49784317cd0d1ee7ec5c716dd598ec5b4483ea832a2dced265471cc0f690ae"
+
+[[package]]
+name = "uom"
+version = "0.38.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a739f83872836c82a4f2527d4e54b37007b3de68cafe7edde95fd695968bf4b9"
+dependencies = [
+ "num-traits",
+ "typenum",
+]
 
 [[package]]
 name = "ureq"
@@ -4371,6 +4483,15 @@ name = "weezl"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a28ac98ddc8b9274cb41bb4d9d4d5c425b6020c50c46f25559911905610b4a88"
+
+[[package]]
+name = "wgs84"
+version = "0.1.0"
+source = "git+https://github.com/MeechaelA/WGS84.git#9a9accf126bb8d4430c243c2c5d107ef368b1f03"
+dependencies = [
+ "libm",
+ "nalgebra 0.33.2",
+]
 
 [[package]]
 name = "which"
