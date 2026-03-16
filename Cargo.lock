@@ -482,6 +482,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "bitvec"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1bc2832c24239b0141d5674bb9174f9d68a8b5b3f2753311927c172ca46f7e9c"
+dependencies = [
+ "funty",
+ "radium",
+ "tap",
+ "wyz",
+]
+
+[[package]]
 name = "block-buffer"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1047,11 +1059,11 @@ dependencies = [
  "embedded-hal 1.0.0",
  "embedded-io 0.7.1",
  "fugit",
- "hc12-rs",
  "heapless 0.9.2",
+ "mcp9600",
  "rp235x-hal 0.4.0",
  "rtic",
- "rtic-monotonics",
+ "rtic-monotonics 2.1.0 (git+https://github.com/rtic-rs/rtic.git)",
  "rtic-sync",
  "tinyframe",
  "usb-device",
@@ -1348,6 +1360,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "funty"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6d5a32815ae3f33302d95fdcb2ce17862f8c65363dcfd29360480ba1001fc9c"
+
+[[package]]
 name = "futures"
 version = "0.3.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1558,18 +1576,6 @@ name = "hashbrown"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
-
-[[package]]
-name = "hc12-rs"
-version = "0.1.0"
-source = "git+https://github.com/thelenlucas/hc12-rs.git?tag=v0.0.1#fba4ad9a122d0fe7592883067ab6ef2c53b8440e"
-dependencies = [
- "defmt 0.3.100",
- "embedded-hal 1.0.0",
- "embedded-io 0.6.1",
- "heapless 0.8.0",
- "seq-macro",
-]
 
 [[package]]
 name = "heapless"
@@ -1971,7 +1977,7 @@ dependencies = [
  "rp235x-hal 0.3.0",
  "rp235x-pac 0.1.0",
  "rtic",
- "rtic-monotonics",
+ "rtic-monotonics 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rtic-sync",
  "usb-device",
  "usbd-serial",
@@ -2180,6 +2186,15 @@ checksum = "8ea1f30cedd69f0a2954655f7188c6a834246d2bcf1e315e2ac40c4b24dc9519"
 dependencies = [
  "cfg-if",
  "rayon",
+]
+
+[[package]]
+name = "mcp9600"
+version = "0.1.1"
+source = "git+https://github.com/besselfunct/mcp9600.git#8f08330af4482cc66d9c091677b86100505226f5"
+dependencies = [
+ "bitvec",
+ "embedded-hal 0.2.7",
 ]
 
 [[package]]
@@ -2850,6 +2865,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "69cdb34c158ceb288df11e18b4bd39de994f6657d83847bdffdbd7f346754b0f"
 
 [[package]]
+name = "radium"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc33ff2d4973d518d823d61aa239014831e521c75da58e3df4840d3f47749d09"
+
+[[package]]
 name = "rancor"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3313,6 +3334,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rtic-common"
+version = "1.1.0"
+source = "git+https://github.com/rtic-rs/rtic.git#d75fbf4e5c6860b471e9e2f6e92d09aed0a9b5e2"
+dependencies = [
+ "critical-section",
+ "portable-atomic",
+]
+
+[[package]]
 name = "rtic-core"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3348,7 +3378,20 @@ dependencies = [
  "fugit",
  "portable-atomic",
  "rp235x-pac 0.1.0",
- "rtic-time",
+ "rtic-time 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rtic-monotonics"
+version = "2.1.0"
+source = "git+https://github.com/rtic-rs/rtic.git#d75fbf4e5c6860b471e9e2f6e92d09aed0a9b5e2"
+dependencies = [
+ "cfg-if",
+ "cortex-m",
+ "fugit",
+ "portable-atomic",
+ "rp235x-pac 0.2.0",
+ "rtic-time 2.0.1 (git+https://github.com/rtic-rs/rtic.git)",
 ]
 
 [[package]]
@@ -3364,7 +3407,7 @@ dependencies = [
  "heapless 0.8.0",
  "loom",
  "portable-atomic",
- "rtic-common",
+ "rtic-common 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -3378,7 +3421,20 @@ dependencies = [
  "embedded-hal-async",
  "fugit",
  "futures-util",
- "rtic-common",
+ "rtic-common 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rtic-time"
+version = "2.0.1"
+source = "git+https://github.com/rtic-rs/rtic.git#d75fbf4e5c6860b471e9e2f6e92d09aed0a9b5e2"
+dependencies = [
+ "critical-section",
+ "embedded-hal 1.0.0",
+ "embedded-hal-async",
+ "fugit",
+ "futures-util",
+ "rtic-common 1.1.0 (git+https://github.com/rtic-rs/rtic.git)",
 ]
 
 [[package]]
@@ -3520,12 +3576,6 @@ name = "semver-parser"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
-
-[[package]]
-name = "seq-macro"
-version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1bc711410fbe7399f390ca1c3b60ad0f53f80e95c5eb935e52268a0e2cd49acc"
 
 [[package]]
 name = "serde"
@@ -3797,6 +3847,12 @@ dependencies = [
  "quote",
  "syn 2.0.114",
 ]
+
+[[package]]
+name = "tap"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "term"
@@ -4505,6 +4561,15 @@ name = "writeable"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9edde0db4769d2dc68579893f2306b26c6ecfbe0ef499b013d731b7b9247e0b9"
+
+[[package]]
+name = "wyz"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05f360fc0b24296329c78fda852a1e9ae82de9cf7b27dae4b7f62f118f77b9ed"
+dependencies = [
+ "tap",
+]
 
 [[package]]
 name = "y4m"

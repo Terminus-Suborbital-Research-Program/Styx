@@ -2,23 +2,26 @@ use defmt::{info, warn};
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
 use fugit::RateExtU32;
-use hc12_rs::configuration::baudrates::B9600;
-use hc12_rs::configuration::{Channel, HC12Configuration, Power};
-use hc12_rs::device::IntoATMode;
-use hc12_rs::IntoFU3Mode;
 use heapless::Deque;
 use rp235x_hal::adc::AdcPin;
 use rp235x_hal::clocks::init_clocks_and_plls;
-use rp235x_hal::gpio::{PinState, PullNone};
+use rp235x_hal::gpio::{PinState, PullNone, FunctionUart};
 use rp235x_hal::pwm::Slices;
 use rp235x_hal::uart::{DataBits, StopBits, UartConfig, UartPeripheral};
 use rp235x_hal::{Clock, Sio, Watchdog};
 use rtic_monotonics::Monotonic;
 
+use mcp9600::{
+    ADCResolution, BurstModeSamples, ColdJunctionResolution, DeviceAddr, 
+    FilterCoefficient, MCP9600, ShutdownMode, ThermocoupleType
+};
+use rp235x_hal::i2c::I2C;
+// use rp235x_hal::timer::monotonic::Monotonic;
+
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
-use crate::device_constants::pins::{CamMosfetPin, RadioProgrammingPin};
+use crate::device_constants::pins::{CamMosfetPin};
 use crate::device_constants::{
-    EjectionDetectionPin, EjectorHC12, GreenLed, JupiterUart, RadioUart, RedLed, SAMPLE_COUNT,
+    EjectionDetectionPin, GreenLed, JupiterUart, RedLed, SAMPLE_COUNT, ThermoI2cBus,
 };
 use crate::hal;
 use crate::{app::*, Mono};
@@ -87,10 +90,32 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         .into_push_pull_output_in_state(PinState::High)
         .reconfigure();
 
-    // Geiger counter
-    *ctx.local.adc = Some(hal::Adc::new(ctx.device.ADC, &mut ctx.device.RESETS));
-    let adc = ctx.local.adc.as_mut().unwrap();
-    let mut gegier_pin = AdcPin::new(bank0_pins.gpio28).unwrap();
+    let sda_pin = bank0_pins.gpio32.into_pull_type().into_function();
+    let scl_pin = bank0_pins.gpio33.into_pull_type().into_function();
+
+    let thermo_i2c_bus: ThermoI2cBus = I2C::i2c0(
+        ctx.device.I2C0,
+        sda_pin,
+        scl_pin,
+        100_u32.kHz(),
+        &mut ctx.device.RESETS,
+        clocks.peripheral_clock.freq(),
+    );
+
+    let mut thermocouple = MCP9600::new(thermo_i2c_bus, DeviceAddr::AD7)
+        .expect("Failed to initialize MCP9600");
+
+    thermocouple.set_sensor_configuration(
+        ThermocoupleType::TypeK,
+        FilterCoefficient::FilterMedium,
+    ).unwrap();
+
+    thermocouple.set_device_configuration(
+        ColdJunctionResolution::High,
+        ADCResolution::Bit18,
+        BurstModeSamples::Sample1,
+        ShutdownMode::NormalMode,
+    ).unwrap();
 
     // adc.free_running(&gegier_pin);
     // loop {
@@ -101,12 +126,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     //     }
     // }
 
-    let geiger_fifo = adc
-        .build_fifo()
-        .clock_divider(47000, 0)
-        .set_channel(&mut gegier_pin)
-        .enable_interrupt(1)
-        .start();
+
 
     let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
     let mut timer_two = timer;
@@ -125,74 +145,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         clocks.peripheral_clock.freq(),
     )
     .unwrap();
-
-    // Pin setup for UART1
-    let uart1_pins = (
-        bank0_pins.gpio8.into_function(),
-        bank0_pins.gpio9.into_function(),
-    );
-    let mut radio_uart: RadioUart =
-        UartPeripheral::new(ctx.device.UART1, uart1_pins, &mut ctx.device.RESETS)
-            .enable(
-                UartConfig::new(9600_u32.Hz(), DataBits::Eight, None, StopBits::One),
-                clocks.peripheral_clock.freq(),
-            )
-            .unwrap();
-    radio_uart.enable_rx_interrupt(); // Make sure we can drive our interrupts
-    let hc_programming_pin: RadioProgrammingPin = bank0_pins.gpio20.into_push_pull_output();
-    let builder = hc12_rs::device::HC12Builder::<(), (), (), ()>::empty()
-        .uart(radio_uart, B9600)
-        .programming_resources(hc_programming_pin, timer)
-        .fu3(HC12Configuration::default());
-
-    let radio = match builder.attempt_build() {
-        Ok(link) => {
-            info!("HC-12 init, link ready");
-            link
-        }
-        Err(e) => {
-            panic!("Failed to init HC-12: {}", e.0);
-        }
-    };
-
-    // Transition to AT mode
-    info!("Programming HC12...");
-    let radio = radio.into_at_mode().unwrap(); // Infallible
-    timer_two.delay_ms(300);
-    let radio = match radio.set_baudrate(B9600) {
-        Ok(link) => {
-            info!("HC12 baudrate set to 9600");
-            link
-        }
-        Err(e) => {
-            warn!("Failed to set HC12 baudrate: {:?}", e.error);
-            e.hc12
-        }
-    };
-    timer_two.delay_ms(300);
-    let radio = match radio.set_channel(Channel::Channel1) {
-        Ok(link) => {
-            info!("HC12 channel set to 1");
-            link
-        }
-        Err(e) => {
-            warn!("Failed to set HC12 channel: {:?}", e.error);
-            e.hc12
-        }
-    };
-    timer_two.delay_ms(300);
-    let hc = match radio.set_power(Power::P8) {
-        Ok(link) => {
-            info!("HC12 power set to P8");
-            link
-        }
-        Err(e) => {
-            warn!("Failed to set HC12 power: {:?}", e.error);
-            e.hc12
-        }
-    };
-    let hc: EjectorHC12 = hc.into_fu3_mode().unwrap(); // Infallible
-
+    
     // Servo
     let pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
     let mut ejection_pwm = pwm_slices.pwm0;
@@ -227,8 +180,9 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     // Tasks
     heartbeat::spawn().ok();
     ejector_sequencer::spawn().ok();
-    radio_read::spawn().ok();
     camera_sequencer::spawn().ok();
+    poll_temperature::spawn().ok();
+    downlink_jupiter::spawn().ok();
 
     (
         Shared {
@@ -236,8 +190,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             samples_buffer: [0u16; SAMPLE_COUNT],
         },
         Local {
-            radio: hc,
-            geiger_fifo: Some(geiger_fifo),
             camera_mosfet: cam_pin,
             onboard_led: led_pin,
             downlink: jupiter_uart,
@@ -245,6 +197,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             ejection_pin: gpio_detect,
             arming_led: red_led_pin,
             packet_led: packet_indicator,
+            thermocouple,
         },
     )
 }
