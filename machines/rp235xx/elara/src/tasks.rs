@@ -9,7 +9,10 @@ use bmm350::MagConfig;
 use defmt::{error, info};
 use embedded_hal::digital::{InputPin, StatefulOutputPin};
 
-use crate::device_constants::AvionicsI2cBus;
+use crate::device_constants::{
+    AvionicsI2cBus,
+    MpChannel,
+};
 use crate::phases::{Modes, RelayServoStatus};
 use crate::{app::*, device_constants::MotorI2cBus, Mono};
 use embedded_io::Write;
@@ -17,6 +20,7 @@ use fugit::ExtU64;
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
+use embedded_hal::digital::OutputPin;
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     let mut sequence_number: u16 = 0;
@@ -35,121 +39,13 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     }
 }
 
-use tinyframe::buffer::FrameIter;
-pub async fn radio_send(mut ctx: radio_send::Context<'_>) {
-    let radio = ctx.local.radio;
-    let mut buf_len = 0;
-    let mut outgoing_packet_bytes = [0u8; 512];
-
-    loop {
-        // info!("Radio Send Task Operating");
-        // First, drain outgoing packets until we run out of space in the outgoing packet bytes
-        ctx.shared.data.lock(|data| {
-            while let Some(packet) = data.pop_front() {
-                if let Ok(w) =
-                    encode_into_slice(packet, &mut outgoing_packet_bytes[buf_len..], standard())
-                {
-                    buf_len += w;
-                    if buf_len == outgoing_packet_bytes.len() {
-                        break;
-                    }
-                } else {
-                    // no room → push it back and break
-                    data.push_front(packet).ok();
-                    break;
-                }
-            }
-        });
-
-        // Iter over bytes
-        let mut frame_bytes = [0u8; 200];
-        for frame in FrameIter::first(&outgoing_packet_bytes[..buf_len]) {
-            let written = frame.encode_into_slice(&mut frame_bytes).unwrap();
-            let bytes = &frame_bytes[..written];
-            info!("Bytes: {:?}", bytes);
-            for chunk in bytes.chunks(16) {
-                let write = radio.write_all(chunk);
-                match write {
-                    Ok(_) => {
-                        info!("Wrote chunk: {:?}", chunk);
-                    }
-                    Err(e) => {
-                        error!("Error writing chunk: {:?}", e);
-                    }
-                }
-
-                Mono::delay(40.millis()).await;
-            }
-            // info!("Sent Frame");
-        }
-        // Clear outgoing packet bytes
-        buf_len = 0;
-        Mono::delay(25.millis()).await;
-    }
-}
-
 use rp235x_pac::interrupt;
 #[interrupt]
 unsafe fn I2C0_IRQ() {
     MotorI2cBus::on_interrupt();
 }
 
-use crate::phases::mode::{FLUTTER_COUNT, FLUTTER_START_TIME, SERVO_DISABLE_DELAY};
-pub async fn mode_sequencer(ctx: mode_sequencer::Context<'_>) {
-    let mut mode_start = Mono::now();
-    let mut relay_status = false;
-    ctx.local.relay_servo.enable();
-    ctx.local.flap_servo.enable();
-    ctx.local.flap_servo.deg_0();
-    ctx.local.relay_servo.deg_0();
-    let mut relay_flutter_status = RelayServoStatus::Open;
-    let mut flutter_count = 0;
-    let mut end_task = false;
 
-    // Wait for RBF removal
-    while ctx.local.rbf.is_high().unwrap() {
-        Mono::delay(100.millis()).await;
-    }
-
-    loop {
-        if !end_task {
-            if !relay_status {
-                // flap_status = Modes::open_flaps_sequence(mode_start, ctx.local.flap_servo).await;
-                relay_status =
-                    Modes::relay_eject_servo_sequence(mode_start, ctx.local.relay_servo).await;
-            } else {
-                Mono::delay(FLUTTER_START_TIME.millis()).await;
-                if flutter_count < FLUTTER_COUNT {
-                    mode_start = Mono::now();
-                    // flap_flutter_status = Modes::flap_flutter_sequence(
-                    //     mode_start,
-                    //     flap_flutter_status,
-                    //     ctx.local.flap_servo,
-                    // )
-                    // .await;
-                    relay_flutter_status = Modes::relay_flutter_sequence(
-                        mode_start,
-                        relay_flutter_status,
-                        ctx.local.relay_servo,
-                    )
-                    .await;
-                    flutter_count += 1;
-                } else {
-                    // ctx.local.flap_servo.deg_0();
-                    ctx.local.relay_servo.deg_0();
-                    Mono::delay(SERVO_DISABLE_DELAY.millis()).await;
-                    // ctx.local.flap_servo.disable();
-                    ctx.local.relay_servo.disable();
-                    end_task = true;
-                }
-            }
-            Mono::delay(5_u64.millis()).await;
-        } else {
-            info!("Mode Sequencer Complete");
-            Mono::delay(100000_u64.secs()).await;
-        }
-    }
-}
 
 pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter<MotorI2cBus>) {
     info!("INA Sample Task Started");
@@ -573,4 +469,90 @@ async fn ina_data_handle(
         (v_ts_slice, i_ts_slice, p_ts_slice),
         (voltage_slice, current_slice, power_slice),
     )
+}
+
+
+pub async fn read_photodiode(mut ctx: read_photodiode::Context<'_>)
+{
+    let mut i: usize = 0;
+
+    loop
+    {
+        i = i + 1;
+
+        if (i % 4) == 0
+        {
+            match ctx.local.mp_channel
+            {
+                MpChannel::PD1_4 => {
+                    ctx.local.pin19.set_low().unwrap();
+                    ctx.local.pin20.set_low().unwrap();
+                    ctx.local.pin21.set_low().unwrap();
+
+                    *ctx.local.mp_channel = MpChannel::PD5_8;
+                }
+
+                MpChannel::PD5_8 => {
+                    ctx.local.pin19.set_high().unwrap();
+                    ctx.local.pin20.set_low().unwrap();
+                    ctx.local.pin21.set_low().unwrap();
+
+                    *ctx.local.mp_channel = MpChannel::PD9_12;
+                }
+
+                MpChannel::PD9_12 => {
+                    ctx.local.pin19.set_low().unwrap();
+                    ctx.local.pin20.set_high().unwrap();
+                    ctx.local.pin21.set_low().unwrap();
+
+                    *ctx.local.mp_channel = MpChannel::PD13_16;
+                }
+
+                MpChannel::PD13_16 => {
+                    ctx.local.pin19.set_high().unwrap();
+                    ctx.local.pin20.set_high().unwrap();
+                    ctx.local.pin21.set_low().unwrap();
+
+                    *ctx.local.mp_channel = MpChannel::PD17_20;
+                }
+
+                MpChannel::PD17_20 => {
+                    ctx.local.pin19.set_low().unwrap();
+                    ctx.local.pin20.set_low().unwrap();
+                    ctx.local.pin21.set_high().unwrap();
+
+                    *ctx.local.mp_channel = MpChannel::PD21_24;
+                }
+
+                MpChannel::PD21_24 => {
+                    ctx.local.pin19.set_high().unwrap();
+                    ctx.local.pin20.set_low().unwrap();
+                    ctx.local.pin21.set_high().unwrap();
+
+                    *ctx.local.mp_channel = MpChannel::PD25_28;
+                }
+
+                MpChannel::PD25_28 => {
+                    ctx.local.pin19.set_low().unwrap();
+                    ctx.local.pin20.set_high().unwrap();
+                    ctx.local.pin21.set_high().unwrap();
+
+                    *ctx.local.mp_channel = MpChannel::PD29_32;
+                }
+
+                MpChannel::PD29_32 => {
+                    ctx.local.pin19.set_high().unwrap();
+                    ctx.local.pin20.set_high().unwrap();
+                    ctx.local.pin21.set_high().unwrap();
+
+                    *ctx.local.mp_channel = MpChannel::PD1_4;
+                }
+            }
+        }
+        ctx.local.adc_outputs[i] = ctx.local.adc_fifo_l.as_mut().unwrap().read();
+        info!("Added {} to adc_outputs.", ctx.local.adc_outputs[i]);
+
+        i = i % 23;
+        Mono::delay(30_u64.micros()).await;
+    }
 }

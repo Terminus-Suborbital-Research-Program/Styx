@@ -139,3 +139,15 @@ pub type IcarusHC12 = HC12<
 
 /// Data buffer for downsyncing ICARUS data
 pub type DownlinkBuffer = Deque<ApplicationPacket, 64>;
+
+pub enum MpChannel
+{
+    PD1_4 =  0b00000, // No pins powered
+    PD5_8 =  0b00001, // GPIO 19
+    PD9_12 =  0b00010, // GPIO 20
+    PD13_16 =  0b00011, // GPIO 19 20
+    PD17_20 =  0b00100, // GPIO 21
+    PD21_24 =  0b00101, // GPIO 19 21
+    PD25_28 =  0b00110, // GPIO 20 21
+    PD29_32 =  0b00111, // GPIO 19 20 21
+}

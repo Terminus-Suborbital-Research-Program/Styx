@@ -37,7 +37,8 @@ use rp235x_hal::{
 use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
 
 // Sensors
-use crate::device_constants::IcarusHC12;
+// use crate::device_constants::IcarusHC12;
+use crate::device_constants::MpChannel;
 use bme280::AsyncBME280;
 use bmi323::AsyncBmi323;
 use bmm350::AsyncBmm350;
@@ -105,112 +106,6 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
         .into_push_pull_output();
     led_pin.set_low().unwrap();
 
-    // Pin setup for UART1
-    let uart1_pins = (pins.gpio8.into_function(), pins.gpio9.into_function());
-    let mut uart1_peripheral =
-        UartPeripheral::new(ctx.device.UART1, uart1_pins, &mut ctx.device.RESETS)
-            .enable(
-                UartConfig::new(9600_u32.Hz(), DataBits::Eight, None, StopBits::One),
-                clocks.peripheral_clock.freq(),
-            )
-            .unwrap();
-    uart1_peripheral.enable_rx_interrupt(); // Make sure we can drive our interrupts
-
-    let programming = pins.gpio5.into_push_pull_output();
-    // Copy the timer
-    let timer = rp235x_hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
-    let mut timer_two = timer;
-
-    info!("UART1 configured, assembling HC-12");
-    let builder = hc12_rs::device::HC12Builder::<(), (), (), ()>::empty()
-        .uart(uart1_peripheral, B9600)
-        .programming_resources(programming, timer)
-        .fu3(HC12Configuration::default());
-
-    let radio = match builder.attempt_build() {
-        Ok(link) => {
-            info!("HC-12 init, link ready");
-            link
-        }
-        Err(e) => {
-            panic!("Failed to init HC-12: {}", e.0);
-        }
-    };
-    // Transition to AT mode
-    info!("Programming HC12...");
-    let radio = radio.into_at_mode().unwrap(); // Infallible
-    timer_two.delay_ms(100);
-    let radio = match radio.set_baudrate(B9600) {
-        Ok(link) => {
-            info!("HC12 baudrate set to 9600");
-            link
-        }
-        Err(e) => {
-            error!("Failed to set HC12 baudrate: {:?}", e.error);
-            e.hc12
-        }
-    };
-
-    timer_two.delay_ms(150);
-
-    let radio = match radio.set_channel(Channel::Channel1) {
-        Ok(link) => {
-            info!("HC12 channel set to 1");
-            link
-        }
-        Err(e) => {
-            error!("Failed to set HC12 channel: {:?}", e.error);
-            e.hc12
-        }
-    };
-    timer_two.delay_ms(150);
-    let radio = match radio.set_power(Power::P8) {
-        Ok(link) => {
-            info!("HC12 power set to P8");
-            link
-        }
-        Err(e) => {
-            error!("Failed to set HC12 power: {:?}", e.error);
-            e.hc12
-        }
-    };
-    timer_two.delay_ms(150);
-    let hc: IcarusHC12 = radio.into_fu3_mode().unwrap(); // Infallible
-
-    // Servo mosfets
-    let mut flap_mosfet: FlapMosfet = pins.gpio2.into_function();
-    flap_mosfet.set_low().unwrap();
-
-    let mut relay_mosfet: RelayMosfet = pins.gpio0.into_function();
-    relay_mosfet.set_low().unwrap();
-
-    // Servo PWMs
-    let slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
-
-    let mut flap_slice: FlapServoSlice = slices.pwm1;
-    flap_slice.set_div_int(64);
-    flap_slice.set_ph_correct();
-    flap_slice.enable();
-
-    let mut relay_slice: RelayServoSlice = slices.pwm0;
-    relay_slice.set_div_int(64);
-    relay_slice.set_ph_correct();
-    relay_slice.enable();
-
-    // Flap servo
-    let mut flap_channel = flap_slice.channel_b;
-    flap_channel.set_enabled(true);
-    let flap_pin: FlapServoPwmPin =
-        flap_channel.output_to(pins.gpio3.into_function::<FunctionPwm>());
-    let flap_servo: FlapServo = Servo::new(flap_channel, flap_pin, flap_mosfet);
-
-    // Relay servo
-    let mut relay_channel = relay_slice.channel_b;
-    relay_channel.set_enabled(true);
-    let relay_pin: RelayServoPwmPin =
-        relay_channel.output_to(pins.gpio1.into_function::<FunctionPwm>());
-    let relay_servo: RelayServo = Servo::new(relay_channel, relay_pin, relay_mosfet);
-
     // Sensors
     // Init I2C pins
     let motor_sda_pin: Pin<EscI2CSdaPin, FunctionI2C, PullUp> = pins.gpio16.reconfigure();
@@ -261,50 +156,37 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     // let mut adc = rp235x_hal::Adc::new(ctx.device.ADC, &mut ctx.device.RESETS);
     // let mut adc_photoresistors: rp235x_hal::adc::AdcPin<Pin<rp235x_hal::gpio::bank0::Gpio40, rp235x_hal::gpio::FunctionNull, rp235x_hal::gpio::PullDown>> = rp235x_hal::adc::AdcPin::new(pins.gpio40).unwrap();
 
-    let s0: Pin<
-        MuxS0Pin,
-        rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-        rp235x_hal::gpio::PullDown,
-    > = pins.gpio14.into_push_pull_output();
-    let s1: Pin<
-        MuxS1Pin,
-        rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-        rp235x_hal::gpio::PullDown,
-    > = pins.gpio13.into_push_pull_output();
-    let s2: Pin<
-        MuxS2Pin,
-        rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-        rp235x_hal::gpio::PullDown,
-    > = pins.gpio11.into_push_pull_output();
-    let s3: Pin<
-        MuxS3Pin,
-        rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-        rp235x_hal::gpio::PullDown,
-    > = pins.gpio10.into_push_pull_output();
-    let e: Pin<
-        MuxEPin,
-        rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-        rp235x_hal::gpio::PullDown,
-    > = pins.gpio12.into_push_pull_output();
-    // TODO: Maybe?
-    let _mux = CD74HC4067::new_enable(s0, s1, s2, s3, e);
+    
+    *ctx.local.adc = Some(rp235x_hal::Adc::new(ctx.device.ADC, &mut ctx.device.RESETS));
+    let adc = ctx.local.adc.as_mut().unwrap();
+
+    let mut adc_pin_0 = rp235x_hal::adc::AdcPin::new(pins.gpio28.into_floating_input()).unwrap();
+   
+    let mut adc_fifo = adc
+        .build_fifo()
+        // Set clock divider to target a sample rate of 1000 samples per second (1ksps).
+        // The value was calculated by `(48MHz / 1ksps) - 1 = 47999.0`.
+        // Please check the `clock_divider` method documentation for details.
+        .clock_divider(47999, 0)
+        .set_channel(&mut adc_pin_0)
+        //.enable_interrupt(1)
+        .start();
+
+    let adc_fifo = Some(adc_fifo);
 
     let data = DownlinkBuffer::new();
     let rbf = pins.gpio4.into_pull_down_input();
 
+
+
     info!("Peripherals initialized, spawning tasks...");
     heartbeat::spawn().ok();
-    mode_sequencer::spawn().ok();
     ina_sample::spawn(motor_i2c_arbiter).ok();
     sample_sensors::spawn(avionics_i2c_arbiter).ok();
-    radio_send::spawn().ok();
     info!("Tasks spawned!");
     (
         Shared { data },
         Local {
-            radio: hc,
-            flap_servo,
-            relay_servo,
             led: led_pin,
             bmm350,
             bmi323,
@@ -314,6 +196,12 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             ina260_3,
             rbf,
             ina260_4,
+            adc_fifo_l: adc_fifo,
+            adc_outputs: [0u16; 24],
+            mp_channel: MpChannel::PD1_4,
+            pin19: pins.gpio19.into_pull_type::<PullNone>().into_push_pull_output(),
+            pin20: pins.gpio20.into_pull_type::<PullNone>().into_push_pull_output(),
+            pin21: pins.gpio21.into_pull_type::<PullNone>().into_push_pull_output(),
             // adc,
             // adc_photoresistors,
             // mux
