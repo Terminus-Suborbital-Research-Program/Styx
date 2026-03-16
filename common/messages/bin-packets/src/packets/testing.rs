@@ -80,5 +80,6 @@ pub enum TelemetryPicoTestingPacket {
 pub enum TestStatus {
     Success, 
     Failure, 
+    NoReport, 
     NotTested,
 }

@@ -1,5 +1,7 @@
 #![warn(missing_docs)]
 
+//! Code for the ejectors servos
+
 use embedded_hal::{digital::OutputPin, pwm::SetDutyCycle};
 use rp235x_hal::{
     gpio,
@@ -7,6 +9,7 @@ use rp235x_hal::{
 };
 
 /// Ejector servo types
+
 pub type EjectionServoPin = gpio::bank0::Gpio0;
 pub type EjectionServoPwm = rp235x_hal::pwm::Pwm0;
 pub type EjectionServoSlice = Slice<EjectionServoPwm, FreeRunning>;

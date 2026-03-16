@@ -14,6 +14,7 @@ use rp235x_hal::pwm::Slices;
 use rp235x_hal::uart::{DataBits, StopBits, UartConfig, UartPeripheral};
 use rp235x_hal::{Clock, Sio, Watchdog};
 use rtic_monotonics::Monotonic;
+use rtic_sync::make_channel;
 
 use mcp9600::{
     ADCResolution, BurstModeSamples, ColdJunctionResolution, DeviceAddr, 
@@ -28,8 +29,10 @@ use crate::device_constants::pins::{CamMosfetPin};
 use crate::device_constants::{
     EjectionDetectionPin, GreenLed, JupiterUart, RedLed, SAMPLE_COUNT, ThermoI2cBus,
 };
-use crate::hal;
 use crate::{app::*, Mono};
+use crate::{hal, EjectorTests};
+
+const TESTING_CHANNEL_CAPACITY: usize = 10;
 
 // Timestamp for logging
 defmt::timestamp!("{=u64:us}", {
@@ -41,6 +44,8 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     unsafe {
         hal::sio::spinlock_reset();
     }
+
+    let (sender, reciever) = make_channel!(bool, TESTING_CHANNEL_CAPACITY);
 
     info!("Ejector startup");
 
@@ -272,22 +277,31 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     info!("Peripherals initialized, spawning tasks");
 
     // Tasks
-    heartbeat::spawn().ok();
-    ejector_sequencer::spawn().ok();
-    camera_sequencer::spawn().ok();
-    poll_temperature::spawn().ok();
-    downlink_jupiter::spawn().ok();
+    #[cfg(feature = "testing")]
+    {
+        testing_handler::spawn(Some(sender)).ok();
+    }
+
+    #[cfg(not(feature = "testing"))]
+    {
+        heartbeat::spawn().ok();
+        ejector_sequencer::spawn().ok();
+        radio_read::spawn().ok();
+        camera_sequencer::spawn().ok();
+    }
 
     (
         Shared {
             downlink_packets: Deque::new(),
             samples_buffer: [0u16; SAMPLE_COUNT],
+            tests: EjectorTests::new(),
         },
         Local {
             camera_mosfet: cam_pin,
             onboard_led: led_pin,
             downlink: jupiter_uart,
             ejector_servo,
+            num_var: 8,
             ejection_pin: gpio_detect,
             ejecctor_magnet: ejector_magnet,
             arming_led: red_led_pin,

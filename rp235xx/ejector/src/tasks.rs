@@ -1,9 +1,9 @@
 #![warn(missing_docs)]
 
-use crate::{app::*, device_constants::SAMPLE_COUNT, Mono};
+use crate::{app::*, device_constants::SAMPLE_COUNT, Mono, TESTING_CHANNEL_CAPACITY};
 use bin_packets::{
     devices::DeviceIdentifier,
-    packets::{status::Status, ApplicationPacket},
+    packets::{ApplicationPacket, status::Status, testing::TestStatus},
 };
 use bincode::{config::standard, decode_from_slice, encode_into_slice, error::DecodeError};
 use defmt::{debug, info, warn};
@@ -13,6 +13,7 @@ use fugit::ExtU64;
 use heapless::{Deque, Vec};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
+use rtic_sync::channel::{Receiver, Sender};
 use tinyframe::frame::Frame;
 
 #[cfg(not(feature = "fast-startup"))]
@@ -88,6 +89,14 @@ pub async fn geiger_calculator(mut ctx: geiger_calculator::Context<'_>) {
     }
 }
 
+pub async fn jupiter_write(mut ctx: jupiter_write::Context<'_>) {
+
+}
+
+pub async fn jupiter_read(mut ctx: jupiter_read::Context<'_>) {
+    
+}
+
 const SCRATCH: usize = 512;
 
 pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
@@ -102,6 +111,8 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
     let mut frame_buf: Vec<u8, SCRATCH> = Vec::new();
     let mut packet_buf: Vec<u8, SCRATCH> = Vec::new();
     let mut outgoing_pkts: Deque<ApplicationPacket, 16> = Deque::new();
+
+    //jupiter_read::spawn().ok();
 
     loop {
         //------------------------------------------------------------------
@@ -149,8 +160,8 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
         ctx.shared.downlink_packets.lock(|packets| {
             while let Some(packet) = packets.pop_front() {
                 ctx.local.packet_led.toggle().ok();
-                if let Ok(sz) = encode_into_slice(packet, &mut enc_buf, standard()) {
-                    let _ = downlink.write_all(&enc_buf[..sz]);
+                if let Ok(size) = encode_into_slice(packet, &mut enc_buf, standard()) {
+                    let _ = downlink.write_all(&enc_buf[..size]);
                 }
                 info!("Sent packet: {}", packet);
             }
@@ -183,8 +194,8 @@ pub async fn radio_read(mut ctx: radio_read::Context<'_>) {
         // 4. Flush any packets that are ready for the downlink.
         //------------------------------------------------------------------
         while let Some(pkt) = outgoing_pkts.pop_front() {
-            if let Ok(sz) = encode_into_slice(pkt, &mut enc_buf, standard()) {
-                let _ = downlink.write_all(&enc_buf[..sz]);
+            if let Ok(size) = encode_into_slice(pkt, &mut enc_buf, standard()) {
+                let _ = downlink.write_all(&enc_buf[..size]);
                 info!("Sent packet: {:?}", pkt);
             }
         }
@@ -202,7 +213,14 @@ pub async fn camera_sequencer(ctx: camera_sequencer::Context<'_>) {
     ctx.local.camera_mosfet.set_low().ok();
 }
 
-pub async fn ejector_sequencer(ctx: ejector_sequencer::Context<'_>) {
+pub async fn testing_handler(
+    ctx: testing_handler::Context<'_>,
+    mut receiver: Option<Receiver<'static, bool, TESTING_CHANNEL_CAPACITY>>,
+) {
+
+}
+
+pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
     // TODO: Update to use elctromag
 
     let servo = ctx.local.ejector_servo;
@@ -242,4 +260,8 @@ pub async fn ejector_sequencer(ctx: ejector_sequencer::Context<'_>) {
     servo.disable();
     e_magnet.disable();
     info!("Ejector disabled, servo and magnet disabled. Ejector sequencing complete.");
+
+    ctx.shared.tests.lock(|f| {
+        f.ejection_test = TestStatus::NoReport;
+    });
 }

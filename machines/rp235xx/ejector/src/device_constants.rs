@@ -2,6 +2,9 @@
 
 #![warn(missing_docs)]
 
+//! Device constants for various pins and peripherals
+
+use hc12_rs::{configuration::baudrates::B9600, ProgrammingPair, FU3, HC12};
 use pins::{
     EjectionPin, GreenLedPin, JupiterRxPin, JupiterTxPin, OnboardLEDPin,
    RedLedPin,
