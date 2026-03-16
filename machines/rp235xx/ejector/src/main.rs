@@ -47,7 +47,7 @@ mod app {
     use crate::actuators::servo::EjectorServo;
     use crate::device_constants::pins::CamMosfetPin;
     use crate::device_constants::{
-        EjectionDetectionPin, EjectorHC12, GreenLed, JupiterUart, OnboardLED, RedLed, SAMPLE_COUNT,
+        EjectionDetectionPin, GreenLed, JupiterUart, OnboardLED, RedLed, SAMPLE_COUNT, ThermoI2cBus
     };
 
     use super::*;
@@ -62,6 +62,7 @@ mod app {
     use rp235x_hal::pwm::{Channel, FreeRunning, Slice, A, B};
     use rp235x_hal::uart::UartPeripheral;
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
+    use mcp9600::MCP9600;
 
     pub type UART0Bus = UartPeripheral<
         rp235x_hal::uart::Enabled,
@@ -96,8 +97,7 @@ mod app {
         pub ejection_pin: EjectionDetectionPin,
         pub downlink: JupiterUart,
         pub camera_mosfet: CamMosfetPin,
-        pub geiger_fifo: Option<AdcFifo<'static, u16>>,
-        //pub radio: EjectorHC12,
+        pub thermocouple: MCP9600<ThermoI2cBus>,
     }
 
     #[init(local = [adc: Option<hal::Adc> = None])]
@@ -118,15 +118,18 @@ mod app {
         #[task(shared = [downlink_packets], local = [onboard_led], priority = 1)]
         async fn heartbeat(mut ctx: heartbeat::Context);
 
-        // Reads incoming packets from the radio
-        #[task(local = [downlink, packet_led, /*radio*/], shared = [downlink_packets], priority = 1)]
-        async fn radio_read(mut ctx: radio_read::Context);
+        #[task( local = [thermocouple], priority = 1)]
+        async fn poll_temperature(mut ctx: poll_temperature::Context);
 
-        #[task(binds = ADC_IRQ_FIFO, priority = 3, shared = [samples_buffer], local = [geiger_fifo, counter: usize = 1])]
-        fn adc_irq(mut ctx: adc_irq::Context);
+        #[task(shared = [downlink_packets], local = [downlink], priority = 1)]
+        async fn downlink_jupiter(mut ctx: downlink_jupiter::Context);
 
-        #[task(priority = 2, shared = [samples_buffer, downlink_packets])]
-        async fn geiger_calculator(mut ctx: geiger_calculator::Context);
+        
+        // #[task(binds = ADC_IRQ_FIFO, priority = 3, shared = [samples_buffer], local = [ counter: usize = 1])]
+        // fn adc_irq(mut ctx: adc_irq::Context);
+
+        // #[task(priority = 2, shared = [samples_buffer, downlink_packets])]
+        // async fn geiger_calculator(mut ctx: geiger_calculator::Context);
     }
 
     /// Returns the current time in nanoseconds since power-on
