@@ -6,7 +6,7 @@
       "request": "launch",
       "preLaunchTask": "Build RP2350 Targets",
       "name": "Launch Ejector",
-      "cwd": "${workspaceFolder}/rp235xx",
+      "cwd": "${workspaceFolder}/machines/rp235xx",
       "runtimeExecutable": "probe-rs",
       "runtimeArgs": [
         "dap-server"
@@ -22,7 +22,7 @@
       "coreConfigs": [
         {
           "coreIndex": 0,
-          "programBinary": "${workspaceFolder}/rp235xx/target/thumbv8m.main-none-eabihf/debug/ejector",
+          "programBinary": "${workspaceFolder}/machines/rp235xx/target/thumbv8m.main-none-eabihf/debug/ejector",
           "rttEnabled": true
         }
       ],
@@ -37,7 +37,7 @@
       "request": "launch",
       "preLaunchTask": "Build RP2350 Targets",
       "name": "Launch Icarus",
-      "cwd": "${workspaceFolder}/rp235xx",
+      "cwd": "${workspaceFolder}/machines/rp235xx",
       "runtimeExecutable": "probe-rs",
       "runtimeArgs": [
         "dap-server"
@@ -53,7 +53,7 @@
       "coreConfigs": [
         {
           "coreIndex": 0,
-          "programBinary": "${workspaceFolder}/rp235xx/target/thumbv8m.main-none-eabihf/debug/icarus",
+          "programBinary": "${workspaceFolder}/machines/rp235xx/target/thumbv8m.main-none-eabihf/debug/icarus",
           "rttEnabled": true
         }
       ],

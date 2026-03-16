@@ -1,0 +1,24 @@
+[package]
+name = "odin-compute"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rtrb = "0.3.2"
+rustfft = "6.4.1"
+serde_arrays = "0.2.0"
+serde = "1.0.228"
+bincode = { version = "2.0.1", features = ["serde"] }
+signet = { path="../../../common/signet"}
+bin-packets = { workspace = true, features = ["std"] }
+thiserror = "2.0.18"
+bytemuck = "1.25.0"
+env_logger = "0.11.8"
+log = "0.4.29"
+v4l = {version = "0.14.0", features = ["v4l2"]}
+image = "0.25.9"
+wayfarer = { git = "https://github.com/Terminus-Suborbital-Research-Program/Wayfarer.git", branch = "main"}
+aether = { git = "https://github.com/AtmoPierce/aether.git", features = ["serde"]}
+serialport = "4.8.1"
+
+
