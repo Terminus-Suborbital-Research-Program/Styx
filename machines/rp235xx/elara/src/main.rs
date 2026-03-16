@@ -25,6 +25,8 @@ use ina260_terminus::AsyncINA260;
 // Busses
 use rtic_sync::arbiter::i2c::ArbiterDevice;
 
+use device_constants::MpChannel;
+
 /// Lets us know when we panic
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
@@ -90,9 +92,6 @@ mod app {
 
     #[local]
     pub struct Local {
-        pub radio: IcarusHC12,
-        pub relay_servo: RelayServo,
-        pub flap_servo: FlapServo,
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
         pub bmm350: AsyncBmm350<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub bmi323: AsyncBmi323<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
@@ -102,6 +101,12 @@ mod app {
         pub ina260_3: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
         pub ina260_4: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
         pub rbf: Pin<Gpio4, FunctionSio<SioInput>, PullDown>,
+        pub adc_fifo_l: Option<hal::adc::AdcFifo<'static, u16>>,
+        pub adc_outputs: [u16; 24], 
+        pub mp_channel: MpChannel,
+        pub pin19: gpio::Pin<gpio::bank0::Gpio19, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
+        pub pin20: gpio::Pin<gpio::bank0::Gpio20, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
+        pub pin21: gpio::Pin<gpio::bank0::Gpio21, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
         // pub adc: hal::adc::Adc,
         // pub adc_photoresistors:
         //     AdcPin<gpio::Pin<gpio::bank0::Gpio40, gpio::FunctionNull, gpio::PullDown>>,
@@ -141,8 +146,10 @@ mod app {
             i2c_avionics_bus: MaybeUninit<Arbiter<AvionicsI2cBus>> = MaybeUninit::uninit(),
             i2c_motor_bus: MaybeUninit<Arbiter<MotorI2cBus>> = MaybeUninit::uninit(),
             esc_state_signal: MaybeUninit<Signal<IcarusPhase>> = MaybeUninit::uninit(),
+            adc: Option<hal::Adc> = None,
         ]
     )]
+
     fn init(ctx: init::Context) -> (Shared, Local) {
         startup::startup(ctx)
     }
@@ -151,13 +158,6 @@ mod app {
         // Heartbeats the main led
         #[task(local = [led], shared = [data], priority = 1)]
         async fn heartbeat(ctx: heartbeat::Context);
-
-        // Takes care of incoming packets
-        #[task(shared = [data], local=[radio], priority = 2)]
-        async fn radio_send(mut ctx: radio_send::Context);
-
-        #[task(priority = 3, local=[flap_servo, relay_servo, rbf])]
-        async fn mode_sequencer(&mut ctx: mode_sequencer::Context);
 
         // Handles INA sensors
         #[task(priority = 2, shared = [data], local=[ina260_1, ina260_2, ina260_3, ina260_4])]
@@ -171,6 +171,9 @@ mod app {
 
         #[task(priority = 2)]
         async fn inertial_nav(mut ctx: inertial_nav::Context);
+
+        #[task(priority = 2, shared = [], local=[mp_channel, adc_fifo_l, pin19, pin20, pin21, adc_outputs])]
+        async fn read_photodiode(&mut ctx: read_photodiode::Context);
     }
 
     /// Returns the current time in nanoseconds since power-on
