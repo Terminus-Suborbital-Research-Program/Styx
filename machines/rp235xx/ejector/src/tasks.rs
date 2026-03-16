@@ -174,18 +174,3 @@ pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
         Mono::delay(1000_u64.millis()).await;
     }
 }
-
-pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
-    let sensor = &mut ctx.local.thermocouple;
-    
-    info!("Mcp start");
-
-    loop {
-        match sensor.read_hot_junction() {
-            Ok(temp) => info!("Thermocouple Temperature: {} C", temp),
-            Err(_) => warn!("Failed to read MCP9600 thermocouple"),
-        }
-
-        Mono::delay(1000_u64.millis()).await;
-    }
-}

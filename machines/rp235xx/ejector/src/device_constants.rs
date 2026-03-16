@@ -13,7 +13,7 @@ use rp235x_hal::{
 pub mod pins {
     use rp235x_hal::gpio::{
         FunctionI2C, FunctionSio, FunctionUart, Pin, PullDown, PullUp, SioInput, SioOutput, bank0::{
-            Gpio0, Gpio1, Gpio2, Gpio4, Gpio5, Gpio8, Gpio9, Gpio10, Gpio11, Gpio12, Gpio16, Gpio17, Gpio20, Gpio21, Gpio25, Gpio26, Gpio27, Gpio32, Gpio33
+            Gpio0, Gpio1, Gpio2, Gpio4, Gpio5, Gpio8, Gpio9, Gpio10, Gpio11, Gpio12, Gpio16, Gpio17, Gpio20, Gpio21, Gpio24, Gpio25, Gpio26, Gpio27, Gpio32, Gpio33
         }
     };
 
