@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use std::{
     thread::sleep,
     time::{Duration, Instant},

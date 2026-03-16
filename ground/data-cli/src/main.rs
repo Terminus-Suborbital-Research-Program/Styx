@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 mod csv_translator;
 mod parser;
 mod parser_builder;

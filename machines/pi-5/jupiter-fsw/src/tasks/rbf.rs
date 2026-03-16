@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use std::sync::{Arc, Mutex};
 use std::thread::spawn;
 

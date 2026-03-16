@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 /*
 Phases for JUPITER, ICARUS, and Ejector. Other devices are
 stateless and do not require any phase tracking.

@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use log::{info, warn};
 
 use super::Pin;

@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use bin_packets::phases::JupiterPhase;
 use embedded_hal::digital::PinState;
 

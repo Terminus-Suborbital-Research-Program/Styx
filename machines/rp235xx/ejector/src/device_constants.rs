@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use pins::{
     EjectionPin, GreenLedPin, JupiterRxPin, JupiterTxPin, OnboardLEDPin,
    RedLedPin,
@@ -34,7 +36,7 @@ pub mod pins {
     pub type RBFPin = Pin<Gpio2, FunctionSio<SioInput>, PullDown>;
 
     /// Ejection detection pin
-    pub type EjectionPin = Gpio21;
+    pub type EjectionPin = Gpio24;
 
     /// UART RX
     pub type JupiterRxPin = Pin<Gpio16, FunctionUart, PullDown>;

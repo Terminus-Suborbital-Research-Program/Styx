@@ -1,5 +1,6 @@
 #![no_std]
 #![no_main]
+#![warn(missing_docs)]
 
 // Our Modules
 pub mod actuators;
@@ -42,6 +43,7 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 )]
 mod app {
 
+    use crate::actuators::electromag::ElectroMagnet;
     use crate::actuators::servo::EjectorServo;
     use crate::device_constants::pins::CamMosfetPin;
     use crate::device_constants::{
@@ -57,6 +59,7 @@ mod app {
 
     use heapless::Deque;
     use rp235x_hal::adc::AdcFifo;
+    use rp235x_hal::pwm::{Channel, FreeRunning, Slice, A, B};
     use rp235x_hal::uart::UartPeripheral;
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
     use mcp9600::MCP9600;
@@ -70,6 +73,13 @@ mod app {
         ),
     >;
 
+    // TODO: Set proper pins
+    pub type EjectorMagnet = ElectroMagnet<
+        Channel<Slice<rp235x_hal::pwm::Pwm2, FreeRunning>, A>,
+        Channel<Slice<rp235x_hal::pwm::Pwm2, FreeRunning>, B>,
+        gpio::Pin<gpio::bank0::Gpio22, gpio::FunctionSioOutput, gpio::PullDown>,
+    >;
+
     #[shared]
     pub struct Shared {
         pub downlink_packets: Deque<ApplicationPacket, 128>,
@@ -78,8 +88,10 @@ mod app {
 
     #[local]
     pub struct Local {
+        // TODO: Add
         pub onboard_led: OnboardLED,
         pub ejector_servo: EjectorServo,
+        pub ejecctor_magnet: EjectorMagnet,
         pub arming_led: RedLed,
         pub packet_led: GreenLed,
         pub ejection_pin: EjectionDetectionPin,
@@ -95,7 +107,7 @@ mod app {
 
     extern "Rust" {
         // Sequences the ejection
-        #[task(local = [ejection_pin, arming_led, ejector_servo],  priority = 1)]
+        #[task(local = [ejection_pin, arming_led, ejector_servo, ejecctor_magnet],  priority = 1)]
         async fn ejector_sequencer(mut ctx: ejector_sequencer::Context);
 
         // Sequences cameras activation

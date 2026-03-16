@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use crate::csv_translator::CSVPacketTranslator;
 
 use bin_packets::packets::ApplicationPacket;

@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 pub enum BatteryState {
     LatchOff,
     LatchOn,

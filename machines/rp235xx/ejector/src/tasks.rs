@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use crate::{app::*, device_constants::SAMPLE_COUNT, Mono};
 use bin_packets::{
     devices::DeviceIdentifier,
@@ -117,10 +119,16 @@ pub async fn camera_sequencer(ctx: camera_sequencer::Context<'_>) {
 }
 
 pub async fn ejector_sequencer(ctx: ejector_sequencer::Context<'_>) {
+    // TODO: Update to use elctromag
+
     let servo = ctx.local.ejector_servo;
+    let e_magnet = ctx.local.ejecctor_magnet;
     // Latch ejector servos closed
-    servo.enable();
     servo.hold();
+    servo.enable();
+
+    e_magnet.enable();
+    e_magnet.polarity_switch(); // Maybe
 
     let ejection_pin = ctx.local.ejection_pin;
 
@@ -140,6 +148,7 @@ pub async fn ejector_sequencer(ctx: ejector_sequencer::Context<'_>) {
 
     // Eject, wait 5 seconds, then retract
     info!("Ejecting!");
+    e_magnet.polarity_switch();
     servo.eject();
     Mono::delay(5000_u64.millis()).await;
     servo.hold();
@@ -147,7 +156,23 @@ pub async fn ejector_sequencer(ctx: ejector_sequencer::Context<'_>) {
     // Give three seconds to retract, then disable to save power
     Mono::delay(3000_u64.millis()).await;
     servo.disable();
-    info!("Ejector disabled, servo disabled. Ejector sequencing complete.");
+    e_magnet.disable();
+    info!("Ejector disabled, servo and magnet disabled. Ejector sequencing complete.");
+}
+
+pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
+    let sensor = &mut ctx.local.thermocouple;
+    
+    info!("Mcp start");
+
+    loop {
+        match sensor.read_hot_junction() {
+            Ok(temp) => info!("Thermocouple Temperature: {} C", temp),
+            Err(_) => warn!("Failed to read MCP9600 thermocouple"),
+        }
+
+        Mono::delay(1000_u64.millis()).await;
+    }
 }
 
 pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {

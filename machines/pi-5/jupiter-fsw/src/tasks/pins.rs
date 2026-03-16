@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use i2cdev::{
     core::I2CDevice as _,
     linux::{LinuxI2CDevice, LinuxI2CError},

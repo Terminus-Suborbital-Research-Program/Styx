@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use embedded_hal::digital::{ErrorType, InputPin};
 use log::{debug, error, warn};
 
