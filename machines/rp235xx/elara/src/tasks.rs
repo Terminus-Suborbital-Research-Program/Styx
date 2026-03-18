@@ -20,6 +20,7 @@ use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
 use embedded_hal::digital::OutputPin;
+use bincode::config::standard;
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     let mut sequence_number: u16 = 0;
@@ -35,6 +36,70 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
         sequence_number = sequence_number.wrapping_add(1);
 
         Mono::delay(300_u64.millis()).await;
+    }
+}
+
+pub async fn poll_attitude_metrics(mut ctx: poll_attitude_metrics::Context<'_>) {
+    let mut rx_buf = [0u8; 128]; 
+    let mut idx = 0;
+    
+    let config = bincode::config::standard(); 
+
+    loop {
+        // Read byte by byte if uart available
+        while ctx.local.compute_link.uart_is_readable() {
+
+            if idx >= rx_buf.len() {
+                // Buffer full, break to avoid blocking
+                break; 
+            }
+            let mut byte = [0u8; 1];
+            if let Ok(_) = ctx.local.compute_link.read_raw(&mut byte) {
+                if idx < rx_buf.len() {
+                    rx_buf[idx] = byte[0];
+                    idx += 1;
+                } else {
+                    defmt::warn!("RX buffer overflow. Resetting to resync.");
+                    idx = 0;
+                    rx_buf[idx] = byte[0];
+                    idx += 1;
+                }
+            } else {
+                defmt::error!("UART read error");
+                break;
+            }
+        }
+
+        // If we've accumulated data, try to decode it
+        if idx > 0 {
+            match bincode::decode_from_slice::<AttitudeMetrics, _>(&rx_buf[..idx], config) {
+                Ok((metrics, bytes_used)) => {
+                    ctx.shared.metrics_buf.lock(|buf| {
+                        if buf.is_full() {
+                            let _ = buf.pop_front();
+                        }
+                        let _ = buf.push_back(metrics);
+                    });
+
+                    // Shift any remaining unparsed bytes to the front of the buffer
+                    let remaining = idx - bytes_used;
+                    if remaining > 0 {
+                        rx_buf.copy_within(bytes_used..idx, 0);
+                    }
+                    idx = remaining;
+                }
+                Err(bincode::error::DecodeError::UnexpectedEnd { .. }) => {
+                }
+                Err(_) => {
+                    // drop the oldest byte and shift 
+                    // the window by 1 to let bincode try again on the next loop.
+                    rx_buf.copy_within(1..idx, 0);
+                    idx -= 1;
+                }
+            }
+        }
+
+        Mono::delay(20.millis()).await; 
     }
 }
 

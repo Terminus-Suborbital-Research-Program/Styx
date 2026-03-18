@@ -196,7 +196,10 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     sample_sensors::spawn(avionics_i2c_arbiter).ok();
     info!("Tasks spawned!");
     (
-        Shared { data },
+        Shared { 
+            data,
+            metrics_buf,
+        },
         Local {
             led: led_pin,
             bmm350,
@@ -213,7 +216,6 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             pin19: pins.gpio19.into_pull_type::<PullNone>().into_push_pull_output(),
             pin20: pins.gpio20.into_pull_type::<PullNone>().into_push_pull_output(),
             pin21: pins.gpio21.into_pull_type::<PullNone>().into_push_pull_output(),
-            metrics_buf,
             compute_link,
 
             // adc,

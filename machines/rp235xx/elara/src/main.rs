@@ -87,6 +87,7 @@ mod app {
     #[shared]
     pub struct Shared {
         pub data: ComputeTXBuffer,
+        pub metrics_buf: ComputeRXBuffer,
     }
 
     #[local]
@@ -108,7 +109,6 @@ mod app {
         pub pin20: gpio::Pin<gpio::bank0::Gpio20, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
         pub pin21: gpio::Pin<gpio::bank0::Gpio21, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
         pub compute_link: OdinComputeUart,
-        pub metrics_buf: ComputeRXBuffer,
         // pub adc: hal::adc::Adc,
         // pub adc_photoresistors:
         //     AdcPin<gpio::Pin<gpio::bank0::Gpio40, gpio::FunctionNull, gpio::PullDown>>,
@@ -176,6 +176,10 @@ mod app {
 
         #[task(priority = 2, shared = [], local=[mp_channel, adc_fifo_l, pin19, pin20, pin21, adc_outputs])]
         async fn read_photodiode(&mut ctx: read_photodiode::Context);
+
+        // In the future this could be interrupt driven
+        #[task(priority = 2, shared = [metrics_buf], local=[compute_link])]
+        async fn poll_attitude_metrics(&mut ctx: poll_attitude_metrics::Context);
     }
 
     /// Returns the current time in nanoseconds since power-on
