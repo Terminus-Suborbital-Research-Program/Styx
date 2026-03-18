@@ -50,7 +50,6 @@ name = "aether_core"
 version = "0.1.1"
 source = "git+https://github.com/AtmoPierce/aether.git#9c3b92da6535818f555aee576ecf2546b5f38c20"
 dependencies = [
- "bincode",
  "num-traits",
  "serde",
 ]
@@ -350,7 +349,6 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 name = "bin-packets"
 version = "0.1.2"
 dependencies = [
- "aether",
  "bincode",
  "defmt 1.0.1",
  "embedded-io 0.6.1",
@@ -1095,10 +1093,10 @@ dependencies = [
  "ina260_terminus",
  "minikalman",
  "nalgebra 0.33.2",
- "rp235x-hal 0.3.0",
+ "rp235x-hal 0.4.0",
  "rp235x-pac 0.1.0",
  "rtic",
- "rtic-monotonics 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rtic-monotonics 2.1.0 (git+https://github.com/rtic-rs/rtic.git)",
  "rtic-sync",
  "tinyframe",
  "united_states_standard_atmosphere",

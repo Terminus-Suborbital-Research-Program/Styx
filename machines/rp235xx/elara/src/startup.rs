@@ -1,18 +1,13 @@
 use crate::{
     actuators::servo::Servo,
     device_constants::{
-        pins::{MuxEPin, MuxS0Pin, MuxS1Pin, MuxS2Pin, MuxS3Pin},
-        DownlinkBuffer,
+        ComputeRXBuffer, ComputeTXBuffer, OdinComputeUart, pins::{MuxEPin, MuxS0Pin, MuxS1Pin, MuxS2Pin, MuxS3Pin}
     },
 };
 use crate::{
     app::*,
     device_constants::{
         pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin},
-        servos::{
-            FlapMosfet, FlapServo, FlapServoPwmPin, FlapServoSlice, RelayMosfet, RelayServo,
-            RelayServoPwmPin, RelayServoSlice,
-        },
     },
     peripherals::async_i2c::AsyncI2c,
     Mono,
@@ -29,7 +24,7 @@ use hc12_rs::{
 };
 use rp235x_hal::{
     clocks,
-    gpio::{FunctionI2C, FunctionPwm, Pin, PullNone, PullUp},
+    gpio::{FunctionI2C, FunctionPwm, Pin, PullNone, PullUp, FunctionUartAux},
     pwm::Slices,
     uart::{DataBits, StopBits, UartConfig, UartPeripheral},
     Clock, Sio, Watchdog, I2C,
@@ -98,6 +93,21 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             panic!("Failed to init clocks");
         }
     };
+
+
+    let compute_link: OdinComputeUart = UartPeripheral::new(
+        ctx.device.UART1,
+        (
+            pins.gpio38.into_function::<FunctionUartAux>(),
+            pins.gpio37.into_function(),
+        ),
+        &mut ctx.device.RESETS,
+    )
+    .enable(
+        UartConfig::new(115200_u32.Hz(), DataBits::Eight, None, StopBits::One),
+        clocks.peripheral_clock.freq(),
+    )
+    .unwrap();
 
     // Configure GPIO25 as an output
     let mut led_pin = pins
@@ -174,14 +184,15 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     let adc_fifo = Some(adc_fifo);
 
-    let data = DownlinkBuffer::new();
+    let data = ComputeTXBuffer::new();
+    let metrics_buf = ComputeRXBuffer::new();
     let rbf = pins.gpio4.into_pull_down_input();
 
 
 
     info!("Peripherals initialized, spawning tasks...");
     heartbeat::spawn().ok();
-    ina_sample::spawn(motor_i2c_arbiter).ok();
+    // ina_sample::spawn(motor_i2c_arbiter).ok();
     sample_sensors::spawn(avionics_i2c_arbiter).ok();
     info!("Tasks spawned!");
     (
@@ -202,6 +213,9 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             pin19: pins.gpio19.into_pull_type::<PullNone>().into_push_pull_output(),
             pin20: pins.gpio20.into_pull_type::<PullNone>().into_push_pull_output(),
             pin21: pins.gpio21.into_pull_type::<PullNone>().into_push_pull_output(),
+            metrics_buf,
+            compute_link,
+
             // adc,
             // adc_photoresistors,
             // mux
