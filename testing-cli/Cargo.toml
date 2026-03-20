@@ -7,7 +7,7 @@ edition = "2024"
 
 # Packet Fomramting
 bincode = "2.0.1"
-bin-packets = { path = "../bin-packets", features = ["std","testing"]}
+bin-packets = { path = "../common/messages/bin-packets", features = ["std","testing-cli"]}
 
 # USB Communication
 serialport = {version = "*"}

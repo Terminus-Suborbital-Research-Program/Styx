@@ -24,11 +24,6 @@ pub enum ApplicationPacket {
     TestingStatus(TestingStatusPacket),
     Status(Status),
     // ADCS(AttitudeMetrics),
-    //JupiterTestingPacket(JupiterTestingPacket),
-    //OdinPiTestingPacket(OdinPiTestingPacket),
-    //OdinPicoTestingPacket(OdinPicoTestingPacket),
-    //EjectorPicoTesting(EjectorPicoTestingPacket),
-    //PowerPicoTesting(PowerPicoTestingPacket),
     VoltageData {
         timestamp: [u64; 4],
         voltage: [f32; 4],

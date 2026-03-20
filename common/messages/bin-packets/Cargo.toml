@@ -22,5 +22,6 @@ serde = { version = "*", features = ["derive"], default-features = false }
 [features]
 default = []
 std = ["bincode/std", "serde/std", "embedded-io/std", "aether"]
+testing-cli = ["dep:clap/derive"]
 
 

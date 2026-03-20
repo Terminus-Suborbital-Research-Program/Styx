@@ -43,40 +43,6 @@ pub enum TestType{
 }
 
 #[derive(Copy, Clone, Encode, Decode, Format, Serialize, Deserialize, Debug)]
-pub enum OdinPiTestingPacket {
-    SanityTest,
-    RadioTest,
-}
-
-#[derive(Copy, Clone, Encode, Decode, Format, Serialize, Deserialize, Debug)]
-pub enum OdinPicoTestingPacket {
-    SanityTest,
-    MotorSpinTest,
-    PhotoDiodeTest,
-}
-
-#[derive(Copy, Clone, Encode, Decode, Format, Serialize, Deserialize, Debug)]
-pub enum PowerPicoTestingPacket {
-    SanityTest,
-    ThremocoupleTest,
-    PowerLatchTest,
-}
-
-#[derive(Copy, Clone, Encode, Decode, Format, Serialize, Deserialize, Debug)]
-pub enum EjectorPicoTestingPacket {
-    SanityTest,
-    UartTest,
-    EjectionTest,
-}
-
-#[derive(Copy, Clone, Encode, Decode, Format, Serialize, Deserialize, Debug)]
-pub enum TelemetryPicoTestingPacket {
-    SanityTest,
-    UartTest,
-    EjectionTest,
-}
-
-#[derive(Copy, Clone, Encode, Decode, Format, Serialize, Deserialize, Debug)]
 pub enum TestStatus {
     Success, 
     Failure, 
