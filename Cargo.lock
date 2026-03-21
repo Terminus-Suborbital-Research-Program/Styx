@@ -50,7 +50,6 @@ name = "aether_core"
 version = "0.1.1"
 source = "git+https://github.com/AtmoPierce/aether.git#9c3b92da6535818f555aee576ecf2546b5f38c20"
 dependencies = [
- "bincode",
  "num-traits",
  "serde",
 ]
@@ -350,7 +349,6 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 name = "bin-packets"
 version = "0.1.2"
 dependencies = [
- "aether",
  "bincode",
  "defmt 1.0.1",
  "embedded-io 0.6.1",
@@ -479,6 +477,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60d4bd9d1db2c6bdf285e223a7fa369d5ce98ec767dec949c6ca62863ce61757"
 dependencies = [
  "core2",
+]
+
+[[package]]
+name = "bitvec"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1bc2832c24239b0141d5674bb9174f9d68a8b5b3f2753311927c172ca46f7e9c"
+dependencies = [
+ "funty",
+ "radium",
+ "tap",
+ "wyz",
 ]
 
 [[package]]
@@ -1047,15 +1057,53 @@ dependencies = [
  "embedded-hal 1.0.0",
  "embedded-io 0.7.1",
  "fugit",
- "hc12-rs",
  "heapless 0.9.2",
+ "mcp9600",
  "rp235x-hal 0.4.0",
  "rtic",
- "rtic-monotonics",
+ "rtic-monotonics 2.1.0 (git+https://github.com/rtic-rs/rtic.git)",
  "rtic-sync",
  "tinyframe",
  "usb-device",
  "usbd-serial",
+]
+
+[[package]]
+name = "elara"
+version = "0.1.1"
+dependencies = [
+ "bin-packets",
+ "bincode",
+ "bme280",
+ "bmi323",
+ "bmm350",
+ "cd74hc4067",
+ "cortex-m",
+ "defmt 1.0.1",
+ "defmt-rtt",
+ "embedded-hal 0.2.7",
+ "embedded-hal 1.0.0",
+ "embedded-hal-async",
+ "embedded-hal-bus",
+ "embedded-io 0.6.1",
+ "fugit",
+ "futures",
+ "hc12-rs",
+ "heapless 0.9.2",
+ "ina260_terminus",
+ "minikalman",
+ "nalgebra 0.33.2",
+ "rp235x-hal 0.4.0",
+ "rp235x-pac 0.1.0",
+ "rtic",
+ "rtic-monotonics 2.1.0 (git+https://github.com/rtic-rs/rtic.git)",
+ "rtic-sync",
+ "tinyframe",
+ "united_states_standard_atmosphere",
+ "uom",
+ "usb-device",
+ "usbd-serial",
+ "wgs84",
 ]
 
 [[package]]
@@ -1346,6 +1394,12 @@ checksum = "4e639847d312d9a82d2e75b0edcc1e934efcc64e6cb7aa94f0b1fbec0bc231d6"
 dependencies = [
  "gcd",
 ]
+
+[[package]]
+name = "funty"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6d5a32815ae3f33302d95fdcb2ce17862f8c65363dcfd29360480ba1001fc9c"
 
 [[package]]
 name = "futures"
@@ -1971,7 +2025,7 @@ dependencies = [
  "rp235x-hal 0.3.0",
  "rp235x-pac 0.1.0",
  "rtic",
- "rtic-monotonics",
+ "rtic-monotonics 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rtic-sync",
  "usb-device",
  "usbd-serial",
@@ -2183,10 +2237,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "mcp9600"
+version = "0.1.1"
+source = "git+https://github.com/besselfunct/mcp9600.git#8f08330af4482cc66d9c091677b86100505226f5"
+dependencies = [
+ "bitvec",
+ "embedded-hal 0.2.7",
+]
+
+[[package]]
 name = "memchr"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
+
+[[package]]
+name = "minikalman"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7493dfdf176e7728ed1e4430bd8d19797f1372c39a21e183d0e197e76530fe1"
+dependencies = [
+ "libm",
+ "nalgebra 0.32.6",
+ "num-traits",
+]
 
 [[package]]
 name = "minimal-lexical"
@@ -2246,6 +2320,20 @@ dependencies = [
 
 [[package]]
 name = "nalgebra"
+version = "0.32.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b5c17de023a86f59ed79891b2e5d5a94c705dbe904a5b5c9c952ea6221b03e4"
+dependencies = [
+ "approx",
+ "num-complex 0.4.6",
+ "num-rational 0.4.2",
+ "num-traits",
+ "simba 0.8.1",
+ "typenum",
+]
+
+[[package]]
+name = "nalgebra"
 version = "0.33.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26aecdf64b707efd1310e3544d709c5c0ac61c13756046aaaba41be5c4f66a3b"
@@ -2257,7 +2345,7 @@ dependencies = [
  "num-traits",
  "rand 0.8.5",
  "rand_distr",
- "simba",
+ "simba 0.9.1",
  "typenum",
 ]
 
@@ -2850,6 +2938,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "69cdb34c158ceb288df11e18b4bd39de994f6657d83847bdffdbd7f346754b0f"
 
 [[package]]
+name = "radium"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc33ff2d4973d518d823d61aa239014831e521c75da58e3df4840d3f47749d09"
+
+[[package]]
 name = "rancor"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3313,6 +3407,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rtic-common"
+version = "1.1.0"
+source = "git+https://github.com/rtic-rs/rtic.git#d75fbf4e5c6860b471e9e2f6e92d09aed0a9b5e2"
+dependencies = [
+ "critical-section",
+ "portable-atomic",
+]
+
+[[package]]
 name = "rtic-core"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3348,7 +3451,20 @@ dependencies = [
  "fugit",
  "portable-atomic",
  "rp235x-pac 0.1.0",
- "rtic-time",
+ "rtic-time 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rtic-monotonics"
+version = "2.1.0"
+source = "git+https://github.com/rtic-rs/rtic.git#d75fbf4e5c6860b471e9e2f6e92d09aed0a9b5e2"
+dependencies = [
+ "cfg-if",
+ "cortex-m",
+ "fugit",
+ "portable-atomic",
+ "rp235x-pac 0.2.0",
+ "rtic-time 2.0.1 (git+https://github.com/rtic-rs/rtic.git)",
 ]
 
 [[package]]
@@ -3364,7 +3480,7 @@ dependencies = [
  "heapless 0.8.0",
  "loom",
  "portable-atomic",
- "rtic-common",
+ "rtic-common 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -3378,7 +3494,20 @@ dependencies = [
  "embedded-hal-async",
  "fugit",
  "futures-util",
- "rtic-common",
+ "rtic-common 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rtic-time"
+version = "2.0.1"
+source = "git+https://github.com/rtic-rs/rtic.git#d75fbf4e5c6860b471e9e2f6e92d09aed0a9b5e2"
+dependencies = [
+ "critical-section",
+ "embedded-hal 1.0.0",
+ "embedded-hal-async",
+ "fugit",
+ "futures-util",
+ "rtic-common 1.1.0 (git+https://github.com/rtic-rs/rtic.git)",
 ]
 
 [[package]]
@@ -3651,11 +3780,24 @@ dependencies = [
 
 [[package]]
 name = "simba"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "061507c94fc6ab4ba1c9a0305018408e312e17c041eb63bef8aa726fa33aceae"
+dependencies = [
+ "approx",
+ "num-complex 0.4.6",
+ "num-traits",
+ "paste",
+]
+
+[[package]]
+name = "simba"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c99284beb21666094ba2b75bbceda012e610f5479dfcc2d6e2426f53197ffd95"
 dependencies = [
  "approx",
+ "libm",
  "num-complex 0.4.6",
  "num-traits",
  "paste",
@@ -3730,7 +3872,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2a3fe7c28c6512e766b0874335db33c94ad7b8f9054228ae1c2abd47ce7d335e"
 dependencies = [
  "approx",
- "nalgebra",
+ "nalgebra 0.33.2",
  "num-traits",
  "rand 0.8.5",
 ]
@@ -3797,6 +3939,12 @@ dependencies = [
  "quote",
  "syn 2.0.114",
 ]
+
+[[package]]
+name = "tap"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "term"
@@ -4019,6 +4167,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 
 [[package]]
+name = "united_states_standard_atmosphere"
+version = "0.1.0"
+source = "git+https://github.com/MeechaelA/UnitedStatesStandardAtmosphere.git#339ab749f9d637e6173e553a56616fe67708efc1"
+dependencies = [
+ "libm",
+]
+
+[[package]]
 name = "untrusted"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4029,6 +4185,16 @@ name = "unty"
 version = "0.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d49784317cd0d1ee7ec5c716dd598ec5b4483ea832a2dced265471cc0f690ae"
+
+[[package]]
+name = "uom"
+version = "0.38.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a739f83872836c82a4f2527d4e54b37007b3de68cafe7edde95fd695968bf4b9"
+dependencies = [
+ "num-traits",
+ "typenum",
+]
 
 [[package]]
 name = "ureq"
@@ -4317,6 +4483,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a28ac98ddc8b9274cb41bb4d9d4d5c425b6020c50c46f25559911905610b4a88"
 
 [[package]]
+name = "wgs84"
+version = "0.1.0"
+source = "git+https://github.com/MeechaelA/WGS84.git#9a9accf126bb8d4430c243c2c5d107ef368b1f03"
+dependencies = [
+ "libm",
+ "nalgebra 0.33.2",
+]
+
+[[package]]
 name = "which"
 version = "4.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4505,6 +4680,15 @@ name = "writeable"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9edde0db4769d2dc68579893f2306b26c6ecfbe0ef499b013d731b7b9247e0b9"
+
+[[package]]
+name = "wyz"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05f360fc0b24296329c78fda852a1e9ae82de9cf7b27dae4b7f62f118f77b9ed"
+dependencies = [
+ "tap",
+]
 
 [[package]]
 name = "y4m"
