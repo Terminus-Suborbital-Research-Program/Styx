@@ -36,13 +36,13 @@ use log::{error, info, LevelFilter};
 
 // use aether::
 pub struct StartrackerThread{
-    quaternion_sender: Sender<Quaternion<f32, ICRF<f32>,Body<f32>>>,
+    quaternion_sender: Sender<[f32 ; 4]>,
     // Sender<Quaternion<f64, ICRF<f64>,Body<f64>>>
 }
 
 impl StartrackerThread {
 
-    pub fn new() -> (Self, Receiver<Quaternion<f32, ICRF<f32>,Body<f32>>>) {
+    pub fn new() -> (Self, Receiver<[f32 ; 4]>) {
         let (quaternion_tx, quaternion_rx) = channel();
 
         let startracker = Self {
