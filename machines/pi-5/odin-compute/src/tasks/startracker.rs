@@ -97,7 +97,11 @@ impl StartrackerThread {
                 match startracker.pyramid_solve(centroids) {
                 // match startracker.exhaustive_solve(centroids, 100) {
                     Ok((reference_vectors, body_vectors)) => {
-                        let q: Quaternion<f32, ICRF<f32>,Body<f32>>  = quest_real(&reference_vectors, &body_vectors);
+                        let quat: Quaternion<f32, ICRF<f32>,Body<f32>>  = quest_real(&reference_vectors, &body_vectors);
+                        
+                        // Note there are two alternating convertions, i,j,k,w and w,i,j,k
+                        // Providing as is in the library
+                        let q = [quat.w(), quat.i(), quat.j(), quat.k()];
 
                          if let Err(e) = self.quaternion_sender.send(q) {
                             error!("Error sending estimate: {}", e);
