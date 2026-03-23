@@ -8,13 +8,15 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   buildInputs = [ systemd libgpiod ];
 
-  src = fetchFromGitHub {
-    owner = "Terminus-Suborbital-Research-Program";
-    repo = "AMALTHEA";
-    rev = "v0.1.1";
-    fetchSubmodules = true;
-    hash = "sha256-vQ1VyzQO8snWWEJGL5C5xQ04BUl+KoX+GeqJ1bgS8ZE=";
-  };
+  inherit src;
+
+  PYLON_ROOT = "${basler-pylon}/opt/pylon";
+  buildAndTestSubdir = "machines/pi-5/jupiter-fsw";
+
+  postInstall = ''
+    wrapProgram $out/bin/odin-compute \
+      --set GENICAM_GENTL64_PATH "${basler-pylon}/opt/pylon/lib/gentlproducer/gtl"
+  '';
 
   buildFeatures = [ "packet_logging" ];
 
