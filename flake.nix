@@ -11,7 +11,8 @@
       systems = utils.lib.eachDefaultSystem (system:
         let
           pkgs = import nixpkgs { inherit system; };
-          jupiter-fsw = pkgs.callPackage ./jupiter-fsw/jupiter.nix { };
+          jupiter-fsw = pkgs.callPackage ./machines/pi-5/jupiter-fsw/jupiter.nix { };
+
         in {
           packages = { inherit jupiter-fsw; };
           devShell.default = pkgs.mkShell {
