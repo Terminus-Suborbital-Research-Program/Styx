@@ -1,4 +1,4 @@
-{ rustPlatform, fetchFromGitHub, pkg-config, libudev-zero, systemd, libgpiod, src }:
+{ rustPlatform, fetchFromGitHub, pkg-config, libudev-zero, systemd, libgpiod, src, basler-pylon }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "jupiter-fsw";
