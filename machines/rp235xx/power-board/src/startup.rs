@@ -11,7 +11,6 @@ use rp235x_hal::pwm::Slices;
 use rp235x_hal::uart::{DataBits, StopBits, UartConfig, UartPeripheral};
 use rp235x_hal::{Clock, Sio, Watchdog};
 use rtic_monotonics::Monotonic;
-use crate::tasks;
 
 use mcp9600::{
     ADCResolution, BurstModeSamples, ColdJunctionResolution, DeviceAddr, 
@@ -68,21 +67,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         sio.gpio_bank0,
         &mut ctx.device.RESETS,
     );
-
-    
-
-    
-
-    // adc.free_running(&gegier_pin);
-    // loop {
-    //     adc.wait_ready();
-    //     let reading = adc.read_single();
-    //     if reading > 100 {
-    //         info!("Reading: {}", reading as f32 * 3.3 / 4096.0);
-    //     }
-    // }
-
-
 
     let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
     let mut timer_two = timer;
