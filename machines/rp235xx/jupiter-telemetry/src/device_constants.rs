@@ -16,7 +16,6 @@ use crate::{hal::timer::CopyableTimer1, peripherals::async_i2c::AsyncI2c};
 pub mod pins {
     use rp235x_hal::gpio::bank0::*;
 
-
     /// I2C SDA pin
     pub type AvionicsI2CSdaPin = Gpio6;
     /// I2C SCL pin
@@ -43,8 +42,6 @@ pub mod pins {
     pub type EscI2CSclPin = Gpio17;
 }
 
-
-
 // Avionics I2C bus
 pub type AvionicsI2cBus = AsyncI2c<
     I2C<
@@ -58,15 +55,13 @@ pub type AvionicsI2cBus = AsyncI2c<
 >;
 
 /// ACS ESC I2C bus
-pub type ComputeI2cBus = 
-    I2C<
-        I2C0,
-        (
-            Pin<EscI2CSdaPin, FunctionI2C, PullUp>,
-            Pin<EscI2CSclPin, FunctionI2C, PullUp>,
-        ),
-        Peripheral,
-    
+pub type ComputeI2cBus = I2C<
+    I2C0,
+    (
+        Pin<EscI2CSdaPin, FunctionI2C, PullUp>,
+        Pin<EscI2CSclPin, FunctionI2C, PullUp>,
+    ),
+    Peripheral,
 >;
 
 pub const TELEMETRY_PERIPHERAL_ADDRESS: u16 = 66;
@@ -77,8 +72,6 @@ use rp235x_hal::pac::UART1;
 use rp235x_hal::uart::Enabled;
 use rp235x_hal::uart::UartPeripheral;
 use rp235x_hal::Timer;
-
-
 
 /// Data buffer for downsyncing ICARUS data
 pub type DownlinkBuffer = Deque<ApplicationPacket, 5>;

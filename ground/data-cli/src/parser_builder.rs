@@ -4,7 +4,6 @@ use crate::csv_translator::{CSVPacketTranslator, FileNameFormat};
 use crate::parser::DataParser;
 use std::path::PathBuf;
 
-
 // A builder for the data parser following the builder design pattern https://refactoring.guru/design-patterns/builder/rust/example
 //
 // Done because the initilization logic was getting complex, and I want the data parser struct to be extensible

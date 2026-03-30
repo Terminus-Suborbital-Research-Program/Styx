@@ -1,5 +1,4 @@
 #![warn(missing_docs)]
-
 #![warn(missing_docs)]
 
 use crate::{app::*, device_constants::SAMPLE_COUNT, Mono};
@@ -12,7 +11,7 @@ use defmt::{debug, info, warn};
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
 use embedded_io::{Read, ReadReady, Write};
 use fugit::ExtU64;
-use heapless::{Deque, Vec, deque::DequeInner, vec::ViewVecStorage};
+use heapless::{deque::DequeInner, vec::ViewVecStorage, Deque, Vec};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use tinyframe::frame::Frame;
@@ -51,9 +50,8 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 pub async fn downlink_jupiter(mut ctx: downlink_jupiter::Context<'_>) {
     let mut enc_buf = [0u8; SCRATCH];
     loop {
-        
         let mut packet: Option<ApplicationPacket> = None;
-         ctx.shared.downlink_packets.lock(|packets | {
+        ctx.shared.downlink_packets.lock(|packets| {
             while let Some(packet) = packets.pop_front() {
                 // ctx.local.packet_led.toggle().ok();
                 if let Ok(sz) = encode_into_slice(packet, &mut enc_buf, standard()) {
@@ -164,7 +162,7 @@ pub async fn ejector_sequencer(ctx: ejector_sequencer::Context<'_>) {
 
 pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
     let sensor = &mut ctx.local.thermocouple;
-    
+
     info!("Mcp start");
 
     loop {

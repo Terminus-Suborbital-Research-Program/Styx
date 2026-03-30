@@ -61,4 +61,3 @@ where
         self.mosfet_pin.set_low().unwrap();
     }
 }
-

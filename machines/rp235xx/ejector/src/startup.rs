@@ -1,5 +1,4 @@
 #![warn(missing_docs)]
-
 #![warn(missing_docs)]
 
 use defmt::{info, warn};
@@ -9,24 +8,24 @@ use fugit::RateExtU32;
 use heapless::Deque;
 use rp235x_hal::adc::AdcPin;
 use rp235x_hal::clocks::init_clocks_and_plls;
-use rp235x_hal::gpio::{FunctionSio, PinState, PullNone, FunctionUart, SioInput};
+use rp235x_hal::gpio::{FunctionSio, FunctionUart, PinState, PullNone, SioInput};
 use rp235x_hal::pwm::Slices;
 use rp235x_hal::uart::{DataBits, StopBits, UartConfig, UartPeripheral};
 use rp235x_hal::{Clock, Sio, Watchdog};
 use rtic_monotonics::Monotonic;
 
 use mcp9600::{
-    ADCResolution, BurstModeSamples, ColdJunctionResolution, DeviceAddr, 
-    FilterCoefficient, MCP9600, ShutdownMode, ThermocoupleType
+    ADCResolution, BurstModeSamples, ColdJunctionResolution, DeviceAddr, FilterCoefficient,
+    ShutdownMode, ThermocoupleType, MCP9600,
 };
 use rp235x_hal::i2c::I2C;
 // use rp235x_hal::timer::monotonic::Monotonic;
 
 use crate::actuators::electromag::{ElectroMagnet, ElectroMagnetPolarity, HBridge};
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
-use crate::device_constants::pins::{CamMosfetPin};
+use crate::device_constants::pins::CamMosfetPin;
 use crate::device_constants::{
-    EjectionDetectionPin, GreenLed, JupiterUart, RedLed, SAMPLE_COUNT, ThermoI2cBus,
+    EjectionDetectionPin, GreenLed, JupiterUart, RedLed, ThermoI2cBus, SAMPLE_COUNT,
 };
 use crate::hal;
 use crate::{app::*, Mono};
@@ -107,20 +106,21 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         clocks.peripheral_clock.freq(),
     );
 
-    let mut thermocouple = MCP9600::new(thermo_i2c_bus, DeviceAddr::AD7)
-        .expect("Failed to initialize MCP9600");
+    let mut thermocouple =
+        MCP9600::new(thermo_i2c_bus, DeviceAddr::AD7).expect("Failed to initialize MCP9600");
 
-    thermocouple.set_sensor_configuration(
-        ThermocoupleType::TypeK,
-        FilterCoefficient::FilterMedium,
-    ).unwrap();
+    thermocouple
+        .set_sensor_configuration(ThermocoupleType::TypeK, FilterCoefficient::FilterMedium)
+        .unwrap();
 
-    thermocouple.set_device_configuration(
-        ColdJunctionResolution::High,
-        ADCResolution::Bit18,
-        BurstModeSamples::Sample1,
-        ShutdownMode::NormalMode,
-    ).unwrap();
+    thermocouple
+        .set_device_configuration(
+            ColdJunctionResolution::High,
+            ADCResolution::Bit18,
+            BurstModeSamples::Sample1,
+            ShutdownMode::NormalMode,
+        )
+        .unwrap();
 
     // adc.free_running(&gegier_pin);
     // loop {
@@ -130,8 +130,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     //         info!("Reading: {}", reading as f32 * 3.3 / 4096.0);
     //     }
     // }
-
-
 
     let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
     let mut timer_two = timer;
@@ -150,7 +148,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         clocks.peripheral_clock.freq(),
     )
     .unwrap();
-    
+
     // Servo
     let pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
     let mut ejection_servo_pwm = pwm_slices.pwm0;

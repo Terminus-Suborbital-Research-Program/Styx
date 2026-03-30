@@ -57,8 +57,7 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 )]
 mod app {
     use crate::device_constants::{
-        AvionicsI2cBus, ComputeTXBuffer, ComputeRXBuffer, MotorI2cBus,
-        OdinComputeUart
+        AvionicsI2cBus, ComputeRXBuffer, ComputeTXBuffer, MotorI2cBus, OdinComputeUart,
     };
 
     use super::*;
@@ -92,7 +91,6 @@ mod app {
 
     #[local]
     pub struct Local {
-        
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
         pub bmm350: AsyncBmm350<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub bmi323: AsyncBmi323<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
@@ -103,11 +101,14 @@ mod app {
         pub ina260_4: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
         pub rbf: Pin<Gpio4, FunctionSio<SioInput>, PullDown>,
         pub adc_fifo_l: Option<hal::adc::AdcFifo<'static, u16>>,
-        pub adc_outputs: [u16; 24], 
+        pub adc_outputs: [u16; 24],
         pub mp_channel: MpChannel,
-        pub pin19: gpio::Pin<gpio::bank0::Gpio19, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
-        pub pin20: gpio::Pin<gpio::bank0::Gpio20, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
-        pub pin21: gpio::Pin<gpio::bank0::Gpio21, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
+        pub pin19:
+            gpio::Pin<gpio::bank0::Gpio19, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
+        pub pin20:
+            gpio::Pin<gpio::bank0::Gpio20, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
+        pub pin21:
+            gpio::Pin<gpio::bank0::Gpio21, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
         pub compute_link: OdinComputeUart,
         // pub adc: hal::adc::Adc,
         // pub adc_photoresistors:

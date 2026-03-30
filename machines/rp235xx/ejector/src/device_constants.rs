@@ -1,21 +1,23 @@
 #![warn(missing_docs)]
 
-use hc12_rs::{configuration::baudrates::B9600, ProgrammingPair, FU3, HC12};
-use pins::{
-    EjectionPin, GreenLedPin, JupiterRxPin, JupiterTxPin, OnboardLEDPin,
-   RedLedPin,
-};
+use pins::{EjectionPin, GreenLedPin, JupiterRxPin, JupiterTxPin, OnboardLEDPin, RedLedPin};
 use rp235x_hal::{
-    I2C, Timer, gpio::{FunctionI2C, FunctionSio, Pin, PullDown, PullNone, PullUp, SioInput, SioOutput}, i2c::{Controller, Peripheral}, pac::{I2C0, I2C1, UART0, UART1}, timer::CopyableTimer1, uart::{Enabled, UartPeripheral}
+    gpio::{FunctionI2C, FunctionSio, Pin, PullDown, PullNone, PullUp, SioInput, SioOutput},
+    i2c::{Controller, Peripheral},
+    pac::{I2C0, I2C1, UART0, UART1},
+    timer::CopyableTimer1,
+    uart::{Enabled, UartPeripheral},
+    Timer, I2C,
 };
-
 
 #[allow(dead_code)]
 pub mod pins {
     use rp235x_hal::gpio::{
-        FunctionI2C, FunctionSio, FunctionUart, Pin, PullDown, PullUp, SioInput, SioOutput, bank0::{
-            Gpio2, Gpio8, Gpio9, Gpio10, Gpio11, Gpio12, Gpio16, Gpio17, Gpio20, Gpio21, Gpio24, Gpio25, Gpio26, Gpio27
-        }
+        bank0::{
+            Gpio10, Gpio11, Gpio12, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio24, Gpio25, Gpio26,
+            Gpio27, Gpio32, Gpio33, Gpio8, Gpio9,
+        },
+        FunctionI2C, FunctionSio, FunctionUart, Pin, PullDown, PullUp, SioInput, SioOutput,
     };
 
     // Ejector Heartbeat Output
@@ -56,18 +58,19 @@ pub mod pins {
 }
 
 use pins::*;
-pub type ThermoI2cBus = 
-    I2C<
-        I2C0,
-        (
-            Pin<ThermoI2CSdaPin, FunctionI2C, PullUp>,
-            Pin<ThermoI2CSclPin, FunctionI2C, PullUp>,
-        ),
-        Controller,
-    >;
+pub type ThermoI2cBus = I2C<
+    I2C0,
+    (
+        Pin<ThermoI2CSdaPin, FunctionI2C, PullUp>,
+        Pin<ThermoI2CSclPin, FunctionI2C, PullUp>,
+    ),
+    Controller,
+>;
 
 // SI1145
 //pub type GuardI2C = I2C<I2C1, (GuardSda, GuardScl), Controller>;
+
+pub type SDCardPins = u8;
 
 // Heartbeat LED
 pub type OnboardLED = Pin<OnboardLEDPin, FunctionSio<SioOutput>, PullNone>;
