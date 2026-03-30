@@ -8,7 +8,7 @@ pub mod startup;
 pub mod task;
 // HAL Access
 use rp235x_hal as hal;
-
+use crate::task::power_switch;
 use defmt_rtt as _; // global logger
 
 use crate::startup::SAMPLE_COUNT;
