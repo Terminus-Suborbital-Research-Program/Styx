@@ -57,21 +57,11 @@ cd74hc4067 = {path="../../../sensors/cd74hc4067", features = ["defmt"]}
 
 # Communications
 hc12-rs = { git = "https://github.com/thelenlucas/hc12-rs.git", tag = "v0.0.1" }
+tinyframe = { version = "0.1.0", path = "../../../common/messages/tinyframe" }
 
 # Math
-nalgebra = { version = "*", default-features = false, features = [
-    "libm-force",
-] }
-minikalman = { version = "0.6.0", features = [
-    "nalgebra",
-    "libm",
-] } #https://docs.rs/minikalman/latest/minikalman/
 
-# WGS84
-wgs84 = { git = "https://github.com/MeechaelA/WGS84.git" }
-# Earth Atmosphere
-united_states_standard_atmosphere = { git = "https://github.com/MeechaelA/UnitedStatesStandardAtmosphere.git" }
-tinyframe = { version = "0.1.0", path = "../../../common/messages/tinyframe" }
+
 
 # Target features
 [features]

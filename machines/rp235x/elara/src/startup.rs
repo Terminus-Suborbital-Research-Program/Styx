@@ -12,11 +12,15 @@ use crate::{
     peripherals::async_i2c::AsyncI2c,
     Mono,
 };
-use defmt::{error, info, warn};
+use defmt::{info, warn, panic};
+use defmt_rtt as _;
 use embedded_hal::{
     delay::DelayNs,
     digital::{InputPin, OutputPin},
 };
+
+use embedded_hal_0_2::blocking::i2c::Write;
+
 use fugit::RateExtU32;
 use hc12_rs::{
     configuration::{baudrates::B9600, Channel, HC12Configuration, Power},
@@ -37,22 +41,14 @@ use crate::device_constants::MpChannel;
 use bme280::AsyncBME280;
 use bmi323::AsyncBmi323;
 use bmm350::AsyncBmm350;
-use cd74hc4067::CD74HC4067;
-use ina260_terminus::AsyncINA260;
 
 // Logs our time for demft
 defmt::timestamp!("{=u64:us}", { epoch_ns() });
-
 pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
-    // Reset the spinlocks - this is skipped by soft-reset
-    unsafe {
-        rp235x_hal::sio::spinlock_reset();
-    }
-
     // Set up clocks
     let mut watchdog = Watchdog::new(ctx.device.WATCHDOG);
 
-    info!("Good morning sunshine! Icarus is awake!");
+    // info!("Good morning sunshine! Icarus is awake!");
 
     Mono::start(ctx.device.TIMER0, &ctx.device.RESETS);
 
@@ -118,54 +114,35 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     // Sensors
     // Init I2C pins
-    let motor_sda_pin: Pin<EscI2CSdaPin, FunctionI2C, PullUp> = pins.gpio16.reconfigure();
-    let motor_scl_pin: Pin<EscI2CSclPin, FunctionI2C, PullUp> = pins.gpio17.reconfigure();
 
-    let motor_i2c = I2C::new_controller(
+    let avionics_sda_pin: Pin<AvionicsI2CSdaPin, FunctionI2C, PullUp> = pins.gpio4.reconfigure();
+    let avionics_scl_pin: Pin<AvionicsI2CSclPin, FunctionI2C, PullUp> = pins.gpio5.reconfigure();
+
+    let mut avionics_i2c = I2C::i2c0(
         ctx.device.I2C0,
-        motor_sda_pin,
-        motor_scl_pin,
-        RateExtU32::kHz(400),
-        &mut ctx.device.RESETS,
-        clocks.system_clock.freq(),
-    );
-
-    let async_motor_i2c = AsyncI2c::new(motor_i2c, 10);
-    let motor_i2c_arbiter = ctx.local.i2c_motor_bus.write(Arbiter::new(async_motor_i2c));
-
-    let avionics_sda_pin: Pin<AvionicsI2CSdaPin, FunctionI2C, PullUp> = pins.gpio6.reconfigure();
-    let avionics_scl_pin: Pin<AvionicsI2CSclPin, FunctionI2C, PullUp> = pins.gpio7.reconfigure();
-
-    let avionics_i2c = I2C::new_controller(
-        ctx.device.I2C1,
         avionics_sda_pin,
         avionics_scl_pin,
-        RateExtU32::kHz(400),
+        400.kHz(),
         &mut ctx.device.RESETS,
-        clocks.system_clock.freq(),
+        &clocks.system_clock,
     );
 
+    // Works
+    // defmt::info!("Writing");
+    // avionics_i2c.write(0x2Cu8, &[1, 2, 3]).unwrap();
+    // defmt::info!("Written");
+
+
     let async_avionics_i2c = AsyncI2c::new(avionics_i2c, 10_u32);
-    let avionics_i2c_arbiter = ctx
-        .local
-        .i2c_avionics_bus
-        .write(Arbiter::new(async_avionics_i2c));
+    let avionics_i2c_arbiter = ctx.local.i2c_avionics_bus.write(Arbiter::new(async_avionics_i2c));
 
-    // let mut delay_here = hal::Timer::new_timer1(pac.TIMER1, &mut pac.RESETS, &clocks);
 
+
+   
     // Initialize Avionics Sensors
     let bmm350 = AsyncBmm350::new_with_i2c(ArbiterDevice::new(avionics_i2c_arbiter), 0x14, Mono);
-    let bmi323 = AsyncBmi323::new_with_i2c(ArbiterDevice::new(avionics_i2c_arbiter), 0x69, Mono);
+    let bmi323 = AsyncBmi323::new_with_i2c(ArbiterDevice::new(avionics_i2c_arbiter), 0x68, Mono);
     let bme280 = AsyncBME280::new(ArbiterDevice::new(avionics_i2c_arbiter), 0x77, Mono);
-
-    let ina260_1 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x40, Mono);
-    let ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x41, Mono);
-    let ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x44, Mono);
-    let ina260_4 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x45, Mono);
-
-    // let mut adc = rp235x_hal::Adc::new(ctx.device.ADC, &mut ctx.device.RESETS);
-    // let mut adc_photoresistors: rp235x_hal::adc::AdcPin<Pin<rp235x_hal::gpio::bank0::Gpio40, rp235x_hal::gpio::FunctionNull, rp235x_hal::gpio::PullDown>> = rp235x_hal::adc::AdcPin::new(pins.gpio40).unwrap();
-
     
     *ctx.local.adc = Some(rp235x_hal::Adc::new(ctx.device.ADC, &mut ctx.device.RESETS));
     let adc = ctx.local.adc.as_mut().unwrap();
@@ -186,13 +163,9 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     let data = ComputeTXBuffer::new();
     let metrics_buf = ComputeRXBuffer::new();
-    let rbf = pins.gpio4.into_pull_down_input();
-
-
 
     info!("Peripherals initialized, spawning tasks...");
     heartbeat::spawn().ok();
-    // ina_sample::spawn(motor_i2c_arbiter).ok();
     sample_sensors::spawn(avionics_i2c_arbiter).ok();
     info!("Tasks spawned!");
     (
@@ -205,11 +178,6 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             bmm350,
             bmi323,
             bme280,
-            ina260_1,
-            ina260_2,
-            ina260_3,
-            rbf,
-            ina260_4,
             adc_fifo_l: adc_fifo,
             adc_outputs: [0u16; 24],
             mp_channel: MpChannel::PD1_4,
@@ -217,10 +185,6 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             pin20: pins.gpio20.into_pull_type::<PullNone>().into_push_pull_output(),
             pin21: pins.gpio21.into_pull_type::<PullNone>().into_push_pull_output(),
             compute_link,
-
-            // adc,
-            // adc_photoresistors,
-            // mux
         },
     )
 }

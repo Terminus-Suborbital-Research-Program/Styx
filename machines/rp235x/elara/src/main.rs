@@ -83,7 +83,6 @@ mod app {
         ),
     >;
 
-    // pub static mut USB_BUS: Option<UsbBusAllocator<hal::usb::UsbBus>> = None;
     #[shared]
     pub struct Shared {
         pub data: ComputeTXBuffer,
@@ -92,16 +91,10 @@ mod app {
 
     #[local]
     pub struct Local {
-        
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
         pub bmm350: AsyncBmm350<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub bmi323: AsyncBmi323<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub bme280: AsyncBME280<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
-        pub ina260_1: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
-        pub ina260_2: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
-        pub ina260_3: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
-        pub ina260_4: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
-        pub rbf: Pin<Gpio4, FunctionSio<SioInput>, PullDown>,
         pub adc_fifo_l: Option<hal::adc::AdcFifo<'static, u16>>,
         pub adc_outputs: [u16; 24], 
         pub mp_channel: MpChannel,
@@ -109,36 +102,6 @@ mod app {
         pub pin20: gpio::Pin<gpio::bank0::Gpio20, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
         pub pin21: gpio::Pin<gpio::bank0::Gpio21, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
         pub compute_link: OdinComputeUart,
-        // pub adc: hal::adc::Adc,
-        // pub adc_photoresistors:
-        //     AdcPin<gpio::Pin<gpio::bank0::Gpio40, gpio::FunctionNull, gpio::PullDown>>,
-        // pub mux: CD74HC4067<
-        //     Pin<
-        //         MuxS0Pin,
-        //         rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-        //         rp235x_hal::gpio::PullDown,
-        //     >,
-        //     Pin<
-        //         MuxS1Pin,
-        //         rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-        //         rp235x_hal::gpio::PullDown,
-        //     >,
-        //     Pin<
-        //         MuxS2Pin,
-        //         rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-        //         rp235x_hal::gpio::PullDown,
-        //     >,
-        //     Pin<
-        //         MuxS3Pin,
-        //         rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-        //         rp235x_hal::gpio::PullDown,
-        //     >,
-        //     Pin<
-        //         MuxEPin,
-        //         rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-        //         rp235x_hal::gpio::PullDown,
-        //     >,
-        // >,
     }
 
     #[init(
@@ -151,7 +114,6 @@ mod app {
             adc: Option<hal::Adc> = None,
         ]
     )]
-
     fn init(ctx: init::Context) -> (Shared, Local) {
         startup::startup(ctx)
     }
@@ -160,10 +122,6 @@ mod app {
         // Heartbeats the main led
         #[task(local = [led], shared = [data], priority = 1)]
         async fn heartbeat(ctx: heartbeat::Context);
-
-        // // Handles INA sensors
-        // #[task(priority = 2, shared = [data], local=[ina260_1, ina260_2, ina260_3, ina260_4])]
-        // async fn ina_sample(&mut ctx: ina_sample::Context, i2c: &'static Arbiter<MotorI2cBus>);
 
         #[task(local = [bme280, bmi323, bmm350], shared = [data], priority = 2)]
         async fn sample_sensors(

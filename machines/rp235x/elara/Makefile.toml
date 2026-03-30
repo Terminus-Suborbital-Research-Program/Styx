@@ -43,7 +43,7 @@ args = [
     "-x",
     "-t",
     "elf",
-    "../target/thumbv8m.main-none-eabihf/release/icarus",
+    "../target/thumbv8m.main-none-eabihf/release/elara",
 ]
 dependencies = ["build_release"]
 
@@ -55,6 +55,6 @@ args = [
     "run",
     "--chip",
     "rp235x",
-    "../target/thumbv8m.main-none-eabihf/debug/icarus",
+    "../target/thumbv8m.main-none-eabihf/debug/elara",
 ]
 dependencies = ["build"]
