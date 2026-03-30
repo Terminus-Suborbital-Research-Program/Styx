@@ -6,6 +6,7 @@
 pub mod actuators;
 
 mod device_constants;
+pub mod sd_card;
 
 // Guard module
 pub mod guard;
@@ -47,7 +48,7 @@ mod app {
     use crate::actuators::servo::EjectorServo;
     use crate::device_constants::pins::CamMosfetPin;
     use crate::device_constants::{
-        EjectionDetectionPin, GreenLed, JupiterUart, OnboardLED, RedLed, SAMPLE_COUNT, ThermoI2cBus
+        EjectionDetectionPin, GreenLed, JupiterUart, OnboardLED, RedLed, ThermoI2cBus, SAMPLE_COUNT,
     };
 
     use super::*;
@@ -124,7 +125,6 @@ mod app {
         #[task(shared = [downlink_packets], local = [downlink], priority = 1)]
         async fn downlink_jupiter(mut ctx: downlink_jupiter::Context);
 
-        
         // #[task(binds = ADC_IRQ_FIFO, priority = 3, shared = [samples_buffer], local = [ counter: usize = 1])]
         // fn adc_irq(mut ctx: adc_irq::Context);
 

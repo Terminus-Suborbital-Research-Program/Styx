@@ -54,9 +54,7 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
     peripherals = true,
 )]
 mod app {
-    use crate::device_constants::{
-        AvionicsI2cBus, DownlinkBuffer, ComputeI2cBus,
-    };
+    use crate::device_constants::{AvionicsI2cBus, ComputeI2cBus, DownlinkBuffer};
 
     use super::*;
 
@@ -93,7 +91,7 @@ mod app {
         pub bmi323: AsyncBmi323<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub bme280: AsyncBME280<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub bmp5: Bmp5<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
-        pub compute_i2c: ComputeI2cBus, 
+        pub compute_i2c: ComputeI2cBus,
     }
 
     #[init(
@@ -114,7 +112,6 @@ mod app {
         #[task(local = [led], shared = [data], priority = 3)]
         async fn heartbeat(ctx: heartbeat::Context);
 
-
         #[task(local = [bme280, bmi323, bmm350, bmp5], shared = [data], priority = 2)]
         async fn sample_sensors(
             mut ctx: sample_sensors::Context,
@@ -124,7 +121,6 @@ mod app {
         #[task(local = [compute_i2c], shared = [data], priority = 1)]
         async fn get_data_response(ctx: get_data_response::Context);
 
-  
     }
 
     /// Returns the current time in nanoseconds since power-on
