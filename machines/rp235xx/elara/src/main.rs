@@ -1,6 +1,10 @@
 // Specifies that the standard library is not used
+
+//! TERMINUS RS-X 2026 Elara Ejector Code
+
 #![no_std]
 #![no_main]
+#![warn(missing_docs)]
 
 // Our Modules
 mod actuators;

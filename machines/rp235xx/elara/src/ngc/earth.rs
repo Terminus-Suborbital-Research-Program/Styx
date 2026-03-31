@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 use nalgebra::{Matrix3, Matrix3x1};
 use wgs84::transforms;
 use crate::reference::matrices;

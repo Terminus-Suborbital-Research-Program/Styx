@@ -1,42 +1,29 @@
+//! SD Card management for the Ejector  
+
+#[warn(missing_docs)]
+
+use bincode::de;
 use defmt::info;
-use embedded_hal::{delay::DelayNs, spi::SpiDevice as EmbHal_SpiDevice};
-use embedded_hal::digital::OutputPin;
-use embedded_hal_bus::spi::{ExclusiveDevice};
+use embedded_hal::{delay::DelayNs, digital::OutputPin, spi::SpiDevice as EmbHal_SpiDevice};
+use embedded_hal_bus::spi::ExclusiveDevice;
 use embedded_sdmmc::{Directory, Mode, SdCard, TimeSource, Timestamp, VolumeIdx, VolumeManager};
 use heapless::String;
-use rp235x_hal::gpio::bank0::{Gpio16, Gpio17, Gpio18, Gpio19};
-use rp235x_hal::gpio::Pin;
-use rp235x_hal::gpio::{Function, FunctionSio};
-use rp235x_hal::spi::SpiDevice;
 use rp235x_hal::{
-    gpio::{FunctionSpi, PullDown, SioOutput},
+    gpio::{
+        bank0::{Gpio16, Gpio17, Gpio18, Gpio19},
+        Function, FunctionSio, FunctionSpi, Pin, PullDown, SioOutput,
+    },
     pac::RESETS,
-    spi::Enabled,
+    spi::{Enabled, SpiDevice},
     timer::CopyableTimer0,
     Spi, Timer,
 };
 
-//pub type MOSI = Pin<Gpio19, FunctionSpi, PullDown>;
-//pub type MISO = Pin<Gpio16, FunctionSpi, PullDown>;
-//pub type CLK = Pin<Gpio18, FunctionSpi, PullDown>;
-//pub type CS = Pin<Gpio17, FunctionSio<SioOutput>, PullDown>;
-//pub type SpiBus = Spi<Enabled, impl SpiDevice, (MOSI, MISO, CLK), 8>;
-//
 pub const EJECTOR_SD_FILENAME: &'static str = "data.txt";
-//
-//pub struct EjectorSdCard {
-//    sdcard: SdCard<SpiBus, Timer<CopyableTimer0>>,
-//    root_dir: Directory<
-//        '_,
-//        SdCard<SpiBus, Timer<CopyableTimer0>>,
-//        Timer<CopyableTimer0>,
-//        DummyTimesource,
-//        4,
-//        4,
-//        1,
-//    >,
-//}
 
+/// Struct to manage the SD card on the Ejector. This is mostly 
+/// a wrapper around the embedded_sdmmc crate, which provides a 
+/// high-level API for managing SD cards.
 pub struct EjectorSdCard2<MosiPin, MisoPin, ClkPin, CsPin, SpiBus, Timer>
 where
     MosiPin: OutputPin + Function,
@@ -46,9 +33,9 @@ where
     SpiBus: SpiDevice + EmbHal_SpiDevice,
     Timer: DelayNs,
 {
+    phantom: core::marker::PhantomData<(MosiPin, MisoPin, ClkPin, CsPin, SpiBus, Timer)>,
     sdcard: SdCard<SpiBus, Timer>,
-    root_dir: Directory<'_, SdCard<SpiBus, Timer>, Timer, DummyTimesource, 4, 4>,
-    
+    //root_dir: Directory<'_, SdCard<SpiBus, Timer>, Timer, DummyTimesource, 4, 4>,
 }
 
 #[derive(Default)]
@@ -69,24 +56,6 @@ impl TimeSource for DummyTimesource {
     }
 }
 
-//impl EjectorSdCard {
-//    pub fn new(spi_bus: SpiBus, clock_sourc: Timer<CopyableTimer0>) -> () {
-//        let sdcard = SdCard::new(spi_bus, clock_sourc);
-//        let mut t = Default::default();
-//        let mut volume_mgr = VolumeManager::new(sdcard, DummyTimesource::default());
-//        match volume_mgr.open_volume(VolumeIdx(0)) {
-//            Ok(volume) => match volume.open_root_dir() {
-//                Ok(root_dir) => {
-//                    t = root_dir
-//                        .open_file_in_dir(EJECTOR_SD_FILENAME, Mode::ReadWriteCreateOrTruncate);
-//                }
-//                Err(e) => info!("Failed to open root directory: {:?}", e),
-//            },
-//            Err(e) => info!("Failed to open volume: {:?}", e),
-//        }
-//    }
-//}
-
 impl<MosiPin, MisoPin, ClkPin, CsPin, SpiBus, Timer>
     EjectorSdCard2<MosiPin, MisoPin, ClkPin, CsPin, SpiBus, Timer>
 where
@@ -99,18 +68,20 @@ where
 {
     pub fn new(spi_bus: SpiBus, clock_sourc: Timer) -> () {
         let sdcard = SdCard::new(spi_bus, clock_sourc);
-        let mut t = Default::default();
+
+        //let mut t = Directory::<'_, SdCard<SpiBus, Timer>, DummyTimesource, 4, 4, 1>::default();
+
         let mut volume_mgr = VolumeManager::new(sdcard, DummyTimesource::default());
         match volume_mgr.open_volume(VolumeIdx(0)) {
             Ok(volume) => match volume.open_root_dir() {
                 Ok(root_dir) => {
-                    t = root_dir
+                    let mut t = root_dir
                         .open_file_in_dir(EJECTOR_SD_FILENAME, Mode::ReadWriteCreateOrTruncate);
                 }
-                Err(e) => info!("Failed to open root directory: {:#?}", e),
+                Err(e) => info!("Failed to open root directory: "),
             },
-            Err(e) => info!("Failed to open volume: {:#?}", e),
-        }
+            Err(e) => info!("Failed to open volume:"),
+        };
     }
 }
 

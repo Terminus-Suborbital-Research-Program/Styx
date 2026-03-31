@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 use bin_packets::data;
 use bin_packets::data::adcs::AttitudeMetrics;
 use bin_packets::{
