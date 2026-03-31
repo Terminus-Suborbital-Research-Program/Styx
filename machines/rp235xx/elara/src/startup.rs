@@ -23,6 +23,7 @@ use hc12_rs::{
     device::{IntoATMode, IntoFU3Mode},
 };
 use rp235x_hal::{
+    Timer,
     clocks,
     gpio::{FunctionI2C, FunctionPwm, Pin, PullNone, PullUp, FunctionUartAux},
     pwm::Slices,
@@ -118,26 +119,26 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     // Sensors
     // Init I2C pins
-    let motor_sda_pin: Pin<EscI2CSdaPin, FunctionI2C, PullUp> = pins.gpio16.reconfigure();
-    let motor_scl_pin: Pin<EscI2CSclPin, FunctionI2C, PullUp> = pins.gpio17.reconfigure();
+    // let motor_sda_pin: Pin<EscI2CSdaPin, FunctionI2C, PullUp> = pins.gpio16.reconfigure();
+    // let motor_scl_pin: Pin<EscI2CSclPin, FunctionI2C, PullUp> = pins.gpio17.reconfigure();
 
-    let motor_i2c = I2C::new_controller(
-        ctx.device.I2C0,
-        motor_sda_pin,
-        motor_scl_pin,
-        RateExtU32::kHz(400),
-        &mut ctx.device.RESETS,
-        clocks.system_clock.freq(),
-    );
+    // let motor_i2c = I2C::new_controller(
+    //     ctx.device.I2C0,
+    //     motor_sda_pin,
+    //     motor_scl_pin,
+    //     RateExtU32::kHz(400),
+    //     &mut ctx.device.RESETS,
+    //     clocks.system_clock.freq(),
+    // );
 
-    let async_motor_i2c = AsyncI2c::new(motor_i2c, 10);
-    let motor_i2c_arbiter = ctx.local.i2c_motor_bus.write(Arbiter::new(async_motor_i2c));
+    // let async_motor_i2c = AsyncI2c::new(motor_i2c, 10);
+    // let motor_i2c_arbiter = ctx.local.i2c_motor_bus.write(Arbiter::new(async_motor_i2c));
 
-    let avionics_sda_pin: Pin<AvionicsI2CSdaPin, FunctionI2C, PullUp> = pins.gpio6.reconfigure();
-    let avionics_scl_pin: Pin<AvionicsI2CSclPin, FunctionI2C, PullUp> = pins.gpio7.reconfigure();
+    let avionics_sda_pin: Pin<AvionicsI2CSdaPin, FunctionI2C, PullUp> = pins.gpio4.reconfigure();
+    let avionics_scl_pin: Pin<AvionicsI2CSclPin, FunctionI2C, PullUp> = pins.gpio5.reconfigure();
 
     let avionics_i2c = I2C::new_controller(
-        ctx.device.I2C1,
+        ctx.device.I2C0,
         avionics_sda_pin,
         avionics_scl_pin,
         RateExtU32::kHz(400),
@@ -155,13 +156,13 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     // Initialize Avionics Sensors
     let bmm350 = AsyncBmm350::new_with_i2c(ArbiterDevice::new(avionics_i2c_arbiter), 0x14, Mono);
-    let bmi323 = AsyncBmi323::new_with_i2c(ArbiterDevice::new(avionics_i2c_arbiter), 0x69, Mono);
-    let bme280 = AsyncBME280::new(ArbiterDevice::new(avionics_i2c_arbiter), 0x77, Mono);
+    let bmi323 = AsyncBmi323::new_with_i2c(ArbiterDevice::new(avionics_i2c_arbiter), 0x68, Mono);
+    let bme280 = AsyncBME280::new(ArbiterDevice::new(avionics_i2c_arbiter), 0x76, Mono);
 
-    let ina260_1 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x40, Mono);
-    let ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x41, Mono);
-    let ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x44, Mono);
-    let ina260_4 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x45, Mono);
+    // let ina260_1 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x40, Mono);
+    // let ina260_2 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x41, Mono);
+    // let ina260_3 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x44, Mono);
+    // let ina260_4 = AsyncINA260::new(ArbiterDevice::new(motor_i2c_arbiter), 0x45, Mono);
 
     // let mut adc = rp235x_hal::Adc::new(ctx.device.ADC, &mut ctx.device.RESETS);
     // let mut adc_photoresistors: rp235x_hal::adc::AdcPin<Pin<rp235x_hal::gpio::bank0::Gpio40, rp235x_hal::gpio::FunctionNull, rp235x_hal::gpio::PullDown>> = rp235x_hal::adc::AdcPin::new(pins.gpio40).unwrap();
@@ -186,8 +187,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     let data = ComputeTXBuffer::new();
     let metrics_buf = ComputeRXBuffer::new();
-    let rbf = pins.gpio4.into_pull_down_input();
-
+    // let rbf = pins.gpio4.into_pull_down_input();
 
 
     info!("Peripherals initialized, spawning tasks...");
@@ -205,11 +205,11 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             bmm350,
             bmi323,
             bme280,
-            ina260_1,
-            ina260_2,
-            ina260_3,
-            rbf,
-            ina260_4,
+            // ina260_1,
+            // ina260_2,
+            // ina260_3,
+            // ina260_4,
+            // rbf,
             adc_fifo_l: adc_fifo,
             adc_outputs: [0u16; 24],
             mp_channel: MpChannel::PD1_4,

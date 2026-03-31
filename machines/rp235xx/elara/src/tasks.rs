@@ -20,7 +20,6 @@ use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
 use embedded_hal::digital::OutputPin;
-use bincode::config::standard;
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     let mut sequence_number: u16 = 0;
@@ -39,75 +38,78 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     }
 }
 
-pub async fn poll_attitude_metrics(mut ctx: poll_attitude_metrics::Context<'_>) {
-    let mut rx_buf = [0u8; 128]; 
-    let mut idx = 0;
+// pub async fn poll_attitude_metrics(mut ctx: poll_attitude_metrics::Context<'_>) {
+//     let mut rx_buf = [0u8; 128]; 
+//     let mut idx = 0;
     
-    let config = bincode::config::standard(); 
+//     let config = bincode::config::standard(); 
 
-    loop {
-        // Read byte by byte if uart available
-        while ctx.local.compute_link.uart_is_readable() {
+//     loop {
+//         // Read byte by byte if uart available
+//         while ctx.local.compute_link.uart_is_readable() {
 
-            if idx >= rx_buf.len() {
-                // Buffer full, break to avoid blocking
-                break; 
-            }
-            let mut byte = [0u8; 1];
-            if let Ok(_) = ctx.local.compute_link.read_raw(&mut byte) {
-                if idx < rx_buf.len() {
-                    rx_buf[idx] = byte[0];
-                    idx += 1;
-                } else {
-                    defmt::warn!("RX buffer overflow. Resetting to resync.");
-                    idx = 0;
-                    rx_buf[idx] = byte[0];
-                    idx += 1;
-                }
-            } else {
-                defmt::error!("UART read error");
-                break;
-            }
-        }
+//             if idx >= rx_buf.len() {
+//                 // Buffer full, break to avoid blocking
+//                 break; 
+//             }
+//             let mut byte = [0u8; 1];
+//             if let Ok(_) = ctx.local.compute_link.read_raw(&mut byte) {
+//                 if idx < rx_buf.len() {
+//                     rx_buf[idx] = byte[0];
+//                     idx += 1;
+//                 } else {
+//                     defmt::warn!("RX buffer overflow. Resetting to resync.");
+//                     idx = 0;
+//                     rx_buf[idx] = byte[0];
+//                     idx += 1;
+//                 }
+//             } else {
+//                 defmt::error!("UART read error");
+//                 break;
+//             }
+//         }
 
-        // If we've accumulated data, try to decode it
-        if idx > 0 {
-            match bincode::decode_from_slice::<AttitudeMetrics, _>(&rx_buf[..idx], config) {
-                Ok((metrics, bytes_used)) => {
-                    ctx.shared.metrics_buf.lock(|buf| {
-                        if buf.is_full() {
-                            let _ = buf.pop_front();
-                        }
-                        let _ = buf.push_back(metrics);
-                    });
+//         // If we've accumulated data, try to decode it
+//         if idx > 0 {
+//             match bincode::decode_from_slice::<AttitudeMetrics, _>(&rx_buf[..idx], config) {
+//                 Ok((metrics, bytes_used)) => {
+//                     ctx.shared.metrics_buf.lock(|buf| {
+//                         if buf.is_full() {
+//                             let _ = buf.pop_front();
+//                         }
+//                         let _ = buf.push_back(metrics);
+//                     });
 
-                    // Shift any remaining unparsed bytes to the front of the buffer
-                    let remaining = idx - bytes_used;
-                    if remaining > 0 {
-                        rx_buf.copy_within(bytes_used..idx, 0);
-                    }
-                    idx = remaining;
-                }
-                Err(bincode::error::DecodeError::UnexpectedEnd { .. }) => {
-                }
-                Err(_) => {
-                    // drop the oldest byte and shift 
-                    // the window by 1 to let bincode try again on the next loop.
-                    rx_buf.copy_within(1..idx, 0);
-                    idx -= 1;
-                }
-            }
-        }
+//                     // Shift any remaining unparsed bytes to the front of the buffer
+//                     let remaining = idx - bytes_used;
+//                     if remaining > 0 {
+//                         rx_buf.copy_within(bytes_used..idx, 0);
+//                     }
+//                     idx = remaining;
+//                 }
+//                 Err(bincode::error::DecodeError::UnexpectedEnd { .. }) => {
+//                 }
+//                 Err(_) => {
+//                     // drop the oldest byte and shift 
+//                     // the window by 1 to let bincode try again on the next loop.
+//                     rx_buf.copy_within(1..idx, 0);
+//                     idx -= 1;
+//                 }
+//             }
+//         }
 
-        Mono::delay(20.millis()).await; 
-    }
-}
+//         Mono::delay(20.millis()).await; 
+//     }
+// }
 
 // use rp235x_pac::interrupt;
 // #[interrupt]
 // unsafe fn I2C0_IRQ() {
-//     MotorI2cBus::on_interrupt();
+//     AvionicsI2cBus::on_interrupt();
 // }
+
+
+
 
 
 
@@ -190,47 +192,57 @@ pub async fn sample_sensors(
     _avionics_i2c: &'static Arbiter<AvionicsI2cBus>,
 ) {
     ctx.local.bme280.init().await.ok();
-    ctx.local.bmi323.init().await.ok();
-    let accel_config = AccelConfig::builder()
-        .mode(bmi323::AccelerometerPowerMode::HighPerf)
-        .range(bmi323::AccelerometerRange::G8)
-        .odr(bmi323::OutputDataRate::Odr100hz)
-        .avg_num(bmi323::AverageNum::Avg8);
-    ctx.local
-        .bmi323
-        .set_accel_config(accel_config.build())
-        .await
-        .ok();
-    let gyro_config = GyroConfig::builder()
-        .mode(bmi323::GyroscopePowerMode::HighPerf)
-        .range(bmi323::GyroscopeRange::DPS125)
-        .odr(bmi323::OutputDataRate::Odr100hz)
-        .avg_num(bmi323::AverageNum::Avg8);
+    // Mono::delay(100.millis()).await;
 
-    ctx.local
-        .bmi323
-        .set_gyro_config(gyro_config.build())
-        .await
-        .ok();
+    // ctx.local.bmi323.init().await.ok();
 
-    ctx.local.bmm350.init().await.ok();
-    let mag_config = MagConfig::builder().performance(bmm350::PerformanceMode::Regular);
-    ctx.local
-        .bmm350
-        .set_power_mode(bmm350::PowerMode::Normal)
-        .await
-        .ok();
-    ctx.local
-        .bmm350
-        .set_mag_config(mag_config.build())
-        .await
-        .ok();
+    // let accel_config = AccelConfig::builder()
+    //     .mode(bmi323::AccelerometerPowerMode::HighPerf)
+    //     .range(bmi323::AccelerometerRange::G8)
+    //     .odr(bmi323::OutputDataRate::Odr100hz)
+    //     .avg_num(bmi323::AverageNum::Avg8);
+
+    // ctx.local
+    //     .bmi323
+    //     .set_accel_config(accel_config.build())
+    //     .await
+    //     .ok();
+
+    // let gyro_config = GyroConfig::builder()
+    //     .mode(bmi323::GyroscopePowerMode::HighPerf)
+    //     .range(bmi323::GyroscopeRange::DPS125)
+    //     .odr(bmi323::OutputDataRate::Odr100hz)
+    //     .avg_num(bmi323::AverageNum::Avg8);
+
+    // ctx.local
+    //     .bmi323
+    //     .set_gyro_config(gyro_config.build())
+    //     .await
+    //     .ok();
+
+
+    // ctx.local.bmm350.init().await.ok();
+
+    // Mono::delay(100.millis()).await;
+
+    // let mag_config = MagConfig::builder().performance(bmm350::PerformanceMode::Regular);
+    // ctx.local
+    //     .bmm350
+    //     .set_power_mode(bmm350::PowerMode::Normal)
+    //     .await
+    //     .ok();
+    // ctx.local
+    //     .bmm350
+    //     .set_mag_config(mag_config.build())
+    //     .await
+    //     .ok();
+    // Mono::delay(100.millis()).await;
 
     loop {
         let imu_result = ctx.local.bmi323.read_accel_data_scaled().await;
         match imu_result {
             Ok(acc) => {
-                // info!("Accel: {}, {}, {}", acc.x, acc.y, acc.z);
+                info!("Accel: {}, {}, {}", acc.x, acc.y, acc.z);
                 let acceleration_packet = ApplicationPacket::AccelerometerData {
                     timestamp: now_timestamp().millis(),
                     x: acc.x,
@@ -263,25 +275,28 @@ pub async fn sample_sensors(
                 error!("BMI: {}", i2c_error);
             }
         }
-        let mag_result = ctx.local.bmm350.read_mag_data_scaled().await;
-        match mag_result {
-            Ok(mag) => {
-                // info!("Mag: {}, {}, {}", mag.x, mag.y, mag.z);
-                let mag_packet = ApplicationPacket::MagnetometerData {
-                    timestamp: now_timestamp().millis(),
-                    x: mag.x,
-                    y: mag.y,
-                    z: mag.z,
-                };
-                ctx.shared.data.lock(|data| {
-                    data.push_back(mag_packet).ok();
-                });
-            }
-            Err(i2c_error) => {
-                error!("BMM: {}", i2c_error);
-            }
-        }
+        // let mag_result = ctx.local.bmm350.read_mag_data_scaled().await;
+        // match mag_result {
+        //     Ok(mag) => {
+        //         info!("Mag: {}, {}, {}", mag.x, mag.y, mag.z);
+        //         let mag_packet = ApplicationPacket::MagnetometerData {
+        //             timestamp: now_timestamp().millis(),
+        //             x: mag.x,
+        //             y: mag.y,
+        //             z: mag.z,
+        //         };
+
+        //         ctx.shared.data.lock(|data| {
+        //             data.push_back(mag_packet).ok();
+        //         });
+        //     }
+        //     Err(i2c_error) => {
+        //         error!("BMM: {}", i2c_error);
+        //     }
+        // }
         let env = ctx.local.bme280.sample().await;
+        info!("Env: {}, {}, {}", env.1, env.2, env.3);
+
         let env_packet = ApplicationPacket::EnvironmentData {
             timestamp: now_timestamp().millis(),
             temperature: env.1,
@@ -291,6 +306,7 @@ pub async fn sample_sensors(
         ctx.shared.data.lock(|data| {
             data.push_back(env_packet).ok();
         });
+        info!("Loop");
         Mono::delay(100.millis()).await;
     }
 }

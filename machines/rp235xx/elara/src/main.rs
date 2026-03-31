@@ -97,11 +97,11 @@ mod app {
         pub bmm350: AsyncBmm350<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub bmi323: AsyncBmi323<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub bme280: AsyncBME280<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
-        pub ina260_1: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
-        pub ina260_2: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
-        pub ina260_3: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
-        pub ina260_4: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
-        pub rbf: Pin<Gpio4, FunctionSio<SioInput>, PullDown>,
+        // pub ina260_1: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
+        // pub ina260_2: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
+        // pub ina260_3: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
+        // pub ina260_4: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
+        // pub rbf: Pin<Gpio4, FunctionSio<SioInput>, PullDown>,
         pub adc_fifo_l: Option<hal::adc::AdcFifo<'static, u16>>,
         pub adc_outputs: [u16; 24], 
         pub mp_channel: MpChannel,
@@ -146,7 +146,7 @@ mod app {
             // Task local initialized resources are static Here we use MaybeUninit to allow for initialization in init()
             // This enables its usage in driver initialization
             i2c_avionics_bus: MaybeUninit<Arbiter<AvionicsI2cBus>> = MaybeUninit::uninit(),
-            i2c_motor_bus: MaybeUninit<Arbiter<MotorI2cBus>> = MaybeUninit::uninit(),
+            // i2c_motor_bus: MaybeUninit<Arbiter<MotorI2cBus>> = MaybeUninit::uninit(),
             esc_state_signal: MaybeUninit<Signal<IcarusPhase>> = MaybeUninit::uninit(),
             adc: Option<hal::Adc> = None,
         ]
@@ -178,8 +178,8 @@ mod app {
         async fn read_photodiode(&mut ctx: read_photodiode::Context);
 
         // In the future this could be interrupt driven
-        #[task(priority = 2, shared = [metrics_buf], local=[compute_link])]
-        async fn poll_attitude_metrics(&mut ctx: poll_attitude_metrics::Context);
+        // #[task(priority = 2, shared = [metrics_buf], local=[compute_link])]
+        // async fn poll_attitude_metrics(&mut ctx: poll_attitude_metrics::Context);
     }
 
     /// Returns the current time in nanoseconds since power-on

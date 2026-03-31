@@ -34,9 +34,9 @@ pub mod pins {
     pub type RelayServoPWMGpio = Gpio1;
 
     /// I2C SDA pin
-    pub type AvionicsI2CSdaPin = Gpio6;
+    pub type AvionicsI2CSdaPin = Gpio4;
     /// I2C SCL pin
-    pub type AvionicsI2CSclPin = Gpio7;
+    pub type AvionicsI2CSclPin = Gpio5;
 
     // Mux pins are 14, 13, 11, 10 for S0, S1, S2, S3
 
@@ -67,7 +67,7 @@ pub mod pins {
 // Avionics I2C bus
 pub type AvionicsI2cBus = AsyncI2c<
     I2C<
-        I2C1,
+        I2C0,
         (
             Pin<AvionicsI2CSdaPin, FunctionI2C, PullUp>,
             Pin<AvionicsI2CSclPin, FunctionI2C, PullUp>,
