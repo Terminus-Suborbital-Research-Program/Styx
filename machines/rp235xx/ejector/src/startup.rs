@@ -1,6 +1,8 @@
-#![warn(missing_docs)]
+//! Startup initialization for the Ejector
+
 #![warn(missing_docs)]
 
+use common_states::rbf;
 use defmt::{info, warn};
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
@@ -23,7 +25,7 @@ use rp235x_hal::i2c::I2C;
 
 use crate::actuators::electromag::{ElectroMagnet, ElectroMagnetPolarity, HBridge};
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
-use crate::device_constants::pins::CamMosfetPin;
+use crate::device_constants::pins::{CamMosfetPin, RBFPin};
 use crate::device_constants::{
     EjectionDetectionPin, GreenLed, JupiterUart, RedLed, ThermoI2cBus, SAMPLE_COUNT,
 };
@@ -35,6 +37,7 @@ defmt::timestamp!("{=u64:us}", {
     Mono::now().duration_since_epoch().to_nanos()
 });
 
+/// Initialization
 pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     // Reset the spinlocks - this is skipped by soft-reset
     unsafe {
@@ -181,6 +184,9 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         HBridge::new(echannel_a, echannel_b, emag_arming_pin),
         ElectroMagnetPolarity::State1,
     );
+
+    let mut rbf_pin: RBFPin = bank0_pins.gpio2.into_pull_down_input();
+
     // Create ejector servo
     let mut ejector_servo: EjectorServo = EjectorServo::new(ejection_servo);
     ejector_servo.enable();
@@ -201,6 +207,8 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     info!("Peripherals initialized, spawning tasks");
 
     // Tasks
+
+    poll_rbf::spawn().ok();
     heartbeat::spawn().ok();
     ejector_sequencer::spawn().ok();
     camera_sequencer::spawn().ok();
@@ -211,12 +219,14 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         Shared {
             downlink_packets: Deque::new(),
             samples_buffer: [0u16; SAMPLE_COUNT],
+            ejection_enabled: false,
         },
         Local {
             camera_mosfet: cam_pin,
             onboard_led: led_pin,
             downlink: jupiter_uart,
             ejector_servo,
+            rbf_pin: rbf_pin,
             ejection_pin: gpio_detect,
             ejecctor_magnet: ejector_magnet,
             arming_led: red_led_pin,

@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 use nalgebra::{Matrix3, Matrix3x1, Quaternion, Rotation3, UnitQuaternion};
 use serde::Deserialize;
 

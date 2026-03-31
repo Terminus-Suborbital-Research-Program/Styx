@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 use crate::{
     actuators::servo::Servo,
     device_constants::{

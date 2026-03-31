@@ -1,3 +1,5 @@
+//! Guard code for the Ejector
+
 #![warn(missing_docs)]
 
 use embedded_hal::i2c::I2c;
