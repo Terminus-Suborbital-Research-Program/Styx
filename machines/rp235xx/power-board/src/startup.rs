@@ -97,8 +97,8 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     (
         Shared {
-            downlink_packets: Deque::new(),
-            samples_buffer: [0u16; SAMPLE_COUNT],
+            //downlink_packets: Deque::new(),
+            //samples_buffer: [0u16; SAMPLE_COUNT],
         },
         Local {
             jupiter_i2c,

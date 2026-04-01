@@ -63,8 +63,8 @@ mod app {
 
     #[shared]
     pub struct Shared {
-        pub downlink_packets: Deque<ApplicationPacket, 128>,
-        pub samples_buffer: [u16; SAMPLE_COUNT],
+        //pub downlink_packets: Deque<ApplicationPacket, 128>,
+        //pub samples_buffer: [u16; SAMPLE_COUNT],
     }
 
     #[local]
