@@ -73,7 +73,6 @@ pub type ThermoI2cBus = I2C<
 // SI1145
 //pub type GuardI2C = I2C<I2C1, (GuardSda, GuardScl), Controller>;
 
-
 pub type SDCardPins = u8;
 
 // Heartbeat LED
