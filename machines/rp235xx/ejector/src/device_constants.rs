@@ -8,7 +8,7 @@ use rp235x_hal::{
     i2c::{Controller, Peripheral},
     pac::{I2C0, I2C1, UART0, UART1},
     timer::CopyableTimer1,
-    uart::{Enabled, UartPeripheral},
+    uart::{Enabled, UartPeripheral, Reader, Writer},
     Timer, I2C,
 };
 
@@ -17,7 +17,7 @@ pub mod pins {
     use rp235x_hal::gpio::{
         bank0::{
             Gpio10, Gpio11, Gpio12, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio24, Gpio25, Gpio26,
-            Gpio27, Gpio32, Gpio33, Gpio8, Gpio9,
+            Gpio27, Gpio32, Gpio33, Gpio8, Gpio9, Gpio45
         },
         FunctionI2C, FunctionSio, FunctionUart, Pin, PullDown, PullUp, SioInput, SioOutput,
     };
@@ -36,6 +36,8 @@ pub mod pins {
 
     /// RBF LED PIN
     pub type GreenLedPin = Gpio10;
+
+    pub type RGBLedPin = Gpio45;
 
     /// RBF PIN
     pub type RBFPin = Pin<Gpio2, FunctionSio<SioInput>, PullDown>;
@@ -84,11 +86,79 @@ pub type RedLed = Pin<RedLedPin, FunctionSio<SioOutput>, PullNone>;
 /// Camera LED
 pub type GreenLed = Pin<GreenLedPin, FunctionSio<SioOutput>, PullNone>;
 
+pub type RGBLed = Pin<RGBLedPin, FunctionSio<SioOutput>, PullNone>;
+
+
 /// Ejection detection pin
 pub type EjectionDetectionPin = Pin<EjectionPin, FunctionSio<SioInput>, PullDown>;
 
 /// JUPITER Uart
 pub type JupiterUart = UartPeripheral<Enabled, UART0, (JupiterRxPin, JupiterTxPin)>;
 
+pub type JupiterRX = Reader<UART0, (JupiterRxPin, JupiterTxPin)>;
+
+pub type JupiterTX = Writer<UART0, (JupiterRxPin, JupiterTxPin)>;
+
 /// Samples per second of the geiger counter
 pub static SAMPLE_COUNT: usize = 100;
+
+use ws2812_rs::Color;
+
+
+pub struct RGBStatus {
+    pub RBF: Color,
+    pub HaLow: Color,
+    pub Esp: Color,
+    pub Infratracker: Color,
+    pub Guard: Color,
+    pub Jupiter: Color,
+    pub ElectroMagnet: Color,
+    pub Servos: Color,
+    pub Jupiter_Avionics_Health: Color,
+    pub Ejector_Health: Color,
+    pub Odin_Compute_Health: Color,
+    pub Odin_Pico_Health: Color,
+}
+
+use bin_packets::rgbstatus::{
+    WireColor,
+    RGBOptions,
+};
+
+impl RGBStatus {
+    // Convert recieved binpacket colors to actual color
+    pub fn update_from_options(&mut self, options: RGBOptions) {
+        if let Some(c) = options.RBF { self.RBF = c.into(); }
+        if let Some(c) = options.HaLow { self.HaLow = c.into(); }
+        if let Some(c) = options.Esp { self.Esp = c.into(); }
+        if let Some(c) = options.Infratracker { self.Infratracker = c.into(); }
+        if let Some(c) = options.Guard { self.Guard = c.into(); }
+        if let Some(c) = options.Jupiter { self.Jupiter = c.into(); }
+        if let Some(c) = options.ElectroMagnet { self.ElectroMagnet = c.into(); }
+        if let Some(c) = options.Servos { self.Servos = c.into(); }
+        if let Some(c) = options.Jupiter_Avionics_Health { self.Jupiter_Avionics_Health = c.into(); }
+        if let Some(c) = options.Ejector_Health { self.Ejector_Health = c.into(); }
+        if let Some(c) = options.Odin_Compute_Health { self.Odin_Compute_Health = c.into(); }
+        if let Some(c) = options.Odin_Pico_Health { self.Odin_Pico_Health = c.into(); }
+    }
+}
+
+impl Default for RGBStatus {
+    fn default() -> Self {
+        let red = Color::red();
+        Self {
+            RBF: red,
+            HaLow: red,
+            Esp: red,
+            Infratracker: red,
+            Guard: red,
+            Jupiter: red,
+            ElectroMagnet: red,
+            Servos: red,
+            Jupiter_Avionics_Health: red,
+            Ejector_Health: red,
+            Odin_Compute_Health: red,
+            Odin_Pico_Health: red,
+        }
+    }
+}

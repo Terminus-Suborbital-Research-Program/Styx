@@ -20,6 +20,7 @@ use mcp9600::{
     ADCResolution, BurstModeSamples, ColdJunctionResolution, DeviceAddr, FilterCoefficient,
     ShutdownMode, ThermocoupleType, MCP9600,
 };
+use ws2812_rs::WS2812;
 use rp235x_hal::i2c::I2C;
 // use rp235x_hal::timer::monotonic::Monotonic;
 
@@ -27,10 +28,12 @@ use crate::actuators::electromag::{ElectroMagnet, ElectroMagnetPolarity, HBridge
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
 use crate::device_constants::pins::{CamMosfetPin, RBFPin};
 use crate::device_constants::{
-    EjectionDetectionPin, GreenLed, JupiterUart, RedLed, ThermoI2cBus, SAMPLE_COUNT,
+    EjectionDetectionPin, GreenLed, JupiterUart, RedLed, ThermoI2cBus, SAMPLE_COUNT, RGBLed,
+    RGBStatus,
 };
 use crate::hal;
 use crate::{app::*, Mono};
+
 
 // Timestamp for logging
 defmt::timestamp!("{=u64:us}", {
@@ -152,6 +155,9 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     )
     .unwrap();
 
+    let (status_link, downlink) = jupiter_uart.split();
+
+
     // Servo
     let pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
     let mut ejection_servo_pwm = pwm_slices.pwm0;
@@ -187,6 +193,13 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     let gpio_detect: EjectionDetectionPin = bank0_pins.gpio24.into_pull_down_input();
 
+    let rgb_ctl_pin: RGBLed = bank0_pins.gpio45
+        .into_pull_type::<PullNone>()
+        .into_push_pull_output();
+
+    let sys_freq = clocks.system_clock.freq().to_Hz();
+    let mut rgb_driver = WS2812::new(rgb_ctl_pin, sys_freq as u64); 
+
     // SI1445 I2C
     // let guard_i2c: GuardI2C = I2C::i2c1(
     //     ctx.device.I2C1,
@@ -198,6 +211,8 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     // );
 
     info!("Peripherals initialized, spawning tasks");
+
+    let status_config = RGBStatus::default();
 
     // Tasks
 
@@ -213,11 +228,13 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             downlink_packets: Deque::new(),
             samples_buffer: [0u16; SAMPLE_COUNT],
             ejection_enabled: false,
+            status_config,
         },
         Local {
             camera_mosfet: cam_pin,
             onboard_led: led_pin,
-            downlink: jupiter_uart,
+            status_link,
+            downlink,
             ejector_servo,
             rbf_pin: rbf_pin,
             ejection_pin: gpio_detect,
@@ -225,6 +242,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             arming_led: red_led_pin,
             packet_led: packet_indicator,
             thermocouple,
+            rgb_driver,
         },
     )
 }

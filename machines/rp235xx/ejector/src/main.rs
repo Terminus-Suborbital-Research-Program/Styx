@@ -51,6 +51,7 @@ mod app {
     use crate::device_constants::pins::{CamMosfetPin, RBFPin};
     use crate::device_constants::{
         EjectionDetectionPin, GreenLed, JupiterUart, OnboardLED, RedLed, ThermoI2cBus, SAMPLE_COUNT,
+        RGBStatus, RGBLed, JupiterRX, JupiterTX, 
     };
 
     use super::*;
@@ -66,6 +67,7 @@ mod app {
     use rp235x_hal::uart::UartPeripheral;
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
     use mcp9600::MCP9600;
+    use ws2812_rs::WS2812;
 
     pub type UART0Bus = UartPeripheral<
         rp235x_hal::uart::Enabled,
@@ -88,6 +90,7 @@ mod app {
         pub downlink_packets: Deque<ApplicationPacket, 128>,
         pub samples_buffer: [u16; SAMPLE_COUNT],
         pub ejection_enabled: bool,
+        pub status_config: RGBStatus,
     }
 
     #[local]
@@ -100,9 +103,11 @@ mod app {
         pub packet_led: GreenLed,
         pub ejection_pin: EjectionDetectionPin,
         pub rbf_pin: RBFPin,
-        pub downlink: JupiterUart,
+        pub downlink: JupiterTX,
+        pub status_link: JupiterRX,
         pub camera_mosfet: CamMosfetPin,
         pub thermocouple: MCP9600<ThermoI2cBus>,
+        pub rgb_driver: WS2812<RGBLed>,
     }
 
     #[init(local = [adc: Option<hal::Adc> = None])]
@@ -131,6 +136,16 @@ mod app {
 
         #[task(shared = [ejection_enabled], local = [rbf_pin], priority = 2)]
         async fn poll_rbf(mut ctx: poll_rbf::Context);
+
+        // Commands
+        // Status for status LED
+        #[task(shared = [status_config], local = [status_link], priority = 2)]
+        async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context);
+
+        #[task(shared = [status_config], local = [rgb_driver], priority = 2)]
+        async fn set_rgb_status(mut ctx: set_rgb_status::Context);
+
+
 
         // #[task(binds = ADC_IRQ_FIFO, priority = 3, shared = [samples_buffer], local = [ counter: usize = 1])]
         // fn adc_irq(mut ctx: adc_irq::Context);
