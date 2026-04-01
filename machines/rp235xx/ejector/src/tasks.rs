@@ -246,7 +246,7 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
         }
 
         if !data_received {
-            Mono::delay(100_u64.millis()).await;
+            Mono::delay(10_u64.millis()).await;
         }
     }
 }
@@ -254,8 +254,8 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
 pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
     let rgb_driver = ctx.local.rgb_driver;
     loop {
-        ctx.shared.status_config.lock(|status| {
-            rgb_driver.send_color([
+        let current_colors = ctx.shared.status_config.lock(|status| {
+            [
                 status.RBF,
                 status.HaLow,
                 status.Esp,
@@ -268,8 +268,10 @@ pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
                 status.Ejector_Health,
                 status.Odin_Compute_Health,
                 status.Odin_Pico_Health,
-            ]);
+            ]
         });
+
+        ctx.local.rgb_driver.send_color(current_colors);
         Mono::delay(1000_u64.millis()).await;
     }
 }
