@@ -2,13 +2,14 @@
 members = [
   "common/messages/bin-packets",
   "common/messages/tinyframe",
-  "common/signet",
+  #"common/signet",
   "common/states",
   "ground/data-cli",
   "ground/gs-cli",
   "machines/pi-5/jupiter-fsw",
-  "machines/pi-5/odin-compute",
+  #"machines/pi-5/odin-compute",
   "machines/rp235xx/jupiter-telemetry",
+  "machines/rp235xx/power-board",
   "machines/rp235xx/ejector",
   "machines/rp235xx/elara",
   # "machines/rp235xx/icarus",
@@ -17,7 +18,7 @@ members = [
   "sensors/bmi323-rs",
   "sensors/bmm350-rs",
   "sensors/cd74hc4067",
-  "sensors/ina260",
+  "sensors/ina260", 
 ]
 resolver = "3"
 

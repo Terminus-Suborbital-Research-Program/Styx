@@ -9,3 +9,4 @@ pub mod devices;
 pub mod packets;
 pub mod phases;
 pub mod time;
+pub mod i2c;
