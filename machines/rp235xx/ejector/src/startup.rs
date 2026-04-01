@@ -158,10 +158,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     ejection_servo_pwm.enable();
     ejection_servo_pwm.set_div_int(48);
 
-    let mut ejection_emag_pwm = pwm_slices.pwm2;
-    ejection_emag_pwm.enable();
-    ejection_emag_pwm.set_div_int(48);
-
     // Pin for servo mosfet digital
     let mut mosfet_pin: EjectionServoMosfet = bank0_pins.gpio1.into_push_pull_output();
     mosfet_pin.set_low().unwrap();
@@ -170,19 +166,16 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     channel_a.set_enabled(true);
     let ejection_servo = Servo::new(channel_a, channel_pin, mosfet_pin);
 
-    // Add emag variable
-    let mut echannel_a = ejection_emag_pwm.channel_a;
-    let mut echannel_b = ejection_emag_pwm.channel_b;
-
-    let emag_pwm_pin1 = echannel_b.output_to(bank0_pins.gpio21);
-    let emag_pwm_pin2 = echannel_a.output_to(bank0_pins.gpio20);
+    // Add emag variables
+    let emag_pin1 = bank0_pins.gpio21.into_push_pull_output();
+    let emag_pin2 = bank0_pins.gpio20.into_push_pull_output();
     let emag_arming_pin = bank0_pins.gpio22.into_push_pull_output();
 
     //let emag_channels = (echannel_a, echannel_b);
 
     let mut ejector_magnet = ElectroMagnet::new(
-        HBridge::new(echannel_a, echannel_b, emag_arming_pin),
-        ElectroMagnetPolarity::State1,
+        HBridge::new(emag_pin1, emag_pin2, emag_arming_pin),
+        ElectroMagnetPolarity::Attract,
     );
 
     let mut rbf_pin: RBFPin = bank0_pins.gpio2.into_pull_down_input();

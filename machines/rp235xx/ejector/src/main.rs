@@ -78,8 +78,8 @@ mod app {
 
     // TODO: Set proper pins
     pub type EjectorMagnet = ElectroMagnet<
-        Channel<Slice<rp235x_hal::pwm::Pwm2, FreeRunning>, A>,
-        Channel<Slice<rp235x_hal::pwm::Pwm2, FreeRunning>, B>,
+        gpio::Pin<gpio::bank0::Gpio21, gpio::FunctionSioOutput, gpio::PullDown>,
+        gpio::Pin<gpio::bank0::Gpio20, gpio::FunctionSioOutput, gpio::PullDown>,
         gpio::Pin<gpio::bank0::Gpio22, gpio::FunctionSioOutput, gpio::PullDown>,
     >;
 

@@ -1,7 +1,6 @@
 //! SD Card management for the Ejector  
 
 #[warn(missing_docs)]
-
 use bincode::de;
 use defmt::info;
 use embedded_hal::{delay::DelayNs, digital::OutputPin, spi::SpiDevice as EmbHal_SpiDevice};
@@ -21,8 +20,8 @@ use rp235x_hal::{
 
 pub const EJECTOR_SD_FILENAME: &'static str = "data.txt";
 
-/// Struct to manage the SD card on the Ejector. This is mostly 
-/// a wrapper around the embedded_sdmmc crate, which provides a 
+/// Struct to manage the SD card on the Ejector. This is mostly
+/// a wrapper around the embedded_sdmmc crate, which provides a
 /// high-level API for managing SD cards.
 pub struct EjectorSdCard2<MosiPin, MisoPin, ClkPin, CsPin, SpiBus, Timer>
 where
