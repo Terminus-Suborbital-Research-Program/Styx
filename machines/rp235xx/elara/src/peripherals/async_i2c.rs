@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 use core::future::Future;
 use core::task::{Context, Poll};
 use futures::future::{select, Either, FutureExt};

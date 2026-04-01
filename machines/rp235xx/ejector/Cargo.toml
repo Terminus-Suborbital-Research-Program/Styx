@@ -42,6 +42,10 @@ common-states = { path = "../../../common/states" }
 tinyframe = { version = "0.1.0", path = "../../../common/messages/tinyframe" }
 mcp9600 = { git = "https://github.com/besselfunct/mcp9600.git", default-features = false }
 
+embedded-sdmmc = "0.9.0"
+embedded-hal-bus = "*"
+
+
 # Target features
 [features]
 default = ["rp2350"]

@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 use nalgebra::{Matrix6x1, Matrix6};
 
 struct SpacecraftLQR{

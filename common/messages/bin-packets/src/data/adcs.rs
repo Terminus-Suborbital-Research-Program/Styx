@@ -1,9 +1,7 @@
-use crate::time::{Timestamp};
-
+use crate::time::Timestamp;
 
 use bincode::{Decode, Encode};
 // use serde::{Serialize, Deserialize};
-
 
 // Currently quaternions and reference frames pull STD, so switching to tranposrting a raw vector
 // #[cfg(feature = "aether")]

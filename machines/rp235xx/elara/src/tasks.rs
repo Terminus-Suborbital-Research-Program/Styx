@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 use bin_packets::devices::DeviceIdentifier;
 use bin_packets::packets::status::Status;
 use bin_packets::packets::ApplicationPacket;
@@ -9,18 +10,15 @@ use bmm350::MagConfig;
 use defmt::{error, info};
 use embedded_hal::digital::{InputPin, StatefulOutputPin};
 
-use crate::device_constants::{
-    AvionicsI2cBus,
-    MpChannel,
-};
+use crate::device_constants::{AvionicsI2cBus, MpChannel};
 use crate::{app::*, device_constants::MotorI2cBus, Mono};
+use bincode::config::standard;
+use embedded_hal::digital::OutputPin;
 use embedded_io::Write;
 use fugit::ExtU64;
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
-use embedded_hal::digital::OutputPin;
-use bincode::config::standard;
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     let mut sequence_number: u16 = 0;
@@ -40,18 +38,17 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 }
 
 pub async fn poll_attitude_metrics(mut ctx: poll_attitude_metrics::Context<'_>) {
-    let mut rx_buf = [0u8; 128]; 
+    let mut rx_buf = [0u8; 128];
     let mut idx = 0;
-    
-    let config = bincode::config::standard(); 
+
+    let config = bincode::config::standard();
 
     loop {
         // Read byte by byte if uart available
         while ctx.local.compute_link.uart_is_readable() {
-
             if idx >= rx_buf.len() {
                 // Buffer full, break to avoid blocking
-                break; 
+                break;
             }
             let mut byte = [0u8; 1];
             if let Ok(_) = ctx.local.compute_link.read_raw(&mut byte) {
@@ -88,10 +85,9 @@ pub async fn poll_attitude_metrics(mut ctx: poll_attitude_metrics::Context<'_>) 
                     }
                     idx = remaining;
                 }
-                Err(bincode::error::DecodeError::UnexpectedEnd { .. }) => {
-                }
+                Err(bincode::error::DecodeError::UnexpectedEnd { .. }) => {}
                 Err(_) => {
-                    // drop the oldest byte and shift 
+                    // drop the oldest byte and shift
                     // the window by 1 to let bincode try again on the next loop.
                     rx_buf.copy_within(1..idx, 0);
                     idx -= 1;
@@ -99,7 +95,7 @@ pub async fn poll_attitude_metrics(mut ctx: poll_attitude_metrics::Context<'_>) 
             }
         }
 
-        Mono::delay(20.millis()).await; 
+        Mono::delay(20.millis()).await;
     }
 }
 
@@ -108,8 +104,6 @@ pub async fn poll_attitude_metrics(mut ctx: poll_attitude_metrics::Context<'_>) 
 // unsafe fn I2C0_IRQ() {
 //     MotorI2cBus::on_interrupt();
 // }
-
-
 
 // pub async fn ina_sample(mut ctx: ina_sample::Context<'_>, _i2c: &'static Arbiter<MotorI2cBus>) {
 //     info!("INA Sample Task Started");
@@ -535,19 +529,14 @@ use rtic_sync::arbiter::i2c::ArbiterDevice;
 //     )
 // }
 
-
-pub async fn read_photodiode(mut ctx: read_photodiode::Context<'_>)
-{
+pub async fn read_photodiode(mut ctx: read_photodiode::Context<'_>) {
     let mut i: usize = 0;
 
-    loop
-    {
+    loop {
         i = i + 1;
 
-        if (i % 4) == 0
-        {
-            match ctx.local.mp_channel
-            {
+        if (i % 4) == 0 {
+            match ctx.local.mp_channel {
                 MpChannel::PD1_4 => {
                     ctx.local.pin19.set_low().unwrap();
                     ctx.local.pin20.set_low().unwrap();

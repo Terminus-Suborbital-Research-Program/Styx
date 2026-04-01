@@ -1,5 +1,7 @@
 #![warn(missing_docs)]
 
+//! RTIC Task defintions for the Ejector
+
 use crate::{app::*, device_constants::SAMPLE_COUNT, Mono};
 use bin_packets::{
     devices::DeviceIdentifier,
@@ -10,7 +12,7 @@ use defmt::{debug, info, warn};
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
 use embedded_io::{Read, ReadReady, Write};
 use fugit::ExtU64;
-use heapless::{Deque, Vec, deque::DequeInner, vec::ViewVecStorage};
+use heapless::{deque::DequeInner, vec::ViewVecStorage, Deque, Vec};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use tinyframe::frame::Frame;
@@ -23,6 +25,7 @@ const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 10;
 
 const SHUTDOWN_TIME_CAMERAS: u64 = 210;
 
+/// Task for sending heartbeat packets to JUPITER and toggling the onboard LED
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     let onboard_led = ctx.local.onboard_led;
 
@@ -46,12 +49,12 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     }
 }
 
+/// Task for sending downlink packets to JUPITER
 pub async fn downlink_jupiter(mut ctx: downlink_jupiter::Context<'_>) {
     let mut enc_buf = [0u8; SCRATCH];
     loop {
-        
         let mut packet: Option<ApplicationPacket> = None;
-         ctx.shared.downlink_packets.lock(|packets | {
+        ctx.shared.downlink_packets.lock(|packets| {
             while let Some(packet) = packets.pop_front() {
                 // ctx.local.packet_led.toggle().ok();
                 if let Ok(sz) = encode_into_slice(packet, &mut enc_buf, standard()) {
@@ -64,51 +67,11 @@ pub async fn downlink_jupiter(mut ctx: downlink_jupiter::Context<'_>) {
         Mono::delay(50_u64.millis()).await;
     }
 }
-// pub fn adc_irq(mut ctx: adc_irq::Context<'_>) {
-//     let sample = ctx.local.geiger_fifo.as_mut().unwrap().read();
-//     let i = *ctx.local.counter;
-
-//     ctx.shared.samples_buffer.lock(|buff| buff[i] = sample);
-//     *ctx.local.counter += 1;
-
-//     if i >= (SAMPLE_COUNT - 1) {
-//         *ctx.local.counter = 0;
-//         geiger_calculator::spawn().ok();
-//     }
-// }
-
-// pub async fn geiger_calculator(mut ctx: geiger_calculator::Context<'_>) {
-//     if Mono::now().duration_since_epoch().to_secs() > JUPITER_BOOT_LOCKOUT_TIME_SECONDS {
-//         let pulses = ctx
-//             .shared
-//             .samples_buffer
-//             .lock(|buf| buf.iter().filter(|x| **x > 10).count());
-
-//         if pulses > 0 {
-//             let packet = ApplicationPacket::GeigerData {
-//                 timestamp_ms: Mono::now().duration_since_epoch().to_millis(),
-//                 recorded_pulses: pulses as u16,
-//             };
-
-//             debug!("Recorded pulses! {}", pulses);
-
-//             if ctx
-//                 .shared
-//                 .downlink_packets
-//                 .lock(|packets| packets.push_back(packet))
-//                 .is_err()
-//             {
-//                 warn!("Downlink packets full!");
-//             } else {
-//                 info!("Geiger downlink packets queued: {} pulses", pulses);
-//             }
-//         }
-//     }
-// }
 
 const SCRATCH: usize = 512;
 
-pub async fn camera_sequencer(ctx: camera_sequencer::Context<'_>) {
+/// Task for camera sequencing
+pub async fn camera_sequencer(mut ctx: camera_sequencer::Context<'_>) {
     // T+70, drive the cameras high
     Mono::delay(250.secs()).await;
     info!("Activating cameras!");
@@ -118,15 +81,23 @@ pub async fn camera_sequencer(ctx: camera_sequencer::Context<'_>) {
     ctx.local.camera_mosfet.set_low().ok();
 }
 
-pub async fn ejector_sequencer(ctx: ejector_sequencer::Context<'_>) {
-    // TODO: Update to use elctromag
+/// Task that manages the Ejector sequencing
+///
+/// NOTE: When the RBF pin is inserted, this task will idle and block ejection until the pin is removed.
+pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
+    while !ctx.shared.ejection_enabled.lock(|enabled| *enabled) {
+        debug!("Ejector sequencer idling while RBF pin is inserted");
+        Mono::delay(100_u64.millis()).await;
+    }
 
     let servo = ctx.local.ejector_servo;
     let e_magnet = ctx.local.ejecctor_magnet;
+
     // Latch ejector servos closed
     servo.hold();
     servo.enable();
 
+    // Turn on the magnet
     e_magnet.enable();
     e_magnet.polarity_switch(); // Maybe
 
@@ -138,7 +109,7 @@ pub async fn ejector_sequencer(ctx: ejector_sequencer::Context<'_>) {
     ctx.local.arming_led.set_low().ok();
     info!("Sequencer unlocked, waiting for ejection signal");
 
-    // Wait until ejection pin reads high
+    // Wait until ejection pin from JUPITER reads high
     while !ejection_pin.is_high().unwrap_or(false) {
         debug!("Ejector idling while waiting for ejection signal");
         Mono::delay(100_u64.millis()).await;
@@ -160,9 +131,12 @@ pub async fn ejector_sequencer(ctx: ejector_sequencer::Context<'_>) {
     info!("Ejector disabled, servo and magnet disabled. Ejector sequencing complete.");
 }
 
+/// Task to measure the temperature for the thermal dissipation layer experiment
+///
+/// Timing: Every second
 pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
     let sensor = &mut ctx.local.thermocouple;
-    
+
     info!("Mcp start");
 
     loop {
@@ -172,5 +146,24 @@ pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
         }
 
         Mono::delay(1000_u64.millis()).await;
+    }
+}
+
+/// Task to poll the RBF pin and block ejection if it is inserted
+///
+/// Timing: Every 100 ms
+pub async fn poll_rbf(mut ctx: poll_rbf::Context<'_>) {
+    loop {}
+    if ctx
+        .local
+        .rbf_pin
+        .is_low()
+        .expect("Failed to read the RBF pin state")
+    {
+        info!("RBF pin is low, blocking ejection code...");
+        ctx.shared.ejection_enabled.lock(|blocked| *blocked = false);
+    } else {
+        info!("RBF pin is high, ejection code enabled.");
+        ctx.shared.ejection_enabled.lock(|blocked| *blocked = true);
     }
 }

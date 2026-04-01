@@ -2,10 +2,13 @@
 #![no_main]
 #![warn(missing_docs)]
 
+//! TERMINUS RS-X 2026 Elara Ejector Code
+
 // Our Modules
 pub mod actuators;
 
 mod device_constants;
+pub mod sd_card;
 
 // Guard module
 pub mod guard;
@@ -45,9 +48,9 @@ mod app {
 
     use crate::actuators::electromag::ElectroMagnet;
     use crate::actuators::servo::EjectorServo;
-    use crate::device_constants::pins::CamMosfetPin;
+    use crate::device_constants::pins::{CamMosfetPin, RBFPin};
     use crate::device_constants::{
-        EjectionDetectionPin, GreenLed, JupiterUart, OnboardLED, RedLed, SAMPLE_COUNT, ThermoI2cBus
+        EjectionDetectionPin, GreenLed, JupiterUart, OnboardLED, RedLed, ThermoI2cBus, SAMPLE_COUNT,
     };
 
     use super::*;
@@ -75,8 +78,8 @@ mod app {
 
     // TODO: Set proper pins
     pub type EjectorMagnet = ElectroMagnet<
-        Channel<Slice<rp235x_hal::pwm::Pwm2, FreeRunning>, A>,
-        Channel<Slice<rp235x_hal::pwm::Pwm2, FreeRunning>, B>,
+        gpio::Pin<gpio::bank0::Gpio21, gpio::FunctionSioOutput, gpio::PullDown>,
+        gpio::Pin<gpio::bank0::Gpio20, gpio::FunctionSioOutput, gpio::PullDown>,
         gpio::Pin<gpio::bank0::Gpio22, gpio::FunctionSioOutput, gpio::PullDown>,
     >;
 
@@ -84,6 +87,7 @@ mod app {
     pub struct Shared {
         pub downlink_packets: Deque<ApplicationPacket, 128>,
         pub samples_buffer: [u16; SAMPLE_COUNT],
+        pub ejection_enabled: bool,
     }
 
     #[local]
@@ -95,6 +99,7 @@ mod app {
         pub arming_led: RedLed,
         pub packet_led: GreenLed,
         pub ejection_pin: EjectionDetectionPin,
+        pub rbf_pin: RBFPin,
         pub downlink: JupiterUart,
         pub camera_mosfet: CamMosfetPin,
         pub thermocouple: MCP9600<ThermoI2cBus>,
@@ -107,7 +112,7 @@ mod app {
 
     extern "Rust" {
         // Sequences the ejection
-        #[task(local = [ejection_pin, arming_led, ejector_servo, ejecctor_magnet],  priority = 1)]
+        #[task(shared = [ejection_enabled], local = [ejection_pin, arming_led, ejector_servo, ejecctor_magnet],  priority = 1)]
         async fn ejector_sequencer(mut ctx: ejector_sequencer::Context);
 
         // Sequences cameras activation
@@ -124,7 +129,9 @@ mod app {
         #[task(shared = [downlink_packets], local = [downlink], priority = 1)]
         async fn downlink_jupiter(mut ctx: downlink_jupiter::Context);
 
-        
+        #[task(shared = [ejection_enabled], local = [rbf_pin], priority = 2)]
+        async fn poll_rbf(mut ctx: poll_rbf::Context);
+
         // #[task(binds = ADC_IRQ_FIFO, priority = 3, shared = [samples_buffer], local = [ counter: usize = 1])]
         // fn adc_irq(mut ctx: adc_irq::Context);
 

@@ -1,3 +1,5 @@
+//! Code for the Ejector's servo control
+
 #![warn(missing_docs)]
 
 use embedded_hal::{digital::OutputPin, pwm::SetDutyCycle};
@@ -38,6 +40,7 @@ pub static HOLDING_ANGLE: u16 = 85;
 // pub static LOCKING_SERVO_LOCKED: u16 = 105;
 // pub static LOCKING_SERVO_UNLOCKED: u16 = 20;
 
+/// Generic servo struct
 pub struct Servo<C, P, M: OutputPin> {
     channel: C,
     _pin: P, // Consume this pin please
@@ -78,7 +81,7 @@ where
     }
 }
 
-// Ejector servo
+/// Ejector servo
 pub struct EjectorServo {
     servo: Servo<
         Channel<EjectionServoSlice, A>,
@@ -88,6 +91,7 @@ pub struct EjectorServo {
 }
 
 impl EjectorServo {
+    /// Create a new ejector servo instance
     pub fn new(
         servo: Servo<
             Channel<EjectionServoSlice, A>,
@@ -98,16 +102,19 @@ impl EjectorServo {
         Self { servo }
     }
 
+    /// Sets the servo to the ejection angle
     pub fn eject(&mut self) {
         self.servo.set_angle(EJECTION_ANGLE);
         self.servo.enable();
     }
 
+    /// Hold the servo at the holding angle
     pub fn hold(&mut self) {
         self.servo.set_angle(HOLDING_ANGLE);
         self.servo.enable();
     }
 
+    /// Disable the servo by setting the mosfet pin low
     pub fn disable(&mut self) {
         self.servo.disable();
     }

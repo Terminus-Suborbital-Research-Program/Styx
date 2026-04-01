@@ -1,23 +1,28 @@
+//! Device constants and type definitions for the Ejector
+
 #![warn(missing_docs)]
 
-use pins::{
-    EjectionPin, GreenLedPin, JupiterRxPin, JupiterTxPin, OnboardLEDPin,
-   RedLedPin,
-};
+use pins::{EjectionPin, GreenLedPin, JupiterRxPin, JupiterTxPin, OnboardLEDPin, RedLedPin};
 use rp235x_hal::{
-    I2C, Timer, gpio::{FunctionI2C, FunctionSio, Pin, PullDown, PullNone, PullUp, SioInput, SioOutput}, i2c::{Controller, Peripheral}, pac::{I2C0, I2C1, UART0, UART1}, timer::CopyableTimer1, uart::{Enabled, UartPeripheral}
+    gpio::{FunctionI2C, FunctionSio, Pin, PullDown, PullNone, PullUp, SioInput, SioOutput},
+    i2c::{Controller, Peripheral},
+    pac::{I2C0, I2C1, UART0, UART1},
+    timer::CopyableTimer1,
+    uart::{Enabled, UartPeripheral},
+    Timer, I2C,
 };
-
 
 #[allow(dead_code)]
 pub mod pins {
     use rp235x_hal::gpio::{
-        FunctionI2C, FunctionSio, FunctionUart, Pin, PullDown, PullUp, SioInput, SioOutput, bank0::{
-            Gpio0, Gpio1, Gpio2, Gpio4, Gpio5, Gpio8, Gpio9, Gpio10, Gpio11, Gpio12, Gpio16, Gpio17, Gpio20, Gpio21, Gpio24, Gpio25, Gpio26, Gpio27, Gpio32, Gpio33
-        }
+        bank0::{
+            Gpio10, Gpio11, Gpio12, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio24, Gpio25, Gpio26,
+            Gpio27, Gpio32, Gpio33, Gpio8, Gpio9,
+        },
+        FunctionI2C, FunctionSio, FunctionUart, Pin, PullDown, PullUp, SioInput, SioOutput,
     };
 
-    // Ejector Heartbeat Output
+    /// Ejector Heartbeat Output
     pub type OnboardLEDPin = Gpio25;
 
     // Camera Startup should be right but the heartbeat and Cam LED Pins might be wrong
@@ -26,13 +31,13 @@ pub mod pins {
     /// Camera GPIO activation
     pub type CamMosfetPin = Pin<Gpio12, FunctionSio<SioOutput>, PullDown>;
 
-    // Camera LED Pin
+    /// Camera LED Pin
     pub type RedLedPin = Gpio11;
 
-    // RBF LED PIN
+    /// RBF LED PIN
     pub type GreenLedPin = Gpio10;
 
-    // RBF PIN
+    /// RBF PIN
     pub type RBFPin = Pin<Gpio2, FunctionSio<SioInput>, PullDown>;
 
     /// Ejection detection pin
@@ -55,32 +60,34 @@ pub mod pins {
 }
 
 use pins::*;
-pub type ThermoI2cBus = 
-    I2C<
-        I2C0,
-        (
-            Pin<ThermoI2CSdaPin, FunctionI2C, PullUp>,
-            Pin<ThermoI2CSclPin, FunctionI2C, PullUp>,
-        ),
-        Controller,
-    >;
+/// I2C bus for the thermocouple
+pub type ThermoI2cBus = I2C<
+    I2C0,
+    (
+        Pin<ThermoI2CSdaPin, FunctionI2C, PullUp>,
+        Pin<ThermoI2CSclPin, FunctionI2C, PullUp>,
+    ),
+    Controller,
+>;
 
 // SI1145
 //pub type GuardI2C = I2C<I2C1, (GuardSda, GuardScl), Controller>;
 
+pub type SDCardPins = u8;
+
 // Heartbeat LED
 pub type OnboardLED = Pin<OnboardLEDPin, FunctionSio<SioOutput>, PullNone>;
 
-// Camera LED
+/// Camera LED
 pub type RedLed = Pin<RedLedPin, FunctionSio<SioOutput>, PullNone>;
 
-// Camera LED
+/// Camera LED
 pub type GreenLed = Pin<GreenLedPin, FunctionSio<SioOutput>, PullNone>;
 
 /// Ejection detection pin
 pub type EjectionDetectionPin = Pin<EjectionPin, FunctionSio<SioInput>, PullDown>;
 
-// JUPITER Uart
+/// JUPITER Uart
 pub type JupiterUart = UartPeripheral<Enabled, UART0, (JupiterRxPin, JupiterTxPin)>;
 
 /// Samples per second of the geiger counter
