@@ -1,0 +1,12 @@
+[package]
+name = "pylon_cam"
+version = "0.1.0"
+edition = "2024"
+
+[build-dependencies]
+bindgen = "0.72.1"
+
+[dependencies]
+pylon-cxx = {path="../pylon-cxx"}
+anyhow = "1.0.102"
+

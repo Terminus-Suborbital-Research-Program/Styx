@@ -18,7 +18,7 @@ members = [
   "sensors/bmi323-rs",
   "sensors/bmm350-rs",
   "sensors/cd74hc4067",
-  "sensors/ina260", 
+  "sensors/ina260", "machines/pi-5/pylon_cam", 
 ]
 resolver = "3"
 
