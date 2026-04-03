@@ -1,18 +1,376 @@
-use bmi323::{AccelConfig, AccelerometerRange, Bmi323, GyroConfig, GyroscopeRange, OutputDataRate};
+use aether::{
+    attitude::{DirectionCosineMatrix, Quaternion},
+    math::Vector,
+    reference_frame::{Body, ICRF, ITRF, NED},
+};
+use bmi323::{
+    AccelConfig, AccelerometerRange, AverageNum, Bandwidth, Bmi323, Error as BmiError,
+    GyroConfig, GyroscopePowerMode, GyroscopeRange, OutputDataRate, Sensor3DDataScaled,
+};
+use bmm350::{
+    AverageNum as BmmAverageNum, AxisEnableDisable, Bmm350, DataRate, Error as BmmError,
+    MagConfig, PerformanceMode, PowerMode, Sensor3DData,
+};
+use embedded_hal::i2c::I2c;
 use linux_embedded_hal::{Delay, I2cdev};
+use nmea::Nmea;
 use rs_ws281x::{ChannelBuilder, Controller, ControllerBuilder, StripType};
-use std::{thread, time::{Duration, Instant}};
+use std::{
+    env,
+    sync::{Arc, Mutex},
+    thread,
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+};
 
 const LED_COUNT: i32 = 4;
-const I2C_ADDR: u8 = 0x69;   // Your confirmed working address
+const BMI323_I2C_ADDR: u8 = 0x69;
+const BMM350_I2C_ADDR: u8 = 0x14;
+const GPS_I2C_ADDR: u8 = 0x42;
+const GPS_I2C_BYTES_AVAILABLE_REGISTER: u8 = 0xFD;
+const GPS_I2C_STREAM_REGISTER: u8 = 0xFF;
+const GPS_I2C_MAX_READ: usize = 32;
+const EARTH_ROTATION_RATE_RAD_PER_S: f64 = 7.292_115_0e-5;
+const WGS84_A_M: f64 = 6_378_137.0;
+const WGS84_E2: f64 = 6.694_379_990_14e-3;
 
-fn bmi_err<E: core::fmt::Debug>(err: bmi323::Error<E>) -> std::io::Error {
+fn bmi_err<E: core::fmt::Debug>(err: BmiError<E>) -> std::io::Error {
     std::io::Error::other(format!("bmi323 error: {:?}", err))
 }
 
+fn bmm_err<E: core::fmt::Debug>(err: BmmError<E>) -> std::io::Error {
+    std::io::Error::other(format!("bmm350 error: {:?}", err))
+}
+
+#[derive(Clone, Debug)]
+struct GpsData {
+    geodetic_deg_m: Vector<f64, 3>,
+    satellites: Option<u32>,
+    hdop: Option<f32>,
+    speed_knots: Option<f32>,
+    true_course_deg: Option<f32>,
+}
+
+#[derive(Clone, Debug)]
+struct State {
+    unix_timestamp_s: u64,
+    geodetic_deg_m: Option<Vector<f64, 3>>,
+    ecef_m: Option<[f64; 3]>,
+    body_to_ned: Quaternion<f64, Body<f64>, NED<f64>>,
+    body_to_icrf: Option<Quaternion<f64, Body<f64>, ICRF<f64>>>,
+    satellites: Option<u32>,
+    hdop: Option<f32>,
+    yaw_deg: f32,
+    magnetic_heading_deg: f32,
+    relative_magnetic_heading_deg: f32,
+    roll_deg: f32,
+    pitch_deg: f32,
+    accel_mps2: Sensor3DDataScaled,
+    gyro_dps: Sensor3DDataScaled,
+    speed_knots: Option<f32>,
+    true_course_deg: Option<f32>,
+    north_body: [f64; 3],
+    east_body: [f64; 3],
+    down_body: [f64; 3],
+}
+
+fn wrap_angle_deg(angle_deg: f32) -> f32 {
+    let wrapped = angle_deg % 360.0;
+    if wrapped < 0.0 {
+        wrapped + 360.0
+    } else {
+        wrapped
+    }
+}
+
+fn unix_timestamp_s_now() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .ok()
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0)
+}
+
+fn extract_gps_fix(nmea: &Nmea) -> Option<GpsData> {
+    let latitude = nmea.latitude()?;
+    let longitude = nmea.longitude()?;
+    let altitude_m = nmea.altitude().unwrap_or_default() as f64;
+
+    Some(GpsData {
+        geodetic_deg_m: Vector::new([latitude, longitude, altitude_m]),
+        satellites: nmea.fix_satellites(),
+        hdop: nmea.hdop(),
+        speed_knots: nmea.speed_over_ground,
+        true_course_deg: nmea.true_course,
+    })
+}
+
+fn magnetic_heading_deg(sample: Sensor3DData) -> f32 {
+    ((sample.y as f32).atan2(sample.x as f32).to_degrees()).rem_euclid(360.0)
+}
+
+fn relative_heading_deg(current_deg: f32, reference_deg: f32) -> f32 {
+    (current_deg - reference_deg).rem_euclid(360.0)
+}
+
+fn tilt_roll_deg(accel: Sensor3DDataScaled) -> f32 {
+    accel.y.atan2(accel.z).to_degrees()
+}
+
+fn tilt_pitch_deg(accel: Sensor3DDataScaled) -> f32 {
+    (-accel.x)
+        .atan2((accel.y * accel.y + accel.z * accel.z).sqrt())
+        .to_degrees()
+}
+
+fn norm3(v: [f64; 3]) -> f64 {
+    (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt()
+}
+
+fn normalize3(v: [f64; 3]) -> [f64; 3] {
+    let n = norm3(v);
+    if n <= f64::EPSILON {
+        [0.0, 0.0, 0.0]
+    } else {
+        [v[0] / n, v[1] / n, v[2] / n]
+    }
+}
+
+fn dot3(a: [f64; 3], b: [f64; 3]) -> f64 {
+    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+}
+
+fn cross3(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+    [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ]
+}
+
+fn sub3(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+}
+
+fn scale3(v: [f64; 3], scalar: f64) -> [f64; 3] {
+    [v[0] * scalar, v[1] * scalar, v[2] * scalar]
+}
+
+fn geodetic_deg_to_ecef_m(geodetic_deg_m: Vector<f64, 3>) -> [f64; 3] {
+    let latitude = geodetic_deg_m[0].to_radians();
+    let longitude = geodetic_deg_m[1].to_radians();
+    let altitude = geodetic_deg_m[2];
+
+    let sin_lat = latitude.sin();
+    let cos_lat = latitude.cos();
+    let sin_lon = longitude.sin();
+    let cos_lon = longitude.cos();
+
+    let n = WGS84_A_M / (1.0 - WGS84_E2 * sin_lat * sin_lat).sqrt();
+
+    [
+        (n + altitude) * cos_lat * cos_lon,
+        (n + altitude) * cos_lat * sin_lon,
+        (n * (1.0 - WGS84_E2) + altitude) * sin_lat,
+    ]
+}
+
+fn itrf_to_ned_dcm(latitude_rad: f64, longitude_rad: f64) -> DirectionCosineMatrix<f64, ITRF<f64>, NED<f64>> {
+    DirectionCosineMatrix::new(
+        -latitude_rad.sin() * longitude_rad.cos(),
+        -latitude_rad.sin() * longitude_rad.sin(),
+        latitude_rad.cos(),
+        -longitude_rad.sin(),
+        longitude_rad.cos(),
+        0.0,
+        -latitude_rad.cos() * longitude_rad.cos(),
+        -latitude_rad.cos() * longitude_rad.sin(),
+        -latitude_rad.sin(),
+    )
+}
+
+fn itrf_to_icrf_dcm(time_s: f64) -> DirectionCosineMatrix<f64, ITRF<f64>, ICRF<f64>> {
+    let theta = EARTH_ROTATION_RATE_RAD_PER_S * time_s;
+    DirectionCosineMatrix::new(
+        theta.cos(),
+        -theta.sin(),
+        0.0,
+        theta.sin(),
+        theta.cos(),
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+    )
+}
+
+fn body_to_ned_from_sensors(
+    accel: Sensor3DDataScaled,
+    mag: Sensor3DData,
+) -> (DirectionCosineMatrix<f64, Body<f64>, NED<f64>>, [f64; 3], [f64; 3], [f64; 3]) {
+    let down_body = normalize3([
+        accel.x as f64,
+        accel.y as f64,
+        accel.z as f64,
+    ]);
+
+    let mag_body = [mag.x as f64, mag.y as f64, mag.z as f64];
+    let mag_along_down = scale3(down_body, dot3(mag_body, down_body));
+    let mag_horizontal = sub3(mag_body, mag_along_down);
+
+    let mut north_body = normalize3(mag_horizontal);
+    if norm3(north_body) <= f64::EPSILON {
+        north_body = [1.0, 0.0, 0.0];
+    }
+
+    let mut east_body = normalize3(cross3(down_body, north_body));
+    if norm3(east_body) <= f64::EPSILON {
+        east_body = [0.0, 1.0, 0.0];
+    }
+
+    north_body = normalize3(cross3(east_body, down_body));
+
+    (
+        DirectionCosineMatrix::new(
+            north_body[0],
+            north_body[1],
+            north_body[2],
+            east_body[0],
+            east_body[1],
+            east_body[2],
+            down_body[0],
+            down_body[1],
+            down_body[2],
+        ),
+        north_body,
+        east_body,
+        down_body,
+    )
+}
+
+fn parse_i2c_addr(value: &str) -> Option<u8> {
+    let trimmed = value.trim();
+    if let Some(hex) = trimmed
+        .strip_prefix("0x")
+        .or_else(|| trimmed.strip_prefix("0X"))
+    {
+        u8::from_str_radix(hex, 16).ok()
+    } else {
+        trimmed.parse::<u8>().ok()
+    }
+}
+
+fn gps_bytes_available(i2c: &mut I2cdev, gps_addr: u8) -> std::io::Result<usize> {
+    let mut available = [0_u8; 2];
+    i2c.write_read(gps_addr, &[GPS_I2C_BYTES_AVAILABLE_REGISTER], &mut available)
+        .map_err(|err| std::io::Error::other(format!("gps i2c count read failed: {err}")))?;
+
+    Ok((((available[0] as usize) << 8) | available[1] as usize) & 0x7FFF)
+}
+
+fn gps_read_chunk(i2c: &mut I2cdev, gps_addr: u8, buffer: &mut [u8]) -> std::io::Result<usize> {
+    i2c.write_read(gps_addr, &[GPS_I2C_STREAM_REGISTER], buffer)
+        .map_err(|err| std::io::Error::other(format!("gps i2c data read failed: {err}")))?;
+    Ok(buffer.len())
+}
+
+fn start_gps_reader() -> Arc<Mutex<Option<GpsData>>> {
+    let gps_bus = env::var("MUNIN_GPS_I2C_BUS").unwrap_or_else(|_| "/dev/i2c-0".to_string());
+    let gps_addr = env::var("MUNIN_GPS_I2C_ADDR")
+        .ok()
+        .and_then(|value| parse_i2c_addr(&value))
+        .unwrap_or(GPS_I2C_ADDR);
+
+    let shared_fix = Arc::new(Mutex::new(None));
+    let gps_state = Arc::clone(&shared_fix);
+
+    thread::Builder::new()
+        .name("gps-reader".into())
+        .spawn(move || {
+            let mut i2c = match I2cdev::new(&gps_bus) {
+                Ok(i2c) => i2c,
+                Err(err) => {
+                    eprintln!(
+                        "GPS disabled: failed to open I2C bus {} for address 0x{gps_addr:02X}: {}",
+                        gps_bus, err
+                    );
+                    return;
+                }
+            };
+
+            eprintln!(
+                "GPS reader listening on {} at I2C address 0x{gps_addr:02X}",
+                gps_bus
+            );
+
+            let mut parser = Nmea::default();
+            let mut sentence = String::new();
+            let mut chunk = [0_u8; GPS_I2C_MAX_READ];
+
+            loop {
+                match gps_bytes_available(&mut i2c, gps_addr) {
+                    Ok(0) => {
+                        thread::sleep(Duration::from_millis(100));
+                    }
+                    Ok(available) => {
+                        let to_read = available.min(chunk.len());
+
+                        match gps_read_chunk(&mut i2c, gps_addr, &mut chunk[..to_read]) {
+                            Ok(read) => {
+                                for &byte in &chunk[..read] {
+                                    match byte {
+                                        b'\r' => {}
+                                        b'\n' => {
+                                            let line = sentence.trim();
+                                            if !line.is_empty() && parser.parse(line).is_ok() {
+                                                if let Some(fix) = extract_gps_fix(&parser) {
+                                                    if let Ok(mut latest) = gps_state.lock() {
+                                                        *latest = Some(fix);
+                                                    }
+                                                }
+                                            }
+                                            sentence.clear();
+                                        }
+                                        b'$' => {
+                                            sentence.clear();
+                                            sentence.push('$');
+                                        }
+                                        byte if sentence.is_empty() => {}
+                                        byte if byte.is_ascii() => {
+                                            sentence.push(byte as char);
+                                        }
+                                        _ => {
+                                            sentence.clear();
+                                        }
+                                    }
+                                }
+                            }
+                            Err(err) => {
+                                eprintln!(
+                                    "GPS read error on {} at 0x{gps_addr:02X}: {}",
+                                    gps_bus, err
+                                );
+                                thread::sleep(Duration::from_millis(500));
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        eprintln!(
+                            "GPS status error on {} at 0x{gps_addr:02X}: {}",
+                            gps_bus, err
+                        );
+                        thread::sleep(Duration::from_millis(500));
+                    }
+                }
+            }
+        })
+        .expect("failed to spawn GPS reader thread");
+
+    shared_fix
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // ====================== LED SETUP ======================
+    let gps_fix = start_gps_reader();
+
     let mut controller: Controller = ControllerBuilder::new()
         .freq(800_000)
         .dma(10)
@@ -27,48 +385,70 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .build()?;
 
-    // ====================== I2C + BMI323 SETUP (using the official driver) ======================
-    let i2c = I2cdev::new("/dev/i2c-0")?;
-    let delay = Delay;
+    let imu_i2c = I2cdev::new("/dev/i2c-0")?;
+    let mag_i2c = I2cdev::new("/dev/i2c-0")?;
+    let mut imu: Bmi323<_, _> = Bmi323::new_with_i2c(imu_i2c, BMI323_I2C_ADDR, Delay);
+    let mut mag: Bmm350<_, _> = Bmm350::new_with_i2c(mag_i2c, BMM350_I2C_ADDR, Delay);
 
-    let mut imu: Bmi323<_, _> = Bmi323::new_with_i2c(i2c, I2C_ADDR, delay);
-
-    println!("=== BMI323 Relative Compass (using official bmi323 crate) ===");
-
-    // Initialize the sensor (soft reset + basic power-up)
+    println!("=== BMI323 + BMM350 Mount Scaffold ===");
     println!("Initializing BMI323 sensor...");
     imu.init().map_err(bmi_err)?;
+    imu.set_accel_config(
+        AccelConfig::builder()
+            .odr(OutputDataRate::Odr100hz)
+            .range(AccelerometerRange::G8)
+            .bw(Bandwidth::OdrQuarter)
+            .avg_num(AverageNum::Avg4)
+            .build(),
+    )
+    .map_err(bmi_err)?;
+    imu.set_gyro_config(
+        GyroConfig::builder()
+            .odr(OutputDataRate::Odr100hz)
+            .range(GyroscopeRange::DPS2000)
+            .avg_num(AverageNum::Avg4)
+            .mode(GyroscopePowerMode::Normal)
+            .build(),
+    )
+    .map_err(bmi_err)?;
+    println!("BMI323 configured.");
 
-    // Configure for good performance (you can tweak these values)
-    let accel_config = AccelConfig::builder()
-        .odr(OutputDataRate::Odr100hz)
-        .range(AccelerometerRange::G8)
-        .build();
-    imu.set_accel_config(accel_config).map_err(bmi_err)?;
+    println!("Initializing BMM350 sensor...");
+    mag.init().map_err(bmm_err)?;
+    mag.enable_axes(
+        AxisEnableDisable::Enable,
+        AxisEnableDisable::Enable,
+        AxisEnableDisable::Enable,
+    )
+    .map_err(bmm_err)?;
+    mag.set_odr_performance(DataRate::ODR25Hz, BmmAverageNum::Avg4)
+        .map_err(bmm_err)?;
+    mag.set_power_mode(PowerMode::Normal).map_err(bmm_err)?;
+    mag.set_mag_config(
+        MagConfig::builder()
+            .odr(DataRate::ODR25Hz)
+            .performance(PerformanceMode::Regular)
+            .mode(PowerMode::Normal)
+            .build(),
+    )
+    .map_err(bmm_err)?;
+    println!("BMM350 configured.");
 
-    let gyro_config = GyroConfig::builder()
-        .odr(OutputDataRate::Odr100hz)
-        .range(GyroscopeRange::DPS2000)
-        .build();
-    imu.set_gyro_config(gyro_config).map_err(bmi_err)?;
-
-    println!("Sensor configured.");
-
-    // ====================== CALIBRATION WITH GREEN SPINNER ======================
-    println!("Calibrating gyro bias — keep the sensor completely STILL for 2 seconds...");
+    println!("Calibrating gyro bias and magnetic reference — keep the mount still for 2 seconds...");
     println!("Watch the green LED spin smoothly around the ring.");
 
     let cal_start = Instant::now();
-    let mut gyro_bias: f32 = 0.0;
+    let mut gyro_bias_z = 0.0_f32;
+    let mut magnetic_reference_deg = 0.0_f32;
     let mut sample_count: u32 = 0;
 
     while cal_start.elapsed() < Duration::from_secs(2) {
-        let gyro_data = imu.read_gyro_data_scaled().map_err(bmi_err)?;
-        let gz_dps = gyro_data.z;               // library already gives scaled °/s
-        gyro_bias += gz_dps;
+        let gyro = imu.read_gyro_data_scaled().map_err(bmi_err)?;
+        let mag_data = mag.read_mag_data().map_err(bmm_err)?;
+        gyro_bias_z += gyro.z;
+        magnetic_reference_deg += magnetic_heading_deg(mag_data);
         sample_count += 1;
 
-        // Green spinning pointer (2 full rotations during calibration)
         let elapsed = cal_start.elapsed().as_secs_f32();
         let progress = elapsed / 2.0;
         let cal_angle = progress * 720.0;
@@ -96,38 +476,48 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         thread::sleep(Duration::from_millis(20));
     }
-    gyro_bias /= sample_count as f32;
-    println!("✅ Calibration complete! Gyro bias: {:.2} dps", gyro_bias);
 
-    println!("Current direction is now NORTH (red pointer starts on LED #0).");
-    println!("Rotate the sensor — the red pointer moves smoothly around the blue LEDs.");
-    println!("Turn until the red is back on LED #0 to face north again.");
+    if sample_count > 0 {
+        gyro_bias_z /= sample_count as f32;
+        magnetic_reference_deg /= sample_count as f32;
+    }
 
-    // ====================== MAIN LOOP (Yaw only) ======================
-    let mut yaw: f32 = 0.0;
-    let mut last_time = Instant::now();
+    println!("✅ Calibration complete! Gyro Z bias: {:.2} dps", gyro_bias_z);
+    println!(
+        "✅ Magnetic reference complete! BMM350 north reference: {:.2}°",
+        magnetic_reference_deg
+    );
+    println!("Scaffold assumes BMI323 at 0x69 and BMM350 at 0x14.");
+    println!("LED ring currently follows BMM350 relative heading for bench testing.");
+    println!(
+        "GPS expects u-blox DDC/NMEA on $MUNIN_GPS_I2C_BUS or /dev/i2c-0 at $MUNIN_GPS_I2C_ADDR or 0x42."
+    );
+
     let mut last_print = Instant::now();
+    let mut last_time = Instant::now();
+    let mut yaw_deg = 0.0_f32;
 
     loop {
-        let gyro_data = imu.read_gyro_data_scaled().map_err(bmi_err)?;
-        let gz_dps = gyro_data.z;
+        let accel = imu.read_accel_data_scaled().map_err(bmi_err)?;
+        let gyro = imu.read_gyro_data_scaled().map_err(bmi_err)?;
+        let mag_data = mag.read_mag_data().map_err(bmm_err)?;
 
-        // Yaw integration
         let now = Instant::now();
         let dt = (now - last_time).as_secs_f32();
         last_time = now;
 
-        let corrected_gz = gz_dps - gyro_bias;
-        if corrected_gz.abs() > 3.0 {
-            yaw += corrected_gz * dt;
-        }
-        yaw = yaw % 360.0;
-        if yaw < 0.0 {
-            yaw += 360.0;
+        let corrected_gz = gyro.z - gyro_bias_z;
+        if corrected_gz.abs() > 0.5 {
+            yaw_deg = wrap_angle_deg(yaw_deg + corrected_gz * dt);
         }
 
-        // Map yaw to LED position (smooth red ↔ blue cross-fade)
-        let led_pos = yaw / 90.0;
+        let magnetic_heading = magnetic_heading_deg(mag_data);
+        let relative_magnetic_heading =
+            relative_heading_deg(magnetic_heading, magnetic_reference_deg);
+        let roll_deg = tilt_roll_deg(accel);
+        let pitch_deg = tilt_pitch_deg(accel);
+
+        let led_pos = relative_magnetic_heading / 90.0;
         let current_led = (led_pos.floor() as usize) % 4;
         let next_led = (current_led + 1) % 4;
         let frac = led_pos.fract();
@@ -145,19 +535,113 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let b = ((1.0 - t) * 255.0) as u8;
                 [r, 0, b, 0]
             } else {
-                [0, 0, 255, 0]   // pure blue background
+                [0, 0, 255, 0]
             };
             leds[i] = color;
         }
 
         controller.render()?;
 
-        // Debug every 300 ms
         if last_print.elapsed() > Duration::from_millis(300) {
-            println!("Yaw: {:.1}°", yaw);
+            let gps_data = gps_fix.lock().ok().and_then(|latest| latest.clone());
+            let unix_timestamp_s = unix_timestamp_s_now();
+
+            let (body_to_ned_dcm, north_body, east_body, down_body) =
+                body_to_ned_from_sensors(accel, mag_data);
+
+            let body_to_ned = Quaternion::try_from(&body_to_ned_dcm)
+                .unwrap_or_else(|_| Quaternion::<f64, Body<f64>, NED<f64>>::identity())
+                .normalized();
+
+            let geodetic_deg_m = gps_data.as_ref().map(|gps| gps.geodetic_deg_m);
+            let ecef_m = geodetic_deg_m.map(geodetic_deg_to_ecef_m);
+
+            let body_to_icrf = geodetic_deg_m.and_then(|geodetic| {
+                let latitude_rad = geodetic[0].to_radians();
+                let longitude_rad = geodetic[1].to_radians();
+
+                let ned_to_itrf = itrf_to_ned_dcm(latitude_rad, longitude_rad).transpose();
+                let body_to_itrf = ned_to_itrf * body_to_ned_dcm;
+                let body_to_icrf_dcm = itrf_to_icrf_dcm(unix_timestamp_s as f64) * body_to_itrf;
+
+                Quaternion::try_from(&body_to_icrf_dcm).ok().map(|q| q.normalized())
+            });
+
+            let state = State {
+                unix_timestamp_s,
+                geodetic_deg_m,
+                ecef_m,
+                body_to_ned,
+                body_to_icrf,
+                satellites: gps_data.as_ref().and_then(|gps| gps.satellites),
+                hdop: gps_data.as_ref().and_then(|gps| gps.hdop),
+                yaw_deg,
+                magnetic_heading_deg: magnetic_heading,
+                relative_magnetic_heading_deg: relative_magnetic_heading,
+                roll_deg,
+                pitch_deg,
+                accel_mps2: accel,
+                gyro_dps: gyro,
+                speed_knots: gps_data.as_ref().and_then(|gps| gps.speed_knots),
+                true_course_deg: gps_data.as_ref().and_then(|gps| gps.true_course_deg),
+                north_body,
+                east_body,
+                down_body,
+            };
+
+            if let Some(geodetic) = state.geodetic_deg_m {
+                println!(
+                    "ts={} | yaw={:.1}° | heading(mag)={:.1}° | heading(rel)={:.1}° | roll={:.1}° | pitch={:.1}° | north_b={:?} | east_b={:?} | down_b={:?} | gyro[dps]=[{:.2}, {:.2}, {:.2}] | accel[m/s²]=[{:.2}, {:.2}, {:.2}] | q_body_to_ned={} | q_body_to_icrf={:?} | geodetic={} | ecef={:?} | sats={:?} | hdop={:?} | sog(kn)={:?} | course={:?}",
+                    state.unix_timestamp_s,
+                    state.yaw_deg,
+                    state.magnetic_heading_deg,
+                    state.relative_magnetic_heading_deg,
+                    state.roll_deg,
+                    state.pitch_deg,
+                    state.north_body,
+                    state.east_body,
+                    state.down_body,
+                    state.gyro_dps.x,
+                    state.gyro_dps.y,
+                    state.gyro_dps.z,
+                    state.accel_mps2.x,
+                    state.accel_mps2.y,
+                    state.accel_mps2.z,
+                    state.body_to_ned,
+                    state.body_to_icrf,
+                    geodetic,
+                    state.ecef_m,
+                    state.satellites,
+                    state.hdop,
+                    state.speed_knots,
+                    state.true_course_deg,
+                );
+            } else {
+                println!(
+                    "ts={} | yaw={:.1}° | heading(mag)={:.1}° | heading(rel)={:.1}° | roll={:.1}° | pitch={:.1}° | north_b={:?} | east_b={:?} | down_b={:?} | gyro[dps]=[{:.2}, {:.2}, {:.2}] | accel[m/s²]=[{:.2}, {:.2}, {:.2}] | q_body_to_ned={} | q_body_to_icrf={:?} | gps=waiting for fix",
+                    state.unix_timestamp_s,
+                    state.yaw_deg,
+                    state.magnetic_heading_deg,
+                    state.relative_magnetic_heading_deg,
+                    state.roll_deg,
+                    state.pitch_deg,
+                    state.north_body,
+                    state.east_body,
+                    state.down_body,
+                    state.gyro_dps.x,
+                    state.gyro_dps.y,
+                    state.gyro_dps.z,
+                    state.accel_mps2.x,
+                    state.accel_mps2.y,
+                    state.accel_mps2.z,
+                    state.body_to_ned,
+                    state.body_to_icrf,
+                );
+            }
+
             last_print = Instant::now();
         }
 
-        thread::sleep(Duration::from_millis(50));   // smooth 20 Hz
+        thread::sleep(Duration::from_millis(50));
     }
 }

@@ -8,4 +8,7 @@ rs_ws281x = "0.4"
 linux-embedded-hal = "0.4"
 embedded-hal = "*"
 rppal = "0.22"
-bmi323 = "0.1.0"
+bmi323 = { path = "../../../sensors/bmi323-rs", features = ["sync"] }
+bmm350 = { path = "../../../sensors/bmm350-rs", features = ["sync"] }
+aether = { git = "https://github.com/AtmoPierce/aether.git", features = ["std", "serde"] }
+nmea = "0.7"
