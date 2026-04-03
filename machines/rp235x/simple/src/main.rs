@@ -11,17 +11,23 @@
 
 // Ensure we halt the program on panic (if we don't mention this crate it won't
 // be linked)
-use defmt_rtt as _;
 use panic_halt as _;
+use rtt_target::ChannelMode::NoBlockSkip;
+use rtt_target::{rprintln, rtt_init, set_print_channel};
 
 
 // Alias for our HAL crate
 use rp235x_hal as hal;
 
 // Some things we need
-use embedded_hal_0_2::blocking::i2c::Write;
-use hal::fugit::RateExtU32;
-use hal::gpio::{FunctionI2C, Pin};
+use hal::{
+    fugit::RateExtU32,
+    gpio::bank0::{Gpio20, Gpio21},
+    gpio::{FunctionI2C, Pin, PullUp},
+    i2c::Controller,
+    Clock, I2C,
+};
+use embedded_hal::i2c::I2c;
 
 /// Tell the Boot ROM about our application
 #[link_section = ".start_block"]
@@ -32,6 +38,21 @@ pub static IMAGE_DEF: hal::block::ImageDef = hal::block::ImageDef::secure_exe();
 /// Adjust if your board has a different frequency
 const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
+fn init_logs() {
+    let channels = rtt_init! {
+        up: {
+            0: { size: 512, mode: NoBlockSkip, name: "print" }
+            1: { size: 512, mode: NoBlockSkip, name: "defmt" }
+            2: { size: 1024, mode: NoBlockSkip, name: "telemetry" }
+        }
+        down: {
+            0: { size: 512, mode: NoBlockSkip, name: "commands" }
+        }
+    };
+
+    set_print_channel(channels.up.0);
+}
+
 /// Entry point to our bare-metal application.
 ///
 /// The `#[hal::entry]` macro ensures the Cortex-M start-up code calls this function
@@ -41,6 +62,9 @@ const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 /// write to a fixed address.
 #[hal::entry]
 fn main() -> ! {
+    init_logs();
+    rprintln!("print channel ready");
+
     let mut pac = hal::pac::Peripherals::take().unwrap();
 
     // Set up the watchdog driver - needed by the clock setup code
@@ -87,9 +111,9 @@ fn main() -> ! {
     );
 
     // Write three bytes to the I²C device with 7-bit address 0x2C
-    // defmt::info!("Writing");    
-    // i2c.write(0x2Cu8, &[1, 2, 3]).unwrap();
-    // defmt::info!("Written");    
+    rprintln!("Writing");
+    i2c.write(0x2Cu8, &[1, 2, 3]).unwrap();
+    rprintln!("Written");
 
     // Demo finish - just loop until reset
 

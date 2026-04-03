@@ -1,0 +1,11 @@
+[package]
+name = "munin"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rs_ws281x = "0.4"
+linux-embedded-hal = "0.4"
+embedded-hal = "*"
+rppal = "0.22"
+bmi323 = "0.1.0"

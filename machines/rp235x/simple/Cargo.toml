@@ -34,6 +34,7 @@ defmt = {workspace = true}
 defmt-rtt = {workspace = true}
 heapless = {workspace = true}
 bmi323 = {path="../../../sensors/bmi323-rs", features = ["async", "defmt"]}
+rtt-target = { version = "0.6.1" }
 
 # Target features
 [features]

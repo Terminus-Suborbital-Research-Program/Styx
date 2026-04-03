@@ -6,6 +6,7 @@ members = [
   "common/states",
   "ground/data-cli",
   "ground/gs-cli",
+  "machines/pi-4/munin",
   "machines/pi-5/jupiter-fsw",
   "machines/pi-5/odin-compute",
   "machines/rp235x/jupiter-telemetry",
