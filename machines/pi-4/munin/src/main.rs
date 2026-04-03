@@ -490,7 +490,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Scaffold assumes BMI323 at 0x69 and BMM350 at 0x14.");
     println!("LED ring currently follows BMM350 relative heading for bench testing.");
     println!(
-        "GPS expects u-blox DDC/NMEA on $MUNIN_GPS_I2C_BUS or /dev/i2c-0 at $MUNIN_GPS_I2C_ADDR or 0x42."
+        "GPS expects u-blox DDC/NMEA on $MUNIN_GPS_I2C_BUS or /dev/i2c-1 at $MUNIN_GPS_I2C_ADDR or 0x42."
     );
 
     let mut last_print = Instant::now();
