@@ -9,6 +9,10 @@ mod main_cam;
 mod power_on;
 mod shutdown;
 mod skirt_seperation;
+mod rocket_despin;
+mod secondary_cam;
+mod launch;
+mod infratracker;
 
 pub mod traits;
 pub use power_on::*;
@@ -27,10 +31,10 @@ pub struct JupiterStateMachine {
 
 impl JupiterStateMachine {
     /// Create a new state machine from a pin provider
-    pub fn new(atmega: Atmega, ej_pin: WritePin, rbf: RbfReader) -> Self {
+    pub fn new(atmega: Atmega, ejection_pin: WritePin, rbf: RbfReader) -> Self {
         Self {
             state: Box::new(PowerOn::default()),
-            context: StateContext::new(atmega, ej_pin, rbf),
+            context: StateContext::new(atmega, ejection_pin, rbf),
         }
     }
 

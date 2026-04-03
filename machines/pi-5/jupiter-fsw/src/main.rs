@@ -1,5 +1,7 @@
 #![warn(missing_docs)]
 
+//! TERMINUS RS-X 2026 Elara JUPITER Code
+
 use std::{
     thread::sleep,
     time::{Duration, Instant},

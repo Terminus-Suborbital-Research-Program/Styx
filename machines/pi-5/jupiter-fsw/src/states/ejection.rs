@@ -3,7 +3,7 @@
 use bin_packets::phases::JupiterPhase;
 use embedded_hal::digital::PinState;
 
-use crate::states::battery_power::BatteryPower;
+use crate::states::{battery_power::BatteryPower, infratracker::InfratrackerStart};
 
 use super::traits::{StateContext, ValidState};
 
@@ -16,18 +16,10 @@ impl ValidState for Ejection {
     }
 
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
-        match ctx.atmega.pins().unwrap_or_default().te2() {
-            PinState::High => {
-                // Low power warning, go to battery power
-                log::info!("Received LV shutoff signal, triggering battery power");
-                ctx.atmega.activate_latch();
-                Box::new(BatteryPower::default())
-            }
-
-            PinState::Low => {
-                // No change
-                Box::new(Self {})
-            }
-        }
+        if ctx.t_time >= 90 {
+            return Box::new(InfratrackerStart::default());
+        } else {
+            return Box::new(Self::default());
+        }        
     }
 }
