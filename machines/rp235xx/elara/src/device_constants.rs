@@ -31,19 +31,6 @@ pub mod pins {
     /// I2C SCL pin
     pub type AvionicsI2CSclPin = Gpio7;
 
-    // Mux pins are 14, 13, 11, 10 for S0, S1, S2, S3
-
-    /// Mux S0
-    pub type MuxS0Pin = Gpio14;
-    /// Mux S1
-    pub type MuxS1Pin = Gpio13;
-    /// Mux S2
-    pub type MuxS2Pin = Gpio11;
-    /// Mux S3
-    pub type MuxS3Pin = Gpio10;
-    /// Mux Disable
-    pub type MuxEPin = Gpio12;
-
     // pub type ADCMux = CD74HC4067<Pin<MuxS0Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS1Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS2Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxS3Pin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>, Pin<MuxEPin, rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>, rp235x_hal::gpio::PullDown>>;
 
     /// ESC I2C SDA pin
@@ -139,15 +126,3 @@ pub type IcarusHC12 = HC12<
 
 /// Data buffer for downsyncing ICARUS data
 pub type DownlinkBuffer = Deque<ApplicationPacket, 64>;
-
-pub enum MpChannel
-{
-    PD1_4 =  0b00000, // No pins powered
-    PD5_8 =  0b00001, // GPIO 19
-    PD9_12 =  0b00010, // GPIO 20
-    PD13_16 =  0b00011, // GPIO 19 20
-    PD17_20 =  0b00100, // GPIO 21
-    PD21_24 =  0b00101, // GPIO 19 21
-    PD25_28 =  0b00110, // GPIO 20 21
-    PD29_32 =  0b00111, // GPIO 19 20 21
-}

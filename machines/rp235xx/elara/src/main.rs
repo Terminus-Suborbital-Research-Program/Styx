@@ -11,6 +11,8 @@ mod sensors;
 mod startup;
 mod tasks;
 
+mod pdmux_controller;
+
 use defmt_rtt as _; // global logger
 
 use crate::tasks::*;
@@ -24,8 +26,6 @@ use ina260_terminus::AsyncINA260;
 
 // Busses
 use rtic_sync::arbiter::i2c::ArbiterDevice;
-
-use device_constants::MpChannel;
 
 /// Lets us know when we panic
 #[panic_handler]
@@ -74,6 +74,7 @@ mod app {
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
     use rtic_sync::{arbiter::Arbiter, signal::Signal};
+    use crate::pdmux_controller::PDMuxController;
 
     pub type UART0Bus = UartPeripheral<
         rp235x_hal::uart::Enabled,
@@ -83,6 +84,7 @@ mod app {
             gpio::Pin<gpio::bank0::Gpio1, gpio::FunctionUart, gpio::PullDown>,
         ),
     >;
+
 
     // pub static mut USB_BUS: Option<UsbBusAllocator<hal::usb::UsbBus>> = None;
     #[shared]
@@ -101,42 +103,7 @@ mod app {
         pub ina260_3: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
         pub ina260_4: AsyncINA260<ArbiterDevice<'static, MotorI2cBus>, Mono>,
         pub rbf: Pin<Gpio4, FunctionSio<SioInput>, PullDown>,
-        pub adc_fifo_l: Option<hal::adc::AdcFifo<'static, u16>>,
-        pub adc_outputs: [u16; 24], 
-        pub mp_channel: MpChannel,
-        pub pin19: gpio::Pin<gpio::bank0::Gpio19, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
-        pub pin20: gpio::Pin<gpio::bank0::Gpio20, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
-        pub pin21: gpio::Pin<gpio::bank0::Gpio21, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
-        // pub adc: hal::adc::Adc,
-        // pub adc_photoresistors:
-        //     AdcPin<gpio::Pin<gpio::bank0::Gpio40, gpio::FunctionNull, gpio::PullDown>>,
-        // pub mux: CD74HC4067<
-        //     Pin<
-        //         MuxS0Pin,
-        //         rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-        //         rp235x_hal::gpio::PullDown,
-        //     >,
-        //     Pin<
-        //         MuxS1Pin,
-        //         rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-        //         rp235x_hal::gpio::PullDown,
-        //     >,
-        //     Pin<
-        //         MuxS2Pin,
-        //         rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-        //         rp235x_hal::gpio::PullDown,
-        //     >,
-        //     Pin<
-        //         MuxS3Pin,
-        //         rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-        //         rp235x_hal::gpio::PullDown,
-        //     >,
-        //     Pin<
-        //         MuxEPin,
-        //         rp235x_hal::gpio::FunctionSio<rp235x_hal::gpio::SioOutput>,
-        //         rp235x_hal::gpio::PullDown,
-        //     >,
-        // >,
+        pub pd_mux: PDMuxController,
     }
 
     #[init(
@@ -172,8 +139,8 @@ mod app {
         #[task(priority = 2)]
         async fn inertial_nav(mut ctx: inertial_nav::Context);
 
-        #[task(priority = 2, shared = [], local=[mp_channel, adc_fifo_l, pin19, pin20, pin21, adc_outputs])]
-        async fn read_photodiode(&mut ctx: read_photodiode::Context);
+        #[task(priority = 2, shared = [], local=[ pd_mux ])]
+        async fn read_photodiodes(&mut ctx: read_photodiodes::Context);
     }
 
     /// Returns the current time in nanoseconds since power-on

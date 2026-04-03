@@ -11,7 +11,6 @@ use embedded_hal::digital::{InputPin, StatefulOutputPin};
 
 use crate::device_constants::{
     AvionicsI2cBus,
-    MpChannel,
 };
 use crate::phases::{Modes, RelayServoStatus};
 use crate::{app::*, device_constants::MotorI2cBus, Mono};
@@ -472,87 +471,10 @@ async fn ina_data_handle(
 }
 
 
-pub async fn read_photodiode(mut ctx: read_photodiode::Context<'_>)
+pub async fn read_photodiodes(mut ctx: read_photodiodes::Context<'_>)
 {
-    let mut i: usize = 0;
-
-    loop
-    {
-        i = i + 1;
-
-        if (i % 4) == 0
-        {
-            match ctx.local.mp_channel
-            {
-                MpChannel::PD1_4 => {
-                    ctx.local.pin19.set_low().unwrap();
-                    ctx.local.pin20.set_low().unwrap();
-                    ctx.local.pin21.set_low().unwrap();
-
-                    *ctx.local.mp_channel = MpChannel::PD5_8;
-                }
-
-                MpChannel::PD5_8 => {
-                    ctx.local.pin19.set_high().unwrap();
-                    ctx.local.pin20.set_low().unwrap();
-                    ctx.local.pin21.set_low().unwrap();
-
-                    *ctx.local.mp_channel = MpChannel::PD9_12;
-                }
-
-                MpChannel::PD9_12 => {
-                    ctx.local.pin19.set_low().unwrap();
-                    ctx.local.pin20.set_high().unwrap();
-                    ctx.local.pin21.set_low().unwrap();
-
-                    *ctx.local.mp_channel = MpChannel::PD13_16;
-                }
-
-                MpChannel::PD13_16 => {
-                    ctx.local.pin19.set_high().unwrap();
-                    ctx.local.pin20.set_high().unwrap();
-                    ctx.local.pin21.set_low().unwrap();
-
-                    *ctx.local.mp_channel = MpChannel::PD17_20;
-                }
-
-                MpChannel::PD17_20 => {
-                    ctx.local.pin19.set_low().unwrap();
-                    ctx.local.pin20.set_low().unwrap();
-                    ctx.local.pin21.set_high().unwrap();
-
-                    *ctx.local.mp_channel = MpChannel::PD21_24;
-                }
-
-                MpChannel::PD21_24 => {
-                    ctx.local.pin19.set_high().unwrap();
-                    ctx.local.pin20.set_low().unwrap();
-                    ctx.local.pin21.set_high().unwrap();
-
-                    *ctx.local.mp_channel = MpChannel::PD25_28;
-                }
-
-                MpChannel::PD25_28 => {
-                    ctx.local.pin19.set_low().unwrap();
-                    ctx.local.pin20.set_high().unwrap();
-                    ctx.local.pin21.set_high().unwrap();
-
-                    *ctx.local.mp_channel = MpChannel::PD29_32;
-                }
-
-                MpChannel::PD29_32 => {
-                    ctx.local.pin19.set_high().unwrap();
-                    ctx.local.pin20.set_high().unwrap();
-                    ctx.local.pin21.set_high().unwrap();
-
-                    *ctx.local.mp_channel = MpChannel::PD1_4;
-                }
-            }
-        }
-        ctx.local.adc_outputs[i] = ctx.local.adc_fifo_l.as_mut().unwrap().read();
-        info!("Added {} to adc_outputs.", ctx.local.adc_outputs[i]);
-
-        i = i % 23;
-        Mono::delay(30_u64.micros()).await;
+    loop {
+        ctx.local.pd_mux.read_photodiodes();
+        Mono::delay(300_u64.millis()).await;
     }
 }
