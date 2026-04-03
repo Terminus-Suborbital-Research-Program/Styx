@@ -32,7 +32,7 @@ impl ValidState for Shutdown {
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
         if self.time_since_switch + DELAY_TO_SHUTDOWN < ctx.t_time {
             info!("Shutting Down!");
-            // Replace with actual shutdown behavior
+            // Replace with actual shutdown behavior <-- ??
             Box::new(Self::enter())
         } else {
             Box::new(self.clone())
