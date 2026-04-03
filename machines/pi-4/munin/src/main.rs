@@ -274,7 +274,7 @@ fn gps_read_chunk(i2c: &mut I2cdev, gps_addr: u8, buffer: &mut [u8]) -> std::io:
 }
 
 fn start_gps_reader() -> Arc<Mutex<Option<GpsData>>> {
-    let gps_bus = env::var("MUNIN_GPS_I2C_BUS").unwrap_or_else(|_| "/dev/i2c-0".to_string());
+    let gps_bus = env::var("MUNIN_GPS_I2C_BUS").unwrap_or_else(|_| "/dev/i2c-1".to_string());
     let gps_addr = env::var("MUNIN_GPS_I2C_ADDR")
         .ok()
         .and_then(|value| parse_i2c_addr(&value))
@@ -385,8 +385,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .build()?;
 
-    let imu_i2c = I2cdev::new("/dev/i2c-0")?;
-    let mag_i2c = I2cdev::new("/dev/i2c-0")?;
+    let imu_i2c = I2cdev::new("/dev/i2c-1")?;
+    let mag_i2c = I2cdev::new("/dev/i2c-1")?;
     let mut imu: Bmi323<_, _> = Bmi323::new_with_i2c(imu_i2c, BMI323_I2C_ADDR, Delay);
     let mut mag: Bmm350<_, _> = Bmm350::new_with_i2c(mag_i2c, BMM350_I2C_ADDR, Delay);
 
