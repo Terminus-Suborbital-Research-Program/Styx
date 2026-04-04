@@ -593,15 +593,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bmi323"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13d9428cbc8d4673e77310d83d2acfa3c09894a67b2c464289af91015a124dad"
-dependencies = [
- "embedded-hal 1.0.0",
-]
-
-[[package]]
 name = "bmm350"
 version = "0.0.2"
 dependencies = [
@@ -749,6 +740,7 @@ dependencies = [
  "iana-time-zone",
  "js-sys",
  "num-traits",
+ "serde",
  "wasm-bindgen",
  "windows-link",
 ]
@@ -1117,6 +1109,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7cd812cc2bc1d69d4764bd80df88b4317eaef9e773c75226407d9bc0876b211c"
 dependencies = [
  "powerfmt",
+ "serde_core",
 ]
 
 [[package]]
@@ -1185,7 +1178,7 @@ dependencies = [
  "bin-packets",
  "bincode",
  "bme280",
- "bmi323 0.1.0",
+ "bmi323",
  "bmm350",
  "cd74hc4067",
  "cortex-m",
@@ -1799,6 +1792,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
+name = "hex"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
 name = "home"
 version = "0.5.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2029,6 +2028,7 @@ checksum = "bd070e393353796e801d209ad339e89596eb4c8d430d18ede6a1cced8fafbd99"
 dependencies = [
  "autocfg",
  "hashbrown 0.12.3",
+ "serde",
 ]
 
 [[package]]
@@ -2039,6 +2039,8 @@ checksum = "7714e70437a7dc3ac8eb7e6f8df75fd8eb422675fc7678aff7364301092b1017"
 dependencies = [
  "equivalent",
  "hashbrown 0.16.1",
+ "serde",
+ "serde_core",
 ]
 
 [[package]]
@@ -2163,7 +2165,7 @@ dependencies = [
  "bin-packets",
  "bincode",
  "bme280",
- "bmi323 0.1.0",
+ "bmi323",
  "bmm350",
  "bmp5",
  "cortex-m",
@@ -2503,9 +2505,12 @@ dependencies = [
 name = "munin"
 version = "0.1.0"
 dependencies = [
- "bmi323 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "aether",
+ "bmi323",
+ "bmm350",
  "embedded-hal 1.0.0",
  "linux-embedded-hal",
+ "nmea",
  "rppal",
  "rs_ws281x",
 ]
@@ -2583,6 +2588,22 @@ dependencies = [
  "bitflags 2.11.0",
  "cfg-if",
  "libc",
+]
+
+[[package]]
+name = "nmea"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2086c773d18da556c05ca235596d163c00379027189bafe2209ae40ebd19717c"
+dependencies = [
+ "arrayvec",
+ "cfg-if",
+ "chrono",
+ "heapless 0.8.0",
+ "nom 7.1.3",
+ "num-traits",
+ "serde",
+ "serde_with",
 ]
 
 [[package]]
@@ -4001,6 +4022,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_with"
+version = "3.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69cecfa94848272156ea67b2b1a53f20fc7bc638c4a46d2f8abde08f05f4b857"
+dependencies = [
+ "base64",
+ "chrono",
+ "hex",
+ "indexmap 1.9.3",
+ "indexmap 2.13.0",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "time",
+]
+
+[[package]]
 name = "serialport"
 version = "4.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4118,7 +4156,7 @@ checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
 name = "simple"
 version = "0.1.1"
 dependencies = [
- "bmi323 0.1.0",
+ "bmi323",
  "cortex-m",
  "cortex-m-rt",
  "cortex-m-rtic",
