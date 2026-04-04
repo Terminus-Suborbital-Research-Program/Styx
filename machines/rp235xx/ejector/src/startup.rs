@@ -1,6 +1,6 @@
 //! Startup initialization for the Ejector
 
-#![warn(missing_docs)]
+#![warn(missing_docs, clippy::unwrap_used)]
 
 use common_states::rbf;
 use defmt::{info, warn};

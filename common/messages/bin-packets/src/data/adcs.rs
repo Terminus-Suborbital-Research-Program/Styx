@@ -1,3 +1,4 @@
+//! ADCS packets 
 use crate::time::Timestamp;
 
 use bincode::{Decode, Encode};

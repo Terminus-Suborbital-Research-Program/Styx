@@ -1,6 +1,6 @@
 //! SD Card management for the Ejector  
 
-#[warn(missing_docs)]
+#![warn(missing_docs, clippy::unwrap_used)]
 use bincode::de;
 use defmt::info;
 use embedded_hal::{delay::DelayNs, digital::OutputPin, spi::SpiDevice as EmbHal_SpiDevice};
@@ -67,8 +67,6 @@ where
 {
     pub fn new(spi_bus: SpiBus, clock_sourc: Timer) -> () {
         let sdcard = SdCard::new(spi_bus, clock_sourc);
-
-        //let mut t = Directory::<'_, SdCard<SpiBus, Timer>, DummyTimesource, 4, 4, 1>::default();
 
         let mut volume_mgr = VolumeManager::new(sdcard, DummyTimesource::default());
         match volume_mgr.open_volume(VolumeIdx(0)) {
