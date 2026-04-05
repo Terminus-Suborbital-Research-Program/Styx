@@ -4,6 +4,8 @@
 
 //! TERMINUS RS-X 2026 Elara Ejector Code
 
+//! TERMINUS RS-X 2026 Elara Ejector Code
+
 // Our Modules
 pub mod actuators;
 

@@ -2,6 +2,8 @@
 
 //! RTIC Task defintions for the Ejector
 
+//! RTIC Task defintions for the Ejector
+
 use crate::{app::*, device_constants::SAMPLE_COUNT, Mono};
 use bin_packets::{
     devices::DeviceIdentifier,

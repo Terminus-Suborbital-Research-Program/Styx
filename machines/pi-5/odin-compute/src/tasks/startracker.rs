@@ -36,13 +36,13 @@ use log::{error, info, LevelFilter};
 
 // use aether::
 pub struct StartrackerThread{
-    quaternion_sender: Sender<Quaternion<f32, ICRF<f32>,Body<f32>>>,
+    quaternion_sender: Sender<[f32 ; 4]>,
     // Sender<Quaternion<f64, ICRF<f64>,Body<f64>>>
 }
 
 impl StartrackerThread {
 
-    pub fn new() -> (Self, Receiver<Quaternion<f32, ICRF<f32>,Body<f32>>>) {
+    pub fn new() -> (Self, Receiver<[f32 ; 4]>) {
         let (quaternion_tx, quaternion_rx) = channel();
 
         let startracker = Self {
@@ -97,7 +97,11 @@ impl StartrackerThread {
                 match startracker.pyramid_solve(centroids) {
                 // match startracker.exhaustive_solve(centroids, 100) {
                     Ok((reference_vectors, body_vectors)) => {
-                        let q: Quaternion<f32, ICRF<f32>,Body<f32>>  = quest_real(&reference_vectors, &body_vectors);
+                        let quat: Quaternion<f32, ICRF<f32>,Body<f32>>  = quest_real(&reference_vectors, &body_vectors);
+                        
+                        // Note there are two alternating convertions, i,j,k,w and w,i,j,k
+                        // Providing as is in the library
+                        let q = [quat.w(), quat.i(), quat.j(), quat.k()];
 
                          if let Err(e) = self.quaternion_sender.send(q) {
                             error!("Error sending estimate: {}", e);

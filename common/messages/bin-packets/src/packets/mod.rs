@@ -9,12 +9,14 @@ use serde::{Deserialize, Serialize};
 use status::Status;
 
 use crate::commands::CommandPacket;
+use crate::i2c::{self, I2CPacket};
 // use crate::data::adcs::AttitudeMetrics;
 
 #[derive(Debug, Clone, Copy, Encode, Decode, Format, Serialize, Deserialize)]
 pub enum ApplicationPacket {
     Command(CommandPacket),
     Status(Status),
+    I2C(I2CPacket),
     // ADCS(AttitudeMetrics),
     VoltageData {
         timestamp: [u64; 4],

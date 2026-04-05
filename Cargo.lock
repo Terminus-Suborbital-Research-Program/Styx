@@ -1644,6 +1644,16 @@ dependencies = [
 name = "nalgebra"
 version = "0.32.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1fb9b5c752f145ac5046bccc3c4f62892e3c950c1d1eab80c5949cd68a2078db"
+dependencies = [
+ "ctor",
+ "web-time",
+]
+
+[[package]]
+name = "nalgebra"
+version = "0.32.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b5c17de023a86f59ed79891b2e5d5a94c705dbe904a5b5c9c952ea6221b03e4"
 dependencies = [
  "approx",
@@ -2009,6 +2019,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b73949432f5e2a09657003c25bca5e19a0e9c84f8058ca374f49e0ebe605af77"
 dependencies = [
  "zerovec",
+]
+
+[[package]]
+name = "power-board"
+version = "0.1.1"
+dependencies = [
+ "bin-packets",
+ "bincode",
+ "common-states",
+ "defmt 0.3.100",
+ "defmt-rtt",
+ "embedded-hal 0.2.7",
+ "embedded-io 0.6.1",
+ "fugit",
+ "heapless 0.8.0",
+ "mcp9600",
+ "rp235x-hal 0.4.0",
+ "rtic",
+ "rtic-monotonics 2.1.0 (git+https://github.com/rtic-rs/rtic.git)",
+ "rtic-sync",
+ "tinyframe",
+ "usb-device",
+ "usbd-serial",
 ]
 
 [[package]]
@@ -3193,6 +3226,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f01b580c9ac74c8d8f0c0e4afb04eeef2acf145458e52c03845ee9cd23e3d12"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "web-time"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a6580f308b1fad9207618087a65c04e7a10bc77e02c8e84e9b00dd4b12fa0bb"
+dependencies = [
+ "js-sys",
+ "wasm-bindgen",
 ]
 
 [[package]]
