@@ -415,23 +415,50 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("BMI323 configured.");
 
     println!("Initializing BMM350 sensor...");
-    mag.magnetic_reset().ok();
-    thread::sleep(Duration::from_millis(2000));
-    mag.magnetic_reset().ok();
-    thread::sleep(Duration::from_millis(5000));
-    mag.magnetic_reset().ok();
-    thread::sleep(Duration::from_millis(10000));
+    thread::sleep(Duration::from_millis(100));
+
     let mut mag_init_ok = false;
-    for _ in 0..30 {
-        if mag.init().is_ok() {
-            mag_init_ok = true;
-            break;
+    let mut last_mag_err: Option<String> = None;
+
+    for attempt in 0..8 {
+        let _ = mag.set_power_mode(PowerMode::Suspend);
+        thread::sleep(Duration::from_millis(50));
+
+        if let Err(err) = mag.magnetic_reset() {
+            eprintln!(
+                "BMM350 magnetic reset attempt {} failed: {:?}",
+                attempt + 1,
+                err
+            );
+            last_mag_err = Some(format!("reset attempt {}: {:?}", attempt + 1, err));
         }
-        thread::sleep(Duration::from_millis(100));
+
+        thread::sleep(Duration::from_millis(500 + (attempt as u64) * 250));
+
+        match mag.init() {
+            Ok(()) => {
+                mag_init_ok = true;
+                break;
+            }
+            Err(err) => {
+                eprintln!(
+                    "BMM350 init attempt {} failed: {:?}",
+                    attempt + 1,
+                    err
+                );
+                last_mag_err = Some(format!("init attempt {}: {:?}", attempt + 1, err));
+                thread::sleep(Duration::from_millis(250));
+            }
+        }
     }
+
     if !mag_init_ok {
-        mag.init().map_err(bmm_err)?;
+        return Err(std::io::Error::other(format!(
+            "failed to initialize BMM350 after repeated suspend/reset attempts: {}",
+            last_mag_err.unwrap_or_else(|| "unknown error".to_string())
+        )));
     }
+
     mag.enable_axes(
         AxisEnableDisable::Enable,
         AxisEnableDisable::Enable,
@@ -440,7 +467,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .map_err(bmm_err)?;
     mag.set_odr_performance(DataRate::ODR25Hz, BmmAverageNum::Avg4)
         .map_err(bmm_err)?;
-    mag.set_power_mode(PowerMode::Normal).map_err(bmm_err)?;
     mag.set_mag_config(
         MagConfig::builder()
             .odr(DataRate::ODR25Hz)
@@ -449,6 +475,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .build(),
     )
     .map_err(bmm_err)?;
+    mag.set_power_mode(PowerMode::Normal).map_err(bmm_err)?;
     println!("BMM350 configured.");
 
     println!("Calibrating gyro bias and magnetic reference — keep the mount still for 2 seconds...");
@@ -536,6 +563,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if *shutdown.lock().unwrap() {
             let _ = controller.leds_mut(0).iter_mut().map(|led| *led = [0, 0, 0, 0]).count();
             let _ = controller.render();
+            let _ = mag.set_power_mode(PowerMode::Suspend);
+            thread::sleep(Duration::from_millis(50));
             let _ = mag.magnetic_reset();
             println!("Sensors disabled. Goodbye.");
             break;
