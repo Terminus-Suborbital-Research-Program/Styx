@@ -517,7 +517,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let roll_deg = tilt_roll_deg(accel);
         let pitch_deg = tilt_pitch_deg(accel);
 
-        let led_pos = relative_magnetic_heading / 90.0;
+        let led_pos = yaw_deg / 90.0;
         let current_led = (led_pos.floor() as usize) % 4;
         let next_led = (current_led + 1) % 4;
         let frac = led_pos.fract();
