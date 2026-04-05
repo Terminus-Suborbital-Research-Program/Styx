@@ -156,6 +156,103 @@ fn scale3(v: [f64; 3], scalar: f64) -> [f64; 3] {
     [v[0] * scalar, v[1] * scalar, v[2] * scalar]
 }
 
+fn hsv_to_rgb(hue_deg: f32, saturation: f32, value: f32) -> [u8; 4] {
+    let h = hue_deg.rem_euclid(360.0);
+    let c = value * saturation;
+    let x = c * (1.0 - (((h / 60.0) % 2.0) - 1.0).abs());
+    let m = value - c;
+
+    let (r1, g1, b1) = match h {
+        h if h < 60.0 => (c, x, 0.0),
+        h if h < 120.0 => (x, c, 0.0),
+        h if h < 180.0 => (0.0, c, x),
+        h if h < 240.0 => (0.0, x, c),
+        h if h < 300.0 => (x, 0.0, c),
+        _ => (c, 0.0, x),
+    };
+
+    [
+        ((r1 + m) * 255.0) as u8,
+        ((g1 + m) * 255.0) as u8,
+        ((b1 + m) * 255.0) as u8,
+        0,
+    ]
+}
+
+fn render_rgb_color_wheel(controller: &mut Controller, phase_deg: f32) -> Result<(), Box<dyn std::error::Error>> {
+    let leds = controller.leds_mut(0);
+    for i in 0..LED_COUNT as usize {
+        let hue = phase_deg + (i as f32) * (360.0 / LED_COUNT as f32);
+        leds[i] = hsv_to_rgb(hue, 1.0, 1.0);
+    }
+    controller.render()?;
+    Ok(())
+}
+
+fn format_state_line(state: &State) -> String {
+    let gyro = [state.gyro_dps.x, state.gyro_dps.y, state.gyro_dps.z];
+    let accel = [state.accel_mps2.x, state.accel_mps2.y, state.accel_mps2.z];
+
+    let gps_line = if let Some(geodetic) = state.geodetic_deg_m {
+        format!(
+            "GPS:  lat={:.6}  long={:.6}  alt={:.2}m  sats={:?}  hdop={:?}  sog={:?}kt  course={:?}°",
+            geodetic[0],
+            geodetic[1],
+            geodetic[2],
+            state.satellites,
+            state.hdop,
+            state.speed_knots,
+            state.true_course_deg
+        )
+    } else {
+        format!(
+            "GPS:  waiting  sats={:?}  hdop={:?}  sog={:?}kt  course={:?}°",
+            state.satellites,
+            state.hdop,
+            state.speed_knots,
+            state.true_course_deg
+        )
+    };
+
+    let ecef_line = if let Some(ecef) = state.ecef_m {
+        format!("ECEF: x={:.2}  y={:.2}  z={:.2}", ecef[0], ecef[1], ecef[2])
+    } else {
+        "ECEF: waiting".to_string()
+    };
+
+    format!(
+        "=====================
+TIME: ts={}
+GYRO:     X={:+8.3}  Y={:+8.3}  Z={:+8.3}
+          roll={:+8.3}  pitch={:+8.3}  yaw={:+8.3}
+ACCEL:    X={:+8.3}  Y={:+8.3}  Z={:+8.3}
+MAG:      HDG={:6.2}  REL={:6.2}  N={:>8.2?}  E={:>8.2?}  D={:>8.2?}
+ATT:      q_ned={}  q_icrf={:?}
+{}
+{}
+=====================",
+        state.unix_timestamp_s,
+        gyro[0],
+        gyro[1],
+        gyro[2],
+        state.roll_deg,
+        state.pitch_deg,
+        state.yaw_deg,
+        accel[0],
+        accel[1],
+        accel[2],
+        state.magnetic_heading_deg,
+        state.relative_magnetic_heading_deg,
+        state.north_body,
+        state.east_body,
+        state.down_body,
+        state.body_to_ned,
+        state.body_to_icrf,
+        gps_line,
+        ecef_line,
+    )
+}
+
 fn geodetic_deg_to_ecef_m(geodetic_deg_m: Vector<f64, 3>) -> [f64; 3] {
     let latitude = geodetic_deg_m[0].to_radians();
     let longitude = geodetic_deg_m[1].to_radians();
@@ -478,6 +575,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     mag.set_power_mode(PowerMode::Normal).map_err(bmm_err)?;
     println!("BMM350 configured.");
 
+    println!("Running RGB wheel startup pattern for a few seconds...");
+    let wheel_start = Instant::now();
+    while wheel_start.elapsed() < Duration::from_secs(3) {
+        let elapsed = wheel_start.elapsed().as_secs_f32();
+        let phase_deg = elapsed * 240.0;
+        render_rgb_color_wheel(&mut controller, phase_deg)?;
+
+        thread::sleep(Duration::from_millis(20));
+    }
+
     println!("Calibrating gyro bias and magnetic reference — keep the mount still for 2 seconds...");
     println!("Watch the green LED spin smoothly around the ring.");
 
@@ -661,44 +768,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 down_body,
             };
 
-            if let Some(geodetic) = state.geodetic_deg_m {
-                println!("ts={} yaw={:.1} mag={:.1} rel={:.1} roll={:.1} pitch={:.1} n={:.2?} e={:.2?} d={:.2?} gyro={:.2?} accel={:.2?} q_ned={} q_icrf={:?} sats={:?} hdop={:?} sog={:?} course={:?} geodetic={:?}",
-                    state.unix_timestamp_s,
-                    state.yaw_deg,
-                    state.magnetic_heading_deg,
-                    state.relative_magnetic_heading_deg,
-                    state.roll_deg,
-                    state.pitch_deg,
-                    state.north_body,
-                    state.east_body,
-                    state.down_body,
-                    [state.gyro_dps.x, state.gyro_dps.y, state.gyro_dps.z],
-                    [state.accel_mps2.x, state.accel_mps2.y, state.accel_mps2.z],
-                    state.body_to_ned,
-                    state.body_to_icrf,
-                    state.satellites,
-                    state.hdop,
-                    state.speed_knots,
-                    state.true_course_deg,
-                    geodetic,
-                );
-            } else {
-                println!("ts={} yaw={:.1} mag={:.1} rel={:.1} roll={:.1} pitch={:.1} n={:.2?} e={:.2?} d={:.2?} gyro={:.2?} accel={:.2?} q_ned={} q_icrf={:?} gps=waiting",
-                    state.unix_timestamp_s,
-                    state.yaw_deg,
-                    state.magnetic_heading_deg,
-                    state.relative_magnetic_heading_deg,
-                    state.roll_deg,
-                    state.pitch_deg,
-                    state.north_body,
-                    state.east_body,
-                    state.down_body,
-                    [state.gyro_dps.x, state.gyro_dps.y, state.gyro_dps.z],
-                    [state.accel_mps2.x, state.accel_mps2.y, state.accel_mps2.z],
-                    state.body_to_ned,
-                    state.body_to_icrf,
-                );
-            }
+            println!("{}", format_state_line(&state));
 
             last_print = Instant::now();
         }
