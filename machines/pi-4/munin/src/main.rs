@@ -17,6 +17,7 @@ use nmea::Nmea;
 use rs_ws281x::{ChannelBuilder, Controller, ControllerBuilder, StripType};
 use std::{
     env,
+    io::{self, Read},
     sync::{Arc, Mutex},
     thread,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
@@ -492,12 +493,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "GPS expects u-blox DDC/NMEA on $MUNIN_GPS_I2C_BUS or /dev/i2c-1 at $MUNIN_GPS_I2C_ADDR or 0x42."
     );
+    println!("Press 'q' then Enter to safely shutdown.");
+
+    let shutdown = Arc::new(Mutex::new(false));
+    let shutdown_clone = Arc::clone(&shutdown);
+
+    // Safe shutdown thread
+    thread::spawn(move || {
+        let mut buffer = [0u8; 1];
+        let stdin = io::stdin();
+        let mut handle = stdin.lock();
+        while handle.read_exact(&mut buffer).is_ok() {
+            if buffer[0] == b'q' || buffer[0] == b'Q' {
+                let mut s = shutdown_clone.lock().unwrap();
+                *s = true;
+                println!("\nShutdown requested. Cleaning up sensors...");
+                break;
+            }
+        }
+    });
 
     let mut last_print = Instant::now();
     let mut last_time = Instant::now();
     let mut yaw_deg = 0.0_f32;
 
     loop {
+        if *shutdown.lock().unwrap() {
+            // Safe cleanup
+            let _ = controller.leds_mut(0).iter_mut().map(|led| *led = [0, 0, 0, 0]).count();
+            let _ = controller.render();
+            println!("Sensors disabled. Goodbye.");
+            break;
+        }
+
         let accel = imu.read_accel_data_scaled().map_err(bmi_err)?;
         let gyro = imu.read_gyro_data_scaled().map_err(bmi_err)?;
         let mag_data = mag.read_mag_data().map_err(bmm_err)?;
@@ -590,7 +618,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
 
             if let Some(geodetic) = state.geodetic_deg_m {
-                println!("ts={} yaw={:.1} mag={:.1} rel={:.1} roll={:.1} pitch={:.1} n={:.2?} e={:.2?} d={:.2?} gyro={:.2?} accel={:.2?} q_ned={} q_icrf={:?} sats={:?} hdop={:?} sog={:?} course={:?} geodetic={:?} ecef={:?}",
+                println!("ts={} yaw={:.1} mag={:.1} rel={:.1} roll={:.1} pitch={:.1} n={:.2?} e={:.2?} d={:.2?} gyro={:.2?} accel={:.2?} q_ned={} q_icrf={:?} sats={:?} hdop={:?} sog={:?} course={:?} geodetic={:?}",
                     state.unix_timestamp_s,
                     state.yaw_deg,
                     state.magnetic_heading_deg,
@@ -609,7 +637,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     state.speed_knots,
                     state.true_course_deg,
                     geodetic,
-                    state.ecef_m,
                 );
             } else {
                 println!("ts={} yaw={:.1} mag={:.1} rel={:.1} roll={:.1} pitch={:.1} n={:.2?} e={:.2?} d={:.2?} gyro={:.2?} accel={:.2?} q_ned={} q_icrf={:?} gps=waiting",
@@ -634,4 +661,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         thread::sleep(Duration::from_millis(50));
     }
+
+    Ok(())
 }
