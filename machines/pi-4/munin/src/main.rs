@@ -590,8 +590,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
 
             if let Some(geodetic) = state.geodetic_deg_m {
-                println!(
-                    "ts={} | yaw={:.1}° | heading(mag)={:.1}° | heading(rel)={:.1}° | roll={:.1}° | pitch={:.1}° | north_b={:?} | east_b={:?} | down_b={:?} | gyro[dps]=[{:.2}, {:.2}, {:.2}] | accel[m/s²]=[{:.2}, {:.2}, {:.2}] | q_body_to_ned={} | q_body_to_icrf={:?} | geodetic={} | ecef={:?} | sats={:?} | hdop={:?} | sog(kn)={:?} | course={:?}",
+                println!("ts={} yaw={:.1} mag={:.1} rel={:.1} roll={:.1} pitch={:.1} n={:.2?} e={:.2?} d={:.2?} gyro={:.2?} accel={:.2?} q_ned={} q_icrf={:?} sats={:?} hdop={:?} sog={:?} course={:?} geodetic={:?} ecef={:?}",
                     state.unix_timestamp_s,
                     state.yaw_deg,
                     state.magnetic_heading_deg,
@@ -601,24 +600,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     state.north_body,
                     state.east_body,
                     state.down_body,
-                    state.gyro_dps.x,
-                    state.gyro_dps.y,
-                    state.gyro_dps.z,
-                    state.accel_mps2.x,
-                    state.accel_mps2.y,
-                    state.accel_mps2.z,
+                    [state.gyro_dps.x, state.gyro_dps.y, state.gyro_dps.z],
+                    [state.accel_mps2.x, state.accel_mps2.y, state.accel_mps2.z],
                     state.body_to_ned,
                     state.body_to_icrf,
-                    geodetic,
-                    state.ecef_m,
                     state.satellites,
                     state.hdop,
                     state.speed_knots,
                     state.true_course_deg,
+                    geodetic,
+                    state.ecef_m,
                 );
             } else {
-                println!(
-                    "ts={} | yaw={:.1}° | heading(mag)={:.1}° | heading(rel)={:.1}° | roll={:.1}° | pitch={:.1}° | north_b={:?} | east_b={:?} | down_b={:?} | gyro[dps]=[{:.2}, {:.2}, {:.2}] | accel[m/s²]=[{:.2}, {:.2}, {:.2}] | q_body_to_ned={} | q_body_to_icrf={:?} | gps=waiting for fix",
+                println!("ts={} yaw={:.1} mag={:.1} rel={:.1} roll={:.1} pitch={:.1} n={:.2?} e={:.2?} d={:.2?} gyro={:.2?} accel={:.2?} q_ned={} q_icrf={:?} gps=waiting",
                     state.unix_timestamp_s,
                     state.yaw_deg,
                     state.magnetic_heading_deg,
@@ -628,12 +622,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     state.north_body,
                     state.east_body,
                     state.down_body,
-                    state.gyro_dps.x,
-                    state.gyro_dps.y,
-                    state.gyro_dps.z,
-                    state.accel_mps2.x,
-                    state.accel_mps2.y,
-                    state.accel_mps2.z,
+                    [state.gyro_dps.x, state.gyro_dps.y, state.gyro_dps.z],
+                    [state.accel_mps2.x, state.accel_mps2.y, state.accel_mps2.z],
                     state.body_to_ned,
                     state.body_to_icrf,
                 );
