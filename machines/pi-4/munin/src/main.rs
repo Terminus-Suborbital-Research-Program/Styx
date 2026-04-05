@@ -453,10 +453,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if !mag_init_ok {
-        return Err(std::io::Error::other(format!(
+        return Err(Box::new(std::io::Error::other(format!(
             "failed to initialize BMM350 after repeated suspend/reset attempts: {}",
             last_mag_err.unwrap_or_else(|| "unknown error".to_string())
-        )));
+        ))));
     }
 
     mag.enable_axes(
