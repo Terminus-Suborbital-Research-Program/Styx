@@ -414,19 +414,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("BMI323 configured.");
 
     println!("Initializing BMM350 sensor...");
-    mag.magnetic_reset().ok();
-    thread::sleep(Duration::from_millis(500));
-    let mut mag_init_ok = false;
-    for _ in 0..30 {
-        if mag.init().is_ok() {
-            mag_init_ok = true;
-            break;
-        }
-        thread::sleep(Duration::from_millis(100));
-    }
-    if !mag_init_ok {
-        mag.init().map_err(bmm_err)?;
-    }
+    mag.init().map_err(bmm_err)?;
     mag.enable_axes(
         AxisEnableDisable::Enable,
         AxisEnableDisable::Enable,
