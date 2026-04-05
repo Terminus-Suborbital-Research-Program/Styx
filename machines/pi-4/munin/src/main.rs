@@ -415,7 +415,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("BMI323 configured.");
 
     println!("Initializing BMM350 sensor...");
-    mag.init().map_err(bmm_err)?;
+    mag.magnetic_reset().ok();
+    thread::sleep(Duration::from_millis(800));
+    let mut mag_init_ok = false;
+    for _ in 0..30 {
+        if mag.init().is_ok() {
+            mag_init_ok = true;
+            break;
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
+    if !mag_init_ok {
+        mag.init().map_err(bmm_err)?;
+    }
     mag.enable_axes(
         AxisEnableDisable::Enable,
         AxisEnableDisable::Enable,
@@ -493,12 +505,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "GPS expects u-blox DDC/NMEA on $MUNIN_GPS_I2C_BUS or /dev/i2c-1 at $MUNIN_GPS_I2C_ADDR or 0x42."
     );
-    println!("Press 'q' then Enter to safely shutdown.");
+    println!("Type 'q' + Enter to safely shutdown.");
 
     let shutdown = Arc::new(Mutex::new(false));
     let shutdown_clone = Arc::clone(&shutdown);
 
-    // Safe shutdown thread
     thread::spawn(move || {
         let mut buffer = [0u8; 1];
         let stdin = io::stdin();
@@ -507,7 +518,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if buffer[0] == b'q' || buffer[0] == b'Q' {
                 let mut s = shutdown_clone.lock().unwrap();
                 *s = true;
-                println!("\nShutdown requested. Cleaning up sensors...");
+                println!("\nShutdown requested - cleaning up sensors...");
                 break;
             }
         }
@@ -519,9 +530,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         if *shutdown.lock().unwrap() {
-            // Safe cleanup
             let _ = controller.leds_mut(0).iter_mut().map(|led| *led = [0, 0, 0, 0]).count();
             let _ = controller.render();
+            let _ = mag.magnetic_reset();
             println!("Sensors disabled. Goodbye.");
             break;
         }
