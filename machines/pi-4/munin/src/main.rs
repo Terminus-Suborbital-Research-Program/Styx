@@ -160,15 +160,32 @@ impl MagCalibrationState {
         }
     }
 
+    fn half_span_xyz(&self) -> [f32; 3] {
+        if self.sample_count == 0
+            || !self.min_xyz.iter().all(|value| value.is_finite())
+            || !self.max_xyz.iter().all(|value| value.is_finite())
+        {
+            [1.0, 1.0, 1.0]
+        } else {
+            [
+                ((self.max_xyz[0] - self.min_xyz[0]) * 0.5).max(1.0),
+                ((self.max_xyz[1] - self.min_xyz[1]) * 0.5).max(1.0),
+                ((self.max_xyz[2] - self.min_xyz[2]) * 0.5).max(1.0),
+            ]
+        }
+    }
+
     fn corrected_vector(&self, sample: Sensor3DData) -> [f32; 3] {
         if self.sample_count == 0 {
             [sample.x as f32, sample.y as f32, sample.z as f32]
         } else {
             let offset = self.offset_xyz();
+            let half_span = self.half_span_xyz();
+            let avg_half_span = (half_span[0] + half_span[1] + half_span[2]) / 3.0;
             [
-                sample.x as f32 - offset[0],
-                sample.y as f32 - offset[1],
-                sample.z as f32 - offset[2],
+                (sample.x as f32 - offset[0]) * (avg_half_span / half_span[0]),
+                (sample.y as f32 - offset[1]) * (avg_half_span / half_span[1]),
+                (sample.z as f32 - offset[2]) * (avg_half_span / half_span[2]),
             ]
         }
     }
@@ -1010,7 +1027,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             yaw_deg = wrap_angle_deg(yaw_deg + corrected_gz * dt);
         }
 
-        let magnetic_heading = magnetic_heading_deg_corrected(mag_data, &mag_cal);
+        let magnetic_heading = tilt_compensated_magnetic_heading_deg(accel, mag_data, &mag_cal);
         let relative_magnetic_heading =
             relative_heading_deg(magnetic_heading, magnetic_reference_deg);
         let roll_deg = tilt_roll_deg(accel);
@@ -1026,11 +1043,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             leds[i] = led_rgb(0, 0, 0);
         }
 
-        let blue_current = (255.0 * (1.0 - frac)) as u8;
-        let blue_next = (255.0 * frac) as u8;
+        let blue_current = (255.0 * (1.0 - frac)).round() as u8;
+        let blue_next = (255.0 * frac).round() as u8;
 
-        leds[current_led] = led_rgb(0, 0, blue_current.max(96));
-        if blue_next > 12 {
+        if blue_current > 0 {
+            leds[current_led] = led_rgb(0, 0, blue_current);
+        }
+        if blue_next > 0 {
             leds[next_led] = led_rgb(0, 0, blue_next);
         }
 
