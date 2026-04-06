@@ -13,8 +13,7 @@ use bmm350::{
 };
 use embedded_hal::i2c::I2c;
 use linux_embedded_hal::{Delay, I2cdev};
-use nmea::sentences::fix_type::FixType;
-use nmea::{Nmea, SentenceType};
+use nmea::Nmea;
 use rs_ws281x::{ChannelBuilder, Controller, ControllerBuilder, StripType};
 use std::{
     env,
@@ -50,7 +49,6 @@ struct GpsData {
     hdop: Option<f32>,
     speed_knots: Option<f32>,
     true_course_deg: Option<f32>,
-    fix_type_valid: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -76,6 +74,71 @@ struct State {
     down_body: [f64; 3],
 }
 
+#[derive(Clone, Debug)]
+struct MagCalibrationState {
+    sample_count: u32,
+    min_xyz: [f32; 3],
+    max_xyz: [f32; 3],
+    heading_bins: [bool; 16],
+}
+
+impl MagCalibrationState {
+    fn new() -> Self {
+        Self {
+            sample_count: 0,
+            min_xyz: [f32::INFINITY; 3],
+            max_xyz: [f32::NEG_INFINITY; 3],
+            heading_bins: [false; 16],
+        }
+    }
+
+    fn update(&mut self, sample: Sensor3DData) {
+        let xyz = [sample.x as f32, sample.y as f32, sample.z as f32];
+
+        for axis in 0..3 {
+            self.min_xyz[axis] = self.min_xyz[axis].min(xyz[axis]);
+            self.max_xyz[axis] = self.max_xyz[axis].max(xyz[axis]);
+        }
+
+        let heading_deg = magnetic_heading_deg(sample);
+        let bin = ((heading_deg / 360.0) * self.heading_bins.len() as f32).floor() as usize
+            % self.heading_bins.len();
+        self.heading_bins[bin] = true;
+        self.sample_count = self.sample_count.saturating_add(1);
+    }
+
+    fn progress_percent(&self) -> u8 {
+        let bins_visited = self.heading_bins.iter().filter(|visited| **visited).count() as f32;
+        let bin_progress = (bins_visited / self.heading_bins.len() as f32) * 100.0;
+        let sample_progress = (self.sample_count.min(120) as f32 / 120.0) * 100.0;
+        let blended = 0.70 * bin_progress + 0.30 * sample_progress;
+        blended.round().clamp(0.0, 100.0) as u8
+    }
+
+    fn is_ready(&self) -> bool {
+        self.progress_percent() >= 95 && self.sample_count >= 60
+    }
+
+    fn offset_xyz(&self) -> [f32; 3] {
+        [
+            (self.min_xyz[0] + self.max_xyz[0]) * 0.5,
+            (self.min_xyz[1] + self.max_xyz[1]) * 0.5,
+            (self.min_xyz[2] + self.max_xyz[2]) * 0.5,
+        ]
+    }
+
+    fn corrected_heading_deg(&self, sample: Sensor3DData) -> f32 {
+        let offset = self.offset_xyz();
+        let x = sample.x as f32 - offset[0];
+        let y = sample.y as f32 - offset[1];
+        y.atan2(x).to_degrees().rem_euclid(360.0)
+    }
+}
+
+fn magnetic_heading_deg_corrected(sample: Sensor3DData, calibration: &MagCalibrationState) -> f32 {
+    calibration.corrected_heading_deg(sample)
+}
+
 fn wrap_angle_deg(angle_deg: f32) -> f32 {
     let wrapped = angle_deg % 360.0;
     if wrapped < 0.0 {
@@ -97,7 +160,6 @@ fn extract_gps_fix(nmea: &Nmea) -> Option<GpsData> {
     let latitude = nmea.latitude()?;
     let longitude = nmea.longitude()?;
     let altitude_m = nmea.altitude().unwrap_or_default() as f64;
-    let fix_type_valid = nmea.fix_type().map(FixType::is_valid).unwrap_or(false);
 
     Some(GpsData {
         geodetic_deg_m: Vector::new([latitude, longitude, altitude_m]),
@@ -105,7 +167,6 @@ fn extract_gps_fix(nmea: &Nmea) -> Option<GpsData> {
         hdop: nmea.hdop(),
         speed_knots: nmea.speed_over_ground,
         true_course_deg: nmea.true_course,
-        fix_type_valid,
     })
 }
 
@@ -206,14 +267,10 @@ fn render_orange_spin(
     for i in 0..LED_COUNT as usize {
         let color = if i == current_led {
             let t = 1.0 - frac;
-            let r = (255.0 * t) as u8;
-            let g = (120.0 * t) as u8;
-            [r, g, 0, 0]
+            [((255.0 * t) as u8), ((120.0 * t) as u8), 0, 0]
         } else if i == next_led {
             let t = frac;
-            let r = (255.0 * t) as u8;
-            let g = (120.0 * t) as u8;
-            [r, g, 0, 0]
+            [((255.0 * t) as u8), ((120.0 * t) as u8), 0, 0]
         } else {
             [0, 0, 0, 0]
         };
@@ -225,9 +282,12 @@ fn render_orange_spin(
 }
 
 fn format_state_line(state: &State) -> String {
+    let gyro = [state.gyro_dps.x, state.gyro_dps.y, state.gyro_dps.z];
+    let accel = [state.accel_mps2.x, state.accel_mps2.y, state.accel_mps2.z];
+
     let gps_line = if let Some(geodetic) = state.geodetic_deg_m {
         format!(
-            "GPS:    lat={:.6}, long={:.6}, alt={:.2}m, sats={:?}, hdop={:?}, sog={:?}kt, course={:?}°",
+            "GPS:  lat={:.6}  long={:.6}  alt={:.2}m  sats={:?}  hdop={:?}  sog={:?}kt  course={:?}°",
             geodetic[0],
             geodetic[1],
             geodetic[2],
@@ -238,7 +298,7 @@ fn format_state_line(state: &State) -> String {
         )
     } else {
         format!(
-            "GPS:    waiting, sats={:?}, hdop={:?}, sog={:?}kt, course={:?}°",
+            "GPS:  waiting  sats={:?}  hdop={:?}  sog={:?}kt  course={:?}°",
             state.satellites,
             state.hdop,
             state.speed_knots,
@@ -247,26 +307,37 @@ fn format_state_line(state: &State) -> String {
     };
 
     let ecef_line = if let Some(ecef) = state.ecef_m {
-        format!("ECEF:   x={:.2}, y={:.2}, z={:.2}", ecef[0], ecef[1], ecef[2])
+        format!("ECEF: x={:.2}  y={:.2}  z={:.2}", ecef[0], ecef[1], ecef[2])
     } else {
-        "ECEF:   waiting".to_string()
+        "ECEF: waiting".to_string()
     };
 
     format!(
         "=====================
-TIME:   ts={}
-YPR:    yaw={:+8.3}   roll={:+8.3}   pitch={:+8.3}
-MAG:    hdg={:6.2}    rel={:6.2}
-ATT:    q_ned={}   q_icrf={:?}
+TIME: ts={}
+GYRO:     X={:+8.3}  Y={:+8.3}  Z={:+8.3}
+          roll={:+8.3}  pitch={:+8.3}  yaw={:+8.3}
+ACCEL:    X={:+8.3}  Y={:+8.3}  Z={:+8.3}
+MAG:      HDG={:6.2}  REL={:6.2}  N={:>8.2?}  E={:>8.2?}  D={:>8.2?}
+ATT:      q_ned={}  q_icrf={:?}
 {}
 {}
 =====================",
         state.unix_timestamp_s,
-        state.yaw_deg,
+        gyro[0],
+        gyro[1],
+        gyro[2],
         state.roll_deg,
         state.pitch_deg,
+        state.yaw_deg,
+        accel[0],
+        accel[1],
+        accel[2],
         state.magnetic_heading_deg,
         state.relative_magnetic_heading_deg,
+        state.north_body,
+        state.east_body,
+        state.down_body,
         state.body_to_ned,
         state.body_to_icrf,
         gps_line,
@@ -421,8 +492,7 @@ fn start_gps_reader() -> Arc<Mutex<Option<GpsData>>> {
                 gps_bus
             );
 
-            let mut parser = Nmea::create_for_navigation(&[SentenceType::RMC, SentenceType::GGA])
-                .unwrap_or_default();
+            let mut parser = Nmea::default();
             let mut sentence = String::new();
             let mut chunk = [0_u8; GPS_I2C_MAX_READ];
 
@@ -441,7 +511,7 @@ fn start_gps_reader() -> Arc<Mutex<Option<GpsData>>> {
                                         b'\r' => {}
                                         b'\n' => {
                                             let line = sentence.trim();
-                                            if !line.is_empty() && parser.parse_for_fix(line).is_ok() {
+                                            if !line.is_empty() && parser.parse(line).is_ok() {
                                                 if let Some(fix) = extract_gps_fix(&parser) {
                                                     if let Ok(mut latest) = gps_state.lock() {
                                                         *latest = Some(fix);
@@ -486,46 +556,6 @@ fn start_gps_reader() -> Arc<Mutex<Option<GpsData>>> {
         .expect("failed to spawn GPS reader thread");
 
     shared_fix
-}
-
-fn gps_fix_is_locked(gps_fix: &Arc<Mutex<Option<GpsData>>>) -> bool {
-    gps_fix
-        .lock()
-        .ok()
-        .and_then(|latest| latest.clone())
-        .map(|gps| {
-            gps.fix_type_valid
-                && gps.geodetic_deg_m[0].is_finite()
-                && gps.geodetic_deg_m[1].is_finite()
-        })
-        .unwrap_or(false)
-}
-
-fn wait_for_gps_lock(
-    controller: &mut Controller,
-    gps_fix: &Arc<Mutex<Option<GpsData>>>,
-    skip_gps_lock: &Arc<Mutex<bool>>,
-) -> Result<bool, Box<dyn std::error::Error>> {
-    println!("Waiting for GPS lock. Press 's' + Enter to skip this step for indoor testing.");
-
-    let wait_start = Instant::now();
-    loop {
-        if gps_fix_is_locked(gps_fix) {
-            println!("GPS lock acquired.");
-            return Ok(true);
-        }
-
-        if *skip_gps_lock.lock().unwrap() {
-            println!("GPS lock skipped.");
-            return Ok(false);
-        }
-
-        let elapsed = wait_start.elapsed().as_secs_f32();
-        let phase_deg = elapsed * 240.0 + 30.0;
-        render_orange_spin(controller, phase_deg)?;
-
-        thread::sleep(Duration::from_millis(20));
-    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -667,12 +697,56 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 b's' | b'S' => {
                     let mut skip = gps_skip_clone.lock().unwrap();
                     *skip = true;
-                    println!("\nGPS lock skip requested.");
                 }
                 _ => {}
             }
         }
     });
+
+    println!("Calibrating magnetometer — move the board in a figure-eight pattern...");
+    let mag_cal_start = Instant::now();
+    let mut mag_cal = MagCalibrationState::new();
+    let mut last_mag_progress_print = Instant::now();
+
+    loop {
+        let mag_sample = mag.read_mag_data().map_err(bmm_err)?;
+        mag_cal.update(mag_sample);
+
+        let elapsed = mag_cal_start.elapsed().as_secs_f32();
+        let phase_deg = elapsed * 220.0;
+        render_rgb_color_wheel(&mut controller, phase_deg)?;
+
+        if last_mag_progress_print.elapsed() >= Duration::from_millis(500) {
+            let progress = mag_cal.progress_percent();
+            let offset = mag_cal.offset_xyz();
+            println!(
+                "Mag calibration: {:>3}%  samples={}  offset=({:+.1}, {:+.1}, {:+.1})",
+                progress,
+                mag_cal.sample_count,
+                offset[0],
+                offset[1],
+                offset[2]
+            );
+            last_mag_progress_print = Instant::now();
+        }
+
+        if mag_cal.is_ready() || mag_cal_start.elapsed() >= Duration::from_secs(12) {
+            break;
+        }
+
+        thread::sleep(Duration::from_millis(20));
+    }
+
+    let mag_cal_percent = mag_cal.progress_percent();
+    let mag_cal_offset = mag_cal.offset_xyz();
+
+    println!(
+        "Magnetometer calibration complete at {}% (offset: {:+.1}, {:+.1}, {:+.1}).",
+        mag_cal_percent,
+        mag_cal_offset[0],
+        mag_cal_offset[1],
+        mag_cal_offset[2]
+    );
 
     println!("Calibrating gyro bias and magnetic reference — keep the mount still for 2 seconds...");
 
@@ -685,7 +759,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let gyro = imu.read_gyro_data_scaled().map_err(bmi_err)?;
         let mag_data = mag.read_mag_data().map_err(bmm_err)?;
         gyro_bias_z += gyro.z;
-        magnetic_reference_deg += magnetic_heading_deg(mag_data);
+        magnetic_reference_deg += magnetic_heading_deg_corrected(mag_data, &mag_cal);
         sample_count += 1;
 
         let elapsed = cal_start.elapsed().as_secs_f32();
@@ -711,6 +785,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
             leds[i] = color;
         }
+
         controller.render()?;
 
         thread::sleep(Duration::from_millis(20));
@@ -721,18 +796,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         magnetic_reference_deg /= sample_count as f32;
     }
 
-    println!("✅ Calibration complete! Gyro Z bias: {:.2} dps", gyro_bias_z);
+    println!("Gyro Z bias: {:.2} dps", gyro_bias_z);
+    println!("Magnetic reference: {:.2}°", magnetic_reference_deg);
     println!(
-        "✅ Magnetic reference complete! BMM350 north reference: {:.2}°",
-        magnetic_reference_deg
+        "GPS expects u-blox DDC/NMEA on $MUNIN_GPS_I2C_BUS or /dev/i2c-1 at $MUNIN_GPS_I2C_ADDR or 0x42."
     );
 
     let _ = wait_for_gps_lock(&mut controller, &gps_fix, &gps_skip_requested)?;
 
     println!("Scaffold assumes BMI323 at 0x69 and BMM350 at 0x14.");
-    println!(
-        "GPS expects u-blox DDC/NMEA on $MUNIN_GPS_I2C_BUS or /dev/i2c-1 at $MUNIN_GPS_I2C_ADDR or 0x42."
-    );
     println!("Type 'q' + Enter to safely shutdown.");
 
     let mut last_print = Instant::now();
@@ -763,7 +835,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             yaw_deg = wrap_angle_deg(yaw_deg + corrected_gz * dt);
         }
 
-        let magnetic_heading = magnetic_heading_deg(mag_data);
+        let magnetic_heading = magnetic_heading_deg_corrected(mag_data, &mag_cal);
         let relative_magnetic_heading =
             relative_heading_deg(magnetic_heading, magnetic_reference_deg);
         let roll_deg = tilt_roll_deg(accel);
@@ -776,21 +848,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let leds = controller.leds_mut(0);
         for i in 0..LED_COUNT as usize {
-            let color: [u8; 4] = if i == current_led {
-                let t = 1.0 - frac;
-                let r = (t * 255.0) as u8;
-                let b = ((1.0 - t) * 255.0) as u8;
-                [r, 0, b, 0]
-            } else if i == next_led {
-                let t = frac;
-                let r = (t * 255.0) as u8;
-                let b = ((1.0 - t) * 255.0) as u8;
-                [r, 0, b, 0]
-            } else {
-                [0, 0, 255, 0]
-            };
-            leds[i] = color;
+            leds[i] = [0, 0, 24, 0];
         }
+
+        let north_pos = magnetic_heading / 90.0;
+        let north_current = (north_pos.floor() as usize) % 4;
+        let north_next = (north_current + 1) % 4;
+        let north_frac = north_pos.fract();
+
+        let north_current_blue = (255.0 * (1.0 - north_frac)) as u8;
+        let north_next_blue = (255.0 * north_frac) as u8;
+        leds[north_current][2] = leds[north_current][2].max(north_current_blue.max(180));
+        leds[north_next][2] = leds[north_next][2].max(north_next_blue.max(180));
+
+        let red_current = (255.0 * (1.0 - frac)) as u8;
+        let red_next = (255.0 * frac) as u8;
+        let blue_current = (255.0 * frac) as u8;
+        let blue_next = (255.0 * (1.0 - frac)) as u8;
+
+        leds[current_led][0] = leds[current_led][0].max(red_current);
+        leds[current_led][2] = leds[current_led][2].max(blue_current);
+        leds[next_led][0] = leds[next_led][0].max(red_next);
+        leds[next_led][2] = leds[next_led][2].max(blue_next);
 
         controller.render()?;
 
