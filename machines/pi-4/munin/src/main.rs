@@ -244,6 +244,18 @@ fn wrap_angle_deg(angle_deg: f32) -> f32 {
     }
 }
 
+fn shortest_angle_delta_deg(from_deg: f32, to_deg: f32) -> f32 {
+    ((to_deg - from_deg + 540.0).rem_euclid(360.0)) - 180.0
+}
+
+fn smooth_angle_deg(previous_deg: Option<f32>, target_deg: f32, alpha: f32) -> f32 {
+    if let Some(previous) = previous_deg {
+        wrap_angle_deg(previous + shortest_angle_delta_deg(previous, target_deg) * alpha)
+    } else {
+        wrap_angle_deg(target_deg)
+    }
+}
+
 fn unix_timestamp_s_now() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -990,6 +1002,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut last_print = Instant::now();
     let mut last_time = Instant::now();
     let mut yaw_deg = 0.0_f32;
+    let mut smoothed_led_heading_deg: Option<f32> = None;
 
     loop {
         if *shutdown.lock().unwrap() {
@@ -1033,7 +1046,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let roll_deg = tilt_roll_deg(accel);
         let pitch_deg = tilt_pitch_deg(accel);
 
-        let led_pos = magnetic_heading / 90.0;
+        let led_heading_target_deg = magnetic_heading_deg_corrected(mag_data, &mag_cal);
+        let led_smoothing_alpha = (dt * 6.0).clamp(0.12, 0.35);
+        let led_heading_deg = smooth_angle_deg(
+            smoothed_led_heading_deg,
+            led_heading_target_deg,
+            led_smoothing_alpha,
+        );
+        smoothed_led_heading_deg = Some(led_heading_deg);
+
+        let led_pos = led_heading_deg / 90.0;
         let current_led = (led_pos.floor() as usize) % 4;
         let next_led = (current_led + 1) % 4;
         let frac = led_pos.fract();
