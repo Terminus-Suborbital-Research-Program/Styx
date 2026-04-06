@@ -166,9 +166,9 @@ impl MagCalibrationState {
     fn corrected_sample(&self, sample: Sensor3DData) -> Sensor3DData {
         let offset = self.offset_xyz();
         Sensor3DData {
-            x: sample.x as f32 - offset[0],
-            y: sample.y as f32 - offset[1],
-            z: sample.z as f32 - offset[2],
+            x: (sample.x as f32 - offset[0]) as i32,
+            y: (sample.y as f32 - offset[1]) as i32,
+            z: (sample.z as f32 - offset[2]) as i32,
         }
     }
 
@@ -193,7 +193,10 @@ fn tilt_compensated_magnetic_heading_deg(
 ) -> f32 {
     let corrected_mag = apply_mag_calibration(sample, calibration);
     let (_, north_body, _, _) = body_to_ned_from_sensors(accel, corrected_mag);
-    north_body[1].atan2(north_body[0]).to_degrees().rem_euclid(360.0)
+    (north_body[1] as f32)
+        .atan2(north_body[0] as f32)
+        .to_degrees()
+        .rem_euclid(360.0)
 }
 
 fn wrap_angle_deg(angle_deg: f32) -> f32 {
