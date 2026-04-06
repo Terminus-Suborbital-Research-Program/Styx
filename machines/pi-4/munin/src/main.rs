@@ -148,11 +148,11 @@ impl MagCalibrationState {
         let span_z = self.max_xyz[2] - self.min_xyz[2];
         let span_xy = span_x.max(span_y);
 
-        self.sample_count >= 60
-            && bins_visited >= 3
-            && span_xy > 15.0
-            && span_z > 3.0
-            && self.cumulative_delta_xyz > 200.0
+        self.sample_count >= 40
+            && bins_visited >= 2
+            && span_xy > 10.0
+            && span_z > 2.0
+            && self.cumulative_delta_xyz > 100.0
     }
 
     fn offset_xyz(&self) -> [f32; 3] {
@@ -617,8 +617,6 @@ fn start_gps_reader() -> Arc<Mutex<Option<GpsData>>> {
 
     shared_fix
 }
-
-
 
 fn gps_fix_is_locked(gps_fix: &Arc<Mutex<Option<GpsData>>>) -> bool {
     gps_fix
