@@ -80,6 +80,8 @@ struct MagCalibrationState {
     min_xyz: [f32; 3],
     max_xyz: [f32; 3],
     heading_bins: [bool; 16],
+    last_xyz: Option<[f32; 3]>,
+    cumulative_delta_xyz: f32,
 }
 
 impl MagCalibrationState {
@@ -89,6 +91,8 @@ impl MagCalibrationState {
             min_xyz: [f32::INFINITY; 3],
             max_xyz: [f32::NEG_INFINITY; 3],
             heading_bins: [false; 16],
+            last_xyz: None,
+            cumulative_delta_xyz: 0.0,
         }
     }
 
@@ -100,6 +104,14 @@ impl MagCalibrationState {
             self.max_xyz[axis] = self.max_xyz[axis].max(xyz[axis]);
         }
 
+        if let Some(last_xyz) = self.last_xyz {
+            self.cumulative_delta_xyz +=
+                (xyz[0] - last_xyz[0]).abs() +
+                (xyz[1] - last_xyz[1]).abs() +
+                (xyz[2] - last_xyz[2]).abs();
+        }
+        self.last_xyz = Some(xyz);
+
         let heading_deg = magnetic_heading_deg(sample);
         let bin = ((heading_deg / 360.0) * self.heading_bins.len() as f32).floor() as usize
             % self.heading_bins.len();
@@ -109,14 +121,38 @@ impl MagCalibrationState {
 
     fn progress_percent(&self) -> u8 {
         let bins_visited = self.heading_bins.iter().filter(|visited| **visited).count() as f32;
-        let bin_progress = (bins_visited / self.heading_bins.len() as f32) * 100.0;
-        let sample_progress = (self.sample_count.min(120) as f32 / 120.0) * 100.0;
-        let blended = 0.70 * bin_progress + 0.30 * sample_progress;
+        let heading_progress = (bins_visited / self.heading_bins.len() as f32) * 100.0;
+
+        let span_x = self.max_xyz[0] - self.min_xyz[0];
+        let span_y = self.max_xyz[1] - self.min_xyz[1];
+        let span_z = self.max_xyz[2] - self.min_xyz[2];
+        let span_progress = (((span_x + span_y + span_z) / 3.0) / 50.0 * 100.0)
+            .clamp(0.0, 100.0);
+
+        let motion_progress = (self.cumulative_delta_xyz / 200.0).clamp(0.0, 100.0);
+
+        let sample_progress = (self.sample_count.min(240) as f32 / 240.0) * 100.0;
+
+        let blended = 0.35 * heading_progress
+            + 0.25 * span_progress
+            + 0.25 * motion_progress
+            + 0.15 * sample_progress;
+
         blended.round().clamp(0.0, 100.0) as u8
     }
 
     fn is_ready(&self) -> bool {
-        self.progress_percent() >= 95 && self.sample_count >= 60
+        let bins_visited = self.heading_bins.iter().filter(|visited| **visited).count() as u32;
+        let span_x = self.max_xyz[0] - self.min_xyz[0];
+        let span_y = self.max_xyz[1] - self.min_xyz[1];
+        let span_z = self.max_xyz[2] - self.min_xyz[2];
+        let span_xy = span_x.max(span_y);
+
+        self.sample_count >= 80
+            && bins_visited >= 4
+            && span_xy > 20.0
+            && span_z > 5.0
+            && self.cumulative_delta_xyz > 400.0
     }
 
     fn offset_xyz(&self) -> [f32; 3] {
@@ -127,16 +163,37 @@ impl MagCalibrationState {
         ]
     }
 
-    fn corrected_heading_deg(&self, sample: Sensor3DData) -> f32 {
+    fn corrected_sample(&self, sample: Sensor3DData) -> Sensor3DData {
         let offset = self.offset_xyz();
-        let x = sample.x as f32 - offset[0];
-        let y = sample.y as f32 - offset[1];
-        y.atan2(x).to_degrees().rem_euclid(360.0)
+        Sensor3DData {
+            x: sample.x as f32 - offset[0],
+            y: sample.y as f32 - offset[1],
+            z: sample.z as f32 - offset[2],
+        }
+    }
+
+    fn corrected_heading_deg(&self, sample: Sensor3DData) -> f32 {
+        let corrected = self.corrected_sample(sample);
+        magnetic_heading_deg(corrected)
     }
 }
 
 fn magnetic_heading_deg_corrected(sample: Sensor3DData, calibration: &MagCalibrationState) -> f32 {
     calibration.corrected_heading_deg(sample)
+}
+
+fn apply_mag_calibration(sample: Sensor3DData, calibration: &MagCalibrationState) -> Sensor3DData {
+    calibration.corrected_sample(sample)
+}
+
+fn tilt_compensated_magnetic_heading_deg(
+    accel: Sensor3DDataScaled,
+    sample: Sensor3DData,
+    calibration: &MagCalibrationState,
+) -> f32 {
+    let corrected_mag = apply_mag_calibration(sample, calibration);
+    let (_, north_body, _, _) = body_to_ned_from_sensors(accel, corrected_mag);
+    north_body[1].atan2(north_body[0]).to_degrees().rem_euclid(360.0)
 }
 
 fn wrap_angle_deg(angle_deg: f32) -> f32 {
@@ -878,13 +935,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             yaw_deg = wrap_angle_deg(yaw_deg + corrected_gz * dt);
         }
 
-        let magnetic_heading = magnetic_heading_deg_corrected(mag_data, &mag_cal);
+        let magnetic_heading = tilt_compensated_magnetic_heading_deg(accel, mag_data, &mag_cal);
         let relative_magnetic_heading =
             relative_heading_deg(magnetic_heading, magnetic_reference_deg);
         let roll_deg = tilt_roll_deg(accel);
         let pitch_deg = tilt_pitch_deg(accel);
 
-        let led_pos = yaw_deg / 90.0;
+        let led_pos = magnetic_heading / 90.0;
         let current_led = (led_pos.floor() as usize) % 4;
         let next_led = (current_led + 1) % 4;
         let frac = led_pos.fract();
@@ -894,25 +951,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             leds[i] = [0, 0, 24, 0];
         }
 
-        let north_pos = magnetic_heading / 90.0;
-        let north_current = (north_pos.floor() as usize) % 4;
-        let north_next = (north_current + 1) % 4;
-        let north_frac = north_pos.fract();
+        let blue_current = (255.0 * (1.0 - frac)) as u8;
+        let blue_next = (255.0 * frac) as u8;
 
-        let north_current_blue = (255.0 * (1.0 - north_frac)) as u8;
-        let north_next_blue = (255.0 * north_frac) as u8;
-        leds[north_current][2] = leds[north_current][2].max(north_current_blue.max(180));
-        leds[north_next][2] = leds[north_next][2].max(north_next_blue.max(180));
-
-        let red_current = (255.0 * (1.0 - frac)) as u8;
-        let red_next = (255.0 * frac) as u8;
-        let blue_current = (255.0 * frac) as u8;
-        let blue_next = (255.0 * (1.0 - frac)) as u8;
-
-        leds[current_led][0] = leds[current_led][0].max(red_current);
-        leds[current_led][2] = leds[current_led][2].max(blue_current);
-        leds[next_led][0] = leds[next_led][0].max(red_next);
-        leds[next_led][2] = leds[next_led][2].max(blue_next);
+        leds[current_led][2] = leds[current_led][2].max(blue_current.max(180));
+        leds[next_led][2] = leds[next_led][2].max(blue_next.max(180));
 
         controller.render()?;
 
@@ -921,7 +964,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let unix_timestamp_s = unix_timestamp_s_now();
 
             let (body_to_ned_dcm, north_body, east_body, down_body) =
-                body_to_ned_from_sensors(accel, mag_data);
+                body_to_ned_from_sensors(accel, apply_mag_calibration(mag_data, &mag_cal));
 
             let body_to_ned = Quaternion::try_from(&body_to_ned_dcm)
                 .unwrap_or_else(|_| Quaternion::<f64, Body<f64>, NED<f64>>::identity())
