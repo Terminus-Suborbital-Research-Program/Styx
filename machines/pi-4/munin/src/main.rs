@@ -180,12 +180,10 @@ impl MagCalibrationState {
             [sample.x as f32, sample.y as f32, sample.z as f32]
         } else {
             let offset = self.offset_xyz();
-            let half_span = self.half_span_xyz();
-            let avg_half_span = (half_span[0] + half_span[1] + half_span[2]) / 3.0;
             [
-                (sample.x as f32 - offset[0]) * (avg_half_span / half_span[0]),
-                (sample.y as f32 - offset[1]) * (avg_half_span / half_span[1]),
-                (sample.z as f32 - offset[2]) * (avg_half_span / half_span[2]),
+                sample.x as f32 - offset[0],
+                sample.y as f32 - offset[1],
+                sample.z as f32 - offset[2],
             ]
         }
     }
@@ -253,6 +251,25 @@ fn smooth_angle_deg(previous_deg: Option<f32>, target_deg: f32, alpha: f32) -> f
         wrap_angle_deg(previous + shortest_angle_delta_deg(previous, target_deg) * alpha)
     } else {
         wrap_angle_deg(target_deg)
+    }
+}
+
+fn heading_deg_from_xy(x: f32, y: f32) -> Option<f32> {
+    if x.abs() < 1e-3 && y.abs() < 1e-3 {
+        None
+    } else {
+        Some(y.atan2(x).to_degrees().rem_euclid(360.0))
+    }
+}
+
+fn smooth_xy(previous_xy: Option<[f32; 2]>, target_xy: [f32; 2], alpha: f32) -> [f32; 2] {
+    if let Some(previous) = previous_xy {
+        [
+            previous[0] + (target_xy[0] - previous[0]) * alpha,
+            previous[1] + (target_xy[1] - previous[1]) * alpha,
+        ]
+    } else {
+        target_xy
     }
 }
 
@@ -1003,6 +1020,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut last_time = Instant::now();
     let mut yaw_deg = 0.0_f32;
     let mut smoothed_led_heading_deg: Option<f32> = None;
+    let mut smoothed_led_mag_xy: Option<[f32; 2]> = None;
 
     loop {
         if *shutdown.lock().unwrap() {
@@ -1040,20 +1058,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             yaw_deg = wrap_angle_deg(yaw_deg + corrected_gz * dt);
         }
 
-        let magnetic_heading = tilt_compensated_magnetic_heading_deg(accel, mag_data, &mag_cal);
-        let relative_magnetic_heading =
-            relative_heading_deg(magnetic_heading, magnetic_reference_deg);
-        let roll_deg = tilt_roll_deg(accel);
-        let pitch_deg = tilt_pitch_deg(accel);
+        let corrected_mag = mag_cal.corrected_vector(mag_data);
+        let led_smoothing_alpha = (dt * 4.0).clamp(0.08, 0.20);
+        let filtered_led_xy = smooth_xy(
+            smoothed_led_mag_xy,
+            [corrected_mag[0], corrected_mag[1]],
+            led_smoothing_alpha,
+        );
+        smoothed_led_mag_xy = Some(filtered_led_xy);
 
-        let led_heading_target_deg = magnetic_heading_deg_corrected(mag_data, &mag_cal);
-        let led_smoothing_alpha = (dt * 6.0).clamp(0.12, 0.35);
+        let led_heading_target_deg = heading_deg_from_xy(filtered_led_xy[0], filtered_led_xy[1])
+            .unwrap_or_else(|| magnetic_heading_deg(mag_data));
         let led_heading_deg = smooth_angle_deg(
             smoothed_led_heading_deg,
             led_heading_target_deg,
             led_smoothing_alpha,
         );
         smoothed_led_heading_deg = Some(led_heading_deg);
+
+        let magnetic_heading = led_heading_deg;
+        let relative_magnetic_heading =
+            relative_heading_deg(magnetic_heading, magnetic_reference_deg);
+        let roll_deg = tilt_roll_deg(accel);
+        let pitch_deg = tilt_pitch_deg(accel);
 
         let led_pos = led_heading_deg / 90.0;
         let current_led = (led_pos.floor() as usize) % 4;
