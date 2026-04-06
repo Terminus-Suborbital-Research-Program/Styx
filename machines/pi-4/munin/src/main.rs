@@ -148,11 +148,11 @@ impl MagCalibrationState {
         let span_z = self.max_xyz[2] - self.min_xyz[2];
         let span_xy = span_x.max(span_y);
 
-        self.sample_count >= 80
-            && bins_visited >= 4
-            && span_xy > 20.0
-            && span_z > 5.0
-            && self.cumulative_delta_xyz > 400.0
+        self.sample_count >= 60
+            && bins_visited >= 3
+            && span_xy > 15.0
+            && span_z > 3.0
+            && self.cumulative_delta_xyz > 200.0
     }
 
     fn offset_xyz(&self) -> [f32; 3] {
