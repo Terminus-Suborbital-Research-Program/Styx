@@ -13,7 +13,8 @@ use bmm350::{
 };
 use embedded_hal::i2c::I2c;
 use linux_embedded_hal::{Delay, I2cdev};
-use nmea::Nmea;
+use nmea::sentences::fix_type::FixType;
+use nmea::{Nmea, SentenceType};
 use rs_ws281x::{ChannelBuilder, Controller, ControllerBuilder, StripType};
 use std::{
     env,
@@ -49,6 +50,7 @@ struct GpsData {
     hdop: Option<f32>,
     speed_knots: Option<f32>,
     true_course_deg: Option<f32>,
+    fix_type_valid: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -95,6 +97,7 @@ fn extract_gps_fix(nmea: &Nmea) -> Option<GpsData> {
     let latitude = nmea.latitude()?;
     let longitude = nmea.longitude()?;
     let altitude_m = nmea.altitude().unwrap_or_default() as f64;
+    let fix_type_valid = nmea.fix_type().map(FixType::is_valid).unwrap_or(false);
 
     Some(GpsData {
         geodetic_deg_m: Vector::new([latitude, longitude, altitude_m]),
@@ -102,6 +105,7 @@ fn extract_gps_fix(nmea: &Nmea) -> Option<GpsData> {
         hdop: nmea.hdop(),
         speed_knots: nmea.speed_over_ground,
         true_course_deg: nmea.true_course,
+        fix_type_valid,
     })
 }
 
@@ -154,6 +158,120 @@ fn sub3(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
 
 fn scale3(v: [f64; 3], scalar: f64) -> [f64; 3] {
     [v[0] * scalar, v[1] * scalar, v[2] * scalar]
+}
+
+fn hsv_to_rgb(hue_deg: f32, saturation: f32, value: f32) -> [u8; 4] {
+    let h = hue_deg.rem_euclid(360.0);
+    let c = value * saturation;
+    let x = c * (1.0 - (((h / 60.0) % 2.0) - 1.0).abs());
+    let m = value - c;
+
+    let (r1, g1, b1) = match h {
+        h if h < 60.0 => (c, x, 0.0),
+        h if h < 120.0 => (x, c, 0.0),
+        h if h < 180.0 => (0.0, c, x),
+        h if h < 240.0 => (0.0, x, c),
+        h if h < 300.0 => (x, 0.0, c),
+        _ => (c, 0.0, x),
+    };
+
+    [
+        ((r1 + m) * 255.0) as u8,
+        ((g1 + m) * 255.0) as u8,
+        ((b1 + m) * 255.0) as u8,
+        0,
+    ]
+}
+
+fn render_rgb_color_wheel(controller: &mut Controller, phase_deg: f32) -> Result<(), Box<dyn std::error::Error>> {
+    let leds = controller.leds_mut(0);
+    for i in 0..LED_COUNT as usize {
+        let hue = phase_deg + (i as f32) * (360.0 / LED_COUNT as f32);
+        leds[i] = hsv_to_rgb(hue, 1.0, 1.0);
+    }
+    controller.render()?;
+    Ok(())
+}
+
+fn render_orange_spin(
+    controller: &mut Controller,
+    phase_deg: f32,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let led_pos = (phase_deg % 360.0) / 90.0;
+    let current_led = (led_pos.floor() as usize) % 4;
+    let next_led = (current_led + 1) % 4;
+    let frac = led_pos.fract();
+
+    let leds = controller.leds_mut(0);
+    for i in 0..LED_COUNT as usize {
+        let color = if i == current_led {
+            let t = 1.0 - frac;
+            let r = (255.0 * t) as u8;
+            let g = (120.0 * t) as u8;
+            [r, g, 0, 0]
+        } else if i == next_led {
+            let t = frac;
+            let r = (255.0 * t) as u8;
+            let g = (120.0 * t) as u8;
+            [r, g, 0, 0]
+        } else {
+            [0, 0, 0, 0]
+        };
+        leds[i] = color;
+    }
+
+    controller.render()?;
+    Ok(())
+}
+
+fn format_state_line(state: &State) -> String {
+    let gps_line = if let Some(geodetic) = state.geodetic_deg_m {
+        format!(
+            "GPS:    lat={:.6}, long={:.6}, alt={:.2}m, sats={:?}, hdop={:?}, sog={:?}kt, course={:?}°",
+            geodetic[0],
+            geodetic[1],
+            geodetic[2],
+            state.satellites,
+            state.hdop,
+            state.speed_knots,
+            state.true_course_deg
+        )
+    } else {
+        format!(
+            "GPS:    waiting, sats={:?}, hdop={:?}, sog={:?}kt, course={:?}°",
+            state.satellites,
+            state.hdop,
+            state.speed_knots,
+            state.true_course_deg
+        )
+    };
+
+    let ecef_line = if let Some(ecef) = state.ecef_m {
+        format!("ECEF:   x={:.2}, y={:.2}, z={:.2}", ecef[0], ecef[1], ecef[2])
+    } else {
+        "ECEF:   waiting".to_string()
+    };
+
+    format!(
+        "=====================
+TIME:   ts={}
+YPR:    yaw={:+8.3}   roll={:+8.3}   pitch={:+8.3}
+MAG:    hdg={:6.2}    rel={:6.2}
+ATT:    q_ned={}   q_icrf={:?}
+{}
+{}
+=====================",
+        state.unix_timestamp_s,
+        state.yaw_deg,
+        state.roll_deg,
+        state.pitch_deg,
+        state.magnetic_heading_deg,
+        state.relative_magnetic_heading_deg,
+        state.body_to_ned,
+        state.body_to_icrf,
+        gps_line,
+        ecef_line,
+    )
 }
 
 fn geodetic_deg_to_ecef_m(geodetic_deg_m: Vector<f64, 3>) -> [f64; 3] {
@@ -303,7 +421,8 @@ fn start_gps_reader() -> Arc<Mutex<Option<GpsData>>> {
                 gps_bus
             );
 
-            let mut parser = Nmea::default();
+            let mut parser = Nmea::create_for_navigation(&[SentenceType::RMC, SentenceType::GGA])
+                .unwrap_or_default();
             let mut sentence = String::new();
             let mut chunk = [0_u8; GPS_I2C_MAX_READ];
 
@@ -322,7 +441,7 @@ fn start_gps_reader() -> Arc<Mutex<Option<GpsData>>> {
                                         b'\r' => {}
                                         b'\n' => {
                                             let line = sentence.trim();
-                                            if !line.is_empty() && parser.parse(line).is_ok() {
+                                            if !line.is_empty() && parser.parse_for_fix(line).is_ok() {
                                                 if let Some(fix) = extract_gps_fix(&parser) {
                                                     if let Ok(mut latest) = gps_state.lock() {
                                                         *latest = Some(fix);
@@ -369,6 +488,46 @@ fn start_gps_reader() -> Arc<Mutex<Option<GpsData>>> {
     shared_fix
 }
 
+fn gps_fix_is_locked(gps_fix: &Arc<Mutex<Option<GpsData>>>) -> bool {
+    gps_fix
+        .lock()
+        .ok()
+        .and_then(|latest| latest.clone())
+        .map(|gps| {
+            gps.fix_type_valid
+                && gps.geodetic_deg_m[0].is_finite()
+                && gps.geodetic_deg_m[1].is_finite()
+        })
+        .unwrap_or(false)
+}
+
+fn wait_for_gps_lock(
+    controller: &mut Controller,
+    gps_fix: &Arc<Mutex<Option<GpsData>>>,
+    skip_gps_lock: &Arc<Mutex<bool>>,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    println!("Waiting for GPS lock. Press 's' + Enter to skip this step for indoor testing.");
+
+    let wait_start = Instant::now();
+    loop {
+        if gps_fix_is_locked(gps_fix) {
+            println!("GPS lock acquired.");
+            return Ok(true);
+        }
+
+        if *skip_gps_lock.lock().unwrap() {
+            println!("GPS lock skipped.");
+            return Ok(false);
+        }
+
+        let elapsed = wait_start.elapsed().as_secs_f32();
+        let phase_deg = elapsed * 240.0 + 30.0;
+        render_orange_spin(controller, phase_deg)?;
+
+        thread::sleep(Duration::from_millis(20));
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let gps_fix = start_gps_reader();
 
@@ -392,6 +551,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut mag: Bmm350<_, _> = Bmm350::new_with_i2c(mag_i2c, BMM350_I2C_ADDR, Delay);
 
     println!("=== BMI323 + BMM350 Mount Scaffold ===");
+
+    let wheel_start = Instant::now();
+    while wheel_start.elapsed() < Duration::from_secs(3) {
+        let elapsed = wheel_start.elapsed().as_secs_f32();
+        let phase_deg = elapsed * 240.0;
+        render_rgb_color_wheel(&mut controller, phase_deg)?;
+
+        thread::sleep(Duration::from_millis(20));
+    }
+
     println!("Initializing BMI323 sensor...");
     imu.init().map_err(bmi_err)?;
     imu.set_accel_config(
@@ -453,10 +622,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if !mag_init_ok {
-        return Err(std::io::Error::other(format!(
+        return Err(Box::new(std::io::Error::other(format!(
             "failed to initialize BMM350 after repeated suspend/reset attempts: {}",
             last_mag_err.unwrap_or_else(|| "unknown error".to_string())
-        )));
+        ))));
     }
 
     mag.enable_axes(
@@ -478,8 +647,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     mag.set_power_mode(PowerMode::Normal).map_err(bmm_err)?;
     println!("BMM350 configured.");
 
+    let shutdown = Arc::new(Mutex::new(false));
+    let shutdown_clone = Arc::clone(&shutdown);
+    let gps_skip_requested = Arc::new(Mutex::new(false));
+    let gps_skip_clone = Arc::clone(&gps_skip_requested);
+
+    thread::spawn(move || {
+        let mut buffer = [0u8; 1];
+        let stdin = io::stdin();
+        let mut handle = stdin.lock();
+        while handle.read_exact(&mut buffer).is_ok() {
+            match buffer[0] {
+                b'q' | b'Q' => {
+                    let mut s = shutdown_clone.lock().unwrap();
+                    *s = true;
+                    println!("\nShutdown requested - cleaning up sensors...");
+                    break;
+                }
+                b's' | b'S' => {
+                    let mut skip = gps_skip_clone.lock().unwrap();
+                    *skip = true;
+                    println!("\nGPS lock skip requested.");
+                }
+                _ => {}
+            }
+        }
+    });
+
     println!("Calibrating gyro bias and magnetic reference — keep the mount still for 2 seconds...");
-    println!("Watch the green LED spin smoothly around the ring.");
 
     let cal_start = Instant::now();
     let mut gyro_bias_z = 0.0_f32;
@@ -531,29 +726,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "✅ Magnetic reference complete! BMM350 north reference: {:.2}°",
         magnetic_reference_deg
     );
+
+    let _ = wait_for_gps_lock(&mut controller, &gps_fix, &gps_skip_requested)?;
+
     println!("Scaffold assumes BMI323 at 0x69 and BMM350 at 0x14.");
-    println!("LED ring currently follows BMM350 relative heading for bench testing.");
     println!(
         "GPS expects u-blox DDC/NMEA on $MUNIN_GPS_I2C_BUS or /dev/i2c-1 at $MUNIN_GPS_I2C_ADDR or 0x42."
     );
     println!("Type 'q' + Enter to safely shutdown.");
-
-    let shutdown = Arc::new(Mutex::new(false));
-    let shutdown_clone = Arc::clone(&shutdown);
-
-    thread::spawn(move || {
-        let mut buffer = [0u8; 1];
-        let stdin = io::stdin();
-        let mut handle = stdin.lock();
-        while handle.read_exact(&mut buffer).is_ok() {
-            if buffer[0] == b'q' || buffer[0] == b'Q' {
-                let mut s = shutdown_clone.lock().unwrap();
-                *s = true;
-                println!("\nShutdown requested - cleaning up sensors...");
-                break;
-            }
-        }
-    });
 
     let mut last_print = Instant::now();
     let mut last_time = Instant::now();
@@ -661,44 +841,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 down_body,
             };
 
-            if let Some(geodetic) = state.geodetic_deg_m {
-                println!("ts={} yaw={:.1} mag={:.1} rel={:.1} roll={:.1} pitch={:.1} n={:.2?} e={:.2?} d={:.2?} gyro={:.2?} accel={:.2?} q_ned={} q_icrf={:?} sats={:?} hdop={:?} sog={:?} course={:?} geodetic={:?}",
-                    state.unix_timestamp_s,
-                    state.yaw_deg,
-                    state.magnetic_heading_deg,
-                    state.relative_magnetic_heading_deg,
-                    state.roll_deg,
-                    state.pitch_deg,
-                    state.north_body,
-                    state.east_body,
-                    state.down_body,
-                    [state.gyro_dps.x, state.gyro_dps.y, state.gyro_dps.z],
-                    [state.accel_mps2.x, state.accel_mps2.y, state.accel_mps2.z],
-                    state.body_to_ned,
-                    state.body_to_icrf,
-                    state.satellites,
-                    state.hdop,
-                    state.speed_knots,
-                    state.true_course_deg,
-                    geodetic,
-                );
-            } else {
-                println!("ts={} yaw={:.1} mag={:.1} rel={:.1} roll={:.1} pitch={:.1} n={:.2?} e={:.2?} d={:.2?} gyro={:.2?} accel={:.2?} q_ned={} q_icrf={:?} gps=waiting",
-                    state.unix_timestamp_s,
-                    state.yaw_deg,
-                    state.magnetic_heading_deg,
-                    state.relative_magnetic_heading_deg,
-                    state.roll_deg,
-                    state.pitch_deg,
-                    state.north_body,
-                    state.east_body,
-                    state.down_body,
-                    [state.gyro_dps.x, state.gyro_dps.y, state.gyro_dps.z],
-                    [state.accel_mps2.x, state.accel_mps2.y, state.accel_mps2.z],
-                    state.body_to_ned,
-                    state.body_to_icrf,
-                );
-            }
+            println!("{}", format_state_line(&state));
 
             last_print = Instant::now();
         }
