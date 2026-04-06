@@ -558,6 +558,49 @@ fn start_gps_reader() -> Arc<Mutex<Option<GpsData>>> {
     shared_fix
 }
 
+
+
+fn gps_fix_is_locked(gps_fix: &Arc<Mutex<Option<GpsData>>>) -> bool {
+    gps_fix
+        .lock()
+        .ok()
+        .and_then(|latest| latest.clone())
+        .map(|gps| {
+            let lat_lon_valid = gps.geodetic_deg_m[0].is_finite() && gps.geodetic_deg_m[1].is_finite();
+            let sats_valid = gps.satellites.map(|s| s >= 4).unwrap_or(false);
+            let hdop_valid = gps.hdop.map(|h| h < 5.0).unwrap_or(true);
+            lat_lon_valid && sats_valid && hdop_valid
+        })
+        .unwrap_or(false)
+}
+
+fn wait_for_gps_lock(
+    controller: &mut Controller,
+    gps_fix: &Arc<Mutex<Option<GpsData>>>,
+    skip_gps_lock: &Arc<Mutex<bool>>,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    println!("Waiting for GPS lock. Press 's' + Enter to skip this step for indoor testing.");
+
+    let wait_start = Instant::now();
+    loop {
+        if gps_fix_is_locked(gps_fix) {
+            println!("GPS lock acquired.");
+            return Ok(true);
+        }
+
+        if *skip_gps_lock.lock().unwrap() {
+            println!("GPS lock skipped.");
+            return Ok(false);
+        }
+
+        let elapsed = wait_start.elapsed().as_secs_f32();
+        let phase_deg = elapsed * 240.0 + 30.0;
+        render_orange_spin(controller, phase_deg)?;
+
+        thread::sleep(Duration::from_millis(20));
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let gps_fix = start_gps_reader();
 
