@@ -120,34 +120,24 @@ impl MagCalibrationState {
     }
 
     fn progress_percent(&self) -> u8 {
-        let span_x = self.max_xyz[0] - self.min_xyz[0];
-        let span_y = self.max_xyz[1] - self.min_xyz[1];
-        let span_z = self.max_xyz[2] - self.min_xyz[2];
+        let bins_visited = self.heading_bins.iter().filter(|visited| **visited).count() as f32;
+        let heading_progress = (bins_visited / 8.0).clamp(0.0, 1.0) * 100.0;
+        let sample_progress = (self.sample_count.min(180) as f32 / 180.0) * 100.0;
+        let motion_progress = (self.cumulative_delta_xyz / 25.0).clamp(0.0, 1.0) * 100.0;
 
-        let xy_span_progress = (((span_x / 12.0).clamp(0.0, 1.0)
-            + (span_y / 12.0).clamp(0.0, 1.0))
-            * 0.5)
-            * 100.0;
-        let z_span_progress = (span_z / 6.0).clamp(0.0, 1.0) * 100.0;
-        let motion_progress = (self.cumulative_delta_xyz / 120.0).clamp(0.0, 1.0) * 100.0;
-        let sample_progress = (self.sample_count.min(100) as f32 / 100.0) * 100.0;
-
-        let blended = 0.45 * xy_span_progress
-            + 0.10 * z_span_progress
-            + 0.25 * motion_progress
-            + 0.20 * sample_progress;
+        let blended = 0.45 * heading_progress
+            + 0.30 * motion_progress
+            + 0.25 * sample_progress;
 
         blended.round().clamp(0.0, 100.0) as u8
     }
 
     fn is_ready(&self) -> bool {
-        let span_x = self.max_xyz[0] - self.min_xyz[0];
-        let span_y = self.max_xyz[1] - self.min_xyz[1];
+        let bins_visited = self.heading_bins.iter().filter(|visited| **visited).count() as u32;
 
-        self.sample_count >= 60
-            && span_x > 10.0
-            && span_y > 10.0
-            && self.cumulative_delta_xyz > 80.0
+        self.sample_count >= 120
+            && bins_visited >= 6
+            && self.cumulative_delta_xyz > 12.0
     }
 
     fn offset_xyz(&self) -> [f32; 3] {
@@ -158,18 +148,31 @@ impl MagCalibrationState {
         ]
     }
 
-    fn corrected_sample(&self, sample: Sensor3DData) -> Sensor3DData {
+    fn corrected_vector(&self, sample: Sensor3DData) -> [f32; 3] {
         let offset = self.offset_xyz();
+        [
+            sample.x as f32 - offset[0],
+            sample.y as f32 - offset[1],
+            sample.z as f32 - offset[2],
+        ]
+    }
+
+    fn corrected_sample(&self, sample: Sensor3DData) -> Sensor3DData {
+        let corrected = self.corrected_vector(sample);
         Sensor3DData {
-            x: (sample.x as f32 - offset[0]) as i32,
-            y: (sample.y as f32 - offset[1]) as i32,
-            z: (sample.z as f32 - offset[2]) as i32,
+            x: corrected[0].round() as i32,
+            y: corrected[1].round() as i32,
+            z: corrected[2].round() as i32,
         }
     }
 
     fn corrected_heading_deg(&self, sample: Sensor3DData) -> f32 {
-        let corrected = self.corrected_sample(sample);
-        magnetic_heading_deg(corrected)
+        let corrected = self.corrected_vector(sample);
+        if corrected[0].abs() < 1e-3 && corrected[1].abs() < 1e-3 {
+            magnetic_heading_deg(sample)
+        } else {
+            corrected[1].atan2(corrected[0]).to_degrees().rem_euclid(360.0)
+        }
     }
 }
 
@@ -179,6 +182,11 @@ fn magnetic_heading_deg_corrected(sample: Sensor3DData, calibration: &MagCalibra
 
 fn apply_mag_calibration(sample: Sensor3DData, calibration: &MagCalibrationState) -> Sensor3DData {
     calibration.corrected_sample(sample)
+}
+
+fn corrected_mag_vector(sample: Sensor3DData, calibration: &MagCalibrationState) -> [f64; 3] {
+    let corrected = calibration.corrected_vector(sample);
+    [corrected[0] as f64, corrected[1] as f64, corrected[2] as f64]
 }
 
 fn tilt_compensated_magnetic_heading_deg(
@@ -451,9 +459,9 @@ fn itrf_to_icrf_dcm(time_s: f64) -> DirectionCosineMatrix<f64, ITRF<f64>, ICRF<f
     )
 }
 
-fn body_to_ned_from_sensors(
+fn body_to_ned_from_mag_body(
     accel: Sensor3DDataScaled,
-    mag: Sensor3DData,
+    mag_body: [f64; 3],
 ) -> (DirectionCosineMatrix<f64, Body<f64>, NED<f64>>, [f64; 3], [f64; 3], [f64; 3]) {
     let down_body = normalize3([
         accel.x as f64,
@@ -461,7 +469,6 @@ fn body_to_ned_from_sensors(
         accel.z as f64,
     ]);
 
-    let mag_body = [mag.x as f64, mag.y as f64, mag.z as f64];
     let mag_along_down = scale3(down_body, dot3(mag_body, down_body));
     let mag_horizontal = sub3(mag_body, mag_along_down);
 
@@ -493,6 +500,13 @@ fn body_to_ned_from_sensors(
         east_body,
         down_body,
     )
+}
+
+fn body_to_ned_from_sensors(
+    accel: Sensor3DDataScaled,
+    mag: Sensor3DData,
+) -> (DirectionCosineMatrix<f64, Body<f64>, NED<f64>>, [f64; 3], [f64; 3], [f64; 3]) {
+    body_to_ned_from_mag_body(accel, [mag.x as f64, mag.y as f64, mag.z as f64])
 }
 
 fn parse_i2c_addr(value: &str) -> Option<u8> {
@@ -952,14 +966,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let leds = controller.leds_mut(0);
         for i in 0..LED_COUNT as usize {
-            leds[i] = led_rgb(0, 0, 24);
+            leds[i] = led_rgb(0, 0, 0);
         }
 
         let blue_current = (255.0 * (1.0 - frac)) as u8;
         let blue_next = (255.0 * frac) as u8;
 
-        leds[current_led] = led_rgb(0, 0, blue_current.max(180));
-        leds[next_led] = led_rgb(0, 0, blue_next.max(180));
+        leds[current_led] = led_rgb(0, 0, blue_current.max(64));
+        if blue_next > 8 {
+            leds[next_led] = led_rgb(0, 0, blue_next);
+        }
 
         controller.render()?;
 
@@ -968,7 +984,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let unix_timestamp_s = unix_timestamp_s_now();
 
             let (body_to_ned_dcm, north_body, east_body, down_body) =
-                body_to_ned_from_sensors(accel, apply_mag_calibration(mag_data, &mag_cal));
+                body_to_ned_from_mag_body(accel, corrected_mag_vector(mag_data, &mag_cal));
 
             let body_to_ned = Quaternion::try_from(&body_to_ned_dcm)
                 .unwrap_or_else(|_| Quaternion::<f64, Body<f64>, NED<f64>>::identity())
