@@ -33,6 +33,7 @@ const GPS_I2C_MAX_READ: usize = 32;
 const EARTH_ROTATION_RATE_RAD_PER_S: f64 = 7.292_115_0e-5;
 const WGS84_A_M: f64 = 6_378_137.0;
 const WGS84_E2: f64 = 6.694_379_990_14e-3;
+const BMM350_INVALID_RAW_READING: i32 = 0x7F7F7F;
 
 fn bmi_err<E: core::fmt::Debug>(err: BmiError<E>) -> std::io::Error {
     std::io::Error::other(format!("bmi323 error: {:?}", err))
@@ -97,6 +98,10 @@ impl MagCalibrationState {
     }
 
     fn update(&mut self, sample: Sensor3DData) {
+        if !mag_sample_is_valid(sample) {
+            return;
+        }
+
         let xyz = [sample.x as f32, sample.y as f32, sample.z as f32];
 
         for axis in 0..3 {
@@ -141,20 +146,31 @@ impl MagCalibrationState {
     }
 
     fn offset_xyz(&self) -> [f32; 3] {
-        [
-            (self.min_xyz[0] + self.max_xyz[0]) * 0.5,
-            (self.min_xyz[1] + self.max_xyz[1]) * 0.5,
-            (self.min_xyz[2] + self.max_xyz[2]) * 0.5,
-        ]
+        if self.sample_count == 0
+            || !self.min_xyz.iter().all(|value| value.is_finite())
+            || !self.max_xyz.iter().all(|value| value.is_finite())
+        {
+            [0.0, 0.0, 0.0]
+        } else {
+            [
+                (self.min_xyz[0] + self.max_xyz[0]) * 0.5,
+                (self.min_xyz[1] + self.max_xyz[1]) * 0.5,
+                (self.min_xyz[2] + self.max_xyz[2]) * 0.5,
+            ]
+        }
     }
 
     fn corrected_vector(&self, sample: Sensor3DData) -> [f32; 3] {
-        let offset = self.offset_xyz();
-        [
-            sample.x as f32 - offset[0],
-            sample.y as f32 - offset[1],
-            sample.z as f32 - offset[2],
-        ]
+        if self.sample_count == 0 {
+            [sample.x as f32, sample.y as f32, sample.z as f32]
+        } else {
+            let offset = self.offset_xyz();
+            [
+                sample.x as f32 - offset[0],
+                sample.y as f32 - offset[1],
+                sample.z as f32 - offset[2],
+            ]
+        }
     }
 
     fn corrected_sample(&self, sample: Sensor3DData) -> Sensor3DData {
@@ -231,6 +247,19 @@ fn extract_gps_fix(nmea: &Nmea) -> Option<GpsData> {
         speed_knots: nmea.speed_over_ground,
         true_course_deg: nmea.true_course,
     })
+}
+
+fn copy_mag_sample(sample: &Sensor3DData) -> Sensor3DData {
+    Sensor3DData {
+        x: sample.x,
+        y: sample.y,
+        z: sample.z,
+    }
+}
+
+fn mag_sample_is_valid(sample: Sensor3DData) -> bool {
+    let values = [sample.x, sample.y, sample.z];
+    !values.iter().any(|&value| value.abs() >= 8_000_000 || value == BMM350_INVALID_RAW_READING)
 }
 
 fn magnetic_heading_deg(sample: Sensor3DData) -> f32 {
@@ -781,6 +810,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .map_err(bmm_err)?;
     mag.set_odr_performance(DataRate::ODR25Hz, BmmAverageNum::Avg4)
         .map_err(bmm_err)?;
+    mag.set_power_mode(PowerMode::Normal).map_err(bmm_err)?;
+    thread::sleep(Duration::from_millis(100));
     mag.set_mag_config(
         MagConfig::builder()
             .odr(DataRate::ODR25Hz)
@@ -789,8 +820,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .build(),
     )
     .map_err(bmm_err)?;
-    mag.set_power_mode(PowerMode::Normal).map_err(bmm_err)?;
+    thread::sleep(Duration::from_millis(100));
     println!("BMM350 configured.");
+
+    let mut last_valid_mag_data: Option<Sensor3DData> = None;
+    let mag_warmup_start = Instant::now();
+    while mag_warmup_start.elapsed() < Duration::from_secs(2) {
+        let mag_sample = mag.read_mag_data().map_err(bmm_err)?;
+        if mag_sample_is_valid(mag_sample) {
+            last_valid_mag_data = Some(copy_mag_sample(&mag_sample));
+            break;
+        }
+        thread::sleep(Duration::from_millis(20));
+    }
 
     let shutdown = Arc::new(Mutex::new(false));
     let shutdown_clone = Arc::clone(&shutdown);
@@ -825,7 +867,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         let mag_sample = mag.read_mag_data().map_err(bmm_err)?;
-        mag_cal.update(mag_sample);
+        if mag_sample_is_valid(mag_sample) {
+            last_valid_mag_data = Some(copy_mag_sample(&mag_sample));
+            mag_cal.update(mag_sample);
+        }
 
         let elapsed = mag_cal_start.elapsed().as_secs_f32();
         let phase_deg = elapsed * 220.0;
@@ -872,10 +917,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     while cal_start.elapsed() < Duration::from_secs(2) {
         let gyro = imu.read_gyro_data_scaled().map_err(bmi_err)?;
-        let mag_data = mag.read_mag_data().map_err(bmm_err)?;
-        gyro_bias_z += gyro.z;
-        magnetic_reference_deg += magnetic_heading_deg_corrected(mag_data, &mag_cal);
-        sample_count += 1;
+        let raw_mag_data = mag.read_mag_data().map_err(bmm_err)?;
+        if mag_sample_is_valid(raw_mag_data) {
+            last_valid_mag_data = Some(copy_mag_sample(&raw_mag_data));
+            gyro_bias_z += gyro.z;
+            magnetic_reference_deg += magnetic_heading_deg_corrected(raw_mag_data, &mag_cal);
+            sample_count += 1;
+        }
 
         let elapsed = cal_start.elapsed().as_secs_f32();
         let progress = elapsed / 2.0;
@@ -942,7 +990,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let accel = imu.read_accel_data_scaled().map_err(bmi_err)?;
         let gyro = imu.read_gyro_data_scaled().map_err(bmi_err)?;
-        let mag_data = mag.read_mag_data().map_err(bmm_err)?;
+        let raw_mag_data = mag.read_mag_data().map_err(bmm_err)?;
+        let mag_data = if mag_sample_is_valid(raw_mag_data) {
+            last_valid_mag_data = Some(copy_mag_sample(&raw_mag_data));
+            raw_mag_data
+        } else if let Some(previous) = last_valid_mag_data.as_ref() {
+            copy_mag_sample(previous)
+        } else {
+            thread::sleep(Duration::from_millis(20));
+            continue;
+        };
 
         let now = Instant::now();
         let dt = (now - last_time).as_secs_f32();
@@ -972,8 +1029,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let blue_current = (255.0 * (1.0 - frac)) as u8;
         let blue_next = (255.0 * frac) as u8;
 
-        leds[current_led] = led_rgb(0, 0, blue_current.max(64));
-        if blue_next > 8 {
+        leds[current_led] = led_rgb(0, 0, blue_current.max(96));
+        if blue_next > 12 {
             leds[next_led] = led_rgb(0, 0, blue_next);
         }
 
@@ -984,7 +1041,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let unix_timestamp_s = unix_timestamp_s_now();
 
             let (body_to_ned_dcm, north_body, east_body, down_body) =
-                body_to_ned_from_mag_body(accel, corrected_mag_vector(mag_data, &mag_cal));
+                body_to_ned_from_sensors(accel, apply_mag_calibration(mag_data, &mag_cal));
 
             let body_to_ned = Quaternion::try_from(&body_to_ned_dcm)
                 .unwrap_or_else(|_| Quaternion::<f64, Body<f64>, NED<f64>>::identity())
