@@ -120,39 +120,34 @@ impl MagCalibrationState {
     }
 
     fn progress_percent(&self) -> u8 {
-        let bins_visited = self.heading_bins.iter().filter(|visited| **visited).count() as f32;
-        let heading_progress = (bins_visited / self.heading_bins.len() as f32) * 100.0;
-
         let span_x = self.max_xyz[0] - self.min_xyz[0];
         let span_y = self.max_xyz[1] - self.min_xyz[1];
         let span_z = self.max_xyz[2] - self.min_xyz[2];
-        let span_progress = (((span_x + span_y + span_z) / 3.0) / 50.0 * 100.0)
-            .clamp(0.0, 100.0);
 
-        let motion_progress = (self.cumulative_delta_xyz / 200.0).clamp(0.0, 100.0);
+        let xy_span_progress = (((span_x / 12.0).clamp(0.0, 1.0)
+            + (span_y / 12.0).clamp(0.0, 1.0))
+            * 0.5)
+            * 100.0;
+        let z_span_progress = (span_z / 6.0).clamp(0.0, 1.0) * 100.0;
+        let motion_progress = (self.cumulative_delta_xyz / 120.0).clamp(0.0, 1.0) * 100.0;
+        let sample_progress = (self.sample_count.min(100) as f32 / 100.0) * 100.0;
 
-        let sample_progress = (self.sample_count.min(240) as f32 / 240.0) * 100.0;
-
-        let blended = 0.35 * heading_progress
-            + 0.25 * span_progress
+        let blended = 0.45 * xy_span_progress
+            + 0.10 * z_span_progress
             + 0.25 * motion_progress
-            + 0.15 * sample_progress;
+            + 0.20 * sample_progress;
 
         blended.round().clamp(0.0, 100.0) as u8
     }
 
     fn is_ready(&self) -> bool {
-        let bins_visited = self.heading_bins.iter().filter(|visited| **visited).count() as u32;
         let span_x = self.max_xyz[0] - self.min_xyz[0];
         let span_y = self.max_xyz[1] - self.min_xyz[1];
-        let span_z = self.max_xyz[2] - self.min_xyz[2];
-        let span_xy = span_x.max(span_y);
 
-        self.sample_count >= 40
-            && bins_visited >= 2
-            && span_xy > 10.0
-            && span_z > 2.0
-            && self.cumulative_delta_xyz > 100.0
+        self.sample_count >= 60
+            && span_x > 10.0
+            && span_y > 10.0
+            && self.cumulative_delta_xyz > 80.0
     }
 
     fn offset_xyz(&self) -> [f32; 3] {
@@ -281,6 +276,10 @@ fn scale3(v: [f64; 3], scalar: f64) -> [f64; 3] {
     [v[0] * scalar, v[1] * scalar, v[2] * scalar]
 }
 
+fn led_rgb(r: u8, g: u8, b: u8) -> [u8; 4] {
+    [b, g, r, 0]
+}
+
 fn hsv_to_rgb(hue_deg: f32, saturation: f32, value: f32) -> [u8; 4] {
     let h = hue_deg.rem_euclid(360.0);
     let c = value * saturation;
@@ -296,12 +295,11 @@ fn hsv_to_rgb(hue_deg: f32, saturation: f32, value: f32) -> [u8; 4] {
         _ => (c, 0.0, x),
     };
 
-    [
+    led_rgb(
         ((r1 + m) * 255.0) as u8,
         ((g1 + m) * 255.0) as u8,
         ((b1 + m) * 255.0) as u8,
-        0,
-    ]
+    )
 }
 
 fn render_rgb_color_wheel(controller: &mut Controller, phase_deg: f32) -> Result<(), Box<dyn std::error::Error>> {
@@ -327,12 +325,12 @@ fn render_orange_spin(
     for i in 0..LED_COUNT as usize {
         let color = if i == current_led {
             let t = 1.0 - frac;
-            [((255.0 * t) as u8), ((120.0 * t) as u8), 0, 0]
+            led_rgb((255.0 * t) as u8, (120.0 * t) as u8, 0)
         } else if i == next_led {
             let t = frac;
-            [((255.0 * t) as u8), ((120.0 * t) as u8), 0, 0]
+            led_rgb((255.0 * t) as u8, (120.0 * t) as u8, 0)
         } else {
-            [0, 0, 0, 0]
+            led_rgb(0, 0, 0)
         };
         leds[i] = color;
     }
@@ -618,6 +616,8 @@ fn start_gps_reader() -> Arc<Mutex<Option<GpsData>>> {
     shared_fix
 }
 
+
+
 fn gps_fix_is_locked(gps_fix: &Arc<Mutex<Option<GpsData>>>) -> bool {
     gps_fix
         .lock()
@@ -876,13 +876,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let color = if i == current_led {
                 let t = 1.0 - frac;
                 let g = (t * 255.0) as u8;
-                [0, g, 0, 0]
+                led_rgb(0, g, 0)
             } else if i == next_led {
                 let t = frac;
                 let g = (t * 255.0) as u8;
-                [0, g, 0, 0]
+                led_rgb(0, g, 0)
             } else {
-                [0, 0, 0, 0]
+                led_rgb(0, 0, 0)
             };
             leds[i] = color;
         }
@@ -914,7 +914,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         if *shutdown.lock().unwrap() {
-            let _ = controller.leds_mut(0).iter_mut().map(|led| *led = [0, 0, 0, 0]).count();
+            let leds = controller.leds_mut(0);
+            for led in leds.iter_mut() {
+                *led = led_rgb(0, 0, 0);
+            }
             let _ = controller.render();
             let _ = mag.set_power_mode(PowerMode::Suspend);
             thread::sleep(Duration::from_millis(50));
@@ -936,7 +939,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             yaw_deg = wrap_angle_deg(yaw_deg + corrected_gz * dt);
         }
 
-        let magnetic_heading = tilt_compensated_magnetic_heading_deg(accel, mag_data, &mag_cal);
+        let magnetic_heading = magnetic_heading_deg_corrected(mag_data, &mag_cal);
         let relative_magnetic_heading =
             relative_heading_deg(magnetic_heading, magnetic_reference_deg);
         let roll_deg = tilt_roll_deg(accel);
@@ -949,14 +952,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let leds = controller.leds_mut(0);
         for i in 0..LED_COUNT as usize {
-            leds[i] = [0, 0, 24, 0];
+            leds[i] = led_rgb(0, 0, 24);
         }
 
         let blue_current = (255.0 * (1.0 - frac)) as u8;
         let blue_next = (255.0 * frac) as u8;
 
-        leds[current_led][2] = leds[current_led][2].max(blue_current.max(180));
-        leds[next_led][2] = leds[next_led][2].max(blue_next.max(180));
+        leds[current_led] = led_rgb(0, 0, blue_current.max(180));
+        leds[next_led] = led_rgb(0, 0, blue_next.max(180));
 
         controller.render()?;
 
