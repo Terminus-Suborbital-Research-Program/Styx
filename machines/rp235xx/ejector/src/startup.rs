@@ -159,18 +159,32 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
 
     // Servo
-    let pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
-    let mut ejection_servo_pwm = pwm_slices.pwm0;
+    let mut pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
+    let mut power_servo_pwm = pwm_slices.pwm2;
+    let mut ejection_servo_pwm = pwm_slices.pwm3;
+
     ejection_servo_pwm.enable();
     ejection_servo_pwm.set_div_int(48);
 
+    power_servo_pwm.enable();
+    power_servo_pwm.set_div_int(48);
+
     // Pin for servo mosfet digital
-    let mut mosfet_pin: EjectionServoMosfet = bank0_pins.gpio1.into_push_pull_output();
+    let mut mosfet_pin: EjectionServoMosfet = bank0_pins.gpio6.into_push_pull_output();
     mosfet_pin.set_low().unwrap();
-    let mut channel_a = ejection_servo_pwm.channel_a;
-    let channel_pin = channel_a.output_to(bank0_pins.gpio0);
+    let mut channel_b = ejection_servo_pwm.channel_b;
+    let channel_pin = channel_b.output_to(bank0_pins.gpio7);
+    channel_b.set_enabled(true);
+    let ejection_servo = Servo::new(channel_b, channel_pin, mosfet_pin);
+
+    let mut power_mosfet_pin = bank0_pins.gpio4.into_push_pull_output();
+    power_mosfet_pin.set_low().unwrap();
+    let mut channel_a = power_servo_pwm.channel_b;
+    let channel_pin = channel_a.output_to(bank0_pins.gpio5);
     channel_a.set_enabled(true);
-    let ejection_servo = Servo::new(channel_a, channel_pin, mosfet_pin);
+    let mut power_servo = Servo::new(channel_a, channel_pin, power_mosfet_pin);
+    power_servo.enable();
+    power_servo.set_angle(90);
 
     // Add emag variables
     let emag_pin1 = bank0_pins.gpio21.into_push_pull_output();

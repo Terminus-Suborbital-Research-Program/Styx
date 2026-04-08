@@ -271,7 +271,7 @@ pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
             ]
         });
 
-        ctx.local.rgb_driver.send_color(current_colors);
+        rgb_driver.send_color(current_colors);
         Mono::delay(1000_u64.millis()).await;
     }
 }

@@ -148,8 +148,8 @@ impl Default for RGBStatus {
         let red = Color::red();
         Self {
             RBF: red,
-            HaLow: red,
-            Esp: red,
+            HaLow: Color::purple(),
+            Esp: Color::orange(),
             Infratracker: red,
             Guard: red,
             Jupiter: red,
