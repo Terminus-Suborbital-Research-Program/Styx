@@ -6,15 +6,19 @@ use crate::sdr::radio_config::{
     BUFF_SIZE,
     TARGET_PACKET_SIZE};
 use bincode::de::read;
-use rustfft::num_complex::Complex;
+// use rustfft::num_complex::Complex;
+use num_complex::Complex;
 use soapysdr::{Device, Direction, RxStream};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use sdr::fir::FIR;
 use crate::error::SignalError;
 pub struct SDR {
     device: Device,
     stream: RxStream<Complex<f32>>,
     read_buffer: [Complex<f32>; READ_CHUNK_SIZE],
+    downsampler: FIR<Complex<f32>>,
+
 }
 
 use log::{error, info, LevelFilter};
@@ -46,6 +50,7 @@ impl SDR {
             device,
             stream,
             read_buffer: [Complex::new(0.0, 0.0); READ_CHUNK_SIZE],
+            FIR::new()
         })
     }
 
@@ -81,4 +86,6 @@ impl SDR {
 
         Ok((time_stamp.unwrap_or(0), head))
     }
+
+
 }
