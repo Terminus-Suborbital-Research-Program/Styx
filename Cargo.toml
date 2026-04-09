@@ -42,3 +42,8 @@ codegen-units = 1
 debug = true
 lto = true
 opt-level = "s"
+
+[patch.crates-io]
+rp235x-hal = { git = "https://github.com/rp-rs/rp-hal.git" }
+rp-hal-common = { git = "https://github.com/rp-rs/rp-hal.git" }
+rp-binary-info = { git = "https://github.com/rp-rs/rp-hal.git" }
