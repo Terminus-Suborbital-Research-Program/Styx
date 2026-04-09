@@ -1,0 +1,81 @@
+[package]
+name = "ins-test"
+version = "0.1.1"
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+# HAL for the RP350X architecture
+rp235x-hal = { version = "0.4.0", features = [
+  "binary-info",
+  "critical-section-impl",
+  "rt",
+  "defmt",
+], optional = true }
+embassy-executor = { version = "0.10.0", features = ["defmt", "executor-thread", "platform-cortex-m"], optional = true }
+embassy-net = { version = "0.9.0", features = ["defmt", "dhcpv4", "dhcpv4-hostname", "medium-ethernet", "proto-ipv4", "udp"], optional = true }
+embassy-rp = { version = "0.10.0", features = [
+  "binary-info",
+  "critical-section-impl",
+  "defmt",
+  "rp235xa",
+  "time-driver",
+], optional = true }
+embassy-time = { version = "0.5.1", features = ["defmt"], optional = true }
+cyw43 = { version = "0.7.0", optional = true }
+cyw43-pio = { version = "0.10.0", optional = true }
+static_cell = { version = "2.1.1", optional = true }
+panic-probe = { version = "1.0.0", features = ["print-defmt"], optional = true }
+
+panic-halt = {version = "0.2"}
+
+embedded-hal-bus = { version = "0.3.0", features = ["async", "defmt-03"] }
+# Rust safe bindings to register-level control
+embedded-hal = "1.0.0"
+embedded-hal-async = "1.0.0"
+embedded-io = "0.6.1"
+embedded_hal_0_2 = {package = "embedded-hal", version = "0.2.5", features = ["unproven"]}
+
+# Cortex-M peripherals
+cortex-m = "0.7.2"
+cortex-m-rt = "0.7"
+cortex-m-rtic = "1.1.4"
+critical-section = {version = "1.2.0"}
+
+rp235x-pac = "0.1.0"
+
+defmt = {workspace = true}
+defmt-rtt = {workspace = true}
+heapless = {workspace = true}
+rtt-target = { version = "0.6.1" }
+aether_core = {workspace = true}
+aether_proprietary = { path = "../../../../aether_proprietary/crates/aether_proprietary" }
+aether_models = { path = "../../../../aether/crates/aether_models" }
+
+# Sensors
+ms8607 = {version = "*"}
+icm20948 = {version = "*"}
+nmea = { version = "0.7", default-features = false, features = ["GNSS"] }
+nb = "1.1"
+
+# Target features
+[features]
+default = ["rp2350"]
+rp2350 = [
+    "dep:rp235x-hal",
+]
+wifi = [
+  "dep:cyw43",
+  "dep:cyw43-pio",
+  "dep:embassy-executor",
+  "dep:embassy-net",
+  "dep:embassy-rp",
+  "dep:embassy-time",
+  "dep:panic-probe",
+  "dep:static_cell",
+]
+
+[[bin]]
+name = "wifi-test"
+path = "src/bin/wifi_test.rs"
+required-features = ["wifi"]

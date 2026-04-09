@@ -13,6 +13,7 @@ members = [
   "machines/rp235x/ejector",
   "machines/rp235x/elara",
   "machines/rp235x/simple",
+  "machines/rp235x/ins-test",
   "sensors/bme280",
   "sensors/bmi323-rs",
   "sensors/bmm350-rs",
