@@ -17,6 +17,7 @@ use nmea::Nmea;
 use rs_ws281x::{ChannelBuilder, Controller, ControllerBuilder, StripType};
 use std::{
     env,
+    io::{self, Read},
     sync::{Arc, Mutex},
     thread,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
@@ -32,6 +33,7 @@ const GPS_I2C_MAX_READ: usize = 32;
 const EARTH_ROTATION_RATE_RAD_PER_S: f64 = 7.292_115_0e-5;
 const WGS84_A_M: f64 = 6_378_137.0;
 const WGS84_E2: f64 = 6.694_379_990_14e-3;
+const BMM350_INVALID_RAW_READING: i32 = 0x7F7F7F;
 
 fn bmi_err<E: core::fmt::Debug>(err: BmiError<E>) -> std::io::Error {
     std::io::Error::other(format!("bmi323 error: {:?}", err))
@@ -73,12 +75,201 @@ struct State {
     down_body: [f64; 3],
 }
 
+#[derive(Clone, Debug)]
+struct MagCalibrationState {
+    sample_count: u32,
+    min_xyz: [f32; 3],
+    max_xyz: [f32; 3],
+    heading_bins: [bool; 16],
+    last_xyz: Option<[f32; 3]>,
+    cumulative_delta_xyz: f32,
+}
+
+impl MagCalibrationState {
+    fn new() -> Self {
+        Self {
+            sample_count: 0,
+            min_xyz: [f32::INFINITY; 3],
+            max_xyz: [f32::NEG_INFINITY; 3],
+            heading_bins: [false; 16],
+            last_xyz: None,
+            cumulative_delta_xyz: 0.0,
+        }
+    }
+
+    fn update(&mut self, sample: Sensor3DData) {
+        if !mag_sample_is_valid(sample) {
+            return;
+        }
+
+        let xyz = [sample.x as f32, sample.y as f32, sample.z as f32];
+
+        for axis in 0..3 {
+            self.min_xyz[axis] = self.min_xyz[axis].min(xyz[axis]);
+            self.max_xyz[axis] = self.max_xyz[axis].max(xyz[axis]);
+        }
+
+        if let Some(last_xyz) = self.last_xyz {
+            self.cumulative_delta_xyz +=
+                (xyz[0] - last_xyz[0]).abs() +
+                (xyz[1] - last_xyz[1]).abs() +
+                (xyz[2] - last_xyz[2]).abs();
+        }
+        self.last_xyz = Some(xyz);
+
+        let heading_deg = magnetic_heading_deg(sample);
+        let bin = ((heading_deg / 360.0) * self.heading_bins.len() as f32).floor() as usize
+            % self.heading_bins.len();
+        self.heading_bins[bin] = true;
+        self.sample_count = self.sample_count.saturating_add(1);
+    }
+
+    fn progress_percent(&self) -> u8 {
+        let bins_visited = self.heading_bins.iter().filter(|visited| **visited).count() as f32;
+        let heading_progress = (bins_visited / 8.0).clamp(0.0, 1.0) * 100.0;
+        let sample_progress = (self.sample_count.min(180) as f32 / 180.0) * 100.0;
+        let motion_progress = (self.cumulative_delta_xyz / 25.0).clamp(0.0, 1.0) * 100.0;
+
+        let blended = 0.45 * heading_progress
+            + 0.30 * motion_progress
+            + 0.25 * sample_progress;
+
+        blended.round().clamp(0.0, 100.0) as u8
+    }
+
+    fn is_ready(&self) -> bool {
+        let bins_visited = self.heading_bins.iter().filter(|visited| **visited).count() as u32;
+
+        self.sample_count >= 120
+            && bins_visited >= 6
+            && self.cumulative_delta_xyz > 12.0
+    }
+
+    fn offset_xyz(&self) -> [f32; 3] {
+        if self.sample_count == 0
+            || !self.min_xyz.iter().all(|value| value.is_finite())
+            || !self.max_xyz.iter().all(|value| value.is_finite())
+        {
+            [0.0, 0.0, 0.0]
+        } else {
+            [
+                (self.min_xyz[0] + self.max_xyz[0]) * 0.5,
+                (self.min_xyz[1] + self.max_xyz[1]) * 0.5,
+                (self.min_xyz[2] + self.max_xyz[2]) * 0.5,
+            ]
+        }
+    }
+
+    fn half_span_xyz(&self) -> [f32; 3] {
+        if self.sample_count == 0
+            || !self.min_xyz.iter().all(|value| value.is_finite())
+            || !self.max_xyz.iter().all(|value| value.is_finite())
+        {
+            [1.0, 1.0, 1.0]
+        } else {
+            [
+                ((self.max_xyz[0] - self.min_xyz[0]) * 0.5).max(1.0),
+                ((self.max_xyz[1] - self.min_xyz[1]) * 0.5).max(1.0),
+                ((self.max_xyz[2] - self.min_xyz[2]) * 0.5).max(1.0),
+            ]
+        }
+    }
+
+    fn corrected_vector(&self, sample: Sensor3DData) -> [f32; 3] {
+        if self.sample_count == 0 {
+            [sample.x as f32, sample.y as f32, sample.z as f32]
+        } else {
+            let offset = self.offset_xyz();
+            [
+                sample.x as f32 - offset[0],
+                sample.y as f32 - offset[1],
+                sample.z as f32 - offset[2],
+            ]
+        }
+    }
+
+    fn corrected_sample(&self, sample: Sensor3DData) -> Sensor3DData {
+        let corrected = self.corrected_vector(sample);
+        Sensor3DData {
+            x: corrected[0].round() as i32,
+            y: corrected[1].round() as i32,
+            z: corrected[2].round() as i32,
+        }
+    }
+
+    fn corrected_heading_deg(&self, sample: Sensor3DData) -> f32 {
+        let corrected = self.corrected_vector(sample);
+        if corrected[0].abs() < 1e-3 && corrected[1].abs() < 1e-3 {
+            magnetic_heading_deg(sample)
+        } else {
+            corrected[1].atan2(corrected[0]).to_degrees().rem_euclid(360.0)
+        }
+    }
+}
+
+fn magnetic_heading_deg_corrected(sample: Sensor3DData, calibration: &MagCalibrationState) -> f32 {
+    calibration.corrected_heading_deg(sample)
+}
+
+fn apply_mag_calibration(sample: Sensor3DData, calibration: &MagCalibrationState) -> Sensor3DData {
+    calibration.corrected_sample(sample)
+}
+
+fn corrected_mag_vector(sample: Sensor3DData, calibration: &MagCalibrationState) -> [f64; 3] {
+    let corrected = calibration.corrected_vector(sample);
+    [corrected[0] as f64, corrected[1] as f64, corrected[2] as f64]
+}
+
+fn tilt_compensated_magnetic_heading_deg(
+    accel: Sensor3DDataScaled,
+    sample: Sensor3DData,
+    calibration: &MagCalibrationState,
+) -> f32 {
+    let corrected_mag = apply_mag_calibration(sample, calibration);
+    let (_, north_body, _, _) = body_to_ned_from_sensors(accel, corrected_mag);
+    (north_body[1] as f32)
+        .atan2(north_body[0] as f32)
+        .to_degrees()
+        .rem_euclid(360.0)
+}
+
 fn wrap_angle_deg(angle_deg: f32) -> f32 {
     let wrapped = angle_deg % 360.0;
     if wrapped < 0.0 {
         wrapped + 360.0
     } else {
         wrapped
+    }
+}
+
+fn shortest_angle_delta_deg(from_deg: f32, to_deg: f32) -> f32 {
+    ((to_deg - from_deg + 540.0).rem_euclid(360.0)) - 180.0
+}
+
+fn smooth_angle_deg(previous_deg: Option<f32>, target_deg: f32, alpha: f32) -> f32 {
+    if let Some(previous) = previous_deg {
+        wrap_angle_deg(previous + shortest_angle_delta_deg(previous, target_deg) * alpha)
+    } else {
+        wrap_angle_deg(target_deg)
+    }
+}
+
+fn heading_deg_from_xy(x: f32, y: f32) -> Option<f32> {
+    if x.abs() < 1e-3 && y.abs() < 1e-3 {
+        None
+    } else {
+        Some(y.atan2(x).to_degrees().rem_euclid(360.0))
+    }
+}
+
+fn smooth_xy(previous_xy: Option<[f32; 2]>, target_xy: [f32; 2], alpha: f32) -> [f32; 2] {
+    if let Some(previous) = previous_xy {
+        [
+            previous[0] + (target_xy[0] - previous[0]) * alpha,
+            previous[1] + (target_xy[1] - previous[1]) * alpha,
+        ]
+    } else {
+        target_xy
     }
 }
 
@@ -102,6 +293,19 @@ fn extract_gps_fix(nmea: &Nmea) -> Option<GpsData> {
         speed_knots: nmea.speed_over_ground,
         true_course_deg: nmea.true_course,
     })
+}
+
+fn copy_mag_sample(sample: &Sensor3DData) -> Sensor3DData {
+    Sensor3DData {
+        x: sample.x,
+        y: sample.y,
+        z: sample.z,
+    }
+}
+
+fn mag_sample_is_valid(sample: Sensor3DData) -> bool {
+    let values = [sample.x, sample.y, sample.z];
+    !values.iter().any(|&value| value.abs() >= 8_000_000 || value == BMM350_INVALID_RAW_READING)
 }
 
 fn magnetic_heading_deg(sample: Sensor3DData) -> f32 {
@@ -155,6 +359,133 @@ fn scale3(v: [f64; 3], scalar: f64) -> [f64; 3] {
     [v[0] * scalar, v[1] * scalar, v[2] * scalar]
 }
 
+fn led_rgb(r: u8, g: u8, b: u8) -> [u8; 4] {
+    [b, g, r, 0]
+}
+
+fn hsv_to_rgb(hue_deg: f32, saturation: f32, value: f32) -> [u8; 4] {
+    let h = hue_deg.rem_euclid(360.0);
+    let c = value * saturation;
+    let x = c * (1.0 - (((h / 60.0) % 2.0) - 1.0).abs());
+    let m = value - c;
+
+    let (r1, g1, b1) = match h {
+        h if h < 60.0 => (c, x, 0.0),
+        h if h < 120.0 => (x, c, 0.0),
+        h if h < 180.0 => (0.0, c, x),
+        h if h < 240.0 => (0.0, x, c),
+        h if h < 300.0 => (x, 0.0, c),
+        _ => (c, 0.0, x),
+    };
+
+    led_rgb(
+        ((r1 + m) * 255.0) as u8,
+        ((g1 + m) * 255.0) as u8,
+        ((b1 + m) * 255.0) as u8,
+    )
+}
+
+fn render_rgb_color_wheel(controller: &mut Controller, phase_deg: f32) -> Result<(), Box<dyn std::error::Error>> {
+    let leds = controller.leds_mut(0);
+    for i in 0..LED_COUNT as usize {
+        let hue = phase_deg + (i as f32) * (360.0 / LED_COUNT as f32);
+        leds[i] = hsv_to_rgb(hue, 1.0, 1.0);
+    }
+    controller.render()?;
+    Ok(())
+}
+
+fn render_orange_spin(
+    controller: &mut Controller,
+    phase_deg: f32,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let led_pos = (phase_deg % 360.0) / 90.0;
+    let current_led = (led_pos.floor() as usize) % 4;
+    let next_led = (current_led + 1) % 4;
+    let frac = led_pos.fract();
+
+    let leds = controller.leds_mut(0);
+    for i in 0..LED_COUNT as usize {
+        let color = if i == current_led {
+            let t = 1.0 - frac;
+            led_rgb((255.0 * t) as u8, (120.0 * t) as u8, 0)
+        } else if i == next_led {
+            let t = frac;
+            led_rgb((255.0 * t) as u8, (120.0 * t) as u8, 0)
+        } else {
+            led_rgb(0, 0, 0)
+        };
+        leds[i] = color;
+    }
+
+    controller.render()?;
+    Ok(())
+}
+
+fn format_state_line(state: &State) -> String {
+    let gyro = [state.gyro_dps.x, state.gyro_dps.y, state.gyro_dps.z];
+    let accel = [state.accel_mps2.x, state.accel_mps2.y, state.accel_mps2.z];
+
+    let gps_line = if let Some(geodetic) = state.geodetic_deg_m {
+        format!(
+            "GPS:  lat={:.6}  long={:.6}  alt={:.2}m  sats={:?}  hdop={:?}  sog={:?}kt  course={:?}°",
+            geodetic[0],
+            geodetic[1],
+            geodetic[2],
+            state.satellites,
+            state.hdop,
+            state.speed_knots,
+            state.true_course_deg
+        )
+    } else {
+        format!(
+            "GPS:  waiting  sats={:?}  hdop={:?}  sog={:?}kt  course={:?}°",
+            state.satellites,
+            state.hdop,
+            state.speed_knots,
+            state.true_course_deg
+        )
+    };
+
+    let ecef_line = if let Some(ecef) = state.ecef_m {
+        format!("ECEF: x={:.2}  y={:.2}  z={:.2}", ecef[0], ecef[1], ecef[2])
+    } else {
+        "ECEF: waiting".to_string()
+    };
+
+    format!(
+        "=====================
+TIME: ts={}
+GYRO:     X={:+8.3}  Y={:+8.3}  Z={:+8.3}
+          roll={:+8.3}  pitch={:+8.3}  yaw={:+8.3}
+ACCEL:    X={:+8.3}  Y={:+8.3}  Z={:+8.3}
+MAG:      HDG={:6.2}  REL={:6.2}  N={:>8.2?}  E={:>8.2?}  D={:>8.2?}
+ATT:      q_ned={}  q_icrf={:?}
+{}
+{}
+=====================",
+        state.unix_timestamp_s,
+        gyro[0],
+        gyro[1],
+        gyro[2],
+        state.roll_deg,
+        state.pitch_deg,
+        state.yaw_deg,
+        accel[0],
+        accel[1],
+        accel[2],
+        state.magnetic_heading_deg,
+        state.relative_magnetic_heading_deg,
+        state.north_body,
+        state.east_body,
+        state.down_body,
+        state.body_to_ned,
+        state.body_to_icrf,
+        gps_line,
+        ecef_line,
+    )
+}
+
 fn geodetic_deg_to_ecef_m(geodetic_deg_m: Vector<f64, 3>) -> [f64; 3] {
     let latitude = geodetic_deg_m[0].to_radians();
     let longitude = geodetic_deg_m[1].to_radians();
@@ -203,9 +534,9 @@ fn itrf_to_icrf_dcm(time_s: f64) -> DirectionCosineMatrix<f64, ITRF<f64>, ICRF<f
     )
 }
 
-fn body_to_ned_from_sensors(
+fn body_to_ned_from_mag_body(
     accel: Sensor3DDataScaled,
-    mag: Sensor3DData,
+    mag_body: [f64; 3],
 ) -> (DirectionCosineMatrix<f64, Body<f64>, NED<f64>>, [f64; 3], [f64; 3], [f64; 3]) {
     let down_body = normalize3([
         accel.x as f64,
@@ -213,7 +544,6 @@ fn body_to_ned_from_sensors(
         accel.z as f64,
     ]);
 
-    let mag_body = [mag.x as f64, mag.y as f64, mag.z as f64];
     let mag_along_down = scale3(down_body, dot3(mag_body, down_body));
     let mag_horizontal = sub3(mag_body, mag_along_down);
 
@@ -247,6 +577,13 @@ fn body_to_ned_from_sensors(
     )
 }
 
+fn body_to_ned_from_sensors(
+    accel: Sensor3DDataScaled,
+    mag: Sensor3DData,
+) -> (DirectionCosineMatrix<f64, Body<f64>, NED<f64>>, [f64; 3], [f64; 3], [f64; 3]) {
+    body_to_ned_from_mag_body(accel, [mag.x as f64, mag.y as f64, mag.z as f64])
+}
+
 fn parse_i2c_addr(value: &str) -> Option<u8> {
     let trimmed = value.trim();
     if let Some(hex) = trimmed
@@ -274,7 +611,7 @@ fn gps_read_chunk(i2c: &mut I2cdev, gps_addr: u8, buffer: &mut [u8]) -> std::io:
 }
 
 fn start_gps_reader() -> Arc<Mutex<Option<GpsData>>> {
-    let gps_bus = env::var("MUNIN_GPS_I2C_BUS").unwrap_or_else(|_| "/dev/i2c-0".to_string());
+    let gps_bus = env::var("MUNIN_GPS_I2C_BUS").unwrap_or_else(|_| "/dev/i2c-1".to_string());
     let gps_addr = env::var("MUNIN_GPS_I2C_ADDR")
         .ok()
         .and_then(|value| parse_i2c_addr(&value))
@@ -368,6 +705,49 @@ fn start_gps_reader() -> Arc<Mutex<Option<GpsData>>> {
     shared_fix
 }
 
+
+
+fn gps_fix_is_locked(gps_fix: &Arc<Mutex<Option<GpsData>>>) -> bool {
+    gps_fix
+        .lock()
+        .ok()
+        .and_then(|latest| latest.clone())
+        .map(|gps| {
+            let lat_lon_valid = gps.geodetic_deg_m[0].is_finite() && gps.geodetic_deg_m[1].is_finite();
+            let sats_valid = gps.satellites.map(|s| s >= 4).unwrap_or(false);
+            let hdop_valid = gps.hdop.map(|h| h < 5.0).unwrap_or(true);
+            lat_lon_valid && sats_valid && hdop_valid
+        })
+        .unwrap_or(false)
+}
+
+fn wait_for_gps_lock(
+    controller: &mut Controller,
+    gps_fix: &Arc<Mutex<Option<GpsData>>>,
+    skip_gps_lock: &Arc<Mutex<bool>>,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    println!("Waiting for GPS lock. Press 's' + Enter to skip this step for indoor testing.");
+
+    let wait_start = Instant::now();
+    loop {
+        if gps_fix_is_locked(gps_fix) {
+            println!("GPS lock acquired.");
+            return Ok(true);
+        }
+
+        if *skip_gps_lock.lock().unwrap() {
+            println!("GPS lock skipped.");
+            return Ok(false);
+        }
+
+        let elapsed = wait_start.elapsed().as_secs_f32();
+        let phase_deg = elapsed * 240.0 + 30.0;
+        render_orange_spin(controller, phase_deg)?;
+
+        thread::sleep(Duration::from_millis(20));
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let gps_fix = start_gps_reader();
 
@@ -385,12 +765,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .build()?;
 
-    let imu_i2c = I2cdev::new("/dev/i2c-0")?;
-    let mag_i2c = I2cdev::new("/dev/i2c-0")?;
+    let imu_i2c = I2cdev::new("/dev/i2c-1")?;
+    let mag_i2c = I2cdev::new("/dev/i2c-1")?;
     let mut imu: Bmi323<_, _> = Bmi323::new_with_i2c(imu_i2c, BMI323_I2C_ADDR, Delay);
     let mut mag: Bmm350<_, _> = Bmm350::new_with_i2c(mag_i2c, BMM350_I2C_ADDR, Delay);
 
     println!("=== BMI323 + BMM350 Mount Scaffold ===");
+
+    let wheel_start = Instant::now();
+    while wheel_start.elapsed() < Duration::from_secs(3) {
+        let elapsed = wheel_start.elapsed().as_secs_f32();
+        let phase_deg = elapsed * 240.0;
+        render_rgb_color_wheel(&mut controller, phase_deg)?;
+
+        thread::sleep(Duration::from_millis(20));
+    }
+
     println!("Initializing BMI323 sensor...");
     imu.init().map_err(bmi_err)?;
     imu.set_accel_config(
@@ -414,7 +804,50 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("BMI323 configured.");
 
     println!("Initializing BMM350 sensor...");
-    mag.init().map_err(bmm_err)?;
+    thread::sleep(Duration::from_millis(100));
+
+    let mut mag_init_ok = false;
+    let mut last_mag_err: Option<String> = None;
+
+    for attempt in 0..8 {
+        let _ = mag.set_power_mode(PowerMode::Suspend);
+        thread::sleep(Duration::from_millis(50));
+
+        if let Err(err) = mag.magnetic_reset() {
+            eprintln!(
+                "BMM350 magnetic reset attempt {} failed: {:?}",
+                attempt + 1,
+                err
+            );
+            last_mag_err = Some(format!("reset attempt {}: {:?}", attempt + 1, err));
+        }
+
+        thread::sleep(Duration::from_millis(500 + (attempt as u64) * 250));
+
+        match mag.init() {
+            Ok(()) => {
+                mag_init_ok = true;
+                break;
+            }
+            Err(err) => {
+                eprintln!(
+                    "BMM350 init attempt {} failed: {:?}",
+                    attempt + 1,
+                    err
+                );
+                last_mag_err = Some(format!("init attempt {}: {:?}", attempt + 1, err));
+                thread::sleep(Duration::from_millis(250));
+            }
+        }
+    }
+
+    if !mag_init_ok {
+        return Err(Box::new(std::io::Error::other(format!(
+            "failed to initialize BMM350 after repeated suspend/reset attempts: {}",
+            last_mag_err.unwrap_or_else(|| "unknown error".to_string())
+        ))));
+    }
+
     mag.enable_axes(
         AxisEnableDisable::Enable,
         AxisEnableDisable::Enable,
@@ -424,6 +857,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     mag.set_odr_performance(DataRate::ODR25Hz, BmmAverageNum::Avg4)
         .map_err(bmm_err)?;
     mag.set_power_mode(PowerMode::Normal).map_err(bmm_err)?;
+    thread::sleep(Duration::from_millis(100));
     mag.set_mag_config(
         MagConfig::builder()
             .odr(DataRate::ODR25Hz)
@@ -432,10 +866,95 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .build(),
     )
     .map_err(bmm_err)?;
+    thread::sleep(Duration::from_millis(100));
     println!("BMM350 configured.");
 
+    let mut last_valid_mag_data: Option<Sensor3DData> = None;
+    let mag_warmup_start = Instant::now();
+    while mag_warmup_start.elapsed() < Duration::from_secs(2) {
+        let mag_sample = mag.read_mag_data().map_err(bmm_err)?;
+        if mag_sample_is_valid(mag_sample) {
+            last_valid_mag_data = Some(copy_mag_sample(&mag_sample));
+            break;
+        }
+        thread::sleep(Duration::from_millis(20));
+    }
+
+    let shutdown = Arc::new(Mutex::new(false));
+    let shutdown_clone = Arc::clone(&shutdown);
+    let gps_skip_requested = Arc::new(Mutex::new(false));
+    let gps_skip_clone = Arc::clone(&gps_skip_requested);
+
+    thread::spawn(move || {
+        let mut buffer = [0u8; 1];
+        let stdin = io::stdin();
+        let mut handle = stdin.lock();
+        while handle.read_exact(&mut buffer).is_ok() {
+            match buffer[0] {
+                b'q' | b'Q' => {
+                    let mut s = shutdown_clone.lock().unwrap();
+                    *s = true;
+                    println!("\nShutdown requested - cleaning up sensors...");
+                    break;
+                }
+                b's' | b'S' => {
+                    let mut skip = gps_skip_clone.lock().unwrap();
+                    *skip = true;
+                }
+                _ => {}
+            }
+        }
+    });
+
+    println!("Calibrating magnetometer — move the board in a figure-eight pattern...");
+    let mag_cal_start = Instant::now();
+    let mut mag_cal = MagCalibrationState::new();
+    let mut last_mag_progress_print = Instant::now();
+
+    loop {
+        let mag_sample = mag.read_mag_data().map_err(bmm_err)?;
+        if mag_sample_is_valid(mag_sample) {
+            last_valid_mag_data = Some(copy_mag_sample(&mag_sample));
+            mag_cal.update(mag_sample);
+        }
+
+        let elapsed = mag_cal_start.elapsed().as_secs_f32();
+        let phase_deg = elapsed * 220.0;
+        render_rgb_color_wheel(&mut controller, phase_deg)?;
+
+        if last_mag_progress_print.elapsed() >= Duration::from_millis(500) {
+            let progress = mag_cal.progress_percent();
+            let offset = mag_cal.offset_xyz();
+            println!(
+                "Mag calibration: {:>3}%  samples={}  offset=({:+.1}, {:+.1}, {:+.1})",
+                progress,
+                mag_cal.sample_count,
+                offset[0],
+                offset[1],
+                offset[2]
+            );
+            last_mag_progress_print = Instant::now();
+        }
+
+        if mag_cal.is_ready() || mag_cal_start.elapsed() >= Duration::from_secs(12) {
+            break;
+        }
+
+        thread::sleep(Duration::from_millis(20));
+    }
+
+    let mag_cal_percent = mag_cal.progress_percent();
+    let mag_cal_offset = mag_cal.offset_xyz();
+
+    println!(
+        "Magnetometer calibration complete at {}% (offset: {:+.1}, {:+.1}, {:+.1}).",
+        mag_cal_percent,
+        mag_cal_offset[0],
+        mag_cal_offset[1],
+        mag_cal_offset[2]
+    );
+
     println!("Calibrating gyro bias and magnetic reference — keep the mount still for 2 seconds...");
-    println!("Watch the green LED spin smoothly around the ring.");
 
     let cal_start = Instant::now();
     let mut gyro_bias_z = 0.0_f32;
@@ -444,10 +963,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     while cal_start.elapsed() < Duration::from_secs(2) {
         let gyro = imu.read_gyro_data_scaled().map_err(bmi_err)?;
-        let mag_data = mag.read_mag_data().map_err(bmm_err)?;
-        gyro_bias_z += gyro.z;
-        magnetic_reference_deg += magnetic_heading_deg(mag_data);
-        sample_count += 1;
+        let raw_mag_data = mag.read_mag_data().map_err(bmm_err)?;
+        if mag_sample_is_valid(raw_mag_data) {
+            last_valid_mag_data = Some(copy_mag_sample(&raw_mag_data));
+            gyro_bias_z += gyro.z;
+            magnetic_reference_deg += magnetic_heading_deg_corrected(raw_mag_data, &mag_cal);
+            sample_count += 1;
+        }
 
         let elapsed = cal_start.elapsed().as_secs_f32();
         let progress = elapsed / 2.0;
@@ -462,16 +984,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let color = if i == current_led {
                 let t = 1.0 - frac;
                 let g = (t * 255.0) as u8;
-                [0, g, 0, 0]
+                led_rgb(0, g, 0)
             } else if i == next_led {
                 let t = frac;
                 let g = (t * 255.0) as u8;
-                [0, g, 0, 0]
+                led_rgb(0, g, 0)
             } else {
-                [0, 0, 0, 0]
+                led_rgb(0, 0, 0)
             };
             leds[i] = color;
         }
+
         controller.render()?;
 
         thread::sleep(Duration::from_millis(20));
@@ -482,25 +1005,49 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         magnetic_reference_deg /= sample_count as f32;
     }
 
-    println!("✅ Calibration complete! Gyro Z bias: {:.2} dps", gyro_bias_z);
+    println!("Gyro Z bias: {:.2} dps", gyro_bias_z);
+    println!("Magnetic reference: {:.2}°", magnetic_reference_deg);
     println!(
-        "✅ Magnetic reference complete! BMM350 north reference: {:.2}°",
-        magnetic_reference_deg
+        "GPS expects u-blox DDC/NMEA on $MUNIN_GPS_I2C_BUS or /dev/i2c-1 at $MUNIN_GPS_I2C_ADDR or 0x42."
     );
+
+    let _ = wait_for_gps_lock(&mut controller, &gps_fix, &gps_skip_requested)?;
+
     println!("Scaffold assumes BMI323 at 0x69 and BMM350 at 0x14.");
-    println!("LED ring currently follows BMM350 relative heading for bench testing.");
-    println!(
-        "GPS expects u-blox DDC/NMEA on $MUNIN_GPS_I2C_BUS or /dev/i2c-0 at $MUNIN_GPS_I2C_ADDR or 0x42."
-    );
+    println!("Type 'q' + Enter to safely shutdown.");
 
     let mut last_print = Instant::now();
     let mut last_time = Instant::now();
     let mut yaw_deg = 0.0_f32;
+    let mut smoothed_led_heading_deg: Option<f32> = None;
+    let mut smoothed_led_mag_xy: Option<[f32; 2]> = None;
 
     loop {
+        if *shutdown.lock().unwrap() {
+            let leds = controller.leds_mut(0);
+            for led in leds.iter_mut() {
+                *led = led_rgb(0, 0, 0);
+            }
+            let _ = controller.render();
+            let _ = mag.set_power_mode(PowerMode::Suspend);
+            thread::sleep(Duration::from_millis(50));
+            let _ = mag.magnetic_reset();
+            println!("Sensors disabled. Goodbye.");
+            break;
+        }
+
         let accel = imu.read_accel_data_scaled().map_err(bmi_err)?;
         let gyro = imu.read_gyro_data_scaled().map_err(bmi_err)?;
-        let mag_data = mag.read_mag_data().map_err(bmm_err)?;
+        let raw_mag_data = mag.read_mag_data().map_err(bmm_err)?;
+        let mag_data = if mag_sample_is_valid(raw_mag_data) {
+            last_valid_mag_data = Some(copy_mag_sample(&raw_mag_data));
+            raw_mag_data
+        } else if let Some(previous) = last_valid_mag_data.as_ref() {
+            copy_mag_sample(previous)
+        } else {
+            thread::sleep(Duration::from_millis(20));
+            continue;
+        };
 
         let now = Instant::now();
         let dt = (now - last_time).as_secs_f32();
@@ -511,33 +1058,48 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             yaw_deg = wrap_angle_deg(yaw_deg + corrected_gz * dt);
         }
 
-        let magnetic_heading = magnetic_heading_deg(mag_data);
+        let corrected_mag = mag_cal.corrected_vector(mag_data);
+        let led_smoothing_alpha = (dt * 4.0).clamp(0.08, 0.20);
+        let filtered_led_xy = smooth_xy(
+            smoothed_led_mag_xy,
+            [corrected_mag[0], corrected_mag[1]],
+            led_smoothing_alpha,
+        );
+        smoothed_led_mag_xy = Some(filtered_led_xy);
+
+        let led_heading_target_deg = heading_deg_from_xy(filtered_led_xy[0], filtered_led_xy[1])
+            .unwrap_or_else(|| magnetic_heading_deg(mag_data));
+        let led_heading_deg = smooth_angle_deg(
+            smoothed_led_heading_deg,
+            led_heading_target_deg,
+            led_smoothing_alpha,
+        );
+        smoothed_led_heading_deg = Some(led_heading_deg);
+
+        let magnetic_heading = led_heading_deg;
         let relative_magnetic_heading =
             relative_heading_deg(magnetic_heading, magnetic_reference_deg);
         let roll_deg = tilt_roll_deg(accel);
         let pitch_deg = tilt_pitch_deg(accel);
 
-        let led_pos = relative_magnetic_heading / 90.0;
+        let led_pos = led_heading_deg / 90.0;
         let current_led = (led_pos.floor() as usize) % 4;
         let next_led = (current_led + 1) % 4;
         let frac = led_pos.fract();
 
         let leds = controller.leds_mut(0);
         for i in 0..LED_COUNT as usize {
-            let color: [u8; 4] = if i == current_led {
-                let t = 1.0 - frac;
-                let r = (t * 255.0) as u8;
-                let b = ((1.0 - t) * 255.0) as u8;
-                [r, 0, b, 0]
-            } else if i == next_led {
-                let t = frac;
-                let r = (t * 255.0) as u8;
-                let b = ((1.0 - t) * 255.0) as u8;
-                [r, 0, b, 0]
-            } else {
-                [0, 0, 255, 0]
-            };
-            leds[i] = color;
+            leds[i] = led_rgb(0, 0, 0);
+        }
+
+        let blue_current = (255.0 * (1.0 - frac)).round() as u8;
+        let blue_next = (255.0 * frac).round() as u8;
+
+        if blue_current > 0 {
+            leds[current_led] = led_rgb(0, 0, blue_current);
+        }
+        if blue_next > 0 {
+            leds[next_led] = led_rgb(0, 0, blue_next);
         }
 
         controller.render()?;
@@ -547,7 +1109,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let unix_timestamp_s = unix_timestamp_s_now();
 
             let (body_to_ned_dcm, north_body, east_body, down_body) =
-                body_to_ned_from_sensors(accel, mag_data);
+                body_to_ned_from_sensors(accel, apply_mag_calibration(mag_data, &mag_cal));
 
             let body_to_ned = Quaternion::try_from(&body_to_ned_dcm)
                 .unwrap_or_else(|_| Quaternion::<f64, Body<f64>, NED<f64>>::identity())
@@ -589,59 +1151,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 down_body,
             };
 
-            if let Some(geodetic) = state.geodetic_deg_m {
-                println!(
-                    "ts={} | yaw={:.1}° | heading(mag)={:.1}° | heading(rel)={:.1}° | roll={:.1}° | pitch={:.1}° | north_b={:?} | east_b={:?} | down_b={:?} | gyro[dps]=[{:.2}, {:.2}, {:.2}] | accel[m/s²]=[{:.2}, {:.2}, {:.2}] | q_body_to_ned={} | q_body_to_icrf={:?} | geodetic={} | ecef={:?} | sats={:?} | hdop={:?} | sog(kn)={:?} | course={:?}",
-                    state.unix_timestamp_s,
-                    state.yaw_deg,
-                    state.magnetic_heading_deg,
-                    state.relative_magnetic_heading_deg,
-                    state.roll_deg,
-                    state.pitch_deg,
-                    state.north_body,
-                    state.east_body,
-                    state.down_body,
-                    state.gyro_dps.x,
-                    state.gyro_dps.y,
-                    state.gyro_dps.z,
-                    state.accel_mps2.x,
-                    state.accel_mps2.y,
-                    state.accel_mps2.z,
-                    state.body_to_ned,
-                    state.body_to_icrf,
-                    geodetic,
-                    state.ecef_m,
-                    state.satellites,
-                    state.hdop,
-                    state.speed_knots,
-                    state.true_course_deg,
-                );
-            } else {
-                println!(
-                    "ts={} | yaw={:.1}° | heading(mag)={:.1}° | heading(rel)={:.1}° | roll={:.1}° | pitch={:.1}° | north_b={:?} | east_b={:?} | down_b={:?} | gyro[dps]=[{:.2}, {:.2}, {:.2}] | accel[m/s²]=[{:.2}, {:.2}, {:.2}] | q_body_to_ned={} | q_body_to_icrf={:?} | gps=waiting for fix",
-                    state.unix_timestamp_s,
-                    state.yaw_deg,
-                    state.magnetic_heading_deg,
-                    state.relative_magnetic_heading_deg,
-                    state.roll_deg,
-                    state.pitch_deg,
-                    state.north_body,
-                    state.east_body,
-                    state.down_body,
-                    state.gyro_dps.x,
-                    state.gyro_dps.y,
-                    state.gyro_dps.z,
-                    state.accel_mps2.x,
-                    state.accel_mps2.y,
-                    state.accel_mps2.z,
-                    state.body_to_ned,
-                    state.body_to_icrf,
-                );
-            }
+            println!("{}", format_state_line(&state));
 
             last_print = Instant::now();
         }
 
         thread::sleep(Duration::from_millis(50));
     }
+
+    Ok(())
 }
