@@ -172,6 +172,8 @@ pub async fn poll_rbf(mut ctx: poll_rbf::Context<'_>) {
 pub async fn write_sd_card(mut ctx: write_sd_card::Context<'_>) {
     ctx.shared.sd_card.lock(|sd_card| {
         let file_data = b"GLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\n";
+        info!("Berofe Writting!");
         sd_card.write_data(EJECTOR_GAURD_FILENAME, file_data);
+        info!("After Writting!");
     });
 }

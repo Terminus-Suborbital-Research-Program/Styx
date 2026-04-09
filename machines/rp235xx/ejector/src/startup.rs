@@ -241,6 +241,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     camera_sequencer::spawn().ok();
     poll_temperature::spawn().ok();
     downlink_jupiter::spawn().ok();
+    write_sd_card::spawn().ok();
 
     (
         Shared {
