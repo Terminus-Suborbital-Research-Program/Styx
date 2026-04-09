@@ -18,7 +18,7 @@ pkgs.rustPlatform.buildRustPackage {
 
   sourceRoot = "isolated-styx-src/machines/pi-5/jupiter-fsw";
 
-  cargoHash = ""; 
+  cargoHash = "sha256-Arm07Nc2+ldNvV8fSbVmycGdxDM8wnL8byQDv8WvoBE="; 
 
   nativeBuildInputs = [ 
     pkgs.pkg-config 
