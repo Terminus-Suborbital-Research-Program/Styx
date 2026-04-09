@@ -20,6 +20,10 @@ use rtic_monotonics::Monotonic;
 use tinyframe::frame::Frame;
 use crate::device_constants::RGBStatus;
 use ws2812_rs::GlowColor;
+// use rtic_sync::portable_atomic::{AtomicBool, Ordering};
+use rtic_sync::signal::Signal;
+use bin_packets::phases::EjectorPhase;
+
 
 
 #[cfg(not(feature = "fast-startup"))]
@@ -32,13 +36,13 @@ const SHUTDOWN_TIME_CAMERAS: u64 = 210;
 
 /// Task for sending heartbeat packets to JUPITER and toggling the onboard LED
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
-    let onboard_led = ctx.local.onboard_led;
+    // let onboard_led = ctx.local.onboard_led;
 
     let mut sequence_number = 0;
 
     // Still blink, but toggle as it is done
     loop {
-        onboard_led.toggle().unwrap();
+        // onboard_led.toggle().unwrap();
 
         if Mono::now().duration_since_epoch().to_secs() > JUPITER_BOOT_LOCKOUT_TIME_SECONDS {
             let status = Status::new(DeviceIdentifier::Ejector, now_timestamp(), sequence_number);
@@ -104,19 +108,21 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
     e_magnet.enable();
     e_magnet.polarity_switch(); // Maybe
 
-    let ejection_pin = ctx.local.ejection_pin;
+    // let ejection_pin = ctx.local.ejection_pin;
 
     // Lockout for one minute to let JUPITER boot up
     warn!("Idling sequencer");
     Mono::delay(JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs()).await;
-    ctx.local.arming_led.set_low().ok();
+    // ctx.local.arming_led.set_low().ok();
     info!("Sequencer unlocked, waiting for ejection signal");
 
+    ctx.local.ejection_trigger_rx.wait().await;
+    // Right now we don't have a pin read from jupiter, although this may be re-added later
     // Wait until ejection pin from JUPITER reads high
-    while !ejection_pin.is_high().unwrap_or(false) {
-        debug!("Ejector idling while waiting for ejection signal");
-        Mono::delay(100_u64.millis()).await;
-    }
+    // while !ejection_pin.is_high().unwrap_or(false) {
+    //     debug!("Ejector idling while waiting for ejection signal");
+    //     Mono::delay(100_u64.millis()).await;
+    // }
 
     info!("Ejection signal high!");
 
@@ -222,7 +228,18 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
                     }
                     idx = remaining;
                 }
-                
+
+                // This would be way better with just a pin toggle
+                Ok((ApplicationPacket::Command(CommandPacket::EjectorPhaseSet(EjectorPhase::Ejection)), bytes_used)) => {
+                    ctx.local.ejection_trigger_tx.write(());
+
+                    let remaining = idx - bytes_used;
+                    if remaining > 0 {
+                        rx_buf.copy_within(bytes_used..idx, 0);
+                    }
+                    idx = remaining;
+                }
+
                 // Successfully decoded a packet, but it's not a ColorSet command
                 Ok((_, bytes_used)) => {
                     let remaining = idx - bytes_used;
