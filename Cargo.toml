@@ -6,7 +6,7 @@ members = [
   "common/states",
   "ground/data-cli",
   "ground/gs-cli",
-  "machines/pi-5/jupiter-fsw",
+  # "machines/pi-5/jupiter-fsw",
   #"machines/pi-5/odin-compute",
   "machines/rp235xx/jupiter-telemetry",
   "machines/rp235xx/power-board",
@@ -21,6 +21,10 @@ members = [
   "sensors/ina260", 
 ]
 resolver = "3"
+
+exclude = [
+  "machines/pi-5/jupiter-fsw"
+]
 
 [workspace.dependencies]
 bincode = {version = "2.0.1"}
@@ -42,8 +46,3 @@ codegen-units = 1
 debug = true
 lto = true
 opt-level = "s"
-
-[patch.crates-io]
-rp235x-hal = { git = "https://github.com/rp-rs/rp-hal.git" }
-rp-hal-common = { git = "https://github.com/rp-rs/rp-hal.git" }
-rp-binary-info = { git = "https://github.com/rp-rs/rp-hal.git" }
