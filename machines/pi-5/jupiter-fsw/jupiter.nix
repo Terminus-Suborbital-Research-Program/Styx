@@ -42,7 +42,6 @@ pkgs.rustPlatform.buildRustPackage {
       --set LD_LIBRARY_PATH "${basler-pylon}/opt/pylon/lib:${pkgs.lib.makeLibraryPath [ pkgs.libusb1 pkgs.zlib pkgs.stdenv.cc.cc.lib ]}"
   '';
 
-  # Disable packet_logging feature if it's currently causing issues, or add it back:
   # buildFeatures = [ "packet_logging" ];
 
   doCheck = false;
