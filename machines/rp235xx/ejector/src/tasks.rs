@@ -6,9 +6,11 @@ use crate::{app::*, device_constants::SAMPLE_COUNT, Mono};
 use bin_packets::{
     devices::DeviceIdentifier,
     packets::{status::Status, ApplicationPacket},
+    commands::CommandPacket,
+    rgbstatus::RGBOptions,
 };
 use bincode::{config::standard, decode_from_slice, encode_into_slice, error::DecodeError};
-use defmt::{debug, info, warn};
+use defmt::{debug, info, warn, error};
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
 use embedded_io::{Read, ReadReady, Write};
 use fugit::ExtU64;
@@ -16,6 +18,13 @@ use heapless::{deque::DequeInner, vec::ViewVecStorage, Deque, Vec};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use tinyframe::frame::Frame;
+use crate::device_constants::RGBStatus;
+use ws2812_rs::GlowColor;
+// use rtic_sync::portable_atomic::{AtomicBool, Ordering};
+use rtic_sync::signal::Signal;
+use bin_packets::phases::EjectorPhase;
+
+
 
 #[cfg(not(feature = "fast-startup"))]
 const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 180;
@@ -27,13 +36,13 @@ const SHUTDOWN_TIME_CAMERAS: u64 = 210;
 
 /// Task for sending heartbeat packets to JUPITER and toggling the onboard LED
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
-    let onboard_led = ctx.local.onboard_led;
+    // let onboard_led = ctx.local.onboard_led;
 
     let mut sequence_number = 0;
 
     // Still blink, but toggle as it is done
     loop {
-        onboard_led.toggle().unwrap();
+        // onboard_led.toggle().unwrap();
 
         if Mono::now().duration_since_epoch().to_secs() > JUPITER_BOOT_LOCKOUT_TIME_SECONDS {
             let status = Status::new(DeviceIdentifier::Ejector, now_timestamp(), sequence_number);
@@ -52,19 +61,17 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 /// Task for sending downlink packets to JUPITER
 pub async fn downlink_jupiter(mut ctx: downlink_jupiter::Context<'_>) {
     let mut enc_buf = [0u8; SCRATCH];
+    let config = standard();
     loop {
-        let mut packet: Option<ApplicationPacket> = None;
-        ctx.shared.downlink_packets.lock(|packets| {
-            while let Some(packet) = packets.pop_front() {
-                // ctx.local.packet_led.toggle().ok();
-                if let Ok(sz) = encode_into_slice(packet, &mut enc_buf, standard()) {
-                    let _ = ctx.local.downlink.write_all(&enc_buf[..sz]);
-                }
-                info!("Sent packet: {}", packet);
+        let packet = ctx.shared.downlink_packets.lock(|packets| packets.pop_front());
+    
+        if let Some(p) = packet {
+            if let Ok(sz) = encode_into_slice(p, &mut enc_buf, config) {
+                let _ = ctx.local.downlink.write_all(&enc_buf[..sz]); 
             }
-        });
-
-        Mono::delay(50_u64.millis()).await;
+        } else {
+            Mono::delay(50_u64.millis()).await; 
+        }
     }
 }
 
@@ -101,19 +108,21 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
     e_magnet.enable();
     e_magnet.polarity_switch(); // Maybe
 
-    let ejection_pin = ctx.local.ejection_pin;
+    // let ejection_pin = ctx.local.ejection_pin;
 
     // Lockout for one minute to let JUPITER boot up
     warn!("Idling sequencer");
     Mono::delay(JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs()).await;
-    ctx.local.arming_led.set_low().ok();
+    // ctx.local.arming_led.set_low().ok();
     info!("Sequencer unlocked, waiting for ejection signal");
 
+    ctx.local.ejection_trigger_rx.wait().await;
+    // Right now we don't have a pin read from jupiter, although this may be re-added later
     // Wait until ejection pin from JUPITER reads high
-    while !ejection_pin.is_high().unwrap_or(false) {
-        debug!("Ejector idling while waiting for ejection signal");
-        Mono::delay(100_u64.millis()).await;
-    }
+    // while !ejection_pin.is_high().unwrap_or(false) {
+    //     debug!("Ejector idling while waiting for ejection signal");
+    //     Mono::delay(100_u64.millis()).await;
+    // }
 
     info!("Ejection signal high!");
 
@@ -149,21 +158,140 @@ pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
     }
 }
 
+
+
 /// Task to poll the RBF pin and block ejection if it is inserted
 ///
 /// Timing: Every 100 ms
 pub async fn poll_rbf(mut ctx: poll_rbf::Context<'_>) {
-    loop {}
-    if ctx
-        .local
-        .rbf_pin
-        .is_low()
-        .expect("Failed to read the RBF pin state")
-    {
-        info!("RBF pin is low, blocking ejection code...");
-        ctx.shared.ejection_enabled.lock(|blocked| *blocked = false);
-    } else {
-        info!("RBF pin is high, ejection code enabled.");
-        ctx.shared.ejection_enabled.lock(|blocked| *blocked = true);
+    loop {
+        if ctx
+            .local
+            .rbf_pin
+            .is_low()
+            .expect("Failed to read the RBF pin state")
+        {
+            info!("RBF pin is low, blocking ejection code...");
+            ctx.shared.ejection_enabled.lock(|blocked| *blocked = false);
+        } else {
+            info!("RBF pin is high, ejection code enabled.");
+            ctx.shared.ejection_enabled.lock(|blocked| *blocked = true);
+        }
+        Mono::delay(1000_u64.millis()).await;
+    }
+    
+}
+
+pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
+    let jupiter_rx = ctx.local.status_link;
+    let config = standard();
+
+    let mut rx_buf = [0u8; SCRATCH];
+    let mut idx = 0; 
+
+    loop {
+        let mut data_received = false;
+
+        // Read all available bytes into the unused end
+        while jupiter_rx.read_ready().expect("RX Uart fault") {
+            // Prevent buffer overflow if garbage data fills the array
+            if idx >= SCRATCH {
+                error!("RX buffer overflow, dropping oldest byte");
+                rx_buf.copy_within(1..idx, 0);
+                idx -= 1;
+            }
+
+            match jupiter_rx.read(&mut rx_buf[idx..]) {
+                Ok(bytes_read) if bytes_read > 0 => {
+                    idx += bytes_read;
+                    data_received = true;
+                }
+                Ok(_) => break, // 0 bytes read
+                Err(_) => {
+                    error!("Error reading bytes from uart rx");
+                    break;
+                }
+            }
+        }
+
+        // Decode if bytes read
+        while idx > 0 {
+            match decode_from_slice::<ApplicationPacket, _>(&rx_buf[..idx], config) {
+                Ok((ApplicationPacket::Command(CommandPacket::ColorSet(status_options)), bytes_used)) => {
+                    ctx.shared.status_config.lock(|status_config| {
+                        status_config.update_from_options(status_options);
+                    });
+
+                    let remaining = idx - bytes_used;
+                    if remaining > 0 {
+                        rx_buf.copy_within(bytes_used..idx, 0);
+                    }
+                    idx = remaining;
+                }
+
+                // This would be way better with just a pin toggle
+                Ok((ApplicationPacket::Command(CommandPacket::EjectorPhaseSet(EjectorPhase::Ejection)), bytes_used)) => {
+                    ctx.local.ejection_trigger_tx.write(());
+
+                    let remaining = idx - bytes_used;
+                    if remaining > 0 {
+                        rx_buf.copy_within(bytes_used..idx, 0);
+                    }
+                    idx = remaining;
+                }
+
+                // Successfully decoded a packet, but it's not a ColorSet command
+                Ok((_, bytes_used)) => {
+                    let remaining = idx - bytes_used;
+                    if remaining > 0 {
+                        rx_buf.copy_within(bytes_used..idx, 0);
+                    }
+                    idx = remaining;
+                }
+                
+                // Incomplete packet: wait for more bytes on the next loop
+                Err(bincode::error::DecodeError::UnexpectedEnd { .. }) => {
+                    break; 
+                }
+                
+                // Corrupt data, so drop the oldest byte and slide the window to resync
+                Err(_) => {
+                    rx_buf.copy_within(1..idx, 0);
+                    idx -= 1;
+                }
+            }
+        }
+
+        if !data_received {
+            Mono::delay(10_u64.millis()).await;
+        }
     }
 }
+
+pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
+    let rgb_driver = ctx.local.rgb_driver;
+    loop {
+        let current_colors = ctx.shared.status_config.lock(|status| {
+            [
+                status.RBF,
+                status.HaLow,
+                status.Esp,
+                status.Infratracker,
+                status.Guard,
+                status.Jupiter,
+                status.ElectroMagnet,
+                status.Servos,
+                status.Jupiter_Avionics_Health,
+                status.Ejector_Health,
+                status.Odin_Compute_Health,
+                status.Odin_Pico_Health,
+            ]
+        });
+
+        rgb_driver.send_color(current_colors);
+        Mono::delay(1000_u64.millis()).await;
+    }
+}
+    
+
+
