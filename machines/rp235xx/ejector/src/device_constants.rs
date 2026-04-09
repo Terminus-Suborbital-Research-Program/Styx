@@ -19,6 +19,7 @@ use rp235x_hal::{
 pub mod pins {
     use rp235x_hal::gpio::{
         bank0::{
+            Gpio0, Gpio1, Gpio4, Gpio5, Gpio6, Gpio7,
             Gpio10, Gpio11, Gpio12, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio24, Gpio25, Gpio26,
             Gpio27, Gpio32, Gpio33, Gpio8, Gpio9,
         },
@@ -47,9 +48,9 @@ pub mod pins {
     pub type EjectionPin = Gpio24;
 
     /// UART RX
-    pub type JupiterRxPin = Pin<Gpio16, FunctionUart, PullDown>;
+    pub type JupiterRxPin = Pin<Gpio0, FunctionUart, PullDown>;
     /// UART TX
-    pub type JupiterTxPin = Pin<Gpio17, FunctionUart, PullDown>;
+    pub type JupiterTxPin = Pin<Gpio1, FunctionUart, PullDown>;
 
     /// I2C SDA pin
     pub type ThermoI2CSdaPin = Gpio32;

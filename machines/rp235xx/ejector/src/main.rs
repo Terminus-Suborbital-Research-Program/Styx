@@ -4,8 +4,6 @@
 
 //! TERMINUS RS-X 2026 Elara Ejector Code
 
-//! TERMINUS RS-X 2026 Elara Ejector Code
-
 // Our Modules
 pub mod actuators;
 
@@ -34,7 +32,7 @@ rp235x_timer_monotonic!(Mono);
 fn panic(info: &core::panic::PanicInfo) -> ! {
     defmt::error!("Panic: {}", info);
     // Halt the CPU
-    hal::halt();
+    hal::halt()
 }
 
 /// Tell the Boot ROM about our application
@@ -54,18 +52,27 @@ mod app {
     use crate::device_constants::{
         EjectionDetectionPin, GreenLed, JupiterUart, OnboardLED, RedLed, ThermoI2cBus, SAMPLE_COUNT,
     };
+    use crate::sd_card::EjectorSdCard;
 
     use super::*;
-
+    use rp235x_hal::gpio::FunctionSio;
+    use rp235x_hal::Timer;
+    use rp235x_hal::gpio::FunctionSpi;
     use bin_packets::packets::ApplicationPacket;
     use bin_packets::time::Timestamp;
 
     use hal::gpio::{self};
 
+    use embedded_hal_bus::spi::ExclusiveDevice;
     use heapless::Deque;
     use rp235x_hal::adc::AdcFifo;
+    use rp235x_hal::gpio::{Pin, bank0::{Gpio0, Gpio1, Gpio19, Gpio17, Gpio16, Gpio18, Gpio20, Gpio21, Gpio22, Gpio11, Gpio12}};
     use rp235x_hal::pwm::{Channel, FreeRunning, Slice, A, B};
+    use rp235x_hal::timer::CopyableTimer1;
     use rp235x_hal::uart::UartPeripheral;
+    use rp235x_hal::spi::{Enabled, Spi, ValidSpiPinout};
+    use rp235x_hal::pac::SPI0;
+    use rp235x_hal::gpio::{SioOutput,PullDown};
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
     use mcp9600::MCP9600;
 
@@ -73,22 +80,30 @@ mod app {
         rp235x_hal::uart::Enabled,
         rp235x_hal::pac::UART0,
         (
-            gpio::Pin<gpio::bank0::Gpio0, gpio::FunctionUart, gpio::PullDown>,
-            gpio::Pin<gpio::bank0::Gpio1, gpio::FunctionUart, gpio::PullDown>,
+            Pin<Gpio0, gpio::FunctionUart, gpio::PullDown>,
+            Pin<Gpio1, gpio::FunctionUart, gpio::PullDown>,
         ),
     >;
 
     // TODO: Set proper pins
     pub type EjectorMagnet = ElectroMagnet<
-        gpio::Pin<gpio::bank0::Gpio21, gpio::FunctionSioOutput, gpio::PullDown>,
-        gpio::Pin<gpio::bank0::Gpio20, gpio::FunctionSioOutput, gpio::PullDown>,
-        gpio::Pin<gpio::bank0::Gpio22, gpio::FunctionSioOutput, gpio::PullDown>,
+        Pin<Gpio21, gpio::FunctionSioOutput, gpio::PullDown>,
+        Pin<Gpio20, gpio::FunctionSioOutput, gpio::PullDown>,
+        Pin<Gpio22, gpio::FunctionSioOutput, gpio::PullDown>,
     >;
 
+    pub type EjectorSdSpiPins = (
+        Pin<Gpio19, gpio::FunctionSpi, gpio::PullDown>,
+        Pin<Gpio16, gpio::FunctionSpi, gpio::PullDown>,
+        Pin<Gpio18, gpio::FunctionSpi, gpio::PullDown>,
+        //gpio::Pin<gpio::bank0::Gpio17, gpio::FunctionSpi, gpio::PullDown>,
+    );
+    pub type EjectorSD = EjectorSdCard<ExclusiveDevice<Spi<Enabled, SPI0, (Pin<Gpio19, FunctionSpi, PullDown>, Pin<Gpio16, FunctionSpi, PullDown>, Pin<Gpio18, FunctionSpi, PullDown>), 8>, Pin<Gpio17, FunctionSio<SioOutput>, PullDown>, Timer<CopyableTimer1>>, Timer<CopyableTimer1>>;
     #[shared]
     pub struct Shared {
         pub downlink_packets: Deque<ApplicationPacket, 128>,
         pub samples_buffer: [u16; SAMPLE_COUNT],
+        pub sd_card: EjectorSD,
         pub ejection_enabled: bool,
     }
 
@@ -133,6 +148,9 @@ mod app {
 
         #[task(shared = [ejection_enabled], local = [rbf_pin], priority = 2)]
         async fn poll_rbf(mut ctx: poll_rbf::Context);
+
+        #[task(shared = [sd_card], priority = 2)]
+        async fn write_sd_card(mut ctx: write_sd_card::Context);
 
         // #[task(binds = ADC_IRQ_FIFO, priority = 3, shared = [samples_buffer], local = [ counter: usize = 1])]
         // fn adc_irq(mut ctx: adc_irq::Context);

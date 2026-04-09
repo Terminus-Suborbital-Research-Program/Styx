@@ -2,9 +2,7 @@
 
 //! RTIC Task defintions for the Ejector
 
-//! RTIC Task defintions for the Ejector
-
-use crate::{app::*, device_constants::SAMPLE_COUNT, Mono};
+use crate::{Mono, app::*, device_constants::SAMPLE_COUNT, sd_card};
 use bin_packets::{
     devices::DeviceIdentifier,
     packets::{status::Status, ApplicationPacket},
@@ -16,6 +14,7 @@ use embedded_io::{Read, ReadReady, Write};
 use fugit::ExtU64;
 use heapless::{deque::DequeInner, vec::ViewVecStorage, Deque, Vec};
 use rtic::Mutex;
+use crate::sd_card::EJECTOR_GAURD_FILENAME;
 use rtic_monotonics::Monotonic;
 use tinyframe::frame::Frame;
 
@@ -168,4 +167,11 @@ pub async fn poll_rbf(mut ctx: poll_rbf::Context<'_>) {
         info!("RBF pin is high, ejection code enabled.");
         ctx.shared.ejection_enabled.lock(|blocked| *blocked = true);
     }
+}
+
+pub async fn write_sd_card(mut ctx: write_sd_card::Context<'_>) {
+    ctx.shared.sd_card.lock(|sd_card| {
+        let file_data = b"GLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\n";
+        sd_card.write_data(EJECTOR_GAURD_FILENAME, file_data);
+    });
 }
