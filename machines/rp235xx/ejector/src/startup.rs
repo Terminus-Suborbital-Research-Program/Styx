@@ -154,20 +154,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
         let spi = ExclusiveDevice::new(spi, spi_cs,timer.clone()).unwrap();
 
-
-    let sd_card = sd_card::EjectorSdCard::new(spi,
-        //ctx.device.SPI0,
-      //  Spi::new(
-      //      ctx.device.SPI0,
-      //      (
-      //          bank0_pins.gpio19.into_function::<FunctionSpi>(),
-      //          bank0_pins.gpio16.into_function::<FunctionSpi>(),
-      //          bank0_pins.gpio18.into_function::<FunctionSpi>(),
-      //          //bank0_pins.gpio17.into_function::<FunctionSpi>(),
-      //      ),
-      //  ).init(&mut ctx.device.RESETS, 1.Mhz(), 9.Mhz(), &clocks),
-        timer.clone(), 
-    );
+        let sd_card = sd_card::EjectorSdCard::new(spi, timer.clone());
 
     let mut timer_two = timer;
 
