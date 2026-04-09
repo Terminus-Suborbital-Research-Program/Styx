@@ -5,17 +5,17 @@
 use embedded_hal::{digital::OutputPin, pwm::SetDutyCycle};
 use rp235x_hal::{
     gpio,
-    pwm::{Channel, FreeRunning, Slice, A},
+    pwm::{Channel, FreeRunning, Slice, B},
 };
 
 /// Ejector servo types
-pub type EjectionServoPin = gpio::bank0::Gpio0;
-pub type EjectionServoPwm = rp235x_hal::pwm::Pwm0;
+pub type EjectionServoPin = gpio::bank0::Gpio7;
+pub type EjectionServoPwm = rp235x_hal::pwm::Pwm3;
 pub type EjectionServoSlice = Slice<EjectionServoPwm, FreeRunning>;
 pub type EjectionServoMosfet =
-    gpio::Pin<gpio::bank0::Gpio1, gpio::FunctionSioOutput, gpio::PullDown>;
+    gpio::Pin<gpio::bank0::Gpio6, gpio::FunctionSioOutput, gpio::PullDown>;
 pub type EjectionServo = Servo<
-    Channel<EjectionServoSlice, A>,
+    Channel<EjectionServoSlice, B>,
     gpio::Pin<EjectionServoPin, gpio::FunctionPwm, gpio::PullDown>,
     EjectionServoMosfet,
 >;
@@ -84,7 +84,7 @@ where
 /// Ejector servo
 pub struct EjectorServo {
     servo: Servo<
-        Channel<EjectionServoSlice, A>,
+        Channel<EjectionServoSlice, B>,
         gpio::Pin<EjectionServoPin, gpio::FunctionPwm, gpio::PullDown>,
         EjectionServoMosfet,
     >,
@@ -94,7 +94,7 @@ impl EjectorServo {
     /// Create a new ejector servo instance
     pub fn new(
         servo: Servo<
-            Channel<EjectionServoSlice, A>,
+            Channel<EjectionServoSlice, B>,
             gpio::Pin<EjectionServoPin, gpio::FunctionPwm, gpio::PullDown>,
             EjectionServoMosfet,
         >,

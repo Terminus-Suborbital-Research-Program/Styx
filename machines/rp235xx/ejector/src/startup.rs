@@ -20,6 +20,9 @@ use mcp9600::{
     ADCResolution, BurstModeSamples, ColdJunctionResolution, DeviceAddr, FilterCoefficient,
     ShutdownMode, ThermocoupleType, MCP9600,
 };
+use rtic_sync::make_signal;
+use rtic_sync::signal::{self, Signal};
+use ws2812_rs::WS2812;
 use rp235x_hal::i2c::I2C;
 // use rp235x_hal::timer::monotonic::Monotonic;
 
@@ -27,10 +30,11 @@ use crate::actuators::electromag::{ElectroMagnet, ElectroMagnetPolarity, HBridge
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
 use crate::device_constants::pins::{CamMosfetPin, RBFPin};
 use crate::device_constants::{
-    EjectionDetectionPin, GreenLed, JupiterUart, RedLed, ThermoI2cBus, SAMPLE_COUNT,
+    Cam1, Cam1Pin, Cam2, EjectionDetectionPin, JupiterUart, RGBLed, RGBStatus, SAMPLE_COUNT, ThermoI2CSclPin, ThermoI2CSdaPin, ThermoI2cBus
 };
 use crate::hal;
 use crate::{app::*, Mono};
+
 
 // Timestamp for logging
 defmt::timestamp!("{=u64:us}", {
@@ -74,15 +78,15 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     );
 
     // Debugging on-board LED pin
-    let mut led_pin = bank0_pins
-        .gpio25
-        .into_pull_type::<PullNone>()
-        .into_push_pull_output();
-    led_pin.set_low().unwrap();
+    // let mut led_pin = bank0_pins
+    //     .gpio25
+    //     .into_pull_type::<PullNone>()
+    //     .into_push_pull_output();
+    // led_pin.set_low().unwrap();
 
     // Red led pin - gets set high when armed
-    let red_led_pin: RedLed = bank0_pins
-        .gpio11
+    let cam1: Cam1 = bank0_pins
+        .gpio10
         .into_push_pull_output_in_state(PinState::High)
         .reconfigure();
 
@@ -92,12 +96,12 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         .into_push_pull_output_in_state(PinState::Low);
 
     // Frame received indicator
-    let packet_indicator: GreenLed = bank0_pins
-        .gpio10
+    let cam2: Cam2 = bank0_pins
+        .gpio11
         .into_push_pull_output_in_state(PinState::High)
         .reconfigure();
 
-    let sda_pin = bank0_pins.gpio32.into_pull_type().into_function();
+    let sda_pin= bank0_pins.gpio32.into_pull_type().into_function();
     let scl_pin = bank0_pins.gpio33.into_pull_type().into_function();
 
     let thermo_i2c_bus: ThermoI2cBus = I2C::i2c0(
@@ -141,8 +145,8 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     let jupiter_uart: JupiterUart = UartPeripheral::new(
         ctx.device.UART0,
         (
-            bank0_pins.gpio16.into_function(),
-            bank0_pins.gpio17.into_function(),
+            bank0_pins.gpio0.into_function(),
+            bank0_pins.gpio1.into_function(),
         ),
         &mut ctx.device.RESETS,
     )
@@ -152,19 +156,36 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     )
     .unwrap();
 
+    let (status_link, downlink) = jupiter_uart.split();
+
+
     // Servo
-    let pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
-    let mut ejection_servo_pwm = pwm_slices.pwm0;
+    let mut pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
+    let mut power_servo_pwm = pwm_slices.pwm2;
+    let mut ejection_servo_pwm = pwm_slices.pwm3;
+
     ejection_servo_pwm.enable();
     ejection_servo_pwm.set_div_int(48);
 
+    power_servo_pwm.enable();
+    power_servo_pwm.set_div_int(48);
+
     // Pin for servo mosfet digital
-    let mut mosfet_pin: EjectionServoMosfet = bank0_pins.gpio1.into_push_pull_output();
+    let mut mosfet_pin: EjectionServoMosfet = bank0_pins.gpio6.into_push_pull_output();
     mosfet_pin.set_low().unwrap();
-    let mut channel_a = ejection_servo_pwm.channel_a;
-    let channel_pin = channel_a.output_to(bank0_pins.gpio0);
+    let mut channel_b = ejection_servo_pwm.channel_b;
+    let channel_pin = channel_b.output_to(bank0_pins.gpio7);
+    channel_b.set_enabled(true);
+    let ejection_servo = Servo::new(channel_b, channel_pin, mosfet_pin);
+
+    let mut power_mosfet_pin = bank0_pins.gpio4.into_push_pull_output();
+    power_mosfet_pin.set_low().unwrap();
+    let mut channel_a = power_servo_pwm.channel_b;
+    let channel_pin = channel_a.output_to(bank0_pins.gpio5);
     channel_a.set_enabled(true);
-    let ejection_servo = Servo::new(channel_a, channel_pin, mosfet_pin);
+    let mut power_servo = Servo::new(channel_a, channel_pin, power_mosfet_pin);
+    power_servo.enable();
+    power_servo.set_angle(90);
 
     // Add emag variables
     let emag_pin1 = bank0_pins.gpio21.into_push_pull_output();
@@ -185,7 +206,20 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     ejector_servo.enable();
     ejector_servo.hold();
 
-    let gpio_detect: EjectionDetectionPin = bank0_pins.gpio24.into_pull_down_input();
+    // Functionality currently not enabled
+    // let gpio_detect: EjectionDetectionPin = bank0_pins.gpio8.into_pull_down_input();
+
+    let rgb_ctl_pin: RGBLed = bank0_pins.gpio24
+        .into_pull_type::<PullNone>()
+        .into_push_pull_output();
+
+    let mut rgb_wake = bank0_pins.gpio25
+        .into_push_pull_output();
+
+    rgb_wake.set_high().unwrap();
+
+    let sys_freq = clocks.system_clock.freq().to_Hz();
+    let mut rgb_driver = WS2812::new(rgb_ctl_pin, sys_freq as u64); 
 
     // SI1445 I2C
     // let guard_i2c: GuardI2C = I2C::i2c1(
@@ -198,6 +232,10 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     // );
 
     info!("Peripherals initialized, spawning tasks");
+
+    let status_config = RGBStatus::default();
+
+    let (ejection_trigger_tx, ejection_trigger_rx)  = make_signal!(());
 
     // Tasks
 
@@ -213,18 +251,23 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             downlink_packets: Deque::new(),
             samples_buffer: [0u16; SAMPLE_COUNT],
             ejection_enabled: false,
+            status_config,
         },
         Local {
             camera_mosfet: cam_pin,
-            onboard_led: led_pin,
-            downlink: jupiter_uart,
+            // onboard_led: led_pin,
+            status_link,
+            downlink,
             ejector_servo,
             rbf_pin: rbf_pin,
-            ejection_pin: gpio_detect,
+            // ejection_pin: gpio_detect,
             ejecctor_magnet: ejector_magnet,
-            arming_led: red_led_pin,
-            packet_led: packet_indicator,
+            // arming_led: red_led_pin,
+            // packet_led: packet_indicator,
             thermocouple,
+            rgb_driver,
+            ejection_trigger_tx,
+            ejection_trigger_rx
         },
     )
 }
