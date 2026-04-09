@@ -20,7 +20,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   buildFeatures = [ "packet_logging" ];
 
-  cargoHash = "sha256-7gA7qllYS66LPlVnqMBoRFZVAXlfis32jsxCevO2Ob0=";
+  # cargoHash = "sha256-7gA7qllYS66LPlVnqMBoRFZVAXlfis32jsxCevO2Ob0=";
+  cargoLock = {
+    lockFile = ./Cargo.lock;
+  };
 
   doCheck = false;
 })
