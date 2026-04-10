@@ -20,6 +20,10 @@ members = [
   "sensors/cd74hc4067",
   "sensors/ina260", "machines/pi-5/pylon_cam", 
 ]
+
+exclude = [
+  "machines/pi-5/odin-compute",
+]
 resolver = "3"
 
 [workspace.dependencies]

@@ -10,7 +10,9 @@ serde_arrays = "0.2.0"
 serde = "1.0.228"
 bincode = { version = "2.0.1", features = ["serde"] }
 signet = { path="../../../common/signet"}
-bin-packets = { workspace = true, features = ["std"] }
+#bin-packets = { workspace = true, features = ["std"] }
+bin-packets = { path = "../../../common/messages/bin-packets"}
+
 thiserror = "2.0.18"
 bytemuck = "1.25.0"
 env_logger = "0.11.8"
