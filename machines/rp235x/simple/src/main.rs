@@ -11,6 +11,7 @@
 
 // Ensure we halt the program on panic (if we don't mention this crate it won't
 // be linked)
+use cortex_m::{asm, delay::Delay as CortexDelay};
 use panic_halt as _;
 use rtt_target::ChannelMode::NoBlockSkip;
 use rtt_target::{rprintln, rtt_init, set_print_channel};
@@ -22,12 +23,10 @@ use rp235x_hal as hal;
 // Some things we need
 use hal::{
     fugit::RateExtU32,
-    gpio::bank0::{Gpio20, Gpio21},
-    gpio::{FunctionI2C, Pin, PullUp},
-    i2c::Controller,
-    Clock, I2C,
+    gpio::{FunctionI2C, Pin},
+    Clock,
 };
-use embedded_hal::i2c::I2c;
+use bmi323::{AccelConfig, AccelerometerRange, Bmi323, GyroConfig, GyroscopeRange, OutputDataRate};
 
 /// Tell the Boot ROM about our application
 #[link_section = ".start_block"]
@@ -37,6 +36,23 @@ pub static IMAGE_DEF: hal::block::ImageDef = hal::block::ImageDef::secure_exe();
 /// External high-speed crystal on the Raspberry Pi Pico 2 board is 12 MHz.
 /// Adjust if your board has a different frequency
 const XTAL_FREQ_HZ: u32 = 12_000_000u32;
+
+struct EmbeddedDelay(CortexDelay);
+
+impl embedded_hal::delay::DelayNs for EmbeddedDelay {
+    fn delay_ns(&mut self, ns: u32) {
+        let us = ns.div_ceil(1_000).max(1);
+        self.0.delay_us(us);
+    }
+
+    fn delay_us(&mut self, us: u32) {
+        self.0.delay_us(us.max(1));
+    }
+
+    fn delay_ms(&mut self, ms: u32) {
+        self.0.delay_ms(ms.max(1));
+    }
+}
 
 fn init_logs() {
     let channels = rtt_init! {
@@ -65,6 +81,7 @@ fn main() -> ! {
     init_logs();
     rprintln!("print channel ready");
 
+    let core = cortex_m::Peripherals::take().unwrap();
     let mut pac = hal::pac::Peripherals::take().unwrap();
 
     // Set up the watchdog driver - needed by the clock setup code
@@ -81,6 +98,9 @@ fn main() -> ! {
         &mut watchdog,
     )
     .unwrap();
+
+    let system_clock_hz = clocks.system_clock.freq().to_Hz();
+    let delay = EmbeddedDelay(CortexDelay::new(core.SYST, system_clock_hz));
 
     // The single-cycle I/O block controls our GPIO pins
     let sio = hal::Sio::new(pac.SIO);
@@ -101,7 +121,7 @@ fn main() -> ! {
     // Create the I²C drive, using the two pre-configured pins. This will fail
     // at compile time if the pins are in the wrong mode, or if this I²C
     // peripheral isn't available on these pins!
-    let mut i2c = hal::I2C::i2c0(
+    let i2c = hal::I2C::i2c0(
         pac.I2C0,
         sda_pin,
         scl_pin, // Try `not_an_scl_pin` here
@@ -110,15 +130,61 @@ fn main() -> ! {
         &clocks.system_clock,
     );
 
-    // Write three bytes to the I²C device with 7-bit address 0x2C
-    rprintln!("Writing");
-    i2c.write(0x2Cu8, &[1, 2, 3]).unwrap();
-    rprintln!("Written");
+    let mut bmi323: Bmi323<_, _> = Bmi323::new_with_i2c(i2c, 0x68, delay);
+
+    rprintln!("Initializing BMI323 at 0x{:02x}", 0x68);
+    match bmi323.init() {
+        Ok(()) => rprintln!("BMI323 init ok"),
+        Err(err) => {
+            rprintln!("BMI323 init failed: {:?}", err);
+            loop {
+                hal::arch::wfi();
+            }
+        }
+    }
+
+    let accel_config = AccelConfig::builder()
+        .odr(OutputDataRate::Odr100hz)
+        .range(AccelerometerRange::G8)
+        .build();
+    if let Err(err) = bmi323.set_accel_config(accel_config) {
+        rprintln!("BMI323 accel config failed: {:?}", err);
+    }
+
+    let gyro_config = GyroConfig::builder()
+        .odr(OutputDataRate::Odr100hz)
+        .range(GyroscopeRange::DPS2000)
+        .build();
+    if let Err(err) = bmi323.set_gyro_config(gyro_config) {
+        rprintln!("BMI323 gyro config failed: {:?}", err);
+    }
+
+    rprintln!("BMI323 configured");
 
     // Demo finish - just loop until reset
 
     loop {
-        hal::arch::wfi();
+        match bmi323.read_accel_data_scaled() {
+            Ok(accel) => rprintln!(
+                "accel m/s^2 => x: {:?}, y: {:?}, z: {:?}",
+                accel.x,
+                accel.y,
+                accel.z
+            ),
+            Err(err) => rprintln!("BMI323 accel read failed: {:?}", err),
+        }
+
+        match bmi323.read_gyro_data_scaled() {
+            Ok(gyro) => rprintln!(
+                "gyro dps => x: {:?}, y: {:?}, z: {:?}",
+                gyro.x,
+                gyro.y,
+                gyro.z
+            ),
+            Err(err) => rprintln!("BMI323 gyro read failed: {:?}", err),
+        }
+
+        asm::delay(system_clock_hz / 8);
     }
 }
 
