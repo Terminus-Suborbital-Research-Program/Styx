@@ -14,9 +14,10 @@ impl ValidState for Launch {
     }
 
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
-        match ctx.atmega.pins().unwrap_or_default().te1() {
-            PinState::High => Box::new(StartCameraRecording::default()),
-            PinState::Low => Box::new(Self::default()),
+        if ctx.t_time >= 60 {
+            return Box::new(StartCameraRecording::default());
+        } else {
+            return Box::new(Self::default());
         }
     }
 }

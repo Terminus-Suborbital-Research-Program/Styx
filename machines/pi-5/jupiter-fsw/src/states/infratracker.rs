@@ -1,17 +1,18 @@
 #![warn(missing_docs)]
 
 use bin_packets::phases::JupiterPhase;
-use embedded_hal::digital::PinState;
+use log::info;
 
-use crate::states::battery_power::BatteryPower;
+use crate::states::{battery_power::BatteryPower, shutdown::Shutdown};
 
 use super::{
-    skirt_seperation::SkirtSeperation,
     traits::{StateContext, ValidState},
 };
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct InfratrackerStart {}
+
+static POWEROFF_T_TIME_SECS: i32 = 600;
 
 impl ValidState for InfratrackerStart {
     fn phase(&self) -> JupiterPhase {
@@ -19,9 +20,13 @@ impl ValidState for InfratrackerStart {
     }
 
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
-        match ctx.atmega.pins().unwrap().te3() {
-            PinState::High => {return Box::new(BatteryPower::default());},
-            PinState::Low => {return Box::new(Self::default());},
+        if ctx.t_time > POWEROFF_T_TIME_SECS {
+            info!("System Shutdown");
+           // ctx.atmega.deactivate_latch();
+            Box::new(Shutdown::enter())
+        } else {
+            // No change
+            Box::new(Self::default())
         }
     }
 }

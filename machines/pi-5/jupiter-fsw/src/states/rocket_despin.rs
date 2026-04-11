@@ -1,7 +1,7 @@
 
 use bin_packets::phases::JupiterPhase;
 
-use crate::states::{ejection::Ejection, launch::Launch};
+use crate::{states::{ejection::Ejection, launch::Launch}, timing::{self, t_time_estimate}};
 
 use super::traits::{StateContext, ValidState};
 
@@ -9,7 +9,17 @@ const D:i32 = 3;
 
 #[derive(Debug, Default)]
 pub struct RocketDespin {
-    te2_recieved_at: i32,
+    te3_recieved_at: i32,
+}
+
+impl RocketDespin {
+    pub fn enter() -> Self {
+        // Set internal clock to TE+110
+        timing::calibrate_to(110);
+        Self {
+            te3_recieved_at: t_time_estimate(),
+        }
+    }
 }
 
 impl ValidState for RocketDespin {
