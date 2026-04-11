@@ -10,6 +10,7 @@ members = [
   "machines/pi-5/jupiter-fsw",
   "machines/pi-5/odin-compute",
   "machines/rp235x/jupiter-telemetry",
+  "machines/rp235x/async-simple",
   "machines/rp235x/ejector",
   "machines/rp235x/elara",
   "machines/rp235x/simple",

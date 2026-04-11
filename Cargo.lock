@@ -396,6 +396,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-simple"
+version = "0.1.0"
+dependencies = [
+ "bmi323",
+ "defmt 0.3.100",
+ "defmt-rtt",
+ "embedded-hal 1.0.0",
+ "embedded-hal-async",
+ "fugit",
+ "futures",
+ "rp235x-hal 0.4.0",
+ "rp235x-pac 0.1.0",
+ "rtic",
+ "rtic-monotonics 2.1.0 (git+https://github.com/rtic-rs/rtic.git)",
+ "rtic-sync",
+]
+
+[[package]]
 name = "atomic-polyfill"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"

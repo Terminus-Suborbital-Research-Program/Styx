@@ -17,8 +17,8 @@ MEMORY {
      * of access times.
      * Example: Separate stacks for core0 and core1.
      */
-    SRAM4 : ORIGIN = 0x20080000, LENGTH = 4K
-    SRAM5 : ORIGIN = 0x20081000, LENGTH = 4K
+    SRAM8 : ORIGIN = 0x20080000, LENGTH = 4K
+    SRAM9 : ORIGIN = 0x20081000, LENGTH = 4K
 }
 
 SECTIONS {
@@ -67,6 +67,7 @@ SECTIONS {
     {
         __end_block_addr = .;
         KEEP(*(.end_block));
+        __flash_binary_end = .;
     } > FLASH
 
 } INSERT AFTER .uninit;

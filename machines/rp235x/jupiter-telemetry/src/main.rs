@@ -16,8 +16,8 @@ use core::mem::MaybeUninit;
 
 // Sensors
 use bme280::AsyncBME280;
-use bmi323::AsyncBmi323;
-use bmm350::AsyncBmm350;
+use bmi323::{AsyncBmi323, AsyncI2cInterface};
+use bmm350::{AsyncBmm350, AsyncI2cInterface as AsyncBmmI2cInterface};
 use bmp5::i2c::Bmp5;
 use ina260_terminus::AsyncINA260;
 
@@ -89,8 +89,8 @@ mod app {
     #[local]
     pub struct Local {
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
-        pub bmm350: AsyncBmm350<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
-        pub bmi323: AsyncBmi323<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
+        pub bmm350: AsyncBmm350<AsyncBmmI2cInterface<ArbiterDevice<'static, AvionicsI2cBus>>, Mono>,
+        pub bmi323: AsyncBmi323<AsyncI2cInterface<ArbiterDevice<'static, AvionicsI2cBus>>, Mono>,
         pub bme280: AsyncBME280<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub bmp5: Bmp5<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub compute_i2c: ComputeI2cBus, 
