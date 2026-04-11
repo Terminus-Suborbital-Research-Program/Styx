@@ -3,6 +3,7 @@
 mod main_cam;
 mod pins;
 mod rbf;
+mod infratracker_start;
 
 pub use main_cam::*;
 pub use pins::*;
