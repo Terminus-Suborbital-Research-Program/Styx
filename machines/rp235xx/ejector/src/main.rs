@@ -4,6 +4,8 @@
 
 //! TERMINUS RS-X 2026 Elara Ejector Code
 
+//! TERMINUS RS-X 2026 Elara Ejector Code
+
 // Our Modules
 pub mod actuators;
 
@@ -50,7 +52,8 @@ mod app {
     use crate::actuators::servo::EjectorServo;
     use crate::device_constants::pins::{CamMosfetPin, RBFPin};
     use crate::device_constants::{
-        EjectionDetectionPin, GreenLed, JupiterUart, OnboardLED, RedLed, ThermoI2cBus, SAMPLE_COUNT,
+        EjectionDetectionPin, JupiterUart, OnboardLED, ThermoI2cBus, SAMPLE_COUNT,
+        RGBStatus, RGBLed, JupiterRX, JupiterTX, 
     };
     use crate::sd_card::EjectorSdCard;
 
@@ -62,6 +65,7 @@ mod app {
     use bin_packets::time::Timestamp;
 
     use hal::gpio::{self};
+    use rtic_sync::portable_atomic::{AtomicBool, Ordering};
 
     use embedded_hal_bus::spi::ExclusiveDevice;
     use heapless::Deque;
@@ -75,6 +79,8 @@ mod app {
     use rp235x_hal::gpio::{SioOutput,PullDown};
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
     use mcp9600::MCP9600;
+    use rtic_sync::signal::{SignalReader, SignalWriter};
+    use ws2812_rs::WS2812;
 
     pub type UART0Bus = UartPeripheral<
         rp235x_hal::uart::Enabled,
@@ -105,12 +111,13 @@ mod app {
         pub samples_buffer: [u16; SAMPLE_COUNT],
         pub sd_card: EjectorSD,
         pub ejection_enabled: bool,
+        pub status_config: RGBStatus,
     }
 
     #[local]
     pub struct Local {
         // TODO: Add
-        pub onboard_led: OnboardLED,
+        // pub onboard_led: OnboardLED,
         pub ejector_servo: EjectorServo,
         pub ejecctor_magnet: EjectorMagnet,
         pub arming_led: RedLed,
@@ -118,8 +125,18 @@ mod app {
         pub ejection_pin: EjectionDetectionPin,
         pub rbf_pin: RBFPin,
         pub downlink: JupiterUart,
+        // pub arming_led: RedLed,
+        // pub packet_led: GreenLed,
+        // pub ejection_pin: EjectionDetectionPin,
+        pub rbf_pin: RBFPin,
+        pub downlink: JupiterTX,
+        pub status_link: JupiterRX,
         pub camera_mosfet: CamMosfetPin,
         pub thermocouple: MCP9600<ThermoI2cBus>,
+        pub rgb_driver: WS2812<RGBLed>,
+        pub ejection_trigger_tx: SignalWriter<'static,()>,
+        pub ejection_trigger_rx: SignalReader<'static,()>,
+
     }
 
     #[init(local = [adc: Option<hal::Adc> = None])]
@@ -129,7 +146,8 @@ mod app {
 
     extern "Rust" {
         // Sequences the ejection
-        #[task(shared = [ejection_enabled], local = [ejection_pin, arming_led, ejector_servo, ejecctor_magnet],  priority = 1)]
+        // ejection pin
+        #[task(shared = [ejection_enabled], local = [ ejector_servo, ejecctor_magnet, ejection_trigger_rx],  priority = 1)]
         async fn ejector_sequencer(mut ctx: ejector_sequencer::Context);
 
         // Sequences cameras activation
@@ -137,7 +155,8 @@ mod app {
         async fn camera_sequencer(mut ctx: camera_sequencer::Context);
 
         // Heartbeats the main led (and sends packets after arming)
-        #[task(shared = [downlink_packets], local = [onboard_led], priority = 1)]
+        //  local = [onboard_led],
+        #[task(shared = [downlink_packets],  priority = 1)]
         async fn heartbeat(mut ctx: heartbeat::Context);
 
         #[task( local = [thermocouple], priority = 1)]
@@ -151,6 +170,15 @@ mod app {
 
         #[task(shared = [sd_card], priority = 2)]
         async fn write_sd_card(mut ctx: write_sd_card::Context);
+        // Commands
+        // Status for status LED
+        #[task(shared = [status_config], local = [status_link, ejection_trigger_tx], priority = 2)]
+        async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context);
+
+        #[task(shared = [status_config], local = [rgb_driver], priority = 2)]
+        async fn set_rgb_status(mut ctx: set_rgb_status::Context);
+
+
 
         // #[task(binds = ADC_IRQ_FIFO, priority = 3, shared = [samples_buffer], local = [ counter: usize = 1])]
         // fn adc_irq(mut ctx: adc_irq::Context);

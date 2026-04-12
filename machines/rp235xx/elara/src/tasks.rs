@@ -12,13 +12,15 @@ use embedded_hal::digital::{InputPin, StatefulOutputPin};
 
 use crate::device_constants::{AvionicsI2cBus, MpChannel};
 use crate::{app::*, device_constants::MotorI2cBus, Mono};
-use bincode::config::standard;
 use embedded_hal::digital::OutputPin;
 use embedded_io::Write;
 use fugit::ExtU64;
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
+use bin_packets::data::adcs::AttitudeMetrics;
+
+
 
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     let mut sequence_number: u16 = 0;

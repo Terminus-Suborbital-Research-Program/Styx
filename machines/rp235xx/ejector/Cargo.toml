@@ -44,6 +44,7 @@ mcp9600 = { git = "https://github.com/besselfunct/mcp9600.git", default-features
 
 embedded-sdmmc = "0.9.0"
 embedded-hal-bus = "*"
+ws2812-rs = "0.3.1"
 
 
 # Target features
