@@ -1,8 +1,8 @@
-#![warn(missing_docs)]
+#![warn(missing_docs, clippy::unwrap_used)]
 
 //! RTIC Task defintions for the Ejector
 
-use crate::{app::*, device_constants::SAMPLE_COUNT, Mono};
+use crate::{Mono, app::*, device_constants::SAMPLE_COUNT, sd_card};
 use bin_packets::{
     devices::DeviceIdentifier,
     packets::{status::Status, ApplicationPacket},
@@ -16,6 +16,7 @@ use embedded_io::{Read, ReadReady, Write};
 use fugit::ExtU64;
 use heapless::{deque::DequeInner, vec::ViewVecStorage, Deque, Vec};
 use rtic::Mutex;
+use crate::sd_card::EJECTOR_GAURD_FILENAME;
 use rtic_monotonics::Monotonic;
 use tinyframe::frame::Frame;
 use crate::device_constants::RGBStatus;
@@ -158,28 +159,32 @@ pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
     }
 }
 
-
-
 /// Task to poll the RBF pin and block ejection if it is inserted
 ///
 /// Timing: Every 100 ms
 pub async fn poll_rbf(mut ctx: poll_rbf::Context<'_>) {
-    loop {
-        if ctx
-            .local
-            .rbf_pin
-            .is_low()
-            .expect("Failed to read the RBF pin state")
-        {
-            info!("RBF pin is low, blocking ejection code...");
-            ctx.shared.ejection_enabled.lock(|blocked| *blocked = false);
-        } else {
-            info!("RBF pin is high, ejection code enabled.");
-            ctx.shared.ejection_enabled.lock(|blocked| *blocked = true);
-        }
-        Mono::delay(1000_u64.millis()).await;
+    loop {}
+    if ctx
+        .local
+        .rbf_pin
+        .is_low()
+        .expect("Failed to read the RBF pin state")
+    {
+        info!("RBF pin is low, blocking ejection code...");
+        ctx.shared.ejection_enabled.lock(|blocked| *blocked = false);
+    } else {
+        info!("RBF pin is high, ejection code enabled.");
+        ctx.shared.ejection_enabled.lock(|blocked| *blocked = true);
     }
-    
+}
+
+pub async fn write_sd_card(mut ctx: write_sd_card::Context<'_>) {
+    ctx.shared.sd_card.lock(|sd_card| {
+        let file_data = b"GLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\n";
+        info!("Berofe Writting!");
+        sd_card.write_data(EJECTOR_GAURD_FILENAME, file_data);
+        info!("After Writting!");
+    });
 }
 
 pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {

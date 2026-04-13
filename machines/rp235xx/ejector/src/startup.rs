@@ -1,21 +1,21 @@
 //! Startup initialization for the Ejector
 
-#![warn(missing_docs)]
+#![warn(missing_docs, clippy::unwrap_used)]
 
 use common_states::rbf;
 use defmt::{info, warn};
+use embedded_hal_bus::spi::ExclusiveDevice;
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
 use fugit::RateExtU32;
 use heapless::Deque;
 use rp235x_hal::adc::AdcPin;
 use rp235x_hal::clocks::init_clocks_and_plls;
-use rp235x_hal::gpio::{FunctionSio, FunctionUart, PinState, PullNone, SioInput};
+use rp235x_hal::gpio::{FunctionSio, FunctionSpi, FunctionUart, PinState, PullDown, PullNone, SioInput};
 use rp235x_hal::pwm::Slices;
 use rp235x_hal::uart::{DataBits, StopBits, UartConfig, UartPeripheral};
 use rp235x_hal::{Clock, Sio, Watchdog};
 use rtic_monotonics::Monotonic;
-
 use mcp9600::{
     ADCResolution, BurstModeSamples, ColdJunctionResolution, DeviceAddr, FilterCoefficient,
     ShutdownMode, ThermocoupleType, MCP9600,
@@ -24,15 +24,17 @@ use rtic_sync::make_signal;
 use rtic_sync::signal::{self, Signal};
 use ws2812_rs::WS2812;
 use rp235x_hal::i2c::I2C;
+use rp235x_hal::spi::Spi;
 // use rp235x_hal::timer::monotonic::Monotonic;
 
 use crate::actuators::electromag::{ElectroMagnet, ElectroMagnetPolarity, HBridge};
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
 use crate::device_constants::pins::{CamMosfetPin, RBFPin};
 use crate::device_constants::{
-    Cam1, Cam1Pin, Cam2, EjectionDetectionPin, JupiterUart, RGBLed, RGBStatus, SAMPLE_COUNT, ThermoI2CSclPin, ThermoI2CSdaPin, ThermoI2cBus
+    EjectionDetectionPin, JupiterUart,
+    Cam1, Cam1Pin, Cam2, RGBLed, RGBStatus, SAMPLE_COUNT, ThermoI2CSclPin, ThermoI2CSdaPin, ThermoI2cBus
 };
-use crate::hal;
+use crate::{hal, sd_card};
 use crate::{app::*, Mono};
 
 
@@ -76,6 +78,9 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         sio.gpio_bank0,
         &mut ctx.device.RESETS,
     );
+
+    let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
+
 
     // Debugging on-board LED pin
     // let mut led_pin = bank0_pins
@@ -138,7 +143,24 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     //     }
     // }
 
-    let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
+    let spi_mosi = bank0_pins.gpio19.into_function::<FunctionSpi>();
+    let spi_miso = bank0_pins.gpio16.into_function::<FunctionSpi>();
+    let spi_sck = bank0_pins.gpio18.into_function::<FunctionSpi>();
+    let spi_cs = bank0_pins.gpio17.into_push_pull_output_in_state(PinState::High);
+
+    let spi_bus = rp235x_hal::spi::Spi::<_, _, _, 8>::new(ctx.device.SPI0, (spi_mosi, spi_miso, spi_sck));
+
+    let spi = spi_bus.init(
+        &mut ctx.device.RESETS,
+        clocks.peripheral_clock.freq(),
+        400.kHz(), // card initialization happens at low baud rate
+        embedded_hal::spi::MODE_0,
+    );
+
+        let spi = ExclusiveDevice::new(spi, spi_cs,timer.clone()).unwrap();
+
+        let sd_card = sd_card::EjectorSdCard::new(spi, timer.clone());
+
     let mut timer_two = timer;
 
     // Jupiter downlink UART
@@ -158,9 +180,10 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     let (status_link, downlink) = jupiter_uart.split();
 
+    // Servo
+    let pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
 
     // Servo
-    let mut pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
     let mut power_servo_pwm = pwm_slices.pwm2;
     let mut ejection_servo_pwm = pwm_slices.pwm3;
 
@@ -245,12 +268,14 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     camera_sequencer::spawn().ok();
     poll_temperature::spawn().ok();
     downlink_jupiter::spawn().ok();
+    write_sd_card::spawn().ok();
 
     (
         Shared {
             downlink_packets: Deque::new(),
             samples_buffer: [0u16; SAMPLE_COUNT],
             ejection_enabled: false,
+            sd_card: sd_card,
             status_config,
         },
         Local {
@@ -260,7 +285,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             downlink,
             ejector_servo,
             rbf_pin: rbf_pin,
-            // ejection_pin: gpio_detect,
             ejecctor_magnet: ejector_magnet,
             // arming_led: red_led_pin,
             // packet_led: packet_indicator,
