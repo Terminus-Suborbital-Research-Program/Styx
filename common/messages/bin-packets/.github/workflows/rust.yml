@@ -1,4 +1,4 @@
-ifname: Rust
+name: Rust
 
 on:
   push:
