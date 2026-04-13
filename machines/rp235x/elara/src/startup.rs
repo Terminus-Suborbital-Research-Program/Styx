@@ -50,8 +50,6 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     // info!("Good morning sunshine! Icarus is awake!");
 
-    Mono::start(ctx.device.TIMER0, &ctx.device.RESETS);
-
     // The single-cycle I/O block controls our GPIO pins
     let sio = Sio::new(ctx.device.SIO);
 
@@ -89,6 +87,8 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             panic!("Failed to init clocks");
         }
     };
+
+    Mono::start(ctx.core.SYST, clocks.system_clock.freq().to_Hz());
 
 
     let compute_link: OdinComputeUart = UartPeripheral::new(

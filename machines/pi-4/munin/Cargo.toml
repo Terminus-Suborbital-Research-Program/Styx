@@ -4,11 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-rs_ws281x = "0.4"
+rpi_ws281x-c = "0.1.5"
 linux-embedded-hal = "0.4"
 embedded-hal = "*"
 rppal = "0.22"
-bmi323 = { path = "../../../sensors/bmi323-rs", features = ["sync"] }
+bmi323 = { git = "https://github.com/wyatt-mattas/bmi323-rs.git", features = ["sync"] }
 bmm350 = { path = "../../../sensors/bmm350-rs", features = ["sync"] }
-aether = { git = "https://github.com/AtmoPierce/aether.git", features = ["std", "serde"] }
+aether_core = { git = "https://github.com/AtmoPierce/aether.git", package = "aether_core" }
+aether_models = { git = "https://github.com/AtmoPierce/aether.git", package = "aether_models" }
 nmea = "0.7"

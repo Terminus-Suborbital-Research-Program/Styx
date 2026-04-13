@@ -26,7 +26,7 @@ embedded-io = "0.6.1"
 cortex-m = "0.7.7"
 # RTIC for real-time operations
 rtic = { version = "2.1.2" }
-rtic-monotonics = "2.0.3"
+rtic-monotonics = {version = "2.1.0", features = ["rp235x"]}
 
 rtic-sync = "*"
 # USB Device Support
@@ -45,13 +45,14 @@ bin-packets = { path = "../../../common/messages/bin-packets" }
 futures = { version = "0.3.31", default-features = false, features = [
     "async-await",
 ] }
-rp235x-pac = "0.1.0"
+rp235x-pac = {version = "0.2.0", features = ["rt"]}
 
 # Sensors
 uom = {version = "*", default-features = false, features = ["si", "f32"]}
 bme280 = {path="../../../sensors/bme280", features = ["async", "defmt"] }
 ina260_terminus = { path = "../../../sensors/ina260", features = ["async", "defmt"] }
-bmi323 = {path="../../../sensors/bmi323-rs", features = ["async", "defmt"]}
+bmi323 = { git = "https://github.com/wyatt-mattas/bmi323-rs.git", features = ["async", "defmt"] }
+
 bmm350 = {path="../../../sensors/bmm350-rs", features = ["async", "defmt"]}
 cd74hc4067 = {path="../../../sensors/cd74hc4067", features = ["defmt"]}
 
@@ -72,7 +73,7 @@ minikalman = { version = "0.6.0", features = [
 wgs84 = { git = "https://github.com/MeechaelA/WGS84.git" }
 # Earth Atmosphere
 united_states_standard_atmosphere = { git = "https://github.com/MeechaelA/UnitedStatesStandardAtmosphere.git" }
-tinyframe = { version = "0.1.0", path = "../../tinyframe" }
+tinyframe = { version = "0.1.0", path = "../../../common/messages/tinyframe" }
 
 # Target features
 [features]

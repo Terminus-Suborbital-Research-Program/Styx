@@ -1,11 +1,14 @@
-# Canonical-Toolchain
-Various templates for the TERMINUS program's various RP2040/RP2350 architecture based RTIC applications
+# RP235x Packages
 
-## This is a minimum example for the RP2040 on a Pi Pico, RP2350 Support is planned but not yet tested
+This directory contains the embedded RP235x packages that live inside the repository's single root Cargo workspace.
 
-After you have cloned that, you should be able to run our software!
+Use the repository root to build the active RP235x package set:
 
-Cheers!
+```sh
+cargo make build-rp235x
+```
+
+The RP235x target architecture and runner configuration now live in the root [`.cargo/config.toml`](../../.cargo/config.toml).
 
 # Debugging Info:
 
@@ -50,17 +53,19 @@ You will have to re-attach your device every time you connect the debug pico to 
 
 # Actually Debugging
 
-Assuming you have created a branch from the canonical toolchain and installed the pico extension you should be able to 
+Assuming you have cloned the repository, opened the workspace in VS Code, and installed the pico extension, you should be able to 
 
 Build: 
 1. Go to terminal
-2. run build task
+2. Run `cargo make build-rp235x` from the repository root, or use the `Build RP2350 Targets` VS Code task.
+
+To build both the host crates and the RP235x targets together, use `cargo make build-all` or the `Build All Targets` VS Code task from the repository root.
 
 Flash: 
 1. Go to terminal
 2. run task
 3. "Flash Rust Project"
-(Whatever is the most recent version you have ran the build task on will be what is flashed)
+(Whatever is the most recent RP235x artifact you built from the repository root will be what is flashed)
 
 Debug: 
 1. Add breakpoints you wish to hit in your program file(s)

@@ -1,20 +1,25 @@
-use aether::{
+use aether_core::{
     attitude::{DirectionCosineMatrix, Quaternion},
+    coordinate::Cartesian,
     math::Vector,
-    reference_frame::{Body, ICRF, ITRF, NED},
+    reference_frame::{
+        transforms::{itrf_to_icrf, itrf_to_ned},
+        Body, ICRF, ITRF, NED, RotatingFrame,
+    },
 };
+use aether_models::terrestrial::wgs84::transforms::geocentric_to_ecef;
 use bmi323::{
-    AccelConfig, AccelerometerRange, AverageNum, Bandwidth, Bmi323, Error as BmiError,
-    GyroConfig, GyroscopePowerMode, GyroscopeRange, OutputDataRate, Sensor3DDataScaled,
+    AccelConfig, AccelerometerRange, AverageNum, Bandwidth, Bmi323, Error as BmiError, GyroConfig,
+    GyroscopePowerMode, GyroscopeRange, OutputDataRate, Sensor3DDataScaled,
 };
 use bmm350::{
-    AverageNum as BmmAverageNum, AxisEnableDisable, Bmm350, DataRate, Error as BmmError,
-    MagConfig, PerformanceMode, PowerMode, Sensor3DData,
+    AverageNum as BmmAverageNum, AxisEnableDisable, Bmm350, DataRate, Error as BmmError, MagConfig,
+    PerformanceMode, PowerMode, Sensor3DData,
 };
 use embedded_hal::i2c::I2c;
 use linux_embedded_hal::{Delay, I2cdev};
 use nmea::Nmea;
-use rs_ws281x::{ChannelBuilder, Controller, ControllerBuilder, StripType};
+use rpi_ws281x_c::{Channel, Driver, ErrorCode as LedError, PwmPin};
 use std::{
     env,
     sync::{Arc, Mutex},
@@ -29,9 +34,6 @@ const GPS_I2C_ADDR: u8 = 0x42;
 const GPS_I2C_BYTES_AVAILABLE_REGISTER: u8 = 0xFD;
 const GPS_I2C_STREAM_REGISTER: u8 = 0xFF;
 const GPS_I2C_MAX_READ: usize = 32;
-const EARTH_ROTATION_RATE_RAD_PER_S: f64 = 7.292_115_0e-5;
-const WGS84_A_M: f64 = 6_378_137.0;
-const WGS84_E2: f64 = 6.694_379_990_14e-3;
 
 fn bmi_err<E: core::fmt::Debug>(err: BmiError<E>) -> std::io::Error {
     std::io::Error::other(format!("bmi323 error: {:?}", err))
@@ -39,6 +41,14 @@ fn bmi_err<E: core::fmt::Debug>(err: BmiError<E>) -> std::io::Error {
 
 fn bmm_err<E: core::fmt::Debug>(err: BmmError<E>) -> std::io::Error {
     std::io::Error::other(format!("bmm350 error: {:?}", err))
+}
+
+fn led_err(err: LedError) -> std::io::Error {
+    std::io::Error::other(format!("ws281x error: {:?}", err))
+}
+
+fn raw_led(r: u8, g: u8, b: u8, w: u8) -> u32 {
+    u32::from_ne_bytes([r, g, b, w])
 }
 
 #[derive(Clone, Debug)]
@@ -54,7 +64,7 @@ struct GpsData {
 struct State {
     unix_timestamp_s: u64,
     geodetic_deg_m: Option<Vector<f64, 3>>,
-    ecef_m: Option<[f64; 3]>,
+    ecef_m: Option<Cartesian<f64, ITRF<f64>>>,
     body_to_ned: Quaternion<f64, Body<f64>, NED<f64>>,
     body_to_icrf: Option<Quaternion<f64, Body<f64>, ICRF<f64>>>,
     satellites: Option<u32>,
@@ -122,112 +132,40 @@ fn tilt_pitch_deg(accel: Sensor3DDataScaled) -> f32 {
         .to_degrees()
 }
 
-fn norm3(v: [f64; 3]) -> f64 {
-    (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt()
-}
-
-fn normalize3(v: [f64; 3]) -> [f64; 3] {
-    let n = norm3(v);
-    if n <= f64::EPSILON {
-        [0.0, 0.0, 0.0]
-    } else {
-        [v[0] / n, v[1] / n, v[2] / n]
-    }
-}
-
-fn dot3(a: [f64; 3], b: [f64; 3]) -> f64 {
-    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
-}
-
-fn cross3(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
-    [
-        a[1] * b[2] - a[2] * b[1],
-        a[2] * b[0] - a[0] * b[2],
-        a[0] * b[1] - a[1] * b[0],
-    ]
-}
-
-fn sub3(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
-    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
-}
-
-fn scale3(v: [f64; 3], scalar: f64) -> [f64; 3] {
-    [v[0] * scalar, v[1] * scalar, v[2] * scalar]
-}
-
-fn geodetic_deg_to_ecef_m(geodetic_deg_m: Vector<f64, 3>) -> [f64; 3] {
-    let latitude = geodetic_deg_m[0].to_radians();
-    let longitude = geodetic_deg_m[1].to_radians();
-    let altitude = geodetic_deg_m[2];
-
-    let sin_lat = latitude.sin();
-    let cos_lat = latitude.cos();
-    let sin_lon = longitude.sin();
-    let cos_lon = longitude.cos();
-
-    let n = WGS84_A_M / (1.0 - WGS84_E2 * sin_lat * sin_lat).sqrt();
-
-    [
-        (n + altitude) * cos_lat * cos_lon,
-        (n + altitude) * cos_lat * sin_lon,
-        (n * (1.0 - WGS84_E2) + altitude) * sin_lat,
-    ]
-}
-
-fn itrf_to_ned_dcm(latitude_rad: f64, longitude_rad: f64) -> DirectionCosineMatrix<f64, ITRF<f64>, NED<f64>> {
-    DirectionCosineMatrix::new(
-        -latitude_rad.sin() * longitude_rad.cos(),
-        -latitude_rad.sin() * longitude_rad.sin(),
-        latitude_rad.cos(),
-        -longitude_rad.sin(),
-        longitude_rad.cos(),
-        0.0,
-        -latitude_rad.cos() * longitude_rad.cos(),
-        -latitude_rad.cos() * longitude_rad.sin(),
-        -latitude_rad.sin(),
-    )
-}
-
-fn itrf_to_icrf_dcm(time_s: f64) -> DirectionCosineMatrix<f64, ITRF<f64>, ICRF<f64>> {
-    let theta = EARTH_ROTATION_RATE_RAD_PER_S * time_s;
-    DirectionCosineMatrix::new(
-        theta.cos(),
-        -theta.sin(),
-        0.0,
-        theta.sin(),
-        theta.cos(),
-        0.0,
-        0.0,
-        0.0,
-        1.0,
+fn geodetic_deg_to_ecef_m(geodetic_deg_m: Vector<f64, 3>) -> Cartesian<f64, ITRF<f64>> {
+    geocentric_to_ecef(
+        geodetic_deg_m[0].to_radians(),
+        geodetic_deg_m[1].to_radians(),
+        geodetic_deg_m[2],
     )
 }
 
 fn body_to_ned_from_sensors(
     accel: Sensor3DDataScaled,
     mag: Sensor3DData,
-) -> (DirectionCosineMatrix<f64, Body<f64>, NED<f64>>, [f64; 3], [f64; 3], [f64; 3]) {
-    let down_body = normalize3([
-        accel.x as f64,
-        accel.y as f64,
-        accel.z as f64,
-    ]);
+) -> (
+    DirectionCosineMatrix<f64, Body<f64>, NED<f64>>,
+    [f64; 3],
+    [f64; 3],
+    [f64; 3],
+) {
+    let down_body = Vector::new([accel.x as f64, accel.y as f64, accel.z as f64]).normalize();
 
-    let mag_body = [mag.x as f64, mag.y as f64, mag.z as f64];
-    let mag_along_down = scale3(down_body, dot3(mag_body, down_body));
-    let mag_horizontal = sub3(mag_body, mag_along_down);
+    let mag_body = Vector::new([mag.x as f64, mag.y as f64, mag.z as f64]);
+    let mag_along_down = &down_body * mag_body.dot(&down_body);
+    let mag_horizontal = mag_body - mag_along_down;
 
-    let mut north_body = normalize3(mag_horizontal);
-    if norm3(north_body) <= f64::EPSILON {
-        north_body = [1.0, 0.0, 0.0];
+    let (mut north_body, north_norm) = mag_horizontal.try_normalize();
+    if north_norm <= f64::EPSILON {
+        north_body = Vector::new([1.0, 0.0, 0.0]);
     }
 
-    let mut east_body = normalize3(cross3(down_body, north_body));
-    if norm3(east_body) <= f64::EPSILON {
-        east_body = [0.0, 1.0, 0.0];
+    let (mut east_body, east_norm) = down_body.cross(&north_body).try_normalize();
+    if east_norm <= f64::EPSILON {
+        east_body = Vector::new([0.0, 1.0, 0.0]);
     }
 
-    north_body = normalize3(cross3(east_body, down_body));
+    north_body = east_body.cross(&down_body).normalize();
 
     (
         DirectionCosineMatrix::new(
@@ -241,9 +179,9 @@ fn body_to_ned_from_sensors(
             down_body[1],
             down_body[2],
         ),
-        north_body,
-        east_body,
-        down_body,
+        north_body.data,
+        east_body.data,
+        down_body.data,
     )
 }
 
@@ -261,8 +199,12 @@ fn parse_i2c_addr(value: &str) -> Option<u8> {
 
 fn gps_bytes_available(i2c: &mut I2cdev, gps_addr: u8) -> std::io::Result<usize> {
     let mut available = [0_u8; 2];
-    i2c.write_read(gps_addr, &[GPS_I2C_BYTES_AVAILABLE_REGISTER], &mut available)
-        .map_err(|err| std::io::Error::other(format!("gps i2c count read failed: {err}")))?;
+    i2c.write_read(
+        gps_addr,
+        &[GPS_I2C_BYTES_AVAILABLE_REGISTER],
+        &mut available,
+    )
+    .map_err(|err| std::io::Error::other(format!("gps i2c count read failed: {err}")))?;
 
     Ok((((available[0] as usize) << 8) | available[1] as usize) & 0x7FFF)
 }
@@ -371,19 +313,17 @@ fn start_gps_reader() -> Arc<Mutex<Option<GpsData>>> {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let gps_fix = start_gps_reader();
 
-    let mut controller: Controller = ControllerBuilder::new()
+    let mut controller: Driver = Driver::builder()
         .freq(800_000)
         .dma(10)
-        .channel(
-            0,
-            ChannelBuilder::new()
-                .pin(18)
-                .count(LED_COUNT)
-                .strip_type(StripType::Ws2812)
-                .brightness(180)
-                .build(),
+        .channel1(
+            Channel::set_pwm(PwmPin::Pwm0_2)
+                .set_led_count(LED_COUNT as u16)
+                .set_strip_grb()
+                .set_brightness(180),
         )
-        .build()?;
+        .build()
+        .map_err(led_err)?;
 
     let imu_i2c = I2cdev::new("/dev/i2c-1")?;
     let mag_i2c = I2cdev::new("/dev/i2c-1")?;
@@ -434,7 +374,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .map_err(bmm_err)?;
     println!("BMM350 configured.");
 
-    println!("Calibrating gyro bias and magnetic reference — keep the mount still for 2 seconds...");
+    println!(
+        "Calibrating gyro bias and magnetic reference — keep the mount still for 2 seconds..."
+    );
     println!("Watch the green LED spin smoothly around the ring.");
 
     let cal_start = Instant::now();
@@ -457,22 +399,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let next_led = (current_led + 1) % 4;
         let frac = led_pos.fract();
 
-        let leds = controller.leds_mut(0);
+        let leds = controller.channel1_mut().leds_mut();
         for i in 0..LED_COUNT as usize {
             let color = if i == current_led {
                 let t = 1.0 - frac;
                 let g = (t * 255.0) as u8;
-                [0, g, 0, 0]
+                raw_led(0, g, 0, 0)
             } else if i == next_led {
                 let t = frac;
                 let g = (t * 255.0) as u8;
-                [0, g, 0, 0]
+                raw_led(0, g, 0, 0)
             } else {
-                [0, 0, 0, 0]
+                raw_led(0, 0, 0, 0)
             };
             leds[i] = color;
         }
-        controller.render()?;
+        controller.render().map_err(led_err)?;
 
         thread::sleep(Duration::from_millis(20));
     }
@@ -482,7 +424,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         magnetic_reference_deg /= sample_count as f32;
     }
 
-    println!("✅ Calibration complete! Gyro Z bias: {:.2} dps", gyro_bias_z);
+    println!(
+        "✅ Calibration complete! Gyro Z bias: {:.2} dps",
+        gyro_bias_z
+    );
     println!(
         "✅ Magnetic reference complete! BMM350 north reference: {:.2}°",
         magnetic_reference_deg
@@ -522,25 +467,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let next_led = (current_led + 1) % 4;
         let frac = led_pos.fract();
 
-        let leds = controller.leds_mut(0);
+        let leds = controller.channel1_mut().leds_mut();
         for i in 0..LED_COUNT as usize {
-            let color: [u8; 4] = if i == current_led {
+            let color = if i == current_led {
                 let t = 1.0 - frac;
                 let r = (t * 255.0) as u8;
                 let b = ((1.0 - t) * 255.0) as u8;
-                [r, 0, b, 0]
+                raw_led(r, 0, b, 0)
             } else if i == next_led {
                 let t = frac;
                 let r = (t * 255.0) as u8;
                 let b = ((1.0 - t) * 255.0) as u8;
-                [r, 0, b, 0]
+                raw_led(r, 0, b, 0)
             } else {
-                [0, 0, 255, 0]
+                raw_led(0, 0, 255, 0)
             };
             leds[i] = color;
         }
 
-        controller.render()?;
+        controller.render().map_err(led_err)?;
 
         if last_print.elapsed() > Duration::from_millis(300) {
             let gps_data = gps_fix.lock().ok().and_then(|latest| latest.clone());
@@ -555,16 +500,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let geodetic_deg_m = gps_data.as_ref().map(|gps| gps.geodetic_deg_m);
             let ecef_m = geodetic_deg_m.map(geodetic_deg_to_ecef_m);
+            let earth_itrf = ITRF::<f64>::default();
 
             let body_to_icrf = geodetic_deg_m.and_then(|geodetic| {
                 let latitude_rad = geodetic[0].to_radians();
                 let longitude_rad = geodetic[1].to_radians();
 
-                let ned_to_itrf = itrf_to_ned_dcm(latitude_rad, longitude_rad).transpose();
+                let ned_to_itrf = itrf_to_ned(latitude_rad, longitude_rad).transpose();
                 let body_to_itrf = ned_to_itrf * body_to_ned_dcm;
-                let body_to_icrf_dcm = itrf_to_icrf_dcm(unix_timestamp_s as f64) * body_to_itrf;
+                let body_to_icrf_dcm =
+                    itrf_to_icrf(unix_timestamp_s as f64, earth_itrf.angular_velocity())
+                        * body_to_itrf;
 
-                Quaternion::try_from(&body_to_icrf_dcm).ok().map(|q| q.normalized())
+                Quaternion::try_from(&body_to_icrf_dcm)
+                    .ok()
+                    .map(|q: Quaternion<f64, Body<f64>, ICRF<f64>>| q.normalized())
             });
 
             let state = State {
@@ -591,7 +541,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             if let Some(geodetic) = state.geodetic_deg_m {
                 println!(
-                    "ts={} | yaw={:.1}° | heading(mag)={:.1}° | heading(rel)={:.1}° | roll={:.1}° | pitch={:.1}° | north_b={:?} | east_b={:?} | down_b={:?} | gyro[dps]=[{:.2}, {:.2}, {:.2}] | accel[m/s²]=[{:.2}, {:.2}, {:.2}] | q_body_to_ned={} | q_body_to_icrf={:?} | geodetic={} | ecef={:?} | sats={:?} | hdop={:?} | sog(kn)={:?} | course={:?}",
+                    "ts={} | yaw={:.1}° | heading(mag)={:.1}° | heading(rel)={:.1}° | roll={:.1}° | pitch={:.1}° | north_b={:?} | east_b={:?} | down_b={:?} | gyro[dps]=[{:.2}, {:.2}, {:.2}] | accel[m/s²]=[{:.2}, {:.2}, {:.2}] | q_body_to_ned={:?} | q_body_to_icrf={:?} | geodetic={:?} | ecef={:?} | sats={:?} | hdop={:?} | sog(kn)={:?} | course={:?}",
                     state.unix_timestamp_s,
                     state.yaw_deg,
                     state.magnetic_heading_deg,
@@ -618,7 +568,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             } else {
                 println!(
-                    "ts={} | yaw={:.1}° | heading(mag)={:.1}° | heading(rel)={:.1}° | roll={:.1}° | pitch={:.1}° | north_b={:?} | east_b={:?} | down_b={:?} | gyro[dps]=[{:.2}, {:.2}, {:.2}] | accel[m/s²]=[{:.2}, {:.2}, {:.2}] | q_body_to_ned={} | q_body_to_icrf={:?} | gps=waiting for fix",
+                    "ts={} | yaw={:.1}° | heading(mag)={:.1}° | heading(rel)={:.1}° | roll={:.1}° | pitch={:.1}° | north_b={:?} | east_b={:?} | down_b={:?} | gyro[dps]=[{:.2}, {:.2}, {:.2}] | accel[m/s²]=[{:.2}, {:.2}, {:.2}] | q_body_to_ned={:?} | q_body_to_icrf={:?} | gps=waiting for fix",
                     state.unix_timestamp_s,
                     state.yaw_deg,
                     state.magnetic_heading_deg,

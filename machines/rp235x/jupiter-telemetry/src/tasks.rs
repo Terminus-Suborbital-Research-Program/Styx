@@ -19,6 +19,7 @@ use rtic_monotonics::Monotonic;
 use rtic_sync::arbiter::Arbiter;
 
 use rp235x_hal::i2c::peripheral::Event;
+use rp235x_pac::interrupt;
 
 use bmp5::Measurement;
 
@@ -175,7 +176,6 @@ pub async fn sample_sensors(
     }
 }
 
-use rp235x_pac::interrupt;
 #[interrupt]
 unsafe fn I2C0_IRQ() {
     ComputeI2cBus::on_interrupt();

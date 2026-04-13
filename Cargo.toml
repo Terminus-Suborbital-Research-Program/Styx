@@ -9,14 +9,13 @@ members = [
   "machines/pi-4/munin",
   "machines/pi-5/jupiter-fsw",
   "machines/pi-5/odin-compute",
-  "machines/rp235x/jupiter-telemetry",
-  "machines/rp235x/async-simple",
   "machines/rp235x/ejector",
   "machines/rp235x/elara",
-  "machines/rp235x/simple",
   "machines/rp235x/ins-test",
+  "machines/rp235x/jupiter-telemetry",
+  "machines/rp235x/simple",
+  "machines/rp235x/simple-async",
   "sensors/bme280",
-  "sensors/bmi323-rs",
   "sensors/bmm350-rs",
   "sensors/cd74hc4067",
   "sensors/ina260",
@@ -30,7 +29,6 @@ defmt = {version = "*"}
 defmt-rtt = {version = "*"}
 heapless = {version = "*"}
 bin-packets = {path="common/messages/bin-packets"}
-
 
 [profile.dev]
 panic = "abort"

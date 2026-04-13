@@ -18,7 +18,7 @@ use core::mem::MaybeUninit;
 // Sensors
 use bme280::AsyncBME280;
 use bmi323::{AsyncBmi323, AsyncI2cInterface};
-use bmm350::{AsyncBmm350, AsyncI2cInterface as AsyncBmmI2cInterface};
+use bmm350::AsyncBmm350;
 use ina260_terminus::AsyncINA260;
 
 // Busses
@@ -40,9 +40,18 @@ use rp235x_hal as hal;
 
 // Monotonics
 #[cfg(feature = "rp2350")]
-use rtic_monotonics::rp235x::prelude::*;
+use rtic_monotonics::systick::prelude::*;
 #[cfg(feature = "rp2350")]
-rp235x_timer_monotonic!(Mono);
+systick_monotonic!(Mono, 1_000_000);
+
+#[cfg(feature = "rp2350")]
+mod rtic_device {
+    pub use rp235x_pac::*;
+
+    pub mod interrupt {
+        pub use rp235x_pac::Interrupt::*;
+    }
+}
 
 /// Tell the Boot ROM about our application
 #[link_section = ".start_block"]
@@ -51,7 +60,7 @@ rp235x_timer_monotonic!(Mono);
 pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef::secure_exe();
 
 #[rtic::app(
-    device = hal::pac,
+    device = crate::rtic_device,
     dispatchers = [PIO2_IRQ_0, PIO2_IRQ_1, DMA_IRQ_0],
     peripherals = true,
 )]
@@ -92,7 +101,7 @@ mod app {
     #[local]
     pub struct Local {
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
-        pub bmm350: AsyncBmm350<AsyncBmmI2cInterface<ArbiterDevice<'static, AvionicsI2cBus>>, Mono>,
+        pub bmm350: AsyncBmm350<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub bmi323: AsyncBmi323<AsyncI2cInterface<ArbiterDevice<'static, AvionicsI2cBus>>, Mono>,
         pub bme280: AsyncBME280<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub adc_fifo_l: Option<hal::adc::AdcFifo<'static, u16>>,

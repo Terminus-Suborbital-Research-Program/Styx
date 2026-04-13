@@ -1,4 +1,3 @@
-
 pub const TARGET_PACKET_SIZE: usize = 65_536;
 pub const READ_CHUNK_SIZE: usize = 4096;
 pub const BUFF_SIZE: usize = TARGET_PACKET_SIZE + READ_CHUNK_SIZE;

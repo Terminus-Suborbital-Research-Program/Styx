@@ -1,0 +1,13 @@
+[env]
+LIBCLANG_PATH = { value = "/lib/x86_64-linux-gnu", force = false } # led strip in munin requires this....
+DEFMT_LOG = "info"
+
+[target.thumbv8m.main-none-eabihf]
+rustflags = [
+	"-C", "link-arg=--nmagic",
+	"-C", "link-arg=-Tlink.x",
+	"-C", "link-arg=-Tdefmt.x",
+	"-C", "target-cpu=cortex-m33",
+]
+
+runner = 'probe-rs run --chip rp235x'

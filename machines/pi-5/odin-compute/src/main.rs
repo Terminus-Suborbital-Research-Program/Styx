@@ -2,19 +2,25 @@ mod networking;
 mod tasks;
 
 use std::{
-   fs::{File, OpenOptions}, io::{BufReader, BufWriter, Read, Write}, mem, net::{TcpListener, TcpStream, UdpSocket}, thread, time::Duration
+    fs::{File, OpenOptions},
+    io::{BufReader, BufWriter, Read, Write},
+    mem,
+    net::{TcpListener, TcpStream, UdpSocket},
+    thread,
+    time::Duration,
 };
 
 use bincode::{
-    config::{standard, Configuration, LittleEndian, NoLimit, Varint}, error::DecodeError, serde::{decode_from_reader, decode_from_slice, encode_into_slice}
+    config::{Configuration, LittleEndian, NoLimit, Varint, standard},
+    error::DecodeError,
+    serde::{decode_from_reader, decode_from_slice, encode_into_slice},
 };
 use env_logger::{Builder, Target};
-use log::{error, info, LevelFilter};
+use log::{LevelFilter, error, info};
 use rtrb::RingBuffer;
 
 use crate::tasks::{
-    signal_process::SignalProcessor,
-    signal_read::SDRListener, startracker::StartrackerThread,
+    signal_process::SignalProcessor, signal_read::SDRListener, startracker::StartrackerThread,
 };
 
 use signet::{
@@ -28,13 +34,10 @@ use bin_packets::time::Timestamp;
 use serialport;
 
 fn main() {
-
     // env_logger::init();
     Builder::new()
         .filter(None, LevelFilter::max())
-        .format(|buf, record| {
-            writeln!(buf, "{}: {}", record.level(), record.args())
-        })
+        .format(|buf, record| writeln!(buf, "{}: {}", record.level(), record.args()))
         .target(env_logger::Target::Stdout) // Explicitly set the target to stdout
         .init();
 
@@ -48,9 +51,8 @@ fn main() {
     let sampling_task = SDRListener::begin_sampling(samples_producer).unwrap();
 
     // Refactor to be one combined call, but not ugly.
-    let (startracking_thread, quaternion_reciever) =  StartrackerThread::new();
+    let (startracking_thread, quaternion_reciever) = StartrackerThread::new();
     let startracking_thread_handle = startracking_thread.begin_startracking();
-    
 
     // start_test_tcp_receiver();
     // verify_recording("sdr_recording.bin");
@@ -58,18 +60,21 @@ fn main() {
 
     std::thread::sleep(Duration::from_millis(500));
 
-    
     let mut stream = TcpStream::connect("127.0.0.1:7878").expect("Failed to connect to Jupiter");
-    stream.set_nonblocking(true).expect("Failed to set non-blocking");
-    stream.set_write_timeout(Some(Duration::from_micros(100))).unwrap();
-    
+    stream
+        .set_nonblocking(true)
+        .expect("Failed to set non-blocking");
+    stream
+        .set_write_timeout(Some(Duration::from_micros(100)))
+        .unwrap();
+
     std::thread::sleep(Duration::from_millis(500));
 
     let (signal_processor, packet_tx, estimate_rx) = SignalProcessor::default();
-    
+
     signal_processor.begin_signal_processing();
 
-    let mut packet_buf: [u8;BUFF_SIZE * 10] = [0; BUFF_SIZE * 10];
+    let mut packet_buf: [u8; BUFF_SIZE * 10] = [0; BUFF_SIZE * 10];
 
     let mut adcs_buffer: [u8; 1000] = [0; 1000];
     // Run main IO loop in a thread with larger stack to handle large fixed-size arrays
@@ -84,15 +89,15 @@ fn main() {
                         let (slc_1, _slc_2) = read_chunk.as_mut_slices();
                         let sdr_packet = &mut slc_1[0];
 
-
-                        if let Ok(bytes_written) = encode_into_slice(&sdr_packet,  packet_buf.as_mut_slice(), standard()) {
+                        if let Ok(bytes_written) =
+                            encode_into_slice(&sdr_packet, packet_buf.as_mut_slice(), standard())
+                        {
                             // if let Err(e) = socket.send(&packet_buf) {
                             //     error!("Error sending packet: {}", e);
                             // }
                             if let Err(e) = stream.write_all(&packet_buf[..bytes_written]) {
                                 error!("Error sending packet: {}", e);
                             }
-
                         } else {
                             error!("Error encoding packet");
                         }
@@ -102,21 +107,36 @@ fn main() {
                             if let Err(e) = packet_tx.send(Box::new(sdr_packet.clone())) {
                                 error!("Error Sending Packet Data {}", e);
                             };
-                            if let Ok(estimate) = estimate_rx.recv_timeout(Duration::from_micros(20)) {
-
+                            if let Ok(estimate) =
+                                estimate_rx.recv_timeout(Duration::from_micros(20))
+                            {
                                 if let Ok(quaternion) = quaternion_reciever.recv() {
                                     let adcs_packet = AttitudeMetrics {
                                         timestamp: Timestamp::new(sdr_packet.timestamp as u64),
-                                        quaternion,
-                                        signal_match: estimate
+                                        quaternion: [
+                                            quaternion.w(),
+                                            quaternion.i(),
+                                            quaternion.j(),
+                                            quaternion.k(),
+                                        ],
+                                        signal_match: estimate,
                                     };
-                                    if let Ok(bytes_written) = bincode::encode_into_slice(adcs_packet, &mut adcs_buffer, standard()) {
-                                        if let Err(serial_write_error) = uart_port.write_all(&adcs_buffer) {
-                                            error!("Serial Write Error to Uart {}", serial_write_error);
+                                    if let Ok(bytes_written) = bincode::encode_into_slice(
+                                        adcs_packet,
+                                        &mut adcs_buffer,
+                                        standard(),
+                                    ) {
+                                        if let Err(serial_write_error) =
+                                            uart_port.write_all(&adcs_buffer)
+                                        {
+                                            error!(
+                                                "Serial Write Error to Uart {}",
+                                                serial_write_error
+                                            );
                                         }
                                     };
                                 }
-                                
+
                                 // bincode::encode_into_slice(val, dst, config)
                                 info!("Estimate: {}", estimate);
                             };
@@ -132,20 +152,19 @@ fn main() {
             }
         })
         .expect("Failed to spawn IO thread");
-    
+
     // Main thread waits for IO thread (which runs forever)
     io_handle.join().expect("IO thread panicked");
 }
 
 fn start_file_recorder() {
-
     if std::path::Path::new("sdr_recording.bin").exists() {
         let _ = std::fs::remove_file("sdr_recording.bin");
     }
 
     thread::Builder::new()
         .name("tcp-recorder".into())
-        .stack_size(4 * 1024 * 1024) 
+        .stack_size(4 * 1024 * 1024)
         .spawn(move || {
             let listener = TcpListener::bind("127.0.0.1:7878").expect("Failed to bind");
             info!("Recorder listening on 127.0.0.1:7878...");
@@ -164,7 +183,6 @@ fn start_file_recorder() {
                             .open("sdr_recording.bin")
                             .expect("Failed to open recording file");
 
-
                         let mut writer = BufWriter::with_capacity(1 * 1024 * 1024, file);
 
                         loop {
@@ -174,7 +192,7 @@ fn start_file_recorder() {
                                     break;
                                 }
                                 Ok(bytes_read) => {
-                                    if let Err(e) = writer.write(&buffer[..bytes_read])  {
+                                    if let Err(e) = writer.write(&buffer[..bytes_read]) {
                                         error!("Error writing encoded data {}", e);
                                     }
                                 }
@@ -185,7 +203,7 @@ fn start_file_recorder() {
                             }
                         }
                         let _ = writer.flush();
-                    },
+                    }
                     Err(e) => error!("Connection failed: {}", e),
                 }
             }
@@ -194,18 +212,18 @@ fn start_file_recorder() {
 }
 
 fn verify_recording(filepath: &str) {
-      if !std::path::Path::new(filepath).exists() {
+    if !std::path::Path::new(filepath).exists() {
         info!("No recording file found to verify.");
         return;
     }
-    
+
     info!("Verifying recording from: {}", filepath);
     let file = File::open(filepath).expect("File not found");
 
     let mut reader = BufReader::new(file);
 
     let packet_size = mem::size_of::<SdrPacketLog>();
-    
+
     let mut buffer = vec![0u8; packet_size];
     let mut count = 0;
 
@@ -213,17 +231,22 @@ fn verify_recording(filepath: &str) {
 
     loop {
         count += 1;
-        match  decode_from_reader::<SdrPacketLog,&mut BufReader<File>,Configuration<LittleEndian, Varint, NoLimit>>(&mut reader, config) {
+        match decode_from_reader::<
+            SdrPacketLog,
+            &mut BufReader<File>,
+            Configuration<LittleEndian, Varint, NoLimit>,
+        >(&mut reader, config)
+        {
             Ok(sdr_packet) => {
-            info!("Packet #{}: TS={} SampleCount={}", 
-                                count, sdr_packet.timestamp, sdr_packet.sample_count);
+                info!(
+                    "Packet #{}: TS={} SampleCount={}",
+                    count, sdr_packet.timestamp, sdr_packet.sample_count
+                );
             }
             Err(e) => {
                 error!("File read error: {}", e);
                 break;
             }
-        } 
+        }
     }
 }
-
-

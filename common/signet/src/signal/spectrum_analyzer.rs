@@ -1,11 +1,8 @@
 use rustfft::{Fft, FftPlanner, num_complex::Complex};
 use std::sync::Arc;
 
+use crate::sdr::radio_config::{BUFF_SIZE, TARGET_PACKET_SIZE};
 use crate::signal::signal_config::SignalConfig;
-use crate::sdr::radio_config::{
-    BUFF_SIZE,
-    TARGET_PACKET_SIZE,
-};
 
 pub struct SpectrumAnalyzer {
     fft: Arc<dyn Fft<f32>>,

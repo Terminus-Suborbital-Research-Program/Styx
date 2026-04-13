@@ -1,5 +1,4 @@
 #![warn(missing_docs)]
-
 #![cfg_attr(not(any(test, feature = "std")), no_std)] // If we're not testing, don't link the standard library
 
 pub mod commands;

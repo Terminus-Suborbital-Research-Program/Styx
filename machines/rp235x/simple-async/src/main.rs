@@ -11,16 +11,24 @@ use bmi323::{
     OutputDataRate,
 };
 use defmt_rtt as _;
+use rp235x_pac::interrupt;
 
 #[cfg(feature = "rp2350")]
 use rp235x_hal as hal;
-#[cfg(feature = "rp2350")]
-use hal::pac::interrupt;
 
 #[cfg(feature = "rp2350")]
-use rtic_monotonics::rp235x::prelude::*;
+use rtic_monotonics::systick::prelude::*;
 #[cfg(feature = "rp2350")]
-rp235x_timer_monotonic!(Mono);
+systick_monotonic!(Mono, 1_000_000);
+
+#[cfg(feature = "rp2350")]
+mod rtic_device {
+    pub use rp235x_pac::*;
+
+    pub mod interrupt {
+        pub use rp235x_pac::Interrupt::*;
+    }
+}
 
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
@@ -44,7 +52,7 @@ pub static PICOTOOL_ENTRIES: [hal::binary_info::EntryAddr; 5] = [
 ];
 
 #[rtic::app(
-    device = hal::pac,
+    device = crate::rtic_device,
     dispatchers = [PIO2_IRQ_0, PIO2_IRQ_1, DMA_IRQ_0],
     peripherals = true,
 )]
@@ -57,7 +65,7 @@ mod app {
     use hal::{
         clocks,
         gpio::{self, bank0::Gpio4, bank0::Gpio5, FunctionI2C, FunctionSio, Pin, PullNone, PullUp, SioOutput},
-        I2C, Sio, Watchdog,
+        Clock, I2C, Sio, Watchdog,
     };
     use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
 
@@ -85,7 +93,6 @@ mod app {
     #[init(local = [i2c_bus: MaybeUninit<Arbiter<AvionicsI2cBus>> = MaybeUninit::uninit()])]
     fn init(mut ctx: init::Context) -> (Shared, Local) {
         let mut watchdog = Watchdog::new(ctx.device.WATCHDOG);
-        Mono::start(ctx.device.TIMER0, &ctx.device.RESETS);
 
         let sio = Sio::new(ctx.device.SIO);
         let pins = hal::gpio::Pins::new(
@@ -105,6 +112,8 @@ mod app {
             &mut watchdog,
         )
         .unwrap();
+
+        Mono::start(ctx.core.SYST, clocks.system_clock.freq().to_Hz());
 
         let led = pins.gpio25.into_pull_type::<PullNone>().into_push_pull_output();
 

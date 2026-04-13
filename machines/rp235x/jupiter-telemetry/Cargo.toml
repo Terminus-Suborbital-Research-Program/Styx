@@ -3,6 +3,7 @@ name = "jupiter-telemetry"
 version = "0.1.1"
 edition = "2021"
 build = "build.rs"
+autobins = false
 
 [dependencies]
 # HAL for the RP350X architecture
@@ -26,7 +27,7 @@ embedded-io = "0.6.1"
 cortex-m = "0.7.7"
 # RTIC for real-time operations
 rtic = { version = "2.1.2" }
-rtic-monotonics = "2.0.3"
+rtic-monotonics = { version = "2.1.0", features = ["cortex-m-systick", "systick-64bit"] }
 
 rtic-sync = "*"
 # USB Device Support
@@ -47,21 +48,26 @@ bin-packets = { path = "../../../common/messages/bin-packets" }
 futures = { version = "0.3.31", default-features = false, features = [
     "async-await",
 ] }
-rp235x-pac = "0.1.0"
+rp235x-pac = {version = "0.2.0", features = ["rt"]}
 
 # Sensors
 bme280 = {path="../../../sensors/bme280", features = ["async", "defmt"] }
 ina260_terminus = { path = "../../../sensors/ina260", features = ["async", "defmt"] }
-bmi323 = {path="../../../sensors/bmi323-rs", features = ["async", "defmt"]}
+bmi323 = { git = "https://github.com/wyatt-mattas/bmi323-rs.git", features = ["async", "defmt"] }
+
 bmm350 = {path="../../../sensors/bmm350-rs", features = ["async", "defmt"]}
 adxl345-eh-driver = "0.2.2"
 bmp5 = "0.2.2"
 
 # Target features
 [features]
-default = ["rp2350"]
+default = []
 rp2350 = [
     "dep:rp235x-hal",
-    "rtic-monotonics/rp235x",
     "rtic/thumbv8main-backend",
 ]
+
+[[bin]]
+name = "jupiter-telemetry"
+path = "src/main.rs"
+required-features = ["rp2350"]
