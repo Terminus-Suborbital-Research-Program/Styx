@@ -5,17 +5,16 @@ use std::{
     fs::{File, OpenOptions},
     io::{BufReader, BufWriter, Read, Write},
     mem,
-    net::{TcpListener, TcpStream, UdpSocket},
+    net::{TcpListener, TcpStream},
     thread,
     time::Duration,
 };
 
 use bincode::{
     config::{Configuration, LittleEndian, NoLimit, Varint, standard},
-    error::DecodeError,
-    serde::{decode_from_reader, decode_from_slice, encode_into_slice},
+    serde::{decode_from_reader, encode_into_slice},
 };
-use env_logger::{Builder, Target};
+use env_logger::Builder;
 use log::{LevelFilter, error, info};
 use rtrb::RingBuffer;
 
@@ -24,14 +23,13 @@ use crate::tasks::{
 };
 
 use signet::{
-    record::packet::{SdrPacketLog, SdrPacketOwned},
+    record::packet::SdrPacketLog,
     sdr::radio_config::BUFF_SIZE,
 };
 
 use bin_packets::data::adcs::AttitudeMetrics;
 use bin_packets::time::Timestamp;
 
-use serialport;
 
 fn main() {
     // env_logger::init();
@@ -46,13 +44,13 @@ fn main() {
         .open()
         .expect("Failed to open UART port");
 
-    let (mut samples_producer, mut samples_consumer) = RingBuffer::<SdrPacketLog>::new(100);
+    let (samples_producer, mut samples_consumer) = RingBuffer::<SdrPacketLog>::new(100);
 
-    let sampling_task = SDRListener::begin_sampling(samples_producer).unwrap();
+    let _sampling_task = SDRListener::begin_sampling(samples_producer).unwrap();
 
     // Refactor to be one combined call, but not ugly.
     let (startracking_thread, quaternion_reciever) = StartrackerThread::new();
-    let startracking_thread_handle = startracking_thread.begin_startracking();
+    let _startracking_thread_handle = startracking_thread.begin_startracking();
 
     // start_test_tcp_receiver();
     // verify_recording("sdr_recording.bin");
@@ -104,7 +102,7 @@ fn main() {
 
                         cnt += 1;
                         if cnt % 30 == 0 {
-                            if let Err(e) = packet_tx.send(Box::new(sdr_packet.clone())) {
+                            if let Err(e) = packet_tx.send(Box::new(*sdr_packet)) {
                                 error!("Error Sending Packet Data {}", e);
                             };
                             if let Ok(estimate) =
@@ -121,20 +119,19 @@ fn main() {
                                         ],
                                         signal_match: estimate,
                                     };
-                                    if let Ok(bytes_written) = bincode::encode_into_slice(
+                                    if let Ok(_bytes_written) = bincode::encode_into_slice(
                                         adcs_packet,
                                         &mut adcs_buffer,
                                         standard(),
-                                    ) {
-                                        if let Err(serial_write_error) =
+                                    )
+                                        && let Err(serial_write_error) =
                                             uart_port.write_all(&adcs_buffer)
                                         {
                                             error!(
                                                 "Serial Write Error to Uart {}",
                                                 serial_write_error
                                             );
-                                        }
-                                    };
+                                        };
                                 }
 
                                 // bincode::encode_into_slice(val, dst, config)
@@ -183,7 +180,7 @@ fn start_file_recorder() {
                             .open("sdr_recording.bin")
                             .expect("Failed to open recording file");
 
-                        let mut writer = BufWriter::with_capacity(1 * 1024 * 1024, file);
+                        let mut writer = BufWriter::with_capacity(1024 * 1024, file);
 
                         loop {
                             match stream.read(&mut buffer) {
@@ -224,7 +221,7 @@ fn verify_recording(filepath: &str) {
 
     let packet_size = mem::size_of::<SdrPacketLog>();
 
-    let mut buffer = vec![0u8; packet_size];
+    let _buffer = vec![0u8; packet_size];
     let mut count = 0;
 
     let config = standard();

@@ -2,7 +2,6 @@ use v4l::buffer::Type;
 use v4l::io::traits::CaptureStream;
 
 use v4l::Device;
-use v4l::io::mmap::Stream;
 
 use v4l::io::mmap::Stream as MmapStream;
 // use v4l::prelude::*;
@@ -19,10 +18,10 @@ use std::thread::{self, JoinHandle};
 
 use aether::attitude::Quaternion;
 use aether::reference_frame::{Body, ICRF};
-use log::{LevelFilter, error, info};
+use log::error;
 use wayfarer::{
     perception::{camera_model::CameraModel, centroiding::Starfinder},
-    startrack::{quest::quest, solver::Startracker},
+    startrack::solver::Startracker,
 }; // pub use crate::io::mmap::Stream as MmapStream;
 
 // use aether::
@@ -43,22 +42,23 @@ impl StartrackerThread {
     }
 
     pub fn begin_startracking(self) -> JoinHandle<()> {
-        let mut dev = Device::new(0).expect("Failed to open device");
+        let dev = Device::new(0).expect("Failed to open device");
         let fmt = dev.format().expect("Failed to read format");
 
         let height = fmt.height;
         let width = fmt.width;
 
-        let mut stream: MmapStream = MmapStream::with_buffers(&mut dev, Type::VideoCapture, 4)
+        let mut stream: MmapStream = MmapStream::with_buffers(&dev, Type::VideoCapture, 4)
             .expect("Failed to create buffer stream");
 
         let starfinder = Starfinder::default();
         let camera_model = CameraModel::default();
         let startracker = Startracker::default();
 
-        let thread = thread::spawn(move || {
+        
+        thread::spawn(move || {
             loop {
-                let (buf, meta): (&[u8], &Metadata) = stream.next().expect("Failed to get frame");
+                let (buf, _meta): (&[u8], &Metadata) = stream.next().expect("Failed to get frame");
 
                 // Looks like I cannot take the raw image buffer with v4l and mutate it, so will have to perform one copy.
                 // This causes an issue based on the way I scan for centroids, where I blot out dead pixels as a pass through. Will
@@ -96,7 +96,6 @@ impl StartrackerThread {
                     }
                 }
             }
-        });
-        thread
+        })
     }
 }

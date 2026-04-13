@@ -1,4 +1,4 @@
-use log::{LevelFilter, error, info};
+use log::error;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
@@ -52,13 +52,14 @@ impl SignalProcessor {
         let mut signal_reader = SignalReader::new(psd_path);
 
         let expected_average = signal_reader.read_psd();
-        let matching = MatchingEstimator::new(expected_average, signal_config.search_size.clone());
+        let matching = MatchingEstimator::new(expected_average, signal_config.search_size);
 
         SignalProcessor::new(spectrum_analyzer, matching)
     }
 
     pub fn begin_signal_processing(mut self) -> JoinHandle<()> {
-        let signal_process_task = thread::Builder::new()
+        
+        thread::Builder::new()
             .name("signal-processor".into())
             .stack_size(4 * 1024 * 1024)
             .spawn(move || {
@@ -81,7 +82,6 @@ impl SignalProcessor {
                     }
                 }
             })
-            .expect("Failed to spawn signal processing thread");
-        signal_process_task
+            .expect("Failed to spawn signal processing thread")
     }
 }

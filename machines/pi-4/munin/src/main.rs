@@ -152,7 +152,7 @@ fn body_to_ned_from_sensors(
     let down_body = Vector::new([accel.x as f64, accel.y as f64, accel.z as f64]).normalize();
 
     let mag_body = Vector::new([mag.x as f64, mag.y as f64, mag.z as f64]);
-    let mag_along_down = &down_body * mag_body.dot(&down_body);
+    let mag_along_down = down_body * mag_body.dot(&down_body);
     let mag_horizontal = mag_body - mag_along_down;
 
     let (mut north_body, north_norm) = mag_horizontal.try_normalize();
@@ -263,13 +263,11 @@ fn start_gps_reader() -> Arc<Mutex<Option<GpsData>>> {
                                         b'\r' => {}
                                         b'\n' => {
                                             let line = sentence.trim();
-                                            if !line.is_empty() && parser.parse(line).is_ok() {
-                                                if let Some(fix) = extract_gps_fix(&parser) {
-                                                    if let Ok(mut latest) = gps_state.lock() {
+                                            if !line.is_empty() && parser.parse(line).is_ok()
+                                                && let Some(fix) = extract_gps_fix(&parser)
+                                                    && let Ok(mut latest) = gps_state.lock() {
                                                         *latest = Some(fix);
                                                     }
-                                                }
-                                            }
                                             sentence.clear();
                                         }
                                         b'$' => {
