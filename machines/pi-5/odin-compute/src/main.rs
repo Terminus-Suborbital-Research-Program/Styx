@@ -125,7 +125,7 @@ fn main() {
                                         standard(),
                                     )
                                         && let Err(serial_write_error) =
-                                            uart_port.write_all(&adcs_buffer)
+                                            uart_port.write_all(&adcs_buffer[..bytes_written])
                                         {
                                             error!(
                                                 "Serial Write Error to Uart {}",
