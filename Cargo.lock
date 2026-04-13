@@ -21,7 +21,7 @@ dependencies = [
 [[package]]
 name = "aether"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#833cee513fe441d037fa09a26fe343bc993b6862"
+source = "git+https://github.com/AtmoPierce/aether.git#c487acb602a32bfaa61e3c3f8278ad745440b442"
 dependencies = [
  "aether_benchmark",
  "aether_catalogs",
@@ -40,7 +40,7 @@ dependencies = [
 [[package]]
 name = "aether_benchmark"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#833cee513fe441d037fa09a26fe343bc993b6862"
+source = "git+https://github.com/AtmoPierce/aether.git#c487acb602a32bfaa61e3c3f8278ad745440b442"
 dependencies = [
  "minstant",
  "once_cell",
@@ -49,9 +49,10 @@ dependencies = [
 [[package]]
 name = "aether_catalogs"
 version = "0.1.0"
-source = "git+https://github.com/AtmoPierce/aether.git#833cee513fe441d037fa09a26fe343bc993b6862"
+source = "git+https://github.com/AtmoPierce/aether.git#c487acb602a32bfaa61e3c3f8278ad745440b442"
 dependencies = [
  "aether_core",
+ "aether_models",
  "csv",
  "rand 0.9.3",
  "rkyv",
@@ -62,7 +63,7 @@ dependencies = [
 [[package]]
 name = "aether_core"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#833cee513fe441d037fa09a26fe343bc993b6862"
+source = "git+https://github.com/AtmoPierce/aether.git#c487acb602a32bfaa61e3c3f8278ad745440b442"
 dependencies = [
  "libm",
  "serde",
@@ -72,7 +73,7 @@ dependencies = [
 [[package]]
 name = "aether_examples"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#833cee513fe441d037fa09a26fe343bc993b6862"
+source = "git+https://github.com/AtmoPierce/aether.git#c487acb602a32bfaa61e3c3f8278ad745440b442"
 dependencies = [
  "aether_core",
 ]
@@ -80,7 +81,7 @@ dependencies = [
 [[package]]
 name = "aether_fluids"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#833cee513fe441d037fa09a26fe343bc993b6862"
+source = "git+https://github.com/AtmoPierce/aether.git#c487acb602a32bfaa61e3c3f8278ad745440b442"
 dependencies = [
  "aether_shapes",
 ]
@@ -88,22 +89,20 @@ dependencies = [
 [[package]]
 name = "aether_graphics"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#833cee513fe441d037fa09a26fe343bc993b6862"
+source = "git+https://github.com/AtmoPierce/aether.git#c487acb602a32bfaa61e3c3f8278ad745440b442"
 dependencies = [
  "aether_core",
- "num-traits",
 ]
 
 [[package]]
 name = "aether_ml"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#833cee513fe441d037fa09a26fe343bc993b6862"
+source = "git+https://github.com/AtmoPierce/aether.git#c487acb602a32bfaa61e3c3f8278ad745440b442"
 dependencies = [
  "aether_core",
  "aether_opt",
  "csv",
  "minstant",
- "num-traits",
  "once_cell",
  "serde",
 ]
@@ -111,7 +110,7 @@ dependencies = [
 [[package]]
 name = "aether_models"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#833cee513fe441d037fa09a26fe343bc993b6862"
+source = "git+https://github.com/AtmoPierce/aether.git#c487acb602a32bfaa61e3c3f8278ad745440b442"
 dependencies = [
  "aether_core",
 ]
@@ -119,17 +118,16 @@ dependencies = [
 [[package]]
 name = "aether_opt"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#833cee513fe441d037fa09a26fe343bc993b6862"
+source = "git+https://github.com/AtmoPierce/aether.git#c487acb602a32bfaa61e3c3f8278ad745440b442"
 dependencies = [
  "aether_core",
  "aether_rand",
- "num-traits",
 ]
 
 [[package]]
 name = "aether_rand"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#833cee513fe441d037fa09a26fe343bc993b6862"
+source = "git+https://github.com/AtmoPierce/aether.git#c487acb602a32bfaa61e3c3f8278ad745440b442"
 dependencies = [
  "aether_core",
 ]
@@ -137,21 +135,19 @@ dependencies = [
 [[package]]
 name = "aether_shapes"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#833cee513fe441d037fa09a26fe343bc993b6862"
+source = "git+https://github.com/AtmoPierce/aether.git#c487acb602a32bfaa61e3c3f8278ad745440b442"
 dependencies = [
  "aether_core",
- "num-traits",
 ]
 
 [[package]]
 name = "aether_stats"
 version = "0.1.1"
-source = "git+https://github.com/AtmoPierce/aether.git#833cee513fe441d037fa09a26fe343bc993b6862"
+source = "git+https://github.com/AtmoPierce/aether.git#c487acb602a32bfaa61e3c3f8278ad745440b442"
 dependencies = [
  "aether_core",
  "aether_opt",
  "aether_rand",
- "num-traits",
 ]
 
 [[package]]
