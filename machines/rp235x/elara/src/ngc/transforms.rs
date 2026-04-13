@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 use nalgebra::{Matrix3, Matrix3x1};
 
 pub fn angular_rate_dcm(roll: f64, pitch: f64, yaw: f64)-> Matrix3<f64>{

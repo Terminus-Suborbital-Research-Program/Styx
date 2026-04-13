@@ -1,8 +1,9 @@
+#![warn(missing_docs)]
 use bin_packets::data;
 use bin_packets::data::adcs::AttitudeMetrics;
 use bin_packets::{
-    packets::ApplicationPacket, 
-   // data::adcs::AttitudeMetrics
+    packets::ApplicationPacket,
+    // data::adcs::AttitudeMetrics
 };
 use heapless::Deque;
 use pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin};
@@ -20,8 +21,8 @@ use crate::{hal::timer::CopyableTimer1, peripherals::async_i2c::AsyncI2c};
 
 pub mod pins {
 
-    use rp235x_hal::gpio::{FunctionUart, FunctionUartAux, Pin, PullDown};
     use rp235x_hal::gpio::bank0::*;
+    use rp235x_hal::gpio::{FunctionUart, FunctionUartAux, Pin, PullDown};
 
     /// Flab servo mosfet
     pub type FlapMosfetPin = Gpio2;
@@ -95,23 +96,20 @@ use rp235x_hal::uart::Enabled;
 use rp235x_hal::uart::UartPeripheral;
 use rp235x_hal::Timer;
 
-
-use pins::{OdinComputeTxPin, OdinComputeRxPin};
+use pins::{OdinComputeRxPin, OdinComputeTxPin};
 pub type OdinComputeUart = UartPeripheral<Enabled, UART1, (OdinComputeRxPin, OdinComputeTxPin)>;
 
 /// Data buffer for downsyncing ICARUS data
 pub type ComputeTXBuffer = Deque<ApplicationPacket, 64>;
 pub type ComputeRXBuffer = Deque<AttitudeMetrics, 64>;
 
-
-pub enum MpChannel
-{
-    PD1_4 =  0b00000, // No pins powered
-    PD5_8 =  0b00001, // GPIO 19
-    PD9_12 =  0b00010, // GPIO 20
-    PD13_16 =  0b00011, // GPIO 19 20
-    PD17_20 =  0b00100, // GPIO 21
-    PD21_24 =  0b00101, // GPIO 19 21
-    PD25_28 =  0b00110, // GPIO 20 21
-    PD29_32 =  0b00111, // GPIO 19 20 21
+pub enum MpChannel {
+    PD1_4 = 0b00000,   // No pins powered
+    PD5_8 = 0b00001,   // GPIO 19
+    PD9_12 = 0b00010,  // GPIO 20
+    PD13_16 = 0b00011, // GPIO 19 20
+    PD17_20 = 0b00100, // GPIO 21
+    PD21_24 = 0b00101, // GPIO 19 21
+    PD25_28 = 0b00110, // GPIO 20 21
+    PD29_32 = 0b00111, // GPIO 19 20 21
 }

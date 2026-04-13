@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use nalgebra::{Matrix, Matrix3, Matrix3x1};
 
 pub fn rotate_x(angle_rad: f64) -> Matrix3<f64>{

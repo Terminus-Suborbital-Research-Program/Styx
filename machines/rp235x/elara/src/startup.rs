@@ -1,14 +1,14 @@
+#![warn(missing_docs)]
 use crate::{
     actuators::servo::Servo,
     device_constants::{
-        ComputeRXBuffer, ComputeTXBuffer, OdinComputeUart, pins::{MuxEPin, MuxS0Pin, MuxS1Pin, MuxS2Pin, MuxS3Pin}
+        pins::{MuxEPin, MuxS0Pin, MuxS1Pin, MuxS2Pin, MuxS3Pin},
+        ComputeRXBuffer, ComputeTXBuffer, OdinComputeUart,
     },
 };
 use crate::{
     app::*,
-    device_constants::{
-        pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin},
-    },
+    device_constants::pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin},
     peripherals::async_i2c::AsyncI2c,
     Mono,
 };
@@ -28,7 +28,7 @@ use hc12_rs::{
 };
 use rp235x_hal::{
     clocks,
-    gpio::{FunctionI2C, FunctionPwm, Pin, PullNone, PullUp, FunctionUartAux},
+    gpio::{FunctionI2C, FunctionPwm, FunctionUartAux, Pin, PullNone, PullUp},
     pwm::Slices,
     uart::{DataBits, StopBits, UartConfig, UartPeripheral},
     Clock, Sio, Watchdog, I2C,
@@ -148,7 +148,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let adc = ctx.local.adc.as_mut().unwrap();
 
     let mut adc_pin_0 = rp235x_hal::adc::AdcPin::new(pins.gpio28.into_floating_input()).unwrap();
-   
+
     let mut adc_fifo = adc
         .build_fifo()
         // Set clock divider to target a sample rate of 1000 samples per second (1ksps).
@@ -169,10 +169,7 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     sample_sensors::spawn(avionics_i2c_arbiter).ok();
     info!("Tasks spawned!");
     (
-        Shared { 
-            data,
-            metrics_buf,
-        },
+        Shared { data, metrics_buf },
         Local {
             led: led_pin,
             bmm350,
@@ -181,9 +178,18 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             adc_fifo_l: adc_fifo,
             adc_outputs: [0u16; 24],
             mp_channel: MpChannel::PD1_4,
-            pin19: pins.gpio19.into_pull_type::<PullNone>().into_push_pull_output(),
-            pin20: pins.gpio20.into_pull_type::<PullNone>().into_push_pull_output(),
-            pin21: pins.gpio21.into_pull_type::<PullNone>().into_push_pull_output(),
+            pin19: pins
+                .gpio19
+                .into_pull_type::<PullNone>()
+                .into_push_pull_output(),
+            pin20: pins
+                .gpio20
+                .into_pull_type::<PullNone>()
+                .into_push_pull_output(),
+            pin21: pins
+                .gpio21
+                .into_pull_type::<PullNone>()
+                .into_push_pull_output(),
             compute_link,
         },
     )

@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 
 pub mod iers{
     // Constants defined using https: f64 = //iers-conventions.obspm.fr/packaged_versions/iersconventions_v1_0_0.tar.gz

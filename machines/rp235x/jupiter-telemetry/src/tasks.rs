@@ -2,7 +2,7 @@ use bin_packets::devices::DeviceIdentifier;
 use bin_packets::packets::status::Status;
 use bin_packets::packets::ApplicationPacket;
 use bincode::config::standard;
-use bincode::{Encode, encode_into_slice};
+use bincode::{encode_into_slice, Encode};
 
 use bmi323::{AccelConfig, GyroConfig};
 use bmm350::MagConfig;
@@ -39,7 +39,6 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
         Mono::delay(300_u64.millis()).await;
     }
 }
-
 
 pub async fn sample_sensors(
     mut ctx: sample_sensors::Context<'_>,
@@ -86,8 +85,8 @@ pub async fn sample_sensors(
 
     loop {
         ctx.shared.data.lock(|data| {
-                    data.clear();
-                });
+            data.clear();
+        });
         let imu_result = ctx.local.bmi323.read_accel_data_scaled().await;
         match imu_result {
             Ok(acc) => {
@@ -137,7 +136,6 @@ pub async fn sample_sensors(
                 };
                 ctx.shared.data.lock(|data| {
                     data.push_back(mag_packet).ok();
-
                 });
             }
             Err(i2c_error) => {
@@ -151,19 +149,19 @@ pub async fn sample_sensors(
             pressure: env.2,
             humidity: env.3,
         };
-         ctx.shared.data.lock(|data| {
+        ctx.shared.data.lock(|data| {
             data.push_back(env_packet).ok();
             // data[3] = env_packet;
         });
         let bmp5_dat = ctx.local.bmp5.measure().await.unwrap();
 
-        let bmp_5_packet = ApplicationPacket::BMPData { 
+        let bmp_5_packet = ApplicationPacket::BMPData {
             timestamp: now_timestamp().millis(),
             temperature: bmp5_dat.temperature,
             pressure: bmp5_dat.pressure,
         };
 
-         ctx.shared.data.lock(|data| {
+        ctx.shared.data.lock(|data| {
             data.push_back(env_packet).ok();
         });
 
@@ -180,11 +178,11 @@ pub async fn sample_sensors(
 unsafe fn I2C0_IRQ() {
     ComputeI2cBus::on_interrupt();
 }
-pub async fn get_data_response( mut ctx: get_data_response::Context<'_>) {
+pub async fn get_data_response(mut ctx: get_data_response::Context<'_>) {
     let mut outgoing_buf = [0u8; 512];
     let mut buf_len = 0;
 
-    let mut read_pos = 0; // Current outgoing packet byte 
+    let mut read_pos = 0; // Current outgoing packet byte
     let mut write_pos = 0; // Location in serialization
 
     loop {
@@ -193,10 +191,12 @@ pub async fn get_data_response( mut ctx: get_data_response::Context<'_>) {
             Event::Start => {
                 read_pos = 0;
                 write_pos = 0;
-                
+
                 ctx.shared.data.lock(|data| {
                     while let Some(packet) = data.pop_front() {
-                        if let Ok(w) = encode_into_slice(packet, &mut outgoing_buf[write_pos..], standard()) {
+                        if let Ok(w) =
+                            encode_into_slice(packet, &mut outgoing_buf[write_pos..], standard())
+                        {
                             write_pos += w;
                         } else {
                             data.push_front(packet).ok();
@@ -208,7 +208,7 @@ pub async fn get_data_response( mut ctx: get_data_response::Context<'_>) {
 
             Event::TransferRead => {
                 if read_pos < write_pos {
-                    // Send the next byte to the controller 
+                    // Send the next byte to the controller
                     ctx.local.compute_i2c.write(&[outgoing_buf[read_pos]]);
                     read_pos += 1;
                 } else {
@@ -219,9 +219,7 @@ pub async fn get_data_response( mut ctx: get_data_response::Context<'_>) {
 
             // There are other events than transfer read, but this use case is so simple
             // that I think I can just throw them, but we'll see with testing
-            _ => {
-
-            }
+            _ => {}
         }
     }
 }

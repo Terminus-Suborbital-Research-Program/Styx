@@ -7,6 +7,9 @@ use crate::states::shutdown::Shutdown;
 
 use super::traits::{StateContext, ValidState};
 
+/// JUPITER PHASE: Battery Power
+///
+/// S
 #[derive(Debug, Clone, Default)]
 pub struct BatteryPower {}
 

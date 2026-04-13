@@ -26,6 +26,7 @@ impl StateContext {
     }
 }
 
+/// A trait that represents a valid state machine state
 pub trait ValidState {
     /// Get the current state as a telemetry phase
     fn phase(&self) -> JupiterPhase;

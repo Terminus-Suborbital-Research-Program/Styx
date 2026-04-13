@@ -1,16 +1,10 @@
-use crate::{
-    device_constants::{
-        pins::{MuxEPin, MuxS0Pin, MuxS1Pin, MuxS2Pin, MuxS3Pin},
-        DownlinkBuffer,
-        TELEMETRY_PERIPHERAL_ADDRESS,
-    },
+use crate::device_constants::{
+    pins::{MuxEPin, MuxS0Pin, MuxS1Pin, MuxS2Pin, MuxS3Pin},
+    DownlinkBuffer, TELEMETRY_PERIPHERAL_ADDRESS,
 };
 use crate::{
     app::*,
-    device_constants::{
-        pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin},
-
-    },
+    device_constants::pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin},
     peripherals::async_i2c::AsyncI2c,
     Mono,
 };
@@ -34,7 +28,10 @@ use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
 use bme280::AsyncBME280;
 use bmi323::AsyncBmi323;
 use bmm350::AsyncBmm350;
-use bmp5::{Config as Bmp5Config, i2c::{Bmp5, BMP5_ADDRESS}};
+use bmp5::{
+    i2c::{Bmp5, BMP5_ADDRESS},
+    Config as Bmp5Config,
+};
 
 use adxl345_eh_driver;
 
@@ -115,7 +112,6 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let timer = rp235x_hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
     let mut timer_two = timer;
 
-    
     // Sensors
     // Init I2C pins
     let compute_sda_pin: Pin<EscI2CSdaPin, FunctionI2C, PullUp> = pins.gpio16.reconfigure();
@@ -131,7 +127,6 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     // let mut accel = adxl345_eh_driver::Driver::new(compute_i2c, None).unwrap();
     // let (x, y, z) = accel.get_accel_raw().unwrap();
-
 
     // let async_compute_i2c = AsyncI2c::new(compute_i2c, 10);
     // let compute_i2c_arbiter = ctx.local.i2c_compute_bus.write(Arbiter::new(async_compute_i2c));
@@ -160,8 +155,12 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let bmm350 = AsyncBmm350::new_with_i2c(ArbiterDevice::new(avionics_i2c_arbiter), 0x14, Mono);
     let bmi323 = AsyncBmi323::new_with_i2c(ArbiterDevice::new(avionics_i2c_arbiter), 0x69, Mono);
     let bme280 = AsyncBME280::new(ArbiterDevice::new(avionics_i2c_arbiter), 0x77, Mono);
-    let mut bmp5 = Bmp5::new(ArbiterDevice::new(avionics_i2c_arbiter), Mono, BMP5_ADDRESS, Bmp5Config::default());
-
+    let mut bmp5 = Bmp5::new(
+        ArbiterDevice::new(avionics_i2c_arbiter),
+        Mono,
+        BMP5_ADDRESS,
+        Bmp5Config::default(),
+    );
 
     let data = DownlinkBuffer::new();
 

@@ -7,6 +7,7 @@ mod actuators;
 mod device_constants;
 mod peripherals;
 mod phases;
+mod phases;
 mod sensors;
 mod startup;
 mod tasks;
@@ -93,6 +94,9 @@ mod app {
         pub radio: IcarusHC12,
         pub relay_servo: RelayServo,
         pub flap_servo: FlapServo,
+        pub radio: IcarusHC12,
+        pub relay_servo: RelayServo,
+        pub flap_servo: FlapServo,
         pub led: gpio::Pin<gpio::bank0::Gpio25, FunctionSio<SioOutput>, PullNone>,
         pub bmm350: AsyncBmm350<AsyncBmmI2cInterface<ArbiterDevice<'static, AvionicsI2cBus>>, Mono>,
         pub bmi323: AsyncBmi323<AsyncI2cInterface<ArbiterDevice<'static, AvionicsI2cBus>>, Mono>,
@@ -152,6 +156,16 @@ mod app {
         #[task(local = [led], shared = [data], priority = 1)]
         async fn heartbeat(ctx: heartbeat::Context);
 
+        // Takes care of incoming packets
+        #[task(shared = [data], local=[radio], priority = 2)]
+        async fn radio_send(mut ctx: radio_send::Context);
+
+        #[task(priority = 3, local=[flap_servo, relay_servo, rbf])]
+        async fn mode_sequencer(&mut ctx: mode_sequencer::Context);
+
+        // Handles INA sensors
+        #[task(priority = 2, shared = [data], local=[ina260_1, ina260_2, ina260_3, ina260_4])]
+        async fn ina_sample(&mut ctx: ina_sample::Context, i2c: &'static Arbiter<MotorI2cBus>);
         // Takes care of incoming packets
         #[task(shared = [data], local=[radio], priority = 2)]
         async fn radio_send(mut ctx: radio_send::Context);

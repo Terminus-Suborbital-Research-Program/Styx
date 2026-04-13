@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 use embedded_hal::{digital::OutputPin, pwm::SetDutyCycle};
 
 // Servo Consts
@@ -61,4 +62,3 @@ where
         self.mosfet_pin.set_low().unwrap();
     }
 }
-

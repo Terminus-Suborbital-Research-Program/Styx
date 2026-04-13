@@ -1,39 +1,49 @@
-#![warn(missing_docs)]
+//! Startup initialization for the Ejector
 
+#![warn(missing_docs, clippy::unwrap_used)]
+
+use common_states::rbf;
 use defmt::{info, warn};
+use embedded_hal_bus::spi::ExclusiveDevice;
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
 use fugit::RateExtU32;
 use heapless::Deque;
 use rp235x_hal::adc::AdcPin;
 use rp235x_hal::clocks::init_clocks_and_plls;
-use rp235x_hal::gpio::{FunctionSio, PinState, PullNone, FunctionUart, SioInput};
+use rp235x_hal::gpio::{FunctionSio, FunctionSpi, FunctionUart, PinState, PullDown, PullNone, SioInput};
 use rp235x_hal::pwm::Slices;
 use rp235x_hal::uart::{DataBits, StopBits, UartConfig, UartPeripheral};
 use rp235x_hal::{Clock, Sio, Watchdog};
 use rtic_monotonics::Monotonic;
-
 use mcp9600::{
-    ADCResolution, BurstModeSamples, ColdJunctionResolution, DeviceAddr, 
-    FilterCoefficient, MCP9600, ShutdownMode, ThermocoupleType
+    ADCResolution, BurstModeSamples, ColdJunctionResolution, DeviceAddr, FilterCoefficient,
+    ShutdownMode, ThermocoupleType, MCP9600,
 };
+use rtic_sync::make_signal;
+use rtic_sync::signal::{self, Signal};
+use ws2812_rs::WS2812;
 use rp235x_hal::i2c::I2C;
+use rp235x_hal::spi::Spi;
 // use rp235x_hal::timer::monotonic::Monotonic;
 
 use crate::actuators::electromag::{ElectroMagnet, ElectroMagnetPolarity, HBridge};
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
-use crate::device_constants::pins::{CamMosfetPin};
+use crate::device_constants::pins::{CamMosfetPin, RBFPin};
 use crate::device_constants::{
-    EjectionDetectionPin, GreenLed, JupiterUart, RedLed, SAMPLE_COUNT, ThermoI2cBus,
+    EjectionDetectionPin, JupiterUart,
+    Cam1, Cam1Pin, Cam2, RGBLed, RGBStatus, SAMPLE_COUNT, ThermoI2CSclPin, ThermoI2CSdaPin, ThermoI2cBus
 };
-use crate::hal;
+use crate::{hal, sd_card};
 use crate::{app::*, Mono};
+
 
 // Timestamp for logging
 defmt::timestamp!("{=u64:us}", {
     Mono::now().duration_since_epoch().to_nanos()
 });
 
+/// Initialization
 pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     // Reset the spinlocks - this is skipped by soft-reset
     unsafe {
@@ -69,16 +79,19 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         &mut ctx.device.RESETS,
     );
 
+    let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
+
+
     // Debugging on-board LED pin
-    let mut led_pin = bank0_pins
-        .gpio25
-        .into_pull_type::<PullNone>()
-        .into_push_pull_output();
-    led_pin.set_low().unwrap();
+    // let mut led_pin = bank0_pins
+    //     .gpio25
+    //     .into_pull_type::<PullNone>()
+    //     .into_push_pull_output();
+    // led_pin.set_low().unwrap();
 
     // Red led pin - gets set high when armed
-    let red_led_pin: RedLed = bank0_pins
-        .gpio11
+    let cam1: Cam1 = bank0_pins
+        .gpio10
         .into_push_pull_output_in_state(PinState::High)
         .reconfigure();
 
@@ -88,12 +101,12 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         .into_push_pull_output_in_state(PinState::Low);
 
     // Frame received indicator
-    let packet_indicator: GreenLed = bank0_pins
-        .gpio10
+    let cam2: Cam2 = bank0_pins
+        .gpio11
         .into_push_pull_output_in_state(PinState::High)
         .reconfigure();
 
-    let sda_pin = bank0_pins.gpio32.into_pull_type().into_function();
+    let sda_pin= bank0_pins.gpio32.into_pull_type().into_function();
     let scl_pin = bank0_pins.gpio33.into_pull_type().into_function();
 
     let thermo_i2c_bus: ThermoI2cBus = I2C::i2c0(
@@ -105,20 +118,21 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         clocks.peripheral_clock.freq(),
     );
 
-    let mut thermocouple = MCP9600::new(thermo_i2c_bus, DeviceAddr::AD7)
-        .expect("Failed to initialize MCP9600");
+    let mut thermocouple =
+        MCP9600::new(thermo_i2c_bus, DeviceAddr::AD7).expect("Failed to initialize MCP9600");
 
-    thermocouple.set_sensor_configuration(
-        ThermocoupleType::TypeK,
-        FilterCoefficient::FilterMedium,
-    ).unwrap();
+    thermocouple
+        .set_sensor_configuration(ThermocoupleType::TypeK, FilterCoefficient::FilterMedium)
+        .unwrap();
 
-    thermocouple.set_device_configuration(
-        ColdJunctionResolution::High,
-        ADCResolution::Bit18,
-        BurstModeSamples::Sample1,
-        ShutdownMode::NormalMode,
-    ).unwrap();
+    thermocouple
+        .set_device_configuration(
+            ColdJunctionResolution::High,
+            ADCResolution::Bit18,
+            BurstModeSamples::Sample1,
+            ShutdownMode::NormalMode,
+        )
+        .unwrap();
 
     // adc.free_running(&gegier_pin);
     // loop {
@@ -129,17 +143,32 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     //     }
     // }
 
+    let spi_mosi = bank0_pins.gpio19.into_function::<FunctionSpi>();
+    let spi_miso = bank0_pins.gpio16.into_function::<FunctionSpi>();
+    let spi_sck = bank0_pins.gpio18.into_function::<FunctionSpi>();
+    let spi_cs = bank0_pins.gpio17.into_push_pull_output_in_state(PinState::High);
 
+    let spi_bus = rp235x_hal::spi::Spi::<_, _, _, 8>::new(ctx.device.SPI0, (spi_mosi, spi_miso, spi_sck));
 
-    let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
+    let spi = spi_bus.init(
+        &mut ctx.device.RESETS,
+        clocks.peripheral_clock.freq(),
+        400.kHz(), // card initialization happens at low baud rate
+        embedded_hal::spi::MODE_0,
+    );
+
+        let spi = ExclusiveDevice::new(spi, spi_cs,timer.clone()).unwrap();
+
+        let sd_card = sd_card::EjectorSdCard::new(spi, timer.clone());
+
     let mut timer_two = timer;
 
     // Jupiter downlink UART
     let jupiter_uart: JupiterUart = UartPeripheral::new(
         ctx.device.UART0,
         (
-            bank0_pins.gpio16.into_function(),
-            bank0_pins.gpio17.into_function(),
+            bank0_pins.gpio0.into_function(),
+            bank0_pins.gpio1.into_function(),
         ),
         &mut ctx.device.RESETS,
     )
@@ -148,45 +177,72 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         clocks.peripheral_clock.freq(),
     )
     .unwrap();
-    
+
+    let (status_link, downlink) = jupiter_uart.split();
+
     // Servo
     let pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
-    let mut ejection_servo_pwm = pwm_slices.pwm0;
+
+    // Servo
+    let mut power_servo_pwm = pwm_slices.pwm2;
+    let mut ejection_servo_pwm = pwm_slices.pwm3;
+
     ejection_servo_pwm.enable();
     ejection_servo_pwm.set_div_int(48);
 
-    let mut ejection_emag_pwm = pwm_slices.pwm2;
-    ejection_emag_pwm.enable();
-    ejection_emag_pwm.set_div_int(48);
+    power_servo_pwm.enable();
+    power_servo_pwm.set_div_int(48);
 
     // Pin for servo mosfet digital
-    let mut mosfet_pin: EjectionServoMosfet = bank0_pins.gpio1.into_push_pull_output();
+    let mut mosfet_pin: EjectionServoMosfet = bank0_pins.gpio6.into_push_pull_output();
     mosfet_pin.set_low().unwrap();
-    let mut channel_a = ejection_servo_pwm.channel_a;
-    let channel_pin = channel_a.output_to(bank0_pins.gpio0);
+    let mut channel_b = ejection_servo_pwm.channel_b;
+    let channel_pin = channel_b.output_to(bank0_pins.gpio7);
+    channel_b.set_enabled(true);
+    let ejection_servo = Servo::new(channel_b, channel_pin, mosfet_pin);
+
+    let mut power_mosfet_pin = bank0_pins.gpio4.into_push_pull_output();
+    power_mosfet_pin.set_low().unwrap();
+    let mut channel_a = power_servo_pwm.channel_b;
+    let channel_pin = channel_a.output_to(bank0_pins.gpio5);
     channel_a.set_enabled(true);
-    let ejection_servo = Servo::new(channel_a, channel_pin, mosfet_pin);
+    let mut power_servo = Servo::new(channel_a, channel_pin, power_mosfet_pin);
+    power_servo.enable();
+    power_servo.set_angle(90);
 
-    // Add emag variable
-    let mut echannel_a = ejection_emag_pwm.channel_a;
-    let mut echannel_b = ejection_emag_pwm.channel_b;
-
-    let emag_pwm_pin1 = echannel_b.output_to(bank0_pins.gpio21);
-    let emag_pwm_pin2 = echannel_a.output_to(bank0_pins.gpio20);
+    // Add emag variables
+    let emag_pin1 = bank0_pins.gpio21.into_push_pull_output();
+    let emag_pin2 = bank0_pins.gpio20.into_push_pull_output();
     let emag_arming_pin = bank0_pins.gpio22.into_push_pull_output();
 
     //let emag_channels = (echannel_a, echannel_b);
 
     let mut ejector_magnet = ElectroMagnet::new(
-        HBridge::new(echannel_a, echannel_b, emag_arming_pin),
-        ElectroMagnetPolarity::State1,
+        HBridge::new(emag_pin1, emag_pin2, emag_arming_pin),
+        ElectroMagnetPolarity::Attract,
     );
+
+    let mut rbf_pin: RBFPin = bank0_pins.gpio2.into_pull_down_input();
+
     // Create ejector servo
     let mut ejector_servo: EjectorServo = EjectorServo::new(ejection_servo);
     ejector_servo.enable();
     ejector_servo.hold();
 
-    let gpio_detect: EjectionDetectionPin = bank0_pins.gpio24.into_pull_down_input();
+    // Functionality currently not enabled
+    // let gpio_detect: EjectionDetectionPin = bank0_pins.gpio8.into_pull_down_input();
+
+    let rgb_ctl_pin: RGBLed = bank0_pins.gpio24
+        .into_pull_type::<PullNone>()
+        .into_push_pull_output();
+
+    let mut rgb_wake = bank0_pins.gpio25
+        .into_push_pull_output();
+
+    rgb_wake.set_high().unwrap();
+
+    let sys_freq = clocks.system_clock.freq().to_Hz();
+    let mut rgb_driver = WS2812::new(rgb_ctl_pin, sys_freq as u64); 
 
     // SI1445 I2C
     // let guard_i2c: GuardI2C = I2C::i2c1(
@@ -200,28 +256,42 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     info!("Peripherals initialized, spawning tasks");
 
+    let status_config = RGBStatus::default();
+
+    let (ejection_trigger_tx, ejection_trigger_rx)  = make_signal!(());
+
     // Tasks
+
+    poll_rbf::spawn().ok();
     heartbeat::spawn().ok();
     ejector_sequencer::spawn().ok();
     camera_sequencer::spawn().ok();
     poll_temperature::spawn().ok();
     downlink_jupiter::spawn().ok();
+    write_sd_card::spawn().ok();
 
     (
         Shared {
             downlink_packets: Deque::new(),
             samples_buffer: [0u16; SAMPLE_COUNT],
+            ejection_enabled: false,
+            sd_card: sd_card,
+            status_config,
         },
         Local {
             camera_mosfet: cam_pin,
-            onboard_led: led_pin,
-            downlink: jupiter_uart,
+            // onboard_led: led_pin,
+            status_link,
+            downlink,
             ejector_servo,
-            ejection_pin: gpio_detect,
+            rbf_pin: rbf_pin,
             ejecctor_magnet: ejector_magnet,
-            arming_led: red_led_pin,
-            packet_led: packet_indicator,
+            // arming_led: red_led_pin,
+            // packet_led: packet_indicator,
             thermocouple,
+            rgb_driver,
+            ejection_trigger_tx,
+            ejection_trigger_rx
         },
     )
 }

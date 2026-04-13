@@ -1,19 +1,21 @@
-#![warn(missing_docs)]
+//! Code for the Ejector's servo control
+
+#![warn(missing_docs, clippy::unwrap_used)]
 
 use embedded_hal::{digital::OutputPin, pwm::SetDutyCycle};
 use rp235x_hal::{
     gpio,
-    pwm::{Channel, FreeRunning, Slice, A},
+    pwm::{Channel, FreeRunning, Slice, B},
 };
 
 /// Ejector servo types
-pub type EjectionServoPin = gpio::bank0::Gpio0;
-pub type EjectionServoPwm = rp235x_hal::pwm::Pwm0;
+pub type EjectionServoPin = gpio::bank0::Gpio7;
+pub type EjectionServoPwm = rp235x_hal::pwm::Pwm3;
 pub type EjectionServoSlice = Slice<EjectionServoPwm, FreeRunning>;
 pub type EjectionServoMosfet =
-    gpio::Pin<gpio::bank0::Gpio1, gpio::FunctionSioOutput, gpio::PullDown>;
+    gpio::Pin<gpio::bank0::Gpio6, gpio::FunctionSioOutput, gpio::PullDown>;
 pub type EjectionServo = Servo<
-    Channel<EjectionServoSlice, A>,
+    Channel<EjectionServoSlice, B>,
     gpio::Pin<EjectionServoPin, gpio::FunctionPwm, gpio::PullDown>,
     EjectionServoMosfet,
 >;
@@ -38,6 +40,7 @@ pub static HOLDING_ANGLE: u16 = 85;
 // pub static LOCKING_SERVO_LOCKED: u16 = 105;
 // pub static LOCKING_SERVO_UNLOCKED: u16 = 20;
 
+/// Generic servo struct
 pub struct Servo<C, P, M: OutputPin> {
     channel: C,
     _pin: P, // Consume this pin please
@@ -78,19 +81,20 @@ where
     }
 }
 
-// Ejector servo
+/// Ejector servo
 pub struct EjectorServo {
     servo: Servo<
-        Channel<EjectionServoSlice, A>,
+        Channel<EjectionServoSlice, B>,
         gpio::Pin<EjectionServoPin, gpio::FunctionPwm, gpio::PullDown>,
         EjectionServoMosfet,
     >,
 }
 
 impl EjectorServo {
+    /// Create a new ejector servo instance
     pub fn new(
         servo: Servo<
-            Channel<EjectionServoSlice, A>,
+            Channel<EjectionServoSlice, B>,
             gpio::Pin<EjectionServoPin, gpio::FunctionPwm, gpio::PullDown>,
             EjectionServoMosfet,
         >,
@@ -98,16 +102,19 @@ impl EjectorServo {
         Self { servo }
     }
 
+    /// Sets the servo to the ejection angle
     pub fn eject(&mut self) {
         self.servo.set_angle(EJECTION_ANGLE);
         self.servo.enable();
     }
 
+    /// Hold the servo at the holding angle
     pub fn hold(&mut self) {
         self.servo.set_angle(HOLDING_ANGLE);
         self.servo.enable();
     }
 
+    /// Disable the servo by setting the mosfet pin low
     pub fn disable(&mut self) {
         self.servo.disable();
     }
