@@ -1,0 +1,40 @@
+[package]
+name = "simple-async"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+autobins = false
+
+[dependencies]
+rp235x-hal = { version = "0.4.0", features = [
+  "binary-info",
+  "critical-section-impl",
+  "rt",
+  "defmt",
+  "rtic-monotonic",
+], optional = true }
+
+embedded-hal = "1.0.0"
+embedded-hal-async = "1.0.0"
+fugit = "0.3.7"
+futures = { version = "0.3.31", default-features = false, features = ["async-await"] }
+rtic = { version = "2.1.2" }
+rtic-monotonics = { version = "2.1.0", features = ["cortex-m-systick", "systick-64bit"] }
+rtic-sync = "1.3.0"
+rp235x-pac = {version = "0.2.0", features = ["rt"]}
+
+defmt = { workspace = true }
+defmt-rtt = { workspace = true }
+bmi323 = { git = "https://github.com/wyatt-mattas/bmi323-rs.git", features = ["async", "defmt"] }
+
+[features]
+default = []
+rp2350 = [
+  "dep:rp235x-hal",
+  "rtic/thumbv8main-backend",
+]
+
+[[bin]]
+name = "simple-async"
+path = "src/main.rs"
+required-features = ["rp2350"]

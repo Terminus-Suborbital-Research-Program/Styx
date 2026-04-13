@@ -42,8 +42,8 @@ impl CSVPacketTranslator {
         let original_file_iterations = path_iter.fold(
             HashMap::new(),
             |mut original_file_iterations, file_query| {
-                if let Ok(dir_entry) = file_query {
-                    if let Ok(file_name) = dir_entry.file_name().into_string() {
+                if let Ok(dir_entry) = file_query
+                    && let Ok(file_name) = dir_entry.file_name().into_string() {
                         let (struct_name, _time_or_iter) = file_name.split_once('-').unwrap();
                         let struct_name: String =
                             struct_name.chars().filter(|c| !c.is_whitespace()).collect();
@@ -56,7 +56,6 @@ impl CSVPacketTranslator {
                             original_file_iterations.insert(struct_name, 1);
                         }
                     }
-                }
                 original_file_iterations
             },
         );

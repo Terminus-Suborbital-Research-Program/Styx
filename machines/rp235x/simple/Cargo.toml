@@ -1,0 +1,44 @@
+[package]
+name = "simple"
+version = "0.1.1"
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+# HAL for the RP350X architecture
+rp235x-hal = { version = "0.4.0", features = [
+  "binary-info",
+  "critical-section-impl",
+  "rt",
+  "defmt",
+], optional = true }
+
+panic-halt = {version = "0.2"}
+
+embedded-hal-bus = { version = "0.3.0", features = ["async", "defmt-03"] }
+# Rust safe bindings to register-level control
+embedded-hal = "1.0.0"
+embedded-hal-async = "1.0.0"
+embedded-io = "0.6.1"
+embedded_hal_0_2 = {package = "embedded-hal", version = "0.2.5", features = ["unproven"]}
+
+# Cortex-M peripherals
+cortex-m = "0.7.2"
+cortex-m-rt = "0.7"
+cortex-m-rtic = "1.1.4"
+critical-section = {version = "1.2.0"}
+
+rp235x-pac = {version = "0.2.0", features = ["rt"]}
+
+defmt = {workspace = true}
+defmt-rtt = {workspace = true}
+heapless = {workspace = true}
+bmi323 = { git = "https://github.com/wyatt-mattas/bmi323-rs.git", features = ["sync"] }
+rtt-target = { version = "0.6.1" }
+
+# Target features
+[features]
+default = ["rp2350"]
+rp2350 = [
+    "dep:rp235x-hal",
+]

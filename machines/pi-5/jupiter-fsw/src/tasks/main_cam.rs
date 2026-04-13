@@ -85,8 +85,8 @@ fn run_recording_segment(stop_at_t: Option<i32>) {
             .expect("failed to spawn ffmpeg");
 
         // if we should auto-stop, spin up a little watcher
-        if let Some(stop_time) = stop_at_t {
-            if let Some(mut stdin) = child.stdin.take() {
+        if let Some(stop_time) = stop_at_t
+            && let Some(mut stdin) = child.stdin.take() {
                 std::thread::spawn(move || {
                     // wait until we hit your 570 s mark
                     while t_time_estimate() < stop_time {
@@ -97,7 +97,6 @@ fn run_recording_segment(stop_at_t: Option<i32>) {
                     info!("Sent 'q' to ffmpeg at t={stop_time:.1}");
                 });
             }
-        }
 
         // now block until ffmpeg exits
         match child.wait() {

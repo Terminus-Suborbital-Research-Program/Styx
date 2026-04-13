@@ -1,10 +1,6 @@
 use core::time;
 
-use crate::sdr::radio_config::{
-    RadioConfig,
-    READ_CHUNK_SIZE,
-    BUFF_SIZE,
-    TARGET_PACKET_SIZE};
+use crate::sdr::radio_config::{BUFF_SIZE, READ_CHUNK_SIZE, RadioConfig, TARGET_PACKET_SIZE};
 use bincode::de::read;
 use rustfft::num_complex::Complex;
 use soapysdr::{Device, Direction, RxStream};
@@ -17,8 +13,7 @@ pub struct SDR {
     read_buffer: [Complex<f32>; READ_CHUNK_SIZE],
 }
 
-use log::{error, info, LevelFilter};
-
+use log::{LevelFilter, error, info};
 
 impl SDR {
     pub fn new(config: RadioConfig) -> Result<Self, String> {
@@ -49,11 +44,14 @@ impl SDR {
         })
     }
 
-    pub fn read_and_timestamp(&mut self, slice: &mut [Complex<f32>; BUFF_SIZE]) -> Result<(u128, usize), SignalError> {
+    pub fn read_and_timestamp(
+        &mut self,
+        slice: &mut [Complex<f32>; BUFF_SIZE],
+    ) -> Result<(u128, usize), SignalError> {
         let mut time_stamp = None;
         let mut head: usize = 0;
 
-        while head < TARGET_PACKET_SIZE{
+        while head < TARGET_PACKET_SIZE {
             let read_len = self
                 .stream
                 .read(&mut [&mut self.read_buffer], 100_000)
@@ -73,7 +71,7 @@ impl SDR {
             if end <= max {
                 slice[head..end].copy_from_slice(&self.read_buffer[..read_len]);
                 head = end;
-            } 
+            }
 
             // self.accumulator[prev_head..head] = self.read_buffer[..read_len];
             // accumulator.extend_from_slice(&self.buffer[..len]);

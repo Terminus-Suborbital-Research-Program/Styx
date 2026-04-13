@@ -8,6 +8,62 @@ Software systems, tools, and libraries for the 2026 ELARA Rocksat mission by the
 
 In addition, `bin-packets` provides a library for encoding and decoding strongly-typed and effecient packets for communication between AMALTHEA components, and other devices on the TERMINUS stack.
 
+# Getting Started
+
+For a fresh development environment, install the repository's Rust-side developer tools from the workspace root:
+
+```sh
+cargo make devtools
+```
+
+This task is idempotent and ensures the shared development toolchain is available, including:
+
+- `cargo-make`
+- `cargo-binutils`
+- `probe-rs`
+- the `thumbv8m.main-none-eabihf` Rust target
+- the `llvm-tools-preview` Rust component
+
+After that, you can build everything with:
+
+```sh
+cargo make build-all
+```
+
+# Workspace Layout
+
+This repository uses a single Cargo workspace at the repository root:
+
+- `./` is the workspace root for both host and embedded crates.
+- `machines/rp235x/*` contains the embedded RP235x packages.
+- target-specific RP235x configuration lives in the root [`.cargo/config.toml`](.cargo/config.toml).
+
+# Building
+
+Host/std workspace:
+
+```sh
+cargo build
+```
+
+RP235x targets from the root workspace:
+
+```sh
+cargo make build-rp235x
+```
+
+This expands to a root build command with the embedded target and the active RP235x package set.
+
+Unified top-level build via cargo-make:
+
+```sh
+cargo make build-all
+```
+
+This runs the host build first and the RP235x build second. It does not try to make RP235x crates build with `std`.
+
+If you prefer VS Code tasks, use `Build All Targets` from the workspace root.
+
 # Embedded Development
 ## Installation
 ### Rust Installation (Find Good Internet)
@@ -39,6 +95,8 @@ Mainly you should get the wsl extension in VSCode, this will allow you to ssh/us
 
 `sudo apt-get install gcc-arm-none-eabi`
 
+Then install the Rust-side repository tooling from the workspace root with `cargo make devtools`.
+
 ### Add SSH Keys to github 
 Skip to 'generating a new key'
 
@@ -48,11 +106,13 @@ Navigate to where you want to store the AMALTHEA repository in github.
 
 Run the following (after following the debug instructions)
 
-`git clone git@github.com:Terminus-Suborbital-Research-Program/AMALTHEA.git`
+`git clone git@github.com:Terminus-Suborbital-Research-Program/Styx.git`
 
-`cd AMALTHEA/rp235xx/icarus`
+`cd Styx`
 
-`cargo make run_debug_probe`
+`cargo make devtools`
+
+`cargo make build-rp235x`
 
 # Embedded Debug Setup
 ## Windows
@@ -60,93 +120,3 @@ Follow the how to use: [How to use](https://github.com/dorssel/usbipd-win)
 
 My usual workflow: Start admin powershell then the following image.
 ![USBIPD Process](docs/images/embedded_usbipd.png)
-
-## ICARUS Main Tasks
-Comment/Uncomment the following tasks for desired code behavior. If you're just debugging INAs for example, only have the INA task uncommented...
-
-![ICARUS Task Workflow](/docs/images/icarus_tasks.png)
-
-## Planning
-
-<!--
-@startgantt plan
-
-printscale daily zoom 2
-
-2025-5-28 to 2025-6-10 are named [Lucas in Wisconsin]
-2025-5-28 to 2025-6-10 are colored in salmon
-
-Project starts 2025-5-1
-
-[Full Mission Simulation Due] happens 2025-5-30
-[Flight Assembly] happens 2025-6-6
-[VVC] happens 2025-6-10
-
-[JUPITER RBF] requires 1 days and starts 2025-5-11 and is colored in green
-[JUPITER Phasing] requires 1 days and is colored in green
-[JUPITER Camera] requires 1 days
-[JUPITER Camera Integration] requires 2 days
-[JUPITER Data Recording] requires 2 days
-
-[Ejection Signal] requires 1 day and is colored in green and starts 2025-5-12
-[Ejector RBF] requires 1 days and starts 2025-5-12
-[Ejector Phasing] requires 2 day
-[Ejector ESP32-Cams] requires 1 day
-[GUARD Geiger] requires 3 days
-[GUARD Solar] requires 2 days
-[Ejector LEDs] requires 1 day
-[Ejector Servos] requires 1 day
-
-
-[Integrated Radio Test] requires 2 days
-[Full-Range Radio Test] requires 2 days
-
-[JUPITER Battery Latch] requires 1 week
-[Full Mission Simulation] requires 1 week
-
-[ICARUS Servos] requires 1 days
-[ICARUS Phasing] requires 2 days
-[ICARUS RBF] requires 1 days and starts 2025-5-13
-
-
-[InfraTracker Pictures] requires 2 days
-[InfraTracker Verification] requires 4 days
-
-[ICARUS IMU] requires 4 days
-[ICARUS INA] requires 1 week
-[ICARUS Photoresistors] requires 2 days
-
-
-[JUPITER Phasing] starts at [JUPITER RBF]'s end
-[JUPITER Battery Latch] starts at [JUPITER RBF]'s end
-[JUPITER Camera] starts at [JUPITER Phasing]'s end
-[JUPITER Camera] starts at [JUPITER RBF]'s end
-[JUPITER Camera Integration] starts at [JUPITER Camera]'s end
-[JUPITER Data Recording] starts at [JUPITER Phasing]'s end
-
-[Ejector Phasing] starts at [Ejector RBF]'s end
-[Ejector Phasing] starts at [Ejection Signal]'s end
-[Ejector Servos] starts at [Ejector Phasing]'s end
-[Ejector LEDs] starts at [Ejector Phasing]'s end
-[Ejector ESP32-Cams] starts at [Ejector Phasing]'s end
-
-[GUARD Geiger] starts at [Ejector Phasing]'s end
-[GUARD Solar] starts at [Ejector Phasing]'s end
-
-[ICARUS Phasing] starts at [ICARUS RBF]'s end
-[ICARUS Servos] starts at [ICARUS Phasing]'s end
-[Integrated Radio Test] starts at [ICARUS Phasing]'s end
-
-[Full Mission Simulation] starts at [Integrated Radio Test]'s end
-[Full Mission Simulation] starts at [Ejector Servos]'s end
-[Full Mission Simulation] starts at [ICARUS Servos]'s end
-[Full Mission Simulation] starts at [JUPITER Battery Latch]'s end
-[InfraTracker Verification] starts at [InfraTracker Pictures]'s end
-
-[Full-Range Radio Test] starts at [Integrated Radio Test]'s end
-
-[Lucas Leaves] happens at 2025-5-28
-
-@endgantt
--->
-![](plan.svg)

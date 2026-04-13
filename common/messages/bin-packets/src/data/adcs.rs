@@ -1,4 +1,3 @@
-//! ADCS packets 
 use crate::time::Timestamp;
 
 use bincode::{Decode, Encode};
@@ -19,6 +18,7 @@ use bincode::{Decode, Encode};
 #[derive(Debug, Clone, Copy, Encode, Decode)]
 pub struct AttitudeMetrics {
     pub timestamp: Timestamp,
+    /// Quaternion encoded as [w, i, j, k].
     pub quaternion: [f32; 4],
     pub signal_match: f32,
 }

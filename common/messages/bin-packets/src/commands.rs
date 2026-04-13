@@ -8,7 +8,7 @@ use crate::rgbstatus::RGBOptions;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, Encode, Decode,Format, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Encode, Decode, Format, Serialize, Deserialize)]
 pub enum CommandPacket {
     SyncTime(u32),
     Ping,
