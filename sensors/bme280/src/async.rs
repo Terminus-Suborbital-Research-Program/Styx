@@ -1,8 +1,3 @@
-#![no_std]
-use crate::Register;
-#[cfg(feature = "defmt")]
-use defmt::error;
-use defmt::info;
 #[cfg(feature = "async")]
 use embedded_hal_async::delay::DelayNs;
 use embedded_hal_async::i2c::I2c as AsyncI2c;
@@ -42,7 +37,7 @@ where
         let register = [0xF7]; // start of pressure/temp/humidity registers
         let mut buffer = [0u8; 8]; // pressure[3] + temp[3] + humidity[2]
 
-        self.i2c
+        let _ = self.i2c
             .write_read(self.address, &register, &mut buffer)
             .await;
 

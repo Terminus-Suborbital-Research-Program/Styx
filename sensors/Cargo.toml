@@ -1,3 +1,3 @@
 [workspace]
-members = ["bmi323-rs", "bmm350-rs", "cd74hc4067", "ina260"]
+members = ["bme280", "bmi323-rs", "bmm350-rs", "cd74hc4067", "ina260"]
 resolver = "3"
