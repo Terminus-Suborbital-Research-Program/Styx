@@ -106,11 +106,11 @@ where
 
     /// Enable the electromagnet
     pub fn enable(&mut self) -> () {
-        self.h_bridge.sleep_pin.set_low().unwrap();
+        self.h_bridge.sleep_pin.set_high().unwrap();
     }
 
     /// Disable the electromagnet
     pub fn disable(&mut self) -> () {
-        self.h_bridge.sleep_pin.set_high().unwrap();
+        self.h_bridge.sleep_pin.set_low().unwrap();
     }
 }

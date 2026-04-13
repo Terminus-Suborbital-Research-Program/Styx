@@ -3,7 +3,6 @@
 //! RTIC Task defintions for the Ejector
 
 use crate::{Mono, app::*, device_constants::SAMPLE_COUNT, sd_card};
-use crate::{app::*, device_constants::SAMPLE_COUNT, Mono};
 use bin_packets::{
     devices::DeviceIdentifier,
     packets::{status::Status, ApplicationPacket},
@@ -186,23 +185,6 @@ pub async fn write_sd_card(mut ctx: write_sd_card::Context<'_>) {
         sd_card.write_data(EJECTOR_GAURD_FILENAME, file_data);
         info!("After Writting!");
     });
-}
-    loop {
-        if ctx
-            .local
-            .rbf_pin
-            .is_low()
-            .expect("Failed to read the RBF pin state")
-        {
-            info!("RBF pin is low, blocking ejection code...");
-            ctx.shared.ejection_enabled.lock(|blocked| *blocked = false);
-        } else {
-            info!("RBF pin is high, ejection code enabled.");
-            ctx.shared.ejection_enabled.lock(|blocked| *blocked = true);
-        }
-        Mono::delay(1000_u64.millis()).await;
-    }
-    
 }
 
 pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {

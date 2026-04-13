@@ -12,7 +12,6 @@ use heapless::Deque;
 use rp235x_hal::adc::AdcPin;
 use rp235x_hal::clocks::init_clocks_and_plls;
 use rp235x_hal::gpio::{FunctionSio, FunctionSpi, FunctionUart, PinState, PullDown, PullNone, SioInput};
-use rp235x_hal::gpio::{FunctionSio, FunctionUart, PinState, PullNone, SioInput};
 use rp235x_hal::pwm::Slices;
 use rp235x_hal::uart::{DataBits, StopBits, UartConfig, UartPeripheral};
 use rp235x_hal::{Clock, Sio, Watchdog};
@@ -32,8 +31,8 @@ use crate::actuators::electromag::{ElectroMagnet, ElectroMagnetPolarity, HBridge
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
 use crate::device_constants::pins::{CamMosfetPin, RBFPin};
 use crate::device_constants::{
-    EjectionDetectionPin, GreenLed, JupiterUart, RedLed, ThermoI2cBus, SAMPLE_COUNT,
-    Cam1, Cam1Pin, Cam2, EjectionDetectionPin, JupiterUart, RGBLed, RGBStatus, SAMPLE_COUNT, ThermoI2CSclPin, ThermoI2CSdaPin, ThermoI2cBus
+    EjectionDetectionPin, JupiterUart,
+    Cam1, Cam1Pin, Cam2, RGBLed, RGBStatus, SAMPLE_COUNT, ThermoI2CSclPin, ThermoI2CSdaPin, ThermoI2cBus
 };
 use crate::{hal, sd_card};
 use crate::{app::*, Mono};
@@ -179,21 +178,12 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     )
     .unwrap();
 
-    // Servo
-    let pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
-    let mut ejection_servo_pwm = pwm_slices.pwm2;
-    ejection_servo_pwm.enable();
-    ejection_servo_pwm.set_div_int(48);
-
-    // Pin for servo mosfet digital
-    let mut mosfet_pin: EjectionServoMosfet = bank0_pins.gpio4.into_push_pull_output();
-    mosfet_pin.set_low().unwrap();
-    let mut channel_a = ejection_servo_pwm.channel_b;
     let (status_link, downlink) = jupiter_uart.split();
 
+    // Servo
+    let pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
 
     // Servo
-    let mut pwm_slices = Slices::new(ctx.device.PWM, &mut ctx.device.RESETS);
     let mut power_servo_pwm = pwm_slices.pwm2;
     let mut ejection_servo_pwm = pwm_slices.pwm3;
 
@@ -295,7 +285,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             downlink,
             ejector_servo,
             rbf_pin: rbf_pin,
-            ejection_pin: gpio_detect,
             ejecctor_magnet: ejector_magnet,
             // arming_led: red_led_pin,
             // packet_led: packet_indicator,
