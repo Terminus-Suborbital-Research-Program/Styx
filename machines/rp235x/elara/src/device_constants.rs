@@ -9,7 +9,7 @@ use heapless::Deque;
 use pins::{AvionicsI2CSclPin, AvionicsI2CSdaPin, EscI2CSclPin, EscI2CSdaPin};
 use rp235x_hal::gpio::SioOutput;
 use rp235x_hal::{
-    gpio::{FunctionI2C, FunctionSio, Pin, PullDown, PullUp, PullNone},
+    gpio::{FunctionI2C, FunctionSio, Pin, PullDown, PullNone, PullUp},
     i2c::Controller,
     pac::{I2C0, I2C1},
     I2C,

@@ -6,9 +6,8 @@ mod peripherals;
 use core::mem::MaybeUninit;
 
 use bmi323::{
-    AccelConfig, AccelerometerPowerMode, AccelerometerRange, AsyncBmi323,
-    AsyncI2cInterface, AverageNum, GyroConfig, GyroscopePowerMode, GyroscopeRange,
-    OutputDataRate,
+    AccelConfig, AccelerometerPowerMode, AccelerometerRange, AsyncBmi323, AsyncI2cInterface,
+    AverageNum, GyroConfig, GyroscopePowerMode, GyroscopeRange, OutputDataRate,
 };
 use defmt_rtt as _;
 use rp235x_pac::interrupt;
@@ -64,8 +63,11 @@ mod app {
     use fugit::{ExtU64, RateExtU32};
     use hal::{
         clocks,
-        gpio::{self, bank0::Gpio4, bank0::Gpio5, FunctionI2C, FunctionSio, Pin, PullNone, PullUp, SioOutput},
-        Clock, I2C, Sio, Watchdog,
+        gpio::{
+            self, bank0::Gpio4, bank0::Gpio5, FunctionI2C, FunctionSio, Pin, PullNone, PullUp,
+            SioOutput,
+        },
+        Clock, Sio, Watchdog, I2C,
     };
     use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
 
@@ -115,7 +117,10 @@ mod app {
 
         Mono::start(ctx.core.SYST, clocks.system_clock.freq().to_Hz());
 
-        let led = pins.gpio25.into_pull_type::<PullNone>().into_push_pull_output();
+        let led = pins
+            .gpio25
+            .into_pull_type::<PullNone>()
+            .into_push_pull_output();
 
         let sda_pin: Pin<Gpio4, FunctionI2C, PullUp> = pins.gpio4.reconfigure();
         let scl_pin: Pin<Gpio5, FunctionI2C, PullUp> = pins.gpio5.reconfigure();
@@ -194,12 +199,7 @@ mod app {
             }
 
             match ctx.local.bmi323.read_gyro_data_scaled().await {
-                Ok(gyro) => defmt::info!(
-                    "gyro dps => x: {}, y: {}, z: {}",
-                    gyro.x,
-                    gyro.y,
-                    gyro.z
-                ),
+                Ok(gyro) => defmt::info!("gyro dps => x: {}, y: {}, z: {}", gyro.x, gyro.y, gyro.z),
                 Err(err) => defmt::error!("BMI323 gyro read failed: {}", err),
             }
 

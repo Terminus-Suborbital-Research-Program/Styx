@@ -16,17 +16,16 @@ use panic_halt as _;
 use rtt_target::ChannelMode::NoBlockSkip;
 use rtt_target::{rprintln, rtt_init, set_print_channel};
 
-
 // Alias for our HAL crate
 use rp235x_hal as hal;
 
 // Some things we need
+use bmi323::{AccelConfig, AccelerometerRange, Bmi323, GyroConfig, GyroscopeRange, OutputDataRate};
 use hal::{
     fugit::RateExtU32,
     gpio::{FunctionI2C, Pin},
     Clock,
 };
-use bmi323::{AccelConfig, AccelerometerRange, Bmi323, GyroConfig, GyroscopeRange, OutputDataRate};
 
 /// Tell the Boot ROM about our application
 #[link_section = ".start_block"]

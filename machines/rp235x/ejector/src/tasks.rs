@@ -2,30 +2,28 @@
 
 //! RTIC Task defintions for the Ejector
 
-use crate::{Mono, app::*, device_constants::SAMPLE_COUNT, sd_card};
+use crate::device_constants::RGBStatus;
+use crate::sd_card::EJECTOR_GAURD_FILENAME;
+use crate::{app::*, device_constants::SAMPLE_COUNT, sd_card, Mono};
 use bin_packets::{
+    commands::CommandPacket,
     devices::DeviceIdentifier,
     packets::{status::Status, ApplicationPacket},
-    commands::CommandPacket,
     rgbstatus::RGBOptions,
 };
 use bincode::{config::standard, decode_from_slice, encode_into_slice, error::DecodeError};
-use defmt::{debug, info, warn, error};
+use defmt::{debug, error, info, warn};
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
 use embedded_io::{Read, ReadReady, Write};
 use fugit::ExtU64;
 use heapless::{deque::DequeInner, vec::ViewVecStorage, Deque, Vec};
 use rtic::Mutex;
-use crate::sd_card::EJECTOR_GAURD_FILENAME;
 use rtic_monotonics::Monotonic;
 use tinyframe::frame::Frame;
-use crate::device_constants::RGBStatus;
 use ws2812_rs::GlowColor;
 // use rtic_sync::portable_atomic::{AtomicBool, Ordering};
-use rtic_sync::signal::Signal;
 use bin_packets::phases::EjectorPhase;
-
-
+use rtic_sync::signal::Signal;
 
 #[cfg(not(feature = "fast-startup"))]
 const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 180;
@@ -64,14 +62,17 @@ pub async fn downlink_jupiter(mut ctx: downlink_jupiter::Context<'_>) {
     let mut enc_buf = [0u8; SCRATCH];
     let config = standard();
     loop {
-        let packet = ctx.shared.downlink_packets.lock(|packets| packets.pop_front());
-    
+        let packet = ctx
+            .shared
+            .downlink_packets
+            .lock(|packets| packets.pop_front());
+
         if let Some(p) = packet {
             if let Ok(sz) = encode_into_slice(p, &mut enc_buf, config) {
-                let _ = ctx.local.downlink.write_all(&enc_buf[..sz]); 
+                let _ = ctx.local.downlink.write_all(&enc_buf[..sz]);
             }
         } else {
-            Mono::delay(50_u64.millis()).await; 
+            Mono::delay(50_u64.millis()).await;
         }
     }
 }
@@ -180,7 +181,8 @@ pub async fn poll_rbf(mut ctx: poll_rbf::Context<'_>) {
 
 pub async fn write_sd_card(mut ctx: write_sd_card::Context<'_>) {
     ctx.shared.sd_card.lock(|sd_card| {
-        let file_data = b"GLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\n";
+        let file_data =
+            b"GLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\n";
         info!("Berofe Writting!");
         sd_card.write_data(EJECTOR_GAURD_FILENAME, file_data);
         info!("After Writting!");
@@ -192,7 +194,7 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
     let config = standard();
 
     let mut rx_buf = [0u8; SCRATCH];
-    let mut idx = 0; 
+    let mut idx = 0;
 
     loop {
         let mut data_received = false;
@@ -222,7 +224,10 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
         // Decode if bytes read
         while idx > 0 {
             match decode_from_slice::<ApplicationPacket, _>(&rx_buf[..idx], config) {
-                Ok((ApplicationPacket::Command(CommandPacket::ColorSet(status_options)), bytes_used)) => {
+                Ok((
+                    ApplicationPacket::Command(CommandPacket::ColorSet(status_options)),
+                    bytes_used,
+                )) => {
                     ctx.shared.status_config.lock(|status_config| {
                         status_config.update_from_options(status_options);
                     });
@@ -235,7 +240,12 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
                 }
 
                 // This would be way better with just a pin toggle
-                Ok((ApplicationPacket::Command(CommandPacket::EjectorPhaseSet(EjectorPhase::Ejection)), bytes_used)) => {
+                Ok((
+                    ApplicationPacket::Command(CommandPacket::EjectorPhaseSet(
+                        EjectorPhase::Ejection,
+                    )),
+                    bytes_used,
+                )) => {
                     ctx.local.ejection_trigger_tx.write(());
 
                     let remaining = idx - bytes_used;
@@ -253,12 +263,12 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
                     }
                     idx = remaining;
                 }
-                
+
                 // Incomplete packet: wait for more bytes on the next loop
                 Err(bincode::error::DecodeError::UnexpectedEnd { .. }) => {
-                    break; 
+                    break;
                 }
-                
+
                 // Corrupt data, so drop the oldest byte and slide the window to resync
                 Err(_) => {
                     rx_buf.copy_within(1..idx, 0);
@@ -297,6 +307,3 @@ pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
         Mono::delay(1000_u64.millis()).await;
     }
 }
-    
-
-

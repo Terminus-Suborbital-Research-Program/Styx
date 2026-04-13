@@ -9,4 +9,6 @@ embedded-hal = "1.0.0"
 [features]
 default = ["defmt"]
 with_defmt = ["defmt"]
+sync = []
+async = []
 std = []

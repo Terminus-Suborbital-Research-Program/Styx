@@ -8,18 +8,15 @@ use embedded_hal_bus::spi::ExclusiveDevice;
 use embedded_sdmmc::{Directory, Mode, SdCard, TimeSource, Timestamp, VolumeIdx, VolumeManager};
 use heapless::String;
 use rp235x_hal::{
-    gpio::{
-        Function, FunctionSio, FunctionSpi, Pin, PullDown, SioOutput,
-    },
+    gpio::{Function, FunctionSio, FunctionSpi, Pin, PullDown, SioOutput},
     pac::RESETS,
-    spi::{Enabled},
+    spi::Enabled,
     timer::CopyableTimer0,
     Spi, Timer,
 };
 
 pub const EJECTOR_Z_DATA_FILENAME: &'static str = "data1.txt";
 pub const EJECTOR_GAURD_FILENAME: &'static str = "data2.txt";
-
 
 /// Struct to manage the SD card on the Ejector. This is mostly
 /// a wrapper around the embedded_sdmmc crate, which provides a
@@ -52,8 +49,7 @@ impl TimeSource for DummyTimesource {
     }
 }
 
-impl<SpiBus, Timer>
-    EjectorSdCard<SpiBus, Timer>
+impl<SpiBus, Timer> EjectorSdCard<SpiBus, Timer>
 where
     SpiBus: SpiDevice,
     Timer: DelayNs,
@@ -67,7 +63,7 @@ where
         //        Ok(root_dir) => {
         //            let mut t = root_dir
         //                .open_file_in_dir(EJECTOR_Z_DATA_FILENAME, Mode::ReadWriteCreateOrTruncate);
-        //            
+        //
         //        }
         //        Err(e) => info!("Failed to open root directory: "),
         //    },

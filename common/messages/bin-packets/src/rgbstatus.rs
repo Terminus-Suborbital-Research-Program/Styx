@@ -1,12 +1,11 @@
 use bincode::{Decode, Encode};
-use ws2812_rs::Color;
 use defmt::Format;
+use ws2812_rs::Color;
 
 use serde::{Deserialize, Serialize};
 
-
 // Have to make seperate type for color because of Rust's Orphan rule
-#[derive(Debug, Clone, Copy, Encode, Decode, Format, Deserialize, Serialize )]
+#[derive(Debug, Clone, Copy, Encode, Decode, Format, Deserialize, Serialize)]
 pub struct WireColor(pub [u8; 3]);
 
 impl From<WireColor> for Color {
@@ -15,7 +14,7 @@ impl From<WireColor> for Color {
     }
 }
 
-#[derive(Debug, Clone, Copy, Encode, Decode, Format, Deserialize, Serialize )]
+#[derive(Debug, Clone, Copy, Encode, Decode, Format, Deserialize, Serialize)]
 pub struct RGBOptions {
     pub RBF: Option<WireColor>,
     pub HaLow: Option<WireColor>,

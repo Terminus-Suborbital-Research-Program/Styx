@@ -4,39 +4,40 @@
 
 use common_states::rbf;
 use defmt::{info, warn};
-use embedded_hal_bus::spi::ExclusiveDevice;
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
+use embedded_hal_bus::spi::ExclusiveDevice;
 use fugit::RateExtU32;
 use heapless::Deque;
-use rp235x_hal::adc::AdcPin;
-use rp235x_hal::clocks::init_clocks_and_plls;
-use rp235x_hal::gpio::{FunctionSio, FunctionSpi, FunctionUart, PinState, PullDown, PullNone, SioInput};
-use rp235x_hal::pwm::Slices;
-use rp235x_hal::uart::{DataBits, StopBits, UartConfig, UartPeripheral};
-use rp235x_hal::{Clock, Sio, Watchdog};
-use rtic_monotonics::Monotonic;
 use mcp9600::{
     ADCResolution, BurstModeSamples, ColdJunctionResolution, DeviceAddr, FilterCoefficient,
     ShutdownMode, ThermocoupleType, MCP9600,
 };
+use rp235x_hal::adc::AdcPin;
+use rp235x_hal::clocks::init_clocks_and_plls;
+use rp235x_hal::gpio::{
+    FunctionSio, FunctionSpi, FunctionUart, PinState, PullDown, PullNone, SioInput,
+};
+use rp235x_hal::i2c::I2C;
+use rp235x_hal::pwm::Slices;
+use rp235x_hal::spi::Spi;
+use rp235x_hal::uart::{DataBits, StopBits, UartConfig, UartPeripheral};
+use rp235x_hal::{Clock, Sio, Watchdog};
+use rtic_monotonics::Monotonic;
 use rtic_sync::make_signal;
 use rtic_sync::signal::{self, Signal};
 use ws2812_rs::WS2812;
-use rp235x_hal::i2c::I2C;
-use rp235x_hal::spi::Spi;
 // use rp235x_hal::timer::monotonic::Monotonic;
 
 use crate::actuators::electromag::{ElectroMagnet, ElectroMagnetPolarity, HBridge};
 use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
 use crate::device_constants::pins::{CamMosfetPin, RBFPin};
 use crate::device_constants::{
-    EjectionDetectionPin, JupiterUart,
-    Cam1, Cam1Pin, Cam2, RGBLed, RGBStatus, SAMPLE_COUNT, ThermoI2CSclPin, ThermoI2CSdaPin, ThermoI2cBus
+    Cam1, Cam1Pin, Cam2, EjectionDetectionPin, JupiterUart, RGBLed, RGBStatus, ThermoI2CSclPin,
+    ThermoI2CSdaPin, ThermoI2cBus, SAMPLE_COUNT,
 };
-use crate::{hal, sd_card};
 use crate::{app::*, Mono};
-
+use crate::{hal, sd_card};
 
 // Timestamp for logging
 defmt::timestamp!("{=u64:us}", {
@@ -81,7 +82,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     let timer = hal::Timer::new_timer1(ctx.device.TIMER1, &mut ctx.device.RESETS, &clocks);
 
-
     // Debugging on-board LED pin
     // let mut led_pin = bank0_pins
     //     .gpio25
@@ -106,7 +106,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         .into_push_pull_output_in_state(PinState::High)
         .reconfigure();
 
-    let sda_pin= bank0_pins.gpio32.into_pull_type().into_function();
+    let sda_pin = bank0_pins.gpio32.into_pull_type().into_function();
     let scl_pin = bank0_pins.gpio33.into_pull_type().into_function();
 
     let thermo_i2c_bus: ThermoI2cBus = I2C::i2c0(
@@ -146,9 +146,12 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     let spi_mosi = bank0_pins.gpio19.into_function::<FunctionSpi>();
     let spi_miso = bank0_pins.gpio16.into_function::<FunctionSpi>();
     let spi_sck = bank0_pins.gpio18.into_function::<FunctionSpi>();
-    let spi_cs = bank0_pins.gpio17.into_push_pull_output_in_state(PinState::High);
+    let spi_cs = bank0_pins
+        .gpio17
+        .into_push_pull_output_in_state(PinState::High);
 
-    let spi_bus = rp235x_hal::spi::Spi::<_, _, _, 8>::new(ctx.device.SPI0, (spi_mosi, spi_miso, spi_sck));
+    let spi_bus =
+        rp235x_hal::spi::Spi::<_, _, _, 8>::new(ctx.device.SPI0, (spi_mosi, spi_miso, spi_sck));
 
     let spi = spi_bus.init(
         &mut ctx.device.RESETS,
@@ -157,9 +160,9 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         embedded_hal::spi::MODE_0,
     );
 
-        let spi = ExclusiveDevice::new(spi, spi_cs,timer.clone()).unwrap();
+    let spi = ExclusiveDevice::new(spi, spi_cs, timer.clone()).unwrap();
 
-        let sd_card = sd_card::EjectorSdCard::new(spi, timer.clone());
+    let sd_card = sd_card::EjectorSdCard::new(spi, timer.clone());
 
     let mut timer_two = timer;
 
@@ -232,17 +235,17 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     // Functionality currently not enabled
     // let gpio_detect: EjectionDetectionPin = bank0_pins.gpio8.into_pull_down_input();
 
-    let rgb_ctl_pin: RGBLed = bank0_pins.gpio24
+    let rgb_ctl_pin: RGBLed = bank0_pins
+        .gpio24
         .into_pull_type::<PullNone>()
         .into_push_pull_output();
 
-    let mut rgb_wake = bank0_pins.gpio25
-        .into_push_pull_output();
+    let mut rgb_wake = bank0_pins.gpio25.into_push_pull_output();
 
     rgb_wake.set_high().unwrap();
 
     let sys_freq = clocks.system_clock.freq().to_Hz();
-    let mut rgb_driver = WS2812::new(rgb_ctl_pin, sys_freq as u64); 
+    let mut rgb_driver = WS2812::new(rgb_ctl_pin, sys_freq as u64);
 
     // SI1445 I2C
     // let guard_i2c: GuardI2C = I2C::i2c1(
@@ -258,7 +261,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     let status_config = RGBStatus::default();
 
-    let (ejection_trigger_tx, ejection_trigger_rx)  = make_signal!(());
+    let (ejection_trigger_tx, ejection_trigger_rx) = make_signal!(());
 
     // Tasks
 
@@ -291,7 +294,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             thermocouple,
             rgb_driver,
             ejection_trigger_tx,
-            ejection_trigger_rx
+            ejection_trigger_rx,
         },
     )
 }

@@ -12,7 +12,7 @@ use crate::{
     peripherals::async_i2c::AsyncI2c,
     Mono,
 };
-use defmt::{info, warn, panic};
+use defmt::{info, panic, warn};
 use defmt_rtt as _;
 use embedded_hal::{
     delay::DelayNs,
@@ -90,7 +90,6 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
 
     Mono::start(ctx.core.SYST, clocks.system_clock.freq().to_Hz());
 
-
     let compute_link: OdinComputeUart = UartPeripheral::new(
         ctx.device.UART1,
         (
@@ -132,18 +131,17 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     // avionics_i2c.write(0x2Cu8, &[1, 2, 3]).unwrap();
     // defmt::info!("Written");
 
-
     let async_avionics_i2c = AsyncI2c::new(avionics_i2c, 10_u32);
-    let avionics_i2c_arbiter = ctx.local.i2c_avionics_bus.write(Arbiter::new(async_avionics_i2c));
+    let avionics_i2c_arbiter = ctx
+        .local
+        .i2c_avionics_bus
+        .write(Arbiter::new(async_avionics_i2c));
 
-
-
-   
     // Initialize Avionics Sensors
     let bmm350 = AsyncBmm350::new_with_i2c(ArbiterDevice::new(avionics_i2c_arbiter), 0x14, Mono);
     let bmi323 = AsyncBmi323::new_with_i2c(ArbiterDevice::new(avionics_i2c_arbiter), 0x68, Mono);
     let bme280 = AsyncBME280::new(ArbiterDevice::new(avionics_i2c_arbiter), 0x77, Mono);
-    
+
     *ctx.local.adc = Some(rp235x_hal::Adc::new(ctx.device.ADC, &mut ctx.device.RESETS));
     let adc = ctx.local.adc.as_mut().unwrap();
 

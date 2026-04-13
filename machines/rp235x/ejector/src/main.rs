@@ -60,17 +60,17 @@ mod app {
     use crate::actuators::servo::EjectorServo;
     use crate::device_constants::pins::{CamMosfetPin, RBFPin};
     use crate::device_constants::{
-        EjectionDetectionPin, JupiterUart, OnboardLED, ThermoI2cBus, SAMPLE_COUNT,
-        RGBStatus, RGBLed, JupiterRX, JupiterTX, 
+        EjectionDetectionPin, JupiterRX, JupiterTX, JupiterUart, OnboardLED, RGBLed, RGBStatus,
+        ThermoI2cBus, SAMPLE_COUNT,
     };
     use crate::sd_card::EjectorSdCard;
 
     use super::*;
-    use rp235x_hal::gpio::FunctionSio;
-    use rp235x_hal::Timer;
-    use rp235x_hal::gpio::FunctionSpi;
     use bin_packets::packets::ApplicationPacket;
     use bin_packets::time::Timestamp;
+    use rp235x_hal::gpio::FunctionSio;
+    use rp235x_hal::gpio::FunctionSpi;
+    use rp235x_hal::Timer;
 
     use hal::gpio::{self};
     use rtic_sync::portable_atomic::{AtomicBool, Ordering};
@@ -78,13 +78,18 @@ mod app {
     use embedded_hal_bus::spi::ExclusiveDevice;
     use heapless::Deque;
     use rp235x_hal::adc::AdcFifo;
-    use rp235x_hal::gpio::{Pin, bank0::{Gpio0, Gpio1, Gpio19, Gpio17, Gpio16, Gpio18, Gpio20, Gpio21, Gpio22, Gpio11, Gpio12}};
+    use rp235x_hal::gpio::{
+        bank0::{
+            Gpio0, Gpio1, Gpio11, Gpio12, Gpio16, Gpio17, Gpio18, Gpio19, Gpio20, Gpio21, Gpio22,
+        },
+        Pin,
+    };
+    use rp235x_hal::gpio::{PullDown, SioOutput};
+    use rp235x_hal::pac::SPI0;
     use rp235x_hal::pwm::{Channel, FreeRunning, Slice, A, B};
+    use rp235x_hal::spi::{Enabled, Spi, ValidSpiPinout};
     use rp235x_hal::timer::CopyableTimer1;
     use rp235x_hal::uart::UartPeripheral;
-    use rp235x_hal::spi::{Enabled, Spi, ValidSpiPinout};
-    use rp235x_hal::pac::SPI0;
-    use rp235x_hal::gpio::{SioOutput,PullDown};
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
     use mcp9600::MCP9600;
     use rtic_sync::signal::{SignalReader, SignalWriter};
@@ -112,7 +117,23 @@ mod app {
         Pin<Gpio18, gpio::FunctionSpi, gpio::PullDown>,
         //gpio::Pin<gpio::bank0::Gpio17, gpio::FunctionSpi, gpio::PullDown>,
     );
-    pub type EjectorSD = EjectorSdCard<ExclusiveDevice<Spi<Enabled, SPI0, (Pin<Gpio19, FunctionSpi, PullDown>, Pin<Gpio16, FunctionSpi, PullDown>, Pin<Gpio18, FunctionSpi, PullDown>), 8>, Pin<Gpio17, FunctionSio<SioOutput>, PullDown>, Timer<CopyableTimer1>>, Timer<CopyableTimer1>>;
+    pub type EjectorSD = EjectorSdCard<
+        ExclusiveDevice<
+            Spi<
+                Enabled,
+                SPI0,
+                (
+                    Pin<Gpio19, FunctionSpi, PullDown>,
+                    Pin<Gpio16, FunctionSpi, PullDown>,
+                    Pin<Gpio18, FunctionSpi, PullDown>,
+                ),
+                8,
+            >,
+            Pin<Gpio17, FunctionSio<SioOutput>, PullDown>,
+            Timer<CopyableTimer1>,
+        >,
+        Timer<CopyableTimer1>,
+    >;
     #[shared]
     pub struct Shared {
         pub downlink_packets: Deque<ApplicationPacket, 128>,
@@ -138,9 +159,8 @@ mod app {
         pub camera_mosfet: CamMosfetPin,
         pub thermocouple: MCP9600<ThermoI2cBus>,
         pub rgb_driver: WS2812<RGBLed>,
-        pub ejection_trigger_tx: SignalWriter<'static,()>,
-        pub ejection_trigger_rx: SignalReader<'static,()>,
-
+        pub ejection_trigger_tx: SignalWriter<'static, ()>,
+        pub ejection_trigger_rx: SignalReader<'static, ()>,
     }
 
     #[init(local = [adc: Option<hal::Adc> = None])]
@@ -181,8 +201,6 @@ mod app {
 
         #[task(shared = [status_config], local = [rgb_driver], priority = 2)]
         async fn set_rgb_status(mut ctx: set_rgb_status::Context);
-
-
 
         // #[task(binds = ADC_IRQ_FIFO, priority = 3, shared = [samples_buffer], local = [ counter: usize = 1])]
         // fn adc_irq(mut ctx: adc_irq::Context);
