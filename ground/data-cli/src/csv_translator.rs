@@ -43,19 +43,20 @@ impl CSVPacketTranslator {
             HashMap::new(),
             |mut original_file_iterations, file_query| {
                 if let Ok(dir_entry) = file_query
-                    && let Ok(file_name) = dir_entry.file_name().into_string() {
-                        let (struct_name, _time_or_iter) = file_name.split_once('-').unwrap();
-                        let struct_name: String =
-                            struct_name.chars().filter(|c| !c.is_whitespace()).collect();
+                    && let Ok(file_name) = dir_entry.file_name().into_string()
+                {
+                    let (struct_name, _time_or_iter) = file_name.split_once('-').unwrap();
+                    let struct_name: String =
+                        struct_name.chars().filter(|c| !c.is_whitespace()).collect();
 
-                        if original_file_iterations.contains_key(&struct_name) {
-                            original_file_iterations
-                                .entry(struct_name)
-                                .and_modify(|index| *index += 1);
-                        } else {
-                            original_file_iterations.insert(struct_name, 1);
-                        }
+                    if original_file_iterations.contains_key(&struct_name) {
+                        original_file_iterations
+                            .entry(struct_name)
+                            .and_modify(|index| *index += 1);
+                    } else {
+                        original_file_iterations.insert(struct_name, 1);
                     }
+                }
                 original_file_iterations
             },
         );

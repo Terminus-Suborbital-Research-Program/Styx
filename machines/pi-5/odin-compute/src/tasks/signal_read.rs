@@ -7,16 +7,12 @@ use signet::{
         radio_config::{RadioConfig, TARGET_PACKET_SIZE},
         sdr::SDR,
     },
-    signal::{
-        signal_config::SignalConfig,
-        spectrum_analyzer::SpectrumAnalyzer,
-    },
+    signal::{signal_config::SignalConfig, spectrum_analyzer::SpectrumAnalyzer},
 };
 
 use std::thread;
 // use rtrb::{RingBuffer, PushError, PopError, PeekError};
 use rtrb::Producer;
-
 
 pub struct SDRListener {}
 
@@ -27,8 +23,7 @@ impl SDRListener {
         // Initialize hardware and analyzer
         let mini_config = RadioConfig::new(1420.405e6, 3.0e6);
         let signal_config = SignalConfig::default();
-        let _spectrum_analyzer =
-            SpectrumAnalyzer::new(signal_config.down_size, TARGET_PACKET_SIZE);
+        let _spectrum_analyzer = SpectrumAnalyzer::new(signal_config.down_size, TARGET_PACKET_SIZE);
         let mut sdr = SDR::new(mini_config).map_err(|s| format!("SDR Not Found {s}"))?;
 
         // Repeatedly push to spsc with new data

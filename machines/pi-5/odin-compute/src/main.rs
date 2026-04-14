@@ -22,14 +22,10 @@ use crate::tasks::{
     signal_process::SignalProcessor, signal_read::SDRListener, startracker::StartrackerThread,
 };
 
-use signet::{
-    record::packet::SdrPacketLog,
-    sdr::radio_config::BUFF_SIZE,
-};
+use signet::{record::packet::SdrPacketLog, sdr::radio_config::BUFF_SIZE};
 
 use bin_packets::data::adcs::AttitudeMetrics;
 use bin_packets::time::Timestamp;
-
 
 fn main() {
     // env_logger::init();
@@ -123,15 +119,11 @@ fn main() {
                                         adcs_packet,
                                         &mut adcs_buffer,
                                         standard(),
-                                    )
-                                        && let Err(serial_write_error) =
-                                            uart_port.write_all(&adcs_buffer[..bytes_written])
-                                        {
-                                            error!(
-                                                "Serial Write Error to Uart {}",
-                                                serial_write_error
-                                            );
-                                        };
+                                    ) && let Err(serial_write_error) =
+                                        uart_port.write_all(&adcs_buffer[..bytes_written])
+                                    {
+                                        error!("Serial Write Error to Uart {}", serial_write_error);
+                                    };
                                 }
 
                                 // bincode::encode_into_slice(val, dst, config)

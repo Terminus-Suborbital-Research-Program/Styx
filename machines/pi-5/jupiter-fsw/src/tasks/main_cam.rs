@@ -86,17 +86,18 @@ fn run_recording_segment(stop_at_t: Option<i32>) {
 
         // if we should auto-stop, spin up a little watcher
         if let Some(stop_time) = stop_at_t
-            && let Some(mut stdin) = child.stdin.take() {
-                std::thread::spawn(move || {
-                    // wait until we hit your 570 s mark
-                    while t_time_estimate() < stop_time {
-                        sleep(Duration::from_millis(200));
-                    }
-                    // send "q" so ffmpeg writes its trailer and exits cleanly
-                    let _ = stdin.write_all(b"q");
-                    info!("Sent 'q' to ffmpeg at t={stop_time:.1}");
-                });
-            }
+            && let Some(mut stdin) = child.stdin.take()
+        {
+            std::thread::spawn(move || {
+                // wait until we hit your 570 s mark
+                while t_time_estimate() < stop_time {
+                    sleep(Duration::from_millis(200));
+                }
+                // send "q" so ffmpeg writes its trailer and exits cleanly
+                let _ = stdin.write_all(b"q");
+                info!("Sent 'q' to ffmpeg at t={stop_time:.1}");
+            });
+        }
 
         // now block until ffmpeg exits
         match child.wait() {

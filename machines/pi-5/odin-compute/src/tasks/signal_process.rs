@@ -58,7 +58,6 @@ impl SignalProcessor {
     }
 
     pub fn begin_signal_processing(mut self) -> JoinHandle<()> {
-        
         thread::Builder::new()
             .name("signal-processor".into())
             .stack_size(4 * 1024 * 1024)

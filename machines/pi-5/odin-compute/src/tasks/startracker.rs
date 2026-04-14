@@ -55,7 +55,6 @@ impl StartrackerThread {
         let camera_model = CameraModel::default();
         let startracker = Startracker::default();
 
-        
         thread::spawn(move || {
             loop {
                 let (buf, _meta): (&[u8], &Metadata) = stream.next().expect("Failed to get frame");

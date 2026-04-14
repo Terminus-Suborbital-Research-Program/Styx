@@ -263,11 +263,13 @@ fn start_gps_reader() -> Arc<Mutex<Option<GpsData>>> {
                                         b'\r' => {}
                                         b'\n' => {
                                             let line = sentence.trim();
-                                            if !line.is_empty() && parser.parse(line).is_ok()
+                                            if !line.is_empty()
+                                                && parser.parse(line).is_ok()
                                                 && let Some(fix) = extract_gps_fix(&parser)
-                                                    && let Ok(mut latest) = gps_state.lock() {
-                                                        *latest = Some(fix);
-                                                    }
+                                                && let Ok(mut latest) = gps_state.lock()
+                                            {
+                                                *latest = Some(fix);
+                                            }
                                             sentence.clear();
                                         }
                                         b'$' => {
