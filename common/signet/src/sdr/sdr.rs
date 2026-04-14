@@ -16,7 +16,7 @@ use scirs2_signal::{
     resampling::downsample,
 };
 
-struct Downsampler {
+pub struct Downsampler {
     filter_i: StreamingFIRFilter,
     filter_q: StreamingFIRFilter,
     decimation_factor: usize,
@@ -43,7 +43,7 @@ impl Downsampler {
         }
     }
 
-    fn downsample(&mut self, raw_samples: &[Complex<f32>]) -> Vec<Complex<f32>>{
+    pub fn downsample(&mut self, raw_samples: &[Complex<f32>]) -> Vec<Complex<f32>>{
         let sample_len = raw_samples.len();
 
         for i in 0..sample_len {
@@ -51,8 +51,8 @@ impl Downsampler {
             self.q_buf[i] = raw_samples[i].im as f64;
         }
 
-        let i_filtered = self.filter_i.process_block(&self.i_buf);
-        let q_filtered = self.filter_q.process_block(&self.q_buf);
+        let i_filtered = self.filter_i.process_block(&self.i_buf[..sample_len]);
+        let q_filtered = self.filter_q.process_block(&self.q_buf[..sample_len]);
 
         // Return downsampled i and q components zipped up into complex type for future manipulation
         // with Rust fft
@@ -88,8 +88,8 @@ impl Default for Downsampler {
 
 pub struct SDR {
     device: Device,
-    stream: RxStream<Complex<f32>>,
-    read_buffer: [Complex<f32>; READ_CHUNK_SIZE],
+    pub stream: RxStream<Complex<f32>>,
+    pub read_buffer: [Complex<f32>; READ_CHUNK_SIZE],
     downsampler: Downsampler,
 }
 
