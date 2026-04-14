@@ -2,7 +2,7 @@
 members = [
   "common/messages/bin-packets",
   "common/messages/tinyframe",
-  #"common/signet",
+  "common/signet",
   "common/states",
   "ground/data-cli",
   "ground/gs-cli",
