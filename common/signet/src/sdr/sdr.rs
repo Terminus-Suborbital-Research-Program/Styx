@@ -12,55 +12,94 @@ use std::{any::Any, time::{SystemTime, UNIX_EPOCH}};
 use crate::error::SignalError;
 use scirs2_signal::{
     filter::firwin,
-    parallel_filtering_v2::{parallel_fir_filter, ParallelFIRConfig, StreamingFIRFilter},
-    resampling::downsample,
 };
 
 pub struct Downsampler {
-    filter_i: StreamingFIRFilter,
-    filter_q: StreamingFIRFilter,
+    taps: Vec<f32>,
+    history: Vec<Complex<f32>>,
+    head: usize,
     decimation_factor: usize,
-    i_buf: Vec<f64>,
-    q_buf: Vec<f64>,
+    skip_count: usize,
 }
-impl Downsampler {
 
+impl Downsampler {
     pub fn new(input_sample_rate: f32, decimation_factor: usize, target_cutoff_hz: f32) -> Self {
         let n_taps = 818;
         let input_nyquist = input_sample_rate / 2.0;
         let normalized_cutoff = (target_cutoff_hz / input_nyquist) as f64;
         let window = "blackman";
         
-        let taps_i = firwin(n_taps, normalized_cutoff, window, true).unwrap();
-        let taps_q = firwin(n_taps, normalized_cutoff, window, true).unwrap();
+        // Use sci-rs to generate the perfect mathematical taps
+        let taps_f64 = firwin(n_taps, normalized_cutoff, window, true).unwrap();
+        
+        let taps: Vec<f32> = taps_f64.into_iter().map(|t| t as f32).collect();
 
         Self {
-            filter_i: StreamingFIRFilter::new(taps_i).unwrap(),
-            filter_q: StreamingFIRFilter::new(taps_q).unwrap(),
+            history: vec![Complex::new(0.0, 0.0); n_taps],
+            taps,
+            head: 0,
             decimation_factor,
-            i_buf: vec![0.0; READ_CHUNK_SIZE],
-            q_buf: vec![0.0; READ_CHUNK_SIZE],
+            skip_count: 0, // Start computing immediately on the first sample
         }
     }
 
-    pub fn downsample(&mut self, raw_samples: &[Complex<f32>]) -> Vec<Complex<f32>>{
-        let sample_len = raw_samples.len();
+    /// A highly optimized Decimating FIR filter.
+    /// It only computes the heavy dot-product for the samples it keeps.
+    pub fn downsample(&mut self, raw_samples: &[Complex<f32>]) -> Vec<Complex<f32>> {
+        let taps_len = self.taps.len();
+        
+        // Pre-allocate the exact size needed to avoid heap reallocation
+        let expected_out_len = (raw_samples.len() + self.skip_count) / self.decimation_factor;
+        let mut output = Vec::with_capacity(expected_out_len + 1);
 
-        for i in 0..sample_len {
-            self.i_buf[i] = raw_samples[i].re as f64;
-            self.q_buf[i] = raw_samples[i].im as f64;
+        for &sample in raw_samples {
+            // Write incoming sample to the ring buffer
+            self.history[self.head] = sample;
+            
+            // Fast ring buffer advance (no modulo division)
+            self.head += 1;
+            if self.head >= taps_len {
+                self.head = 0;
+            }
+
+            // Only compute the math if this is a sample we keep
+            if self.skip_count == 0 {
+                let mut sum_re = 0.0;
+                let mut sum_im = 0.0;
+
+                // Dot product (Iterating backwards through history)
+                // We split the loop into two parts to avoid modulo division inside the hot loop.
+                let mut tap_idx = 0;
+
+                // Read from head down to 0
+                for i in (0..self.head).rev() {
+                    let val = self.history[i];
+                    let tap = self.taps[tap_idx];
+                    sum_re += val.re * tap;
+                    sum_im += val.im * tap;
+                    tap_idx += 1;
+                }
+
+                // Read from end of array down to head
+                for i in (self.head..taps_len).rev() {
+                    let val = self.history[i];
+                    let tap = self.taps[tap_idx];
+                    sum_re += val.re * tap;
+                    sum_im += val.im * tap;
+                    tap_idx += 1;
+                }
+
+                output.push(Complex::new(sum_re, sum_im));
+                
+                // Reset the skip counter
+                self.skip_count = self.decimation_factor - 1;
+            } else {
+                // Skip the math for this sample
+                self.skip_count -= 1;
+            }
         }
 
-        let i_filtered = self.filter_i.process_block(&self.i_buf[..sample_len]);
-        let q_filtered = self.filter_q.process_block(&self.q_buf[..sample_len]);
-
-        // Return downsampled i and q components zipped up into complex type for future manipulation
-        // with Rust fft
-        i_filtered.into_iter()
-                .zip(q_filtered.into_iter())
-                .step_by(self.decimation_factor)
-                .map(|(i,q,)| Complex::new(i as f32, q as f32))
-                .collect()
+        output
     }
 }
 
@@ -68,22 +107,23 @@ impl Default for Downsampler {
     fn default() -> Self {
         // Ideal N-taps according to Fred Harris rule of thumb and Kaiser windowing formula
         let n_taps = 818;
+
         let cutoff = 45_000.0 / 1_500_000.0;
         let window  = "blackman";
         
-        let taps_i = firwin(n_taps, cutoff, window, true).unwrap();
-        let taps_q = firwin(n_taps, cutoff, window, true).unwrap();
+        let taps_f64: Vec<f64> = firwin(n_taps, cutoff, window, true).unwrap();
+        let taps: Vec<f32> = taps_f64.into_iter().map(|t| t as f32).collect();
 
-        Self {
-            filter_i: StreamingFIRFilter::new(taps_i).unwrap(),
-            filter_q:  StreamingFIRFilter::new(taps_q).unwrap(),
+
+       Self {
+            history: vec![Complex::new(0.0, 0.0); n_taps],
+            taps,
+            head: 0,
             decimation_factor: 30,
-            i_buf: vec![0.0; READ_CHUNK_SIZE],
-            q_buf: vec![0.0; READ_CHUNK_SIZE],
+            skip_count: 0, // Start computing immediately on the first sample
         }
     }
 }
-
 
 
 pub struct SDR {
@@ -106,11 +146,26 @@ impl SDR {
         device
             .set_sample_rate(Direction::Rx, 0, config.sample_rate)
             .map_err(|e| e.to_string())?;
+        
+        device
+            .set_bandwidth(Direction::Rx, 0, config.sample_rate)
+            .map_err(|e| e.to_string())?;
 
-        if let Some(gain) = config.gain {
+        // If manual gain is passed in - we're looking at the hydrogen line, otherwise we're using
+        // Automatic gain control which is more helpful for radio stations.
+        if let Some(gain_val) = config.gain {
+
             device
-                .set_gain(Direction::Rx, 0, gain)
-                .map_err(|e| e.to_string())?;
+                .set_gain_mode(Direction::Rx, 0, false)
+                .map_err(|e| format!("Failed to disable AGC: {}", e))?;
+                
+            device
+                .set_gain(Direction::Rx, 0, gain_val)
+                .map_err(|e| format!("Failed to set manual gain: {}", e))?;
+        } else {
+            device
+                .set_gain_mode(Direction::Rx, 0, true)
+                .map_err(|e| format!("Failed to enable AGC: {}", e))?;
         }
 
         let mut stream = device
