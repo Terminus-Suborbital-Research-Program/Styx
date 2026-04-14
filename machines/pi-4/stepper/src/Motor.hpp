@@ -156,12 +156,14 @@ public:
     @param dir_pin          GPIO line offset for direction signal
     @param PWM              initial step delay
     @param gpio_chip_path   path to the GPIO chip (e.g. /dev/gpiochip0)
+    @param motor_direction  controls what direction the motor spins
     */
     Motor(const unsigned int step_resolution,
           const gpiod::line::offset step_pin,
           const gpiod::line::offset dir_pin,
           const std::chrono::microseconds PWM,
-          std::filesystem::path gpio_chip_path);
+          std::filesystem::path gpio_chip_path
+          bool motor_direction);
 
     /*
     Destructor

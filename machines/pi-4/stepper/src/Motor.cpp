@@ -9,7 +9,7 @@ Initializes the Motor object, sets up GPIO control for the STEP and DIR pins,
 and prepares the internal timing and PID controller used to drive the motor.
 */
 Motor::Motor(const unsigned int step_resolution, const gpiod::line::offset step_pin, const gpiod::line::offset dir_pin, const std::chrono::microseconds PWM,
-        std::filesystem::path gpio_chip_path)
+        std::filesystem::path gpio_chip_path, bool motor_direction)
     : m_chip(gpio_chip_path)          // Open the specified GPIO chip (e.g., /dev/gpiochip0)
     , m_driving(false)                // Drive thread initially inactive
     , m_using_pid(false)              // PID disabled by default
@@ -21,7 +21,7 @@ Motor::Motor(const unsigned int step_resolution, const gpiod::line::offset step_
     , m_setpoint_type(Motor::SetpointType::kNONE)
     , m_step_pin(step_pin)            // STEP signal GPIO
     , m_dir_pin(dir_pin)              // DIR signal GPIO
-    , m_reverse(false)                // Direction flag (false = forward)
+    , m_reverse(motor_direction)                // Direction flag (false = forward)
     , m_clk(PWM)                      // MotorClock controlling delay between steps
     , m_pid(0.0, 0.0, 0.0, m_clk, m_reverse, m_microsteps, 0us)
     , m_drive_thread()
