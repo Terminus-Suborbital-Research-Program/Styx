@@ -11,3 +11,10 @@ rustflags = [
 ]
 
 runner = 'probe-rs run --chip rp235x'
+
+[alias]
+build-elara = "build -p elara --target thumbv8m.main-none-eabihf --features=rp2350"
+run-elara   = "run -p elara --target thumbv8m.main-none-eabihf --features=rp2350"
+
+build-ejector = "build -p ejector --target thumbv8m.main-none-eabihf --features=rp2350"
+run-ejector   = "run -p ejector --target thumbv8m.main-none-eabihf --features=rp2350"
