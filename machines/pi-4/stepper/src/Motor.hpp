@@ -162,7 +162,7 @@ public:
           const gpiod::line::offset step_pin,
           const gpiod::line::offset dir_pin,
           const std::chrono::microseconds PWM,
-          std::filesystem::path gpio_chip_path
+          std::filesystem::path gpio_chip_path,
           bool motor_direction);
 
     /*
