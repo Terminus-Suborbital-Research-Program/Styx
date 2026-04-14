@@ -6,19 +6,32 @@ members = [
   "common/states",
   "ground/data-cli",
   "ground/gs-cli",
+  "machines/pi-4/munin",
   "machines/pi-5/jupiter-fsw",
-  #"machines/pi-5/odin-compute",
-  "machines/rp235xx/jupiter-telemetry",
-  "machines/rp235xx/power-board",
-  "machines/rp235xx/ejector",
-  "machines/rp235xx/elara",
-  # "machines/rp235xx/icarus",
-  # "machines/rp235xx/ejector",
+  "machines/pi-5/odin-compute",
+  "machines/rp235x/ejector",
+  "machines/rp235x/elara",
+  "machines/rp235x/jupiter-telemetry",
+  "machines/rp235x/simple",
+  "machines/rp235x/simple-async",
   "sensors/bme280",
-  "sensors/bmi323-rs",
   "sensors/bmm350-rs",
   "sensors/cd74hc4067",
   "sensors/ina260", 
+]
+default-members = [
+  "common/messages/bin-packets",
+  "common/messages/tinyframe",
+  "common/states",
+  "ground/data-cli",
+  "ground/gs-cli",
+  "machines/pi-4/munin",
+  "machines/pi-5/jupiter-fsw",
+  "machines/pi-5/odin-compute",
+  "sensors/bme280",
+  "sensors/bmm350-rs",
+  "sensors/cd74hc4067",
+  "sensors/ina260",
 ]
 resolver = "3"
 
@@ -29,7 +42,6 @@ defmt = {version = "*"}
 defmt-rtt = {version = "*"}
 heapless = {version = "*"}
 bin-packets = {path="common/messages/bin-packets"}
-
 
 [profile.dev]
 panic = "abort"

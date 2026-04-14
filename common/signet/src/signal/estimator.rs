@@ -6,10 +6,7 @@ pub struct MatchingEstimator {
 }
 
 impl MatchingEstimator {
-    pub fn new(
-        expected_power_spectrum: Vec<f32>,
-        max_shift: usize,
-    ) -> Self {
+    pub fn new(expected_power_spectrum: Vec<f32>, max_shift: usize) -> Self {
         Self {
             expected_power_spectrum,
             max_shift,
@@ -64,7 +61,12 @@ impl MatchingEstimator {
     }
 
     // Rework to handle divide by zero
-    pub fn chi_square(&mut self, best_score: f32, best_index: usize, current_power_spectrum: &Vec<f32>) -> f32 {
+    pub fn chi_square(
+        &mut self,
+        best_score: f32,
+        best_index: usize,
+        current_power_spectrum: &Vec<f32>,
+    ) -> f32 {
         let shift: usize = &self.max_shift / 2;
         let current_start = shift;
         let current_end = current_power_spectrum.len() - shift;
@@ -138,7 +140,12 @@ impl MatchingEstimator {
         return (best_score, best_index);
     }
 
-    pub fn chi_square_advanced(&mut self, best_score: f32, best_index: isize, current_power_spectrum: &Vec<f32>) -> f32 {
+    pub fn chi_square_advanced(
+        &mut self,
+        best_score: f32,
+        best_index: isize,
+        current_power_spectrum: &Vec<f32>,
+    ) -> f32 {
         let full_len = current_power_spectrum.len();
 
         let (window_start, window_end) = if best_index < 0 {

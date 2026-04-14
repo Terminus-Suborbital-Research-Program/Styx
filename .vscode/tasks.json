@@ -2,15 +2,39 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Build RP2350 Targets",
+            "label": "Build Host Workspace",
             "type": "shell",
             "command": "cargo build",
+            "group": "build",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build RP2350 Targets",
+            "type": "shell",
+            "command": "bash",
+            "group": "build",
+            "args": [
+                "-lc",
+                "cargo build --target thumbv8m.main-none-eabihf -p ejector -p elara -p jupiter-telemetry -p simple -p simple-async"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build All Targets",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Build Host Workspace",
+                "Build RP2350 Targets"
+            ],
             "group": {
                 "kind": "build",
                 "isDefault": true
-            },
-            "options": {
-                "cwd": "${workspaceFolder}/machines/rp235xx"
             },
             "problemMatcher": []
         }

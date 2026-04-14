@@ -1,4 +1,3 @@
-
 pub const TARGET_PACKET_SIZE: usize = 65_536;
 pub const READ_CHUNK_SIZE: usize = 8192;
 // pub const READ_CHUNK_SIZE: usize = 16384;
