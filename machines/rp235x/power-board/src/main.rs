@@ -8,14 +8,23 @@ pub mod startup;
 pub mod task;
 // HAL Access
 use rp235x_hal as hal;
+use rp235x_pac::interrupt;
 use crate::task::power_switch;
 use defmt_rtt as _; // global logger
 
 use crate::startup::SAMPLE_COUNT;
 
 // Monotonics
-use rtic_monotonics::rp235x::prelude::*;
-rp235x_timer_monotonic!(Mono);
+use rtic_monotonics::systick::prelude::*;
+systick_monotonic!(Mono, 1_000_000);
+
+mod rtic_device {
+    pub use rp235x_pac::*;
+
+    pub mod interrupt {
+        pub use rp235x_pac::Interrupt::*;
+    }
+}
 
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
@@ -30,7 +39,7 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef::secure_exe();
 
 #[rtic::app(
-    device = hal::pac,
+    device = crate::rtic_device,
     dispatchers = [PIO2_IRQ_0, PIO2_IRQ_1, DMA_IRQ_0],
 )]
 mod app {

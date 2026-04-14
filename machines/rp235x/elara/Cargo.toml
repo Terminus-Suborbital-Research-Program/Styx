@@ -3,7 +3,6 @@ name = "elara"
 version = "0.1.1"
 edition = "2021"
 build = "build.rs"
-autobins = false
 
 [dependencies]
 # HAL for the RP350X architecture
@@ -66,13 +65,8 @@ tinyframe = { version = "0.1.0", path = "../../../common/messages/tinyframe" }
 
 # Target features
 [features]
-default = []
+default = ["rp2350"]
 rp2350 = [
     "dep:rp235x-hal",
     "rtic/thumbv8main-backend",
 ]
-
-[[bin]]
-name = "elara"
-path = "src/main.rs"
-required-features = ["rp2350"]
