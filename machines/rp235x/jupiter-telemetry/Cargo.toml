@@ -3,7 +3,6 @@ name = "jupiter-telemetry"
 version = "0.1.1"
 edition = "2021"
 build = "build.rs"
-autobins = false
 
 [dependencies]
 # HAL for the RP350X architecture
@@ -61,13 +60,8 @@ bmp5 = "0.2.2"
 
 # Target features
 [features]
-default = []
+default = ["rp2350"]
 rp2350 = [
     "dep:rp235x-hal",
     "rtic/thumbv8main-backend",
 ]
-
-[[bin]]
-name = "jupiter-telemetry"
-path = "src/main.rs"
-required-features = ["rp2350"]

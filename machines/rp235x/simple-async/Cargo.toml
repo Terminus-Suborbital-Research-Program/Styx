@@ -3,7 +3,6 @@ name = "simple-async"
 version = "0.1.0"
 edition = "2021"
 build = "build.rs"
-autobins = false
 
 [dependencies]
 rp235x-hal = { version = "0.4.0", features = [
@@ -28,13 +27,8 @@ defmt-rtt = { workspace = true }
 bmi323 = { git = "https://github.com/wyatt-mattas/bmi323-rs.git", features = ["async", "defmt"] }
 
 [features]
-default = []
+default = ["rp2350"]
 rp2350 = [
   "dep:rp235x-hal",
   "rtic/thumbv8main-backend",
 ]
-
-[[bin]]
-name = "simple-async"
-path = "src/main.rs"
-required-features = ["rp2350"]

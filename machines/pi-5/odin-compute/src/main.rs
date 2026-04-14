@@ -119,7 +119,7 @@ fn main() {
                                         ],
                                         signal_match: estimate,
                                     };
-                                    if let Ok(_bytes_written) = bincode::encode_into_slice(
+                                    if let Ok(bytes_written) = bincode::encode_into_slice(
                                         adcs_packet,
                                         &mut adcs_buffer,
                                         standard(),
