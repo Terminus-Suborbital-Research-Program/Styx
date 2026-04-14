@@ -6,7 +6,8 @@ build = "build.rs"
 
 [dependencies]
 # HAL for the RP350X architecture
-rp235x-hal = {git = "https://github.com/cantudo/rp-hal.git", features = [
+#rp235x-hal = {git = "https://github.com/cantudo/rp-hal.git", features = [
+rp235x-hal = {git = "https://github.com/LoganRilling/rp-hal.git", features = [
     "binary-info",
     "critical-section-impl",
     "rt",

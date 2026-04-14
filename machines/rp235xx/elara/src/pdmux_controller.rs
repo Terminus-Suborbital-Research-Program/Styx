@@ -2,6 +2,7 @@
 
 use defmt::info;
 use embedded_hal::digital::{OutputPin, StatefulOutputPin};
+use embedded_hal_0_2::adc::OneShot;
 use fugit::ExtU64;
 use rp235x_hal::adc::{AdcFifo, AdcPin};
 use rp235x_hal::{gpio, pac, Adc, Clock, Sio, Watchdog};
