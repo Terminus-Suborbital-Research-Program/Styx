@@ -4,7 +4,7 @@ let
   isolatedSrc = pkgs.runCommand "isolated-styx-src" {} ''
     cp -r ${src} $out
     chmod -R +w $out
-    
+    ls $out
     rm -f $out/Cargo.toml
     rm -f $out/Cargo.lock
   '';
@@ -42,8 +42,9 @@ pkgs.rustPlatform.buildRustPackage {
   '';
 
   buildFeatures = [ "packet_logging" ];
+  lockFile = "./Cargo.lock"
 
-  cargoHash = "sha256-M3vbkixpirKhxSIiEGIhqGe7+VsEFunzREzbD4yHPrk=";
+  # cargoHash = "sha256-M3vbkixpirKhxSIiEGIhqGe7+VsEFunzREzbD4yHPrk=";
 
   doCheck = false;
 }
