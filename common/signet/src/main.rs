@@ -38,7 +38,9 @@ fn main() {
         return;
     }
     let mut signal_reader = SignalReader::new(psd_path.to_str().unwrap());
-    let expected_average = signal_reader.read_psd();
+    let mut expected_average = signal_reader.read_psd();
+    let mid = expected_average.len() / 2;
+    expected_average[mid] = (expected_average[mid - 1] + expected_average[mid + 1]) / 2.0;
     println!("Baseline loaded: {} bins", expected_average.len());
 
     let mut iq_recorder = SignalLogger::new(signal_config.capture_output.clone().to_str().unwrap());
@@ -54,6 +56,9 @@ fn main() {
 
         let power_spectrum = spectrum_analyzer.psd(&mut samples);
         let mut current_average = spectrum_analyzer.spectral_bin_avg(power_spectrum);
+
+        let mid = current_average.len() / 2;
+        current_average[mid] = (current_average[mid - 1] + current_average[mid + 1]) / 2.0;
 
         let estimate = matching.match_estimate_advanced(&mut current_average);
 
@@ -342,5 +347,50 @@ mod tests {
         }
 
         println!("Replay finished cleanly.");
+    }
+
+    // Helper to generate a simulated Hydrogen Line shape
+    fn generate_synthetic_hline(len: usize, peak_index: usize, amplitude: f32, noise_level: f32) -> Vec<f32> {
+        let mut psd = vec![0.0; len];
+        for i in 0..len {
+            // Generate a Gaussian bump
+            let distance = i as f32 - peak_index as f32;
+            let bump = amplitude * (-0.05 * distance.powi(2)).exp();
+            
+            // Add some random noise (simulating a simple RNG)
+            // In a real test, import the `rand` crate for normal distribution
+            let pseudo_random = ((i * 137) % 100) as f32 / 100.0; 
+            let noise = pseudo_random * noise_level;
+            
+            psd[i] = bump + noise;
+        }
+        psd
+    }
+
+    #[test]
+    fn test_pearson_hline_discrimination() {
+        let array_len = 1000;
+        
+        // 1. Create a perfectly clean baseline H-Line at index 500
+        let baseline = generate_synthetic_hline(array_len, 500, 10.0, 0.0);
+        let mut estimator = MatchingEstimator::new(baseline.clone(), 50);
+
+        // 2. Create a noisy live signal with the H-Line shifted to index 510 (Doppler shift)
+        let mut live_match = generate_synthetic_hline(array_len, 510, 10.0, 2.0);
+        
+        // 3. Create a live signal of pure noise (No H-Line present)
+        let mut live_no_match = generate_synthetic_hline(array_len, 500, 0.0, 2.0);
+
+        // Test the match
+        let score_match = estimator.match_estimate_advanced(&mut live_match);
+        println!("Noisy H-Line Match Score: {}", score_match);
+        
+        // Test the failure
+        let score_fail = estimator.match_estimate_advanced(&mut live_no_match);
+        println!("Pure Noise Score: {}", score_fail);
+
+        // Mathematically assert that the estimator easily discriminates the two
+        assert!(score_match > 0.8, "Failed to recognize a valid, noisy H-Line");
+        assert!(score_fail < 0.2, "False positive on pure noise");
     }
 }
