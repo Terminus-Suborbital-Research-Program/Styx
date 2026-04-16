@@ -1,11 +1,13 @@
 //! SD Card management for the Ejector  
 
 #![warn(missing_docs, clippy::unwrap_used)]
-use bincode::de;
+use bincode::{de, Decode};
+    use bin_packets::time::Timestamp;
+
 use defmt::info;
 use embedded_hal::{delay::DelayNs, digital::OutputPin, spi::SpiDevice};
 use embedded_hal_bus::spi::ExclusiveDevice;
-use embedded_sdmmc::{Directory, Mode, SdCard, TimeSource, Timestamp, VolumeIdx, VolumeManager};
+use embedded_sdmmc::{Directory, Mode, SdCard, Timestamp as SdTimestamp, TimeSource, VolumeIdx, VolumeManager};
 use heapless::String;
 use rp235x_hal::{
     gpio::{Function, FunctionSio, FunctionSpi, Pin, PullDown, SioOutput},
@@ -15,8 +17,9 @@ use rp235x_hal::{
     Spi, Timer,
 };
 
-pub const EJECTOR_Z_DATA_FILENAME: &'static str = "data1.txt";
-pub const EJECTOR_GAURD_FILENAME: &'static str = "data2.txt";
+pub const THERMAL_COAT_FILENAME: &'static str = "thermalCoatData.txt";
+pub const GAURD_FILENAME: &'static str = "guardThermalData.txt";
+pub const BMM_FILENAME: &'static str = "bmmData.txt";
 
 /// Struct to manage the SD card on the Ejector. This is mostly
 /// a wrapper around the embedded_sdmmc crate, which provides a
@@ -37,8 +40,8 @@ pub struct DummyTimesource();
 impl TimeSource for DummyTimesource {
     // In theory you could use the RTC of the rp2040 here, if you had
     // any external time synchronizing device.
-    fn get_timestamp(&self) -> Timestamp {
-        Timestamp {
+    fn get_timestamp(&self) -> SdTimestamp {
+        SdTimestamp {
             year_since_1970: 0,
             zero_indexed_month: 0,
             zero_indexed_day: 0,
@@ -93,4 +96,31 @@ where
     }
 }
 
-pub fn spi_bus() -> () {}
+pub struct ThermoData {
+    pub thermo_data: Option<(Timestamp, f32, f32, f32)>,
+}
+
+pub struct CoatingData {
+    pub z_data: Option<(Timestamp, f32)>,
+}
+
+pub struct BmmData {
+    pub bmm_data: Option<(Timestamp, f32)>,
+}
+
+#[derive(Encode, Decode)]
+pub struct SdData {
+    pub thermo_data: Option<(Timestamp, f32, f32, f32)>,
+    pub coating_data: Option<(Timestamp, f32)>,
+    pub bmm_data: Option<(Timestamp, f32)>,
+}
+
+impl Default for SdData {
+    fn default() -> Self {
+        Self {
+            thermo_data: Default::default(),
+            coating_data: Default::default(),
+            bmm_data: Default::default(),
+        }
+    }
+}

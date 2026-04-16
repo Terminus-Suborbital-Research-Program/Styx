@@ -272,25 +272,25 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     poll_temperature::spawn().ok();
     downlink_jupiter::spawn().ok();
     write_sd_card::spawn().ok();
+    z_write_sd_card::spawn().ok();
+    guard_write_sd_card::spawn().ok();
 
     (
         Shared {
             downlink_packets: Deque::new(),
             samples_buffer: [0u16; SAMPLE_COUNT],
             ejection_enabled: false,
-            sd_card: sd_card,
             status_config,
+            sd_data: Default::default(),
         },
         Local {
             camera_mosfet: cam_pin,
-            // onboard_led: led_pin,
+            sd_card: sd_card,
             status_link,
             downlink,
             ejector_servo,
             rbf_pin: rbf_pin,
             ejecctor_magnet: ejector_magnet,
-            // arming_led: red_led_pin,
-            // packet_led: packet_indicator,
             thermocouple,
             rgb_driver,
             ejection_trigger_tx,

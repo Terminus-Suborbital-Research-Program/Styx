@@ -3,7 +3,7 @@
 //! RTIC Task defintions for the Ejector
 
 use crate::device_constants::RGBStatus;
-use crate::sd_card::EJECTOR_GAURD_FILENAME;
+use crate::sd_card::{BMM_FILENAME, EJECTOR_GAURD_FILENAME, GAURD_FILENAME, THERMAL_COAT_FILENAME};
 use crate::{app::*, device_constants::SAMPLE_COUNT, sd_card, Mono};
 use bin_packets::{
     commands::CommandPacket,
@@ -11,6 +11,7 @@ use bin_packets::{
     packets::{status::Status, ApplicationPacket},
     rgbstatus::RGBOptions,
 };
+use bincode::config::{self, Config};
 use bincode::{config::standard, decode_from_slice, encode_into_slice, error::DecodeError};
 use defmt::{debug, error, info, warn};
 use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
@@ -115,7 +116,6 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
     // Lockout for one minute to let JUPITER boot up
     warn!("Idling sequencer");
     Mono::delay(JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs()).await;
-    // ctx.local.arming_led.set_low().ok();
     info!("Sequencer unlocked, waiting for ejection signal");
 
     ctx.local.ejection_trigger_rx.wait().await;
@@ -130,7 +130,7 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
 
     // Eject, wait 5 seconds, then retract
     info!("Ejecting!");
-    e_magnet.polarity_switch();
+    //e_magnet.polarity_switch();
     servo.eject();
     Mono::delay(5000_u64.millis()).await;
     servo.hold();
@@ -152,7 +152,12 @@ pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
 
     loop {
         match sensor.read_hot_junction() {
-            Ok(temp) => info!("Thermocouple Temperature: {} C", temp),
+            Ok(temp) => {
+                ctx.shared.sd_data.lock(|sd_data| {
+                    sd_data.thermo_data = Some((now_timestamp(),temp, 0.2, 0.3));
+                });
+                info!("Thermocouple Temperature: {} C", temp)
+            },
             Err(_) => warn!("Failed to read MCP9600 thermocouple"),
         }
 
@@ -179,13 +184,47 @@ pub async fn poll_rbf(mut ctx: poll_rbf::Context<'_>) {
     }
 }
 
+///
 pub async fn write_sd_card(mut ctx: write_sd_card::Context<'_>) {
-    ctx.shared.sd_card.lock(|sd_card| {
-        let file_data =
-            b"GLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\n";
-        info!("Berofe Writting!");
-        sd_card.write_data(EJECTOR_GAURD_FILENAME, file_data);
-        info!("After Writting!");
+    ctx.shared.sd_data.lock(|sd_data| {
+        match sd_data.bmm_data {
+            Some(fata) => {
+                let bytes = bincode::encode_to_vec(data, config::standard());
+                ctx.local
+                    .sd_card
+                    .write_data(BMM_FILENAME, bytes.ok().unwrap().as_slice());
+                info!("Logging data for the Bmm")
+            }
+            None => {
+                info!("Not logging data for the bmm")
+            }
+        }
+
+        match sd_data.thermo_data {
+            Some(data) => {
+                let bytes = bincode::encode_to_vec(data, config::standard());
+                ctx.local
+                    .sd_card
+                    .write_data(GAURD_FILENAME, bytes.ok().unwrap().as_slice());
+                info!("Logging data for the bmm")
+            }
+            None => {
+                info!("Not logging data for the Gaurd")
+            }
+        }
+
+        match sd_data.coating_data {
+            Some(data) => {
+                let bytes = bincode::encode_to_vec(data, config::standard());
+                ctx.local
+                    .sd_card
+                    .write_data(THERMAL_COAT_FILENAME, bytes.ok().unwrap().as_slice());
+                info!("Logging data for the Coating")
+            }
+            None => {
+                info!("Not logging data for the bmm")
+            }
+        }
     });
 }
 
