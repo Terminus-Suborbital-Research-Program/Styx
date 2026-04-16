@@ -20,7 +20,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   buildFeatures = [ "packet_logging" ];
 
-  cargoHash = "sha256-N0N3SPfofK4pfurJb60zew731LqvQeflF2XK1fJwIGU=";
+  cargoHash = "sha256-M3vbkixpirKhxSIiEGIhqGe7+VsEFunzREzbD4yHPrk=";
 
   doCheck = false;
 })
