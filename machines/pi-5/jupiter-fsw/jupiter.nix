@@ -18,7 +18,7 @@ pkgs.rustPlatform.buildRustPackage {
 
   # sourceRoot = "isolated-styx-src/machines/pi-5/jupiter-fsw";
 
-   src = fetchFromGitHub {
+   src = pkgs.fetchFromGitHub {
     owner = "Terminus-Suborbital-Research-Program";
     repo = "Styx";
     rev = "v0.1.1";
