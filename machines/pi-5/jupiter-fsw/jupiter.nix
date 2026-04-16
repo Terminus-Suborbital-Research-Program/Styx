@@ -42,7 +42,7 @@ pkgs.rustPlatform.buildRustPackage {
   '';
 
   buildFeatures = [ "packet_logging" ];
-  lockFile = "./Cargo.lock";
+  cargoLock = "./Cargo.lock";
 
   # cargoHash = "sha256-M3vbkixpirKhxSIiEGIhqGe7+VsEFunzREzbD4yHPrk=";
 
