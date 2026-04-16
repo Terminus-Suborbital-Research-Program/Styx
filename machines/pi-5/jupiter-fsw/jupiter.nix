@@ -23,7 +23,7 @@ pkgs.rustPlatform.buildRustPackage {
     repo = "Styx";
     rev = "v0.1.1";
     fetchSubmodules = true;
-    hash = "sha256-vQ1VyzQO8snWWEJGL5C5xQ04BUl+KoX+GeqJ1bgS8ZE=";
+    hash = "sha256-XuN+LVlD6yqRcdg5jo3+Kk42bjlYmaIwCaqrbcOjzP8=";
   };
   nativeBuildInputs = [ 
     pkgs.pkg-config 
