@@ -42,7 +42,9 @@ pkgs.rustPlatform.buildRustPackage {
       --set LD_LIBRARY_PATH "${basler-pylon}/opt/pylon/lib:${pkgs.lib.makeLibraryPath [ pkgs.libusb1 pkgs.zlib pkgs.stdenv.cc.cc.lib ]}"
   '';
 
-  # buildFeatures = [ "packet_logging" ];
+  buildFeatures = [ "packet_logging" ];
+
+  cargoHash = "sha256-M3vbkixpirKhxSIiEGIhqGe7+VsEFunzREzbD4yHPrk=";
 
   doCheck = false;
 }

@@ -1,2 +1,40 @@
-[tasks.my_task]
-script = ["echo hello"]
+[config]
+default_to_workspace = false
+
+[env]
+RP2350_TARGET = "thumbv8m.main-none-eabihf"
+RP2350_PACKAGES = "-p ejector -p elara -p jupiter-telemetry -p simple -p simple-async"
+
+[tasks.install-devtools]
+description = "Install Rust-side developer tools used by the host and RP235x workflows."
+command = "bash"
+args = [
+	"-lc",
+	"set -euo pipefail\nrustup target add thumbv8m.main-none-eabihf\nrustup component add llvm-tools-preview\ncommand -v cargo-make >/dev/null || cargo install --locked cargo-make\ncommand -v cargo-objcopy >/dev/null || cargo install --locked cargo-binutils\ncommand -v probe-rs >/dev/null || cargo install --locked probe-rs-tools\n",
+]
+
+[tasks.verify-devtools]
+description = "Verify that the expected Rust-side developer tools are available in PATH."
+command = "bash"
+args = [
+	"-lc",
+	"set -euo pipefail\ncommand -v cargo-make\ncommand -v probe-rs\ncommand -v cargo-objcopy >/dev/null || command -v rust-objcopy >/dev/null\nrustup target list --installed | rg '^thumbv8m\\.main-none-eabihf$'\nrustup component list --installed | rg '^llvm-tools'\n",
+]
+
+[tasks.devtools]
+description = "Install and verify the common Rust developer tools for this repository."
+run_task = { name = ["install-devtools", "verify-devtools"], fork = false, parallel = false }
+
+[tasks.build-host]
+command = "cargo"
+args = ["build"]
+
+[tasks.build-rp235x]
+command = "bash"
+args = [
+	"-lc",
+	"set -euo pipefail\ncargo build --target \"$RP2350_TARGET\" $RP2350_PACKAGES\n",
+]
+
+[tasks.build-all]
+run_task = { name = ["build-host", "build-rp235x"], fork = false, parallel = false }
