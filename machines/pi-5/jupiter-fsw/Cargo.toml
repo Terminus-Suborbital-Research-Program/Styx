@@ -22,4 +22,3 @@ embedded-hal = "1.0.0"
 default = []
 packet_logging = []
 
-[workspace]

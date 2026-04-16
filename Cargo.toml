@@ -35,10 +35,6 @@ default-members = [
 ]
 resolver = "3"
 
-exclude = [
-  "machines/pi-5/jupiter-fsw"
-]
-
 [workspace.dependencies]
 bincode = {version = "2.0.1"}
 aether_core = {git = "https://github.com/AtmoPierce/aether.git", "package" = "aether_core"}
