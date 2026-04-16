@@ -10,7 +10,8 @@ publish = false
 #bincode = { workspace = true, features = ["derive"], default-features = false }
 # Some need bincode with std and some don't so better not to have this workspace pinned
 bincode = {version = "2.0.1", default-features = false, features = ["derive"]}
-defmt = { workspace = true}
+#defmt = { workspace = true}
+defmt = "*"
 embedded-io = { version = "0.6.1", features = ["defmt-03"] }
 heapless = { version = "0.8.0", features = ["defmt-03"] }
 serde = { version = "*", features = ["derive"], default-features = false }
