@@ -7,7 +7,6 @@ members = [
   "ground/data-cli",
   "ground/gs-cli",
   "machines/pi-4/munin",
-  "machines/pi-5/jupiter-fsw",
   "machines/pi-5/odin-compute",
   "machines/rp235x/ejector",
   "machines/rp235x/elara",
@@ -19,6 +18,7 @@ members = [
   "sensors/cd74hc4067",
   "sensors/ina260", 
 ]
+
 default-members = [
   "common/messages/bin-packets",
   "common/messages/tinyframe",
@@ -26,12 +26,15 @@ default-members = [
   "ground/data-cli",
   "ground/gs-cli",
   "machines/pi-4/munin",
-  "machines/pi-5/jupiter-fsw",
   "machines/pi-5/odin-compute",
   "sensors/bme280",
   "sensors/bmm350-rs",
   "sensors/cd74hc4067",
   "sensors/ina260",
+]
+
+exclude = [
+  "machines/pi-5/jupiter-fsw",
 ]
 resolver = "3"
 
