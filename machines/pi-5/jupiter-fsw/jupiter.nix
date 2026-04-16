@@ -1,24 +1,30 @@
 { pkgs, src, basler-pylon }:
 
-let
-  isolatedSrc = pkgs.runCommand "isolated-styx-src" {} ''
-    cp -r ${src} $out
-    chmod -R +w $out
+# let
+#   isolatedSrc = pkgs.runCommand "isolated-styx-src" {} ''
+#     cp -r ${src} $out
+#     chmod -R +w $out
     
-    rm -f $out/Cargo.toml
-    rm -f $out/Cargo.lock
-  '';
-in
+#     rm -f $out/Cargo.toml
+#     rm -f $out/Cargo.lock
+#   '';
+# in
 pkgs.rustPlatform.buildRustPackage {
   pname = "jupiter-fsw";
   version = "0.1.1";
   
   # lobotomized source
-  src = isolatedSrc;
+  # src = isolatedSrc;
 
-  sourceRoot = "isolated-styx-src/machines/pi-5/jupiter-fsw";
+  # sourceRoot = "isolated-styx-src/machines/pi-5/jupiter-fsw";
 
-
+   src = fetchFromGitHub {
+    owner = "Terminus-Suborbital-Research-Program";
+    repo = "Styx";
+    rev = "v0.1.1";
+    fetchSubmodules = true;
+    hash = "sha256-vQ1VyzQO8snWWEJGL5C5xQ04BUl+KoX+GeqJ1bgS8ZE=";
+  };
   nativeBuildInputs = [ 
     pkgs.pkg-config 
     pkgs.makeWrapper
