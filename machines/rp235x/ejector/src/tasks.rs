@@ -42,7 +42,7 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     // Still blink, but toggle as it is done
     loop {
         // onboard_led.toggle().unwrap();
-
+        info!("Alive?");
         if Mono::now().duration_since_epoch().to_secs() > JUPITER_BOOT_LOCKOUT_TIME_SECONDS {
             let status = Status::new(DeviceIdentifier::Ejector, now_timestamp(), sequence_number);
 
@@ -164,18 +164,19 @@ pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
 ///
 /// Timing: Every 100 ms
 pub async fn poll_rbf(mut ctx: poll_rbf::Context<'_>) {
-    loop {}
-    if ctx
-        .local
-        .rbf_pin
-        .is_low()
-        .expect("Failed to read the RBF pin state")
-    {
-        info!("RBF pin is low, blocking ejection code...");
-        ctx.shared.ejection_enabled.lock(|blocked| *blocked = false);
-    } else {
-        info!("RBF pin is high, ejection code enabled.");
-        ctx.shared.ejection_enabled.lock(|blocked| *blocked = true);
+    loop {
+        if ctx
+            .local
+            .rbf_pin
+            .is_low()
+            .expect("Failed to read the RBF pin state")
+        {
+            info!("RBF pin is low, blocking ejection code...");
+            ctx.shared.ejection_enabled.lock(|blocked| *blocked = false);
+        } else {
+            info!("RBF pin is high, ejection code enabled.");
+            ctx.shared.ejection_enabled.lock(|blocked| *blocked = true);
+        }
     }
 }
 

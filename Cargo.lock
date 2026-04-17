@@ -1169,7 +1169,7 @@ dependencies = [
  "rp235x-hal 0.4.0",
  "rp235x-pac 0.2.0",
  "rtic",
- "rtic-monotonics",
+ "rtic-monotonics 2.1.0 (git+https://github.com/rtic-rs/rtic.git)",
  "rtic-sync",
  "tinyframe",
  "usb-device",
@@ -1203,7 +1203,7 @@ dependencies = [
  "rp235x-hal 0.4.0",
  "rp235x-pac 0.2.0",
  "rtic",
- "rtic-monotonics",
+ "rtic-monotonics 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rtic-sync",
  "tinyframe",
  "uom",
@@ -2275,7 +2275,7 @@ dependencies = [
  "rp235x-hal 0.3.0",
  "rp235x-pac 0.2.0",
  "rtic",
- "rtic-monotonics",
+ "rtic-monotonics 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rtic-sync",
  "usb-device",
  "usbd-serial",
@@ -3957,6 +3957,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rtic-common"
+version = "1.1.0"
+source = "git+https://github.com/rtic-rs/rtic.git#b802f84e7b63f00546291ddf35c9ae3d625551ed"
+dependencies = [
+ "critical-section",
+ "portable-atomic",
+]
+
+[[package]]
 name = "rtic-core"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3991,7 +4000,20 @@ dependencies = [
  "cortex-m",
  "fugit",
  "portable-atomic",
- "rtic-time",
+ "rtic-time 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rtic-monotonics"
+version = "2.1.0"
+source = "git+https://github.com/rtic-rs/rtic.git#b802f84e7b63f00546291ddf35c9ae3d625551ed"
+dependencies = [
+ "cfg-if",
+ "cortex-m",
+ "fugit",
+ "portable-atomic",
+ "rp235x-pac 0.2.0",
+ "rtic-time 2.0.1 (git+https://github.com/rtic-rs/rtic.git)",
 ]
 
 [[package]]
@@ -4007,7 +4029,7 @@ dependencies = [
  "heapless 0.8.0",
  "loom",
  "portable-atomic",
- "rtic-common",
+ "rtic-common 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -4033,7 +4055,20 @@ dependencies = [
  "embedded-hal-async",
  "fugit",
  "futures-util",
- "rtic-common",
+ "rtic-common 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rtic-time"
+version = "2.0.1"
+source = "git+https://github.com/rtic-rs/rtic.git#b802f84e7b63f00546291ddf35c9ae3d625551ed"
+dependencies = [
+ "critical-section",
+ "embedded-hal 1.0.0",
+ "embedded-hal-async",
+ "fugit",
+ "futures-util",
+ "rtic-common 1.1.0 (git+https://github.com/rtic-rs/rtic.git)",
 ]
 
 [[package]]
@@ -4571,7 +4606,7 @@ dependencies = [
  "rp235x-hal 0.4.0",
  "rp235x-pac 0.2.0",
  "rtic",
- "rtic-monotonics",
+ "rtic-monotonics 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rtic-sync",
 ]
 
