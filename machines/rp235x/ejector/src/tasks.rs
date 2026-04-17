@@ -3,8 +3,8 @@
 //! RTIC Task defintions for the Ejector
 
 use crate::device_constants::RGBStatus;
-use crate::sd_card::EJECTOR_GAURD_FILENAME;
-use crate::{app::*, device_constants::SAMPLE_COUNT, sd_card, Mono};
+//use crate::sd_card::EJECTOR_GAURD_FILENAME;
+use crate::{app::*, device_constants::SAMPLE_COUNT, Mono};
 use bin_packets::{
     commands::CommandPacket,
     devices::DeviceIdentifier,
@@ -35,6 +35,7 @@ const SHUTDOWN_TIME_CAMERAS: u64 = 210;
 
 /// Task for sending heartbeat packets to JUPITER and toggling the onboard LED
 pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
+    info!("heart");
     // let onboard_led = ctx.local.onboard_led;
 
     let mut sequence_number = 0;
@@ -59,6 +60,7 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 
 /// Task for sending downlink packets to JUPITER
 pub async fn downlink_jupiter(mut ctx: downlink_jupiter::Context<'_>) {
+    info!("donwlink");
     let mut enc_buf = [0u8; SCRATCH];
     let config = standard();
     loop {
@@ -81,6 +83,7 @@ const SCRATCH: usize = 512;
 
 /// Task for camera sequencing
 pub async fn camera_sequencer(mut ctx: camera_sequencer::Context<'_>) {
+    info!("camera");
     // T+70, drive the cameras high
     Mono::delay(250.secs()).await;
     info!("Activating cameras!");
@@ -94,6 +97,7 @@ pub async fn camera_sequencer(mut ctx: camera_sequencer::Context<'_>) {
 ///
 /// NOTE: When the RBF pin is inserted, this task will idle and block ejection until the pin is removed.
 pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
+    info!("ejecctor_magnet");
     while !ctx.shared.ejection_enabled.lock(|enabled| *enabled) {
         debug!("Ejector sequencer idling while RBF pin is inserted");
         Mono::delay(100_u64.millis()).await;
@@ -146,6 +150,7 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
 ///
 /// Timing: Every second
 pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
+    info!("Pool Temp");
     let sensor = &mut ctx.local.thermocouple;
 
     info!("Mcp start");
@@ -164,6 +169,7 @@ pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
 ///
 /// Timing: Every 100 ms
 pub async fn poll_rbf(mut ctx: poll_rbf::Context<'_>) {
+    info!("Pool rbf");
     loop {}
     if ctx
         .local
@@ -179,17 +185,18 @@ pub async fn poll_rbf(mut ctx: poll_rbf::Context<'_>) {
     }
 }
 
-pub async fn write_sd_card(mut ctx: write_sd_card::Context<'_>) {
-    ctx.shared.sd_card.lock(|sd_card| {
-        let file_data =
-            b"GLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\n";
-        info!("Berofe Writting!");
-        sd_card.write_data(EJECTOR_GAURD_FILENAME, file_data);
-        info!("After Writting!");
-    });
-}
+//pub async fn write_sd_card(mut ctx: write_sd_card::Context<'_>) {
+//    ctx.shared.sd_card.lock(|sd_card| {
+//        let file_data =
+//            b"GLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\n";
+//        info!("Berofe Writting!");
+//        sd_card.write_data(EJECTOR_GAURD_FILENAME, file_data);
+//        info!("After Writting!");
+//    });
+//}
 
 pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
+    info!("RX");
     let jupiter_rx = ctx.local.status_link;
     let config = standard();
 
@@ -284,6 +291,7 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
 }
 
 pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
+    info!("RGB BLINK");
     let rgb_driver = ctx.local.rgb_driver;
     loop {
         let current_colors = ctx.shared.status_config.lock(|status| {

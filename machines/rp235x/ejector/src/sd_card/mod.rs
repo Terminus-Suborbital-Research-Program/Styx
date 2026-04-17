@@ -15,13 +15,13 @@ use rp235x_hal::{
     Spi, Timer,
 };
 
-pub const EJECTOR_Z_DATA_FILENAME: &'static str = "data1.txt";
-pub const EJECTOR_GAURD_FILENAME: &'static str = "data2.txt";
+ const EJECTOR_Z_DATA_FILENAME: &'static str = "data1.txt";
+ const EJECTOR_GAURD_FILENAME: &'static str = "data2.txt";
 
 /// Struct to manage the SD card on the Ejector. This is mostly
 /// a wrapper around the embedded_sdmmc crate, which provides a
 /// high-level API for managing SD cards.
-pub struct EjectorSdCard<SpiBus, Timer>
+ struct EjectorSdCard<SpiBus, Timer>
 where
     SpiBus: SpiDevice,
     Timer: DelayNs,
@@ -32,7 +32,7 @@ where
 }
 
 #[derive(Default)]
-pub struct DummyTimesource();
+ struct DummyTimesource();
 
 impl TimeSource for DummyTimesource {
     // In theory you could use the RTC of the rp2040 here, if you had
@@ -54,7 +54,7 @@ where
     SpiBus: SpiDevice,
     Timer: DelayNs,
 {
-    pub fn new(spi_bus: SpiBus, clock_sourc: Timer) -> Self {
+     fn new(spi_bus: SpiBus, clock_sourc: Timer) -> Self {
         let sdcard = SdCard::new(spi_bus, clock_sourc);
 
         //let mut volume_mgr = VolumeManager::new(sdcard, DummyTimesource::default());
@@ -74,7 +74,7 @@ where
         }
     }
 
-    pub fn write_data(&mut self, file_name: &'static str, data: &[u8]) -> Result<(), ()> {
+     fn write_data(&mut self, file_name: &'static str, data: &[u8]) -> Result<(), ()> {
         //let mut volume_mgr = VolumeManager::new(self.sdcard, DummyTimesource::default());
         let t = match self.vol.open_volume(VolumeIdx(0)) {
             Ok(mut volume) => match volume.open_root_dir() {
@@ -93,4 +93,3 @@ where
     }
 }
 
-pub fn spi_bus() -> () {}

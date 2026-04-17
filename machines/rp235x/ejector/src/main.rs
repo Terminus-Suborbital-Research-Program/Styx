@@ -10,7 +10,7 @@
 pub mod actuators;
 
 mod device_constants;
-pub mod sd_card;
+//pub mod sd_card;
 
 // Guard module
 pub mod guard;
@@ -63,11 +63,12 @@ mod app {
         EjectionDetectionPin, JupiterRX, JupiterTX, JupiterUart, OnboardLED, RGBLed, RGBStatus,
         ThermoI2cBus, SAMPLE_COUNT,
     };
-    use crate::sd_card::EjectorSdCard;
+    //use crate::sd_card::EjectorSdCard;
 
     use super::*;
     use bin_packets::packets::ApplicationPacket;
     use bin_packets::time::Timestamp;
+    use defmt::info;
     use rp235x_hal::gpio::FunctionSio;
     use rp235x_hal::gpio::FunctionSpi;
     use rp235x_hal::Timer;
@@ -117,28 +118,28 @@ mod app {
         Pin<Gpio18, gpio::FunctionSpi, gpio::PullDown>,
         //gpio::Pin<gpio::bank0::Gpio17, gpio::FunctionSpi, gpio::PullDown>,
     );
-    pub type EjectorSD = EjectorSdCard<
-        ExclusiveDevice<
-            Spi<
-                Enabled,
-                SPI0,
-                (
-                    Pin<Gpio19, FunctionSpi, PullDown>,
-                    Pin<Gpio16, FunctionSpi, PullDown>,
-                    Pin<Gpio18, FunctionSpi, PullDown>,
-                ),
-                8,
-            >,
-            Pin<Gpio17, FunctionSio<SioOutput>, PullDown>,
-            Timer<CopyableTimer1>,
-        >,
-        Timer<CopyableTimer1>,
-    >;
+    //pub type EjectorSD = EjectorSdCard<
+    //    ExclusiveDevice<
+    //        Spi<
+    //            Enabled,
+    //            SPI0,
+    //            (
+    //                Pin<Gpio19, FunctionSpi, PullDown>,
+    //                Pin<Gpio16, FunctionSpi, PullDown>,
+    //                Pin<Gpio18, FunctionSpi, PullDown>,
+    //            ),
+    //            8,
+    //        >,
+    //        Pin<Gpio17, FunctionSio<SioOutput>, PullDown>,
+    //        Timer<CopyableTimer1>,
+    //    >,
+    //    Timer<CopyableTimer1>,
+    //>;
     #[shared]
     pub struct Shared {
         pub downlink_packets: Deque<ApplicationPacket, 128>,
         pub samples_buffer: [u16; SAMPLE_COUNT],
-        pub sd_card: EjectorSD,
+        //pub sd_card: EjectorSD,
         pub ejection_enabled: bool,
         pub status_config: RGBStatus,
     }
@@ -165,7 +166,10 @@ mod app {
 
     #[init(local = [adc: Option<hal::Adc> = None])]
     fn init(ctx: init::Context) -> (Shared, Local) {
-        startup::startup(ctx)
+        let y = startup::startup(ctx);
+        info!("startup existed");
+
+        return y;
     }
 
     extern "Rust" {
@@ -192,8 +196,8 @@ mod app {
         #[task(shared = [ejection_enabled], local = [rbf_pin], priority = 2)]
         async fn poll_rbf(mut ctx: poll_rbf::Context);
 
-        #[task(shared = [sd_card], priority = 2)]
-        async fn write_sd_card(mut ctx: write_sd_card::Context);
+        //#[task(shared = [sd_card], priority = 2)]
+        //async fn write_sd_card(mut ctx: write_sd_card::Context);
         // Commands
         // Status for status LED
         #[task(shared = [status_config], local = [status_link, ejection_trigger_tx], priority = 2)]

@@ -37,7 +37,7 @@ use crate::device_constants::{
     ThermoI2CSdaPin, ThermoI2cBus, SAMPLE_COUNT,
 };
 use crate::{app::*, Mono};
-use crate::{hal, sd_card};
+use crate::{hal};
 
 // Timestamp for logging
 defmt::timestamp!("{=u64:us}", {
@@ -121,18 +121,18 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     let mut thermocouple =
         MCP9600::new(thermo_i2c_bus, DeviceAddr::AD7).expect("Failed to initialize MCP9600");
 
-    thermocouple
-        .set_sensor_configuration(ThermocoupleType::TypeK, FilterCoefficient::FilterMedium)
-        .unwrap();
-
-    thermocouple
-        .set_device_configuration(
-            ColdJunctionResolution::High,
-            ADCResolution::Bit18,
-            BurstModeSamples::Sample1,
-            ShutdownMode::NormalMode,
-        )
-        .unwrap();
+    //thermocouple
+    //    .set_sensor_configuration(ThermocoupleType::TypeK, FilterCoefficient::FilterMedium)
+    //    .unwrap();
+//
+    //thermocouple
+    //    .set_device_configuration(
+    //        ColdJunctionResolution::High,
+    //        ADCResolution::Bit18,
+    //        BurstModeSamples::Sample1,
+    //        ShutdownMode::NormalMode,
+    //    )
+    //    .unwrap();
 
     // adc.free_running(&gegier_pin);
     // loop {
@@ -162,7 +162,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     let spi = ExclusiveDevice::new(spi, spi_cs, timer.clone()).unwrap();
 
-    let sd_card = sd_card::EjectorSdCard::new(spi, timer.clone());
+   // let sd_card = sd_card::EjectorSdCard::new(spi, timer.clone());
 
     let mut timer_two = timer;
 
@@ -265,20 +265,21 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     // Tasks
 
-    poll_rbf::spawn().ok();
+    //poll_rbf::spawn().ok();
     heartbeat::spawn().ok();
-    ejector_sequencer::spawn().ok();
-    camera_sequencer::spawn().ok();
-    poll_temperature::spawn().ok();
+    //ejector_sequencer::spawn().ok();
+    //camera_sequencer::spawn().ok();
+    //poll_temperature::spawn().ok();
     downlink_jupiter::spawn().ok();
-    write_sd_card::spawn().ok();
+    //write_sd_card::spawn().ok();
+    info!("End startup");
 
     (
         Shared {
             downlink_packets: Deque::new(),
             samples_buffer: [0u16; SAMPLE_COUNT],
             ejection_enabled: false,
-            sd_card: sd_card,
+            //sd_card: sd_card,
             status_config,
         },
         Local {
