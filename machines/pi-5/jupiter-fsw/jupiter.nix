@@ -14,7 +14,8 @@ pkgs.rustPlatform.buildRustPackage {
   version = "0.1.1";
   
   # lobotomized source
-  src = isolatedSrc;
+  # src = isolatedSrc;
+  inherit src;
 
   sourceRoot = "isolated-styx-src/machines/pi-5/jupiter-fsw";
 
@@ -22,6 +23,7 @@ pkgs.rustPlatform.buildRustPackage {
   nativeBuildInputs = [ 
     pkgs.pkg-config 
     pkgs.makeWrapper
+    pkgs.cargo-make
   ];
 
   buildInputs = [ 
@@ -31,6 +33,16 @@ pkgs.rustPlatform.buildRustPackage {
     pkgs.zlib
     basler-pylon 
   ];
+
+  # preBuild = ''
+  #   cargo make my-custom-setup-task
+  # '';
+
+  buildPhase = ''
+    runHook preBuild
+    cargo make --profile release build-host
+    runHook postBuild
+  '';
 
   PYLON_ROOT = "${basler-pylon}/opt/pylon";
 
