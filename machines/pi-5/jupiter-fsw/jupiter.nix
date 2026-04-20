@@ -35,7 +35,7 @@ pkgs.rustPlatform.buildRustPackage {
     repo = "Styx";
     rev = "refs/heads/Basler-Nix";
     fetchSubmodules = true;
-    hash = "";
+    hash = "sha256-IFCojXWRR638uhgaj/TYxmAcR/3+rw/MtxhBzwCK1YM=";
   };
 
   nativeBuildInputs = [ 
