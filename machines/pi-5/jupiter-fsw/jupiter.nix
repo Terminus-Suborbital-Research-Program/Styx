@@ -1,14 +1,14 @@
 { pkgs, src, basler-pylon }:
 
-let
-  isolatedSrc = pkgs.runCommand "isolated-styx-src" {} ''
-    cp -r ${src} $out
-    chmod -R +w $out
-    ls $out
-    rm -f $out/Cargo.toml
-    rm -f $out/Cargo.lock
-  '';
-in
+# let
+  # isolatedSrc = pkgs.runCommand "isolated-styx-src" {} ''
+  #   cp -r ${src} $out
+  #   chmod -R +w $out
+  #   ls $out
+  #   rm -f $out/Cargo.toml
+  #   rm -f $out/Cargo.lock
+  # '';
+# in
 pkgs.rustPlatform.buildRustPackage {
   pname = "jupiter-fsw";
   version = "0.1.1";
