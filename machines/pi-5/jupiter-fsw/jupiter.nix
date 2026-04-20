@@ -99,8 +99,9 @@ pkgs.rustPlatform.buildRustPackage {
   # cargoLock = {
     # lockFile = ./Cargo.lock;
   # };
+  # sha256-PpX3aP6p/8MBoOJHsih2sYbCYVV5m13PwMFect838AM=
 
-  cargoHash = "sha256-PpX3aP6p/8MBoOJHsih2sYbCYVV5m13PwMFect838AM=";
+  cargoHash = "";
   doCheck = false;
   auditable = false;
 }
