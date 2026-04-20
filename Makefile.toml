@@ -32,7 +32,8 @@ command = "bash"
 args = [
     "-c",
     # "$@" at the end to inject `--target aarch64...`
-    "set -euo pipefail\ncargo build $HOST_PACKAGES \"$@\"\n", 
+	"set -x\nset -euo pipefail\ncargo build $HOST_PACKAGES \"$@\"\n",
+	"dummy_shell_name",
 ]
 
 [tasks.build-rp235x]
