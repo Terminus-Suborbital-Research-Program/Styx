@@ -19,7 +19,11 @@ pkgs.rustPlatform.buildRustPackage {
 
 
   # sourceRoot = "isolated-styx-src/machines/pi-5/jupiter-fsw";
-  src = lib.cleanSource src;
+  # src = lib.cleanSource src;
+  src = pkgs.runCommand "styx-raw-src" {} ''
+    cp -r ${src} $out
+    chmod -R +w $out
+  '';
 
   nativeBuildInputs = [ 
     pkgs.pkg-config 
