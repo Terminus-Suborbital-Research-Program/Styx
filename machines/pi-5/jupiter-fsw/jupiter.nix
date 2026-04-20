@@ -1,13 +1,5 @@
 { pkgs, src, lib,fetchFromGitHub ,basler-pylon }:
-
 let
-  # isolatedSrc = pkgs.runCommand "isolated-styx-src" {} ''
-  #   cp -r ${src} $out
-  #   chmod -R +w $out
-  #   ls $out
-  #   rm -f $out/Cargo.toml
-  #   rm -f $out/Cargo.lock
-  # '';
   soapyextra = pkgs.soapysdr.override {
     extraPackages = [ 
       pkgs.soapyairspy 
@@ -19,17 +11,6 @@ pkgs.rustPlatform.buildRustPackage {
   pname = "jupiter-fsw";
   version = "0.1.1";
   
-  # lobotomized source
-  # src = isolatedSrc;
-  # inherit src;
-
-
-  # sourceRoot = "isolated-styx-src/machines/pi-5/jupiter-fsw";
-  # src = lib.cleanSource src;
-  # src = pkgs.runCommand "styx-raw-src" {} ''
-  #   cp -r ${src} $out
-  #   chmod -R +w $out
-  # '';
   src = fetchFromGitHub {
     owner = "Terminus-Suborbital-Research-Program";
     repo = "Styx";
@@ -67,8 +48,8 @@ pkgs.rustPlatform.buildRustPackage {
 
   cargoBuildFlags = [ "-j" "2" ];
 
-  #
-    # cargo make --profile release build-host -- --jobs 2 --target ${pkgs.stdenv.hostPlatform.rust.rustcTarget}  
+  
+  # cargo make --profile release build-host -- --jobs 2 --target ${pkgs.stdenv.hostPlatform.rust.rustcTarget}  
 
   buildPhase = ''
     runHook preBuild
@@ -101,7 +82,6 @@ pkgs.rustPlatform.buildRustPackage {
   # cargoLock = {
     # lockFile = ./Cargo.lock;
   # };
-  # sha256-PpX3aP6p/8MBoOJHsih2sYbCYVV5m13PwMFect838AM=
 
   cargoHash = "sha256-QBiPk6Yh8b+jWLLYkvhkO+RoikiwaUHe9MaMCF/ysrY=";
   doCheck = false;
