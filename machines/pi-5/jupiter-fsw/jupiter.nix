@@ -1,4 +1,4 @@
-{ pkgs, src, basler-pylon }:
+{ pkgs, src, lib, basler-pylon }:
 
 # let
   # isolatedSrc = pkgs.runCommand "isolated-styx-src" {} ''
