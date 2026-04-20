@@ -20,3 +20,6 @@ serde_arrays = "0.2.0"
 soapysdr = "0.4.4"
 thiserror = "2.0.17"
 
+[dev-dependencies]
+rand = "0.8"
+rand_distr = "0.4"

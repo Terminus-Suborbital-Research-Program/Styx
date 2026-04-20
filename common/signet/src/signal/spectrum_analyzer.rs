@@ -4,10 +4,13 @@ use std::sync::Arc;
 use crate::sdr::radio_config::{BUFF_SIZE, TARGET_PACKET_SIZE};
 use crate::signal::signal_config::SignalConfig;
 
+const INTEGRATION_RATE: f32= 0.05;
 pub struct SpectrumAnalyzer {
     fft: Arc<dyn Fft<f32>>,
     scratch: Vec<Complex<f32>>,
     down_size: usize,
+    pub integrated_psd: Option<Vec<f32>>, // Holds a rolling average for integation
+    alpha: f32, // The integration rate 0.05 for a slow, smooth average
 }
 
 impl SpectrumAnalyzer {
@@ -20,6 +23,8 @@ impl SpectrumAnalyzer {
             fft: planner.plan_fft_forward(len),
             scratch: vec![Complex::new(0.0, 0.0); len],
             down_size,
+            integrated_psd: None,
+            alpha: INTEGRATION_RATE
         }
     }
 
@@ -30,11 +35,15 @@ impl SpectrumAnalyzer {
     pub fn psd(&mut self, time_series: &mut [Complex<f32>; BUFF_SIZE]) -> Vec<f32> {
         self.fft
             .process_with_scratch(&mut time_series[..TARGET_PACKET_SIZE], &mut self.scratch);
-        let mut power_spectrum: Vec<f32> = time_series
+        let mut power_spectrum: Vec<f32> = time_series[..TARGET_PACKET_SIZE]
             .iter()
             .map(|complex| complex.norm_sqr())
             .collect();
 
+
+
+        let mid = power_spectrum.len() / 2;
+        power_spectrum.rotate_left(mid);
         // Used to norm by signal length but that may be worse for chi - square
         // because it allows signal loudness to affect fit, so normalizing by total energy for now instead
         let total_energy: f32 = power_spectrum.iter().sum();
@@ -56,8 +65,21 @@ impl SpectrumAnalyzer {
         // Convert a set of x samples into one average sample. E.g. 65k becomes 1024 with chunks of it averaged
         for chunk in power_spectrum.chunks_exact(self.down_size) {
             let sum: f32 = chunk.iter().sum();
-            spectral_average.push(sum / self.down_size as f32);
+            let avg = sum / self.down_size as f32;
+
+            // spectral_average.push(sum / self.down_size as f32);
+            spectral_average.push(10.0 * (avg + 1e-12).log10());
         }
-        spectral_average
+        if let Some(ref mut integrated) = self.integrated_psd {
+            for (i, bin) in spectral_average.iter().enumerate() {
+                // New Avg = (alpha * New Value) + ((1 - alpha) * Old Avg)
+                integrated[i] = (self.alpha * bin) + ((1.0 - self.alpha) * integrated[i]);
+            }
+        } else {
+            // First run, initialize the buffer
+            self.integrated_psd = Some(spectral_average.clone());
+        }
+
+        self.integrated_psd.as_ref().unwrap().clone()
     }
 }
