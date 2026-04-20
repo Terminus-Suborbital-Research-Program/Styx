@@ -67,10 +67,17 @@ pkgs.rustPlatform.buildRustPackage {
 
   cargoBuildFlags = [ "-j" "2" ];
 
+  #export RUSTFLAGS="-C lto=off -C codegen-units=16 $RUSTFLAGS"
+  #cargo make --profile release build-host -- --jobs 2 --target ${pkgs.stdenv.hostPlatform.rust.rustcTarget}  
+
   buildPhase = ''
     runHook preBuild
-    export RUSTFLAGS="-C lto=off -C codegen-units=16 $RUSTFLAGS"
-    cargo make --profile release build-host -- --jobs 2 --target ${pkgs.stdenv.hostPlatform.rust.rustcTarget}  
+    
+    cargo build --release \
+      -p jupiter-fsw \
+      --target ${pkgs.stdenv.hostPlatform.rust.rustcTarget} \
+      --jobs 2
+      
     runHook postBuild
   '';
 
