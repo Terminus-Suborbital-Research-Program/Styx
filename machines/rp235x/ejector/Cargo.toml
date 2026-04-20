@@ -62,4 +62,4 @@ fast-startup = []
 [[bin]]
 name = "ejector"
 path = "src/main.rs"
-required["rp2350"]
+required = ["rp2350"]
