@@ -6,14 +6,13 @@ build = "build.rs"
 
 [dependencies]
 # HAL for the RP350X architecture
-rp235x-hal = {git = "https://github.com/cantudo/rp-hal.git", features = [
-    "binary-info",
-    "critical-section-impl",
-    "rt",
-    "defmt",
-    "rtic-monotonic",
-    "dcp-fast-f64",
-], optional = true } # Embedded-hal for io traits
+rp235x-hal = { version = "0.4.0", features = [
+  "binary-info",
+  "critical-section-impl",
+  "rt",
+  "defmt",
+  "rtic-monotonic",
+], optional = true }
 
 embedded-hal-bus = { version = "0.3.0", features = ["async", "defmt-03"] }
 # Rust safe bindings to register-level control

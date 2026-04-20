@@ -7,8 +7,8 @@ members = [
   "ground/data-cli",
   "ground/gs-cli",
   "machines/pi-4/munin",
-  "machines/pi-5/jupiter-fsw",
   "machines/pi-5/odin-compute",
+  "machines/pi-5/jupiter-fsw",
   "machines/rp235x/ejector",
   "machines/rp235x/elara",
   "machines/rp235x/jupiter-telemetry",
@@ -19,6 +19,7 @@ members = [
   "sensors/cd74hc4067",
   "sensors/ina260", 
 ]
+
 default-members = [
   "common/messages/bin-packets",
   "common/messages/tinyframe",
@@ -26,13 +27,14 @@ default-members = [
   "ground/data-cli",
   "ground/gs-cli",
   "machines/pi-4/munin",
-  "machines/pi-5/jupiter-fsw",
   "machines/pi-5/odin-compute",
+  "machines/pi-5/jupiter-fsw",
   "sensors/bme280",
   "sensors/bmm350-rs",
   "sensors/cd74hc4067",
   "sensors/ina260",
 ]
+
 resolver = "3"
 
 [workspace.dependencies]
