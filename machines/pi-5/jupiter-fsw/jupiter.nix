@@ -1,6 +1,6 @@
 { pkgs, src, lib,fetchFromGitHub ,basler-pylon }:
 
-# let
+let
   # isolatedSrc = pkgs.runCommand "isolated-styx-src" {} ''
   #   cp -r ${src} $out
   #   chmod -R +w $out
@@ -8,7 +8,13 @@
   #   rm -f $out/Cargo.toml
   #   rm -f $out/Cargo.lock
   # '';
-# in
+  soapyextra = pkgs.soapysdr.override {
+    extraPackages = [ 
+      pkgs.soapyairspy 
+      pkgs.soapyrtlsdr 
+    ];
+  };
+in
 pkgs.rustPlatform.buildRustPackage {
   pname = "jupiter-fsw";
   version = "0.1.1";
@@ -48,10 +54,13 @@ pkgs.rustPlatform.buildRustPackage {
     pkgs.llvmPackages.libclang 
     pkgs.linuxHeaders
     basler-pylon 
+    soapyextra        
+    pkgs.airspy
   ];
 
   LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
   BINDGEN_EXTRA_CLANG_ARGS = "-I${pkgs.linuxHeaders}/include -I${pkgs.glibc.dev}/include";
+  SOAPY_SDR_PLUGIN_PATH = "${soapyextra}/lib/SoapySDR/modules0.8";
 
   
 
