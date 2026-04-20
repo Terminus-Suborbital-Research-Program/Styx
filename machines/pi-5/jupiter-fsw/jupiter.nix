@@ -62,7 +62,8 @@ pkgs.rustPlatform.buildRustPackage {
   BINDGEN_EXTRA_CLANG_ARGS = "-I${pkgs.linuxHeaders}/include -I${pkgs.glibc.dev}/include";
   SOAPY_SDR_PLUGIN_PATH = "${soapyextra}/lib/SoapySDR/modules0.8";
 
-  
+  CARGO_PROFILE_RELEASE_LTO = "false";
+  CARGO_PROFILE_RELEASE_CODEGEN_UNITS = "16";
 
   buildPhase = ''
     runHook preBuild
