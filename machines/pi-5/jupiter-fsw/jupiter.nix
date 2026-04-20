@@ -101,7 +101,7 @@ pkgs.rustPlatform.buildRustPackage {
   # };
   # sha256-PpX3aP6p/8MBoOJHsih2sYbCYVV5m13PwMFect838AM=
 
-  cargoHash = "";
+  cargoHash = "sha256-QBiPk6Yh8b+jWLLYkvhkO+RoikiwaUHe9MaMCF/ysrY=";
   doCheck = false;
   auditable = false;
 }
