@@ -68,13 +68,15 @@ pkgs.rustPlatform.buildRustPackage {
   cargoBuildFlags = [ "-j" "2" ];
 
   #
+    # cargo make --profile release build-host -- --jobs 2 --target ${pkgs.stdenv.hostPlatform.rust.rustcTarget}  
 
   buildPhase = ''
     runHook preBuild
+
+    sed -i 's/HOST_PACKAGES = "-p jupiter-fsw -p odin-compute -p munin"/HOST_PACKAGES = "-p jupiter-fsw -p odin-compute -p munin --release --jobs 2 --target ${pkgs.stdenv.hostPlatform.rust.rustcTarget}"/g' Makefile.toml
     
     export RUSTFLAGS="-C lto=off -C codegen-units=16 $RUSTFLAGS"
-    cargo make --profile release build-host -- --jobs 2 --target ${pkgs.stdenv.hostPlatform.rust.rustcTarget}  
-
+    cargo make build-host
     runHook postBuild
   '';
 
