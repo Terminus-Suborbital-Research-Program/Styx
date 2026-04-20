@@ -77,7 +77,7 @@ pkgs.rustPlatform.buildRustPackage {
       -p jupiter-fsw \
       --target ${pkgs.stdenv.hostPlatform.rust.rustcTarget} \
       --jobs 2
-      
+
     runHook postBuild
   '';
 
@@ -103,7 +103,8 @@ pkgs.rustPlatform.buildRustPackage {
     # lockFile = ./Cargo.lock;
   # };
 
-  cargoHash = "sha256-PpX3aP6p/8MBoOJHsih2sYbCYVV5m13PwMFect838AM=";
+  # sha256-PpX3aP6p/8MBoOJHsih2sYbCYVV5m13PwMFect838AM=
+  cargoHash = "";
   doCheck = false;
   auditable = false;
 }
