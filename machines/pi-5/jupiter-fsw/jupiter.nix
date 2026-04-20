@@ -65,6 +65,8 @@ pkgs.rustPlatform.buildRustPackage {
   CARGO_PROFILE_RELEASE_LTO = "false";
   CARGO_PROFILE_RELEASE_CODEGEN_UNITS = "16";
 
+  cargoBuildFlags = [ "-j" "2" ];
+
   buildPhase = ''
     runHook preBuild
     cargo make --profile release build-host
