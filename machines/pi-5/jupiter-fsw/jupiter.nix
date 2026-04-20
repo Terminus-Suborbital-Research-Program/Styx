@@ -27,7 +27,7 @@ pkgs.rustPlatform.buildRustPackage {
   src = fetchFromGitHub {
     owner = "Terminus-Suborbital-Research-Program";
     repo = "Styx";
-    rev = "main";
+    rev = "refs/heads/main";
     fetchSubmodules = true;
     hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
   };
