@@ -5,6 +5,8 @@ default_to_workspace = false
 RP2350_TARGET = "thumbv8m.main-none-eabihf"
 RP2350_PACKAGES = "-p ejector -p elara -p jupiter-telemetry -p simple -p simple-async"
 
+HOST_PACKAGES = "-p jupiter-fsw -p odin-compute -p munin"
+
 [tasks.install-devtools]
 description = "Install Rust-side developer tools used by the host and RP235x workflows."
 command = "bash"
@@ -26,8 +28,12 @@ description = "Install and verify the common Rust developer tools for this repos
 run_task = { name = ["install-devtools", "verify-devtools"], fork = false, parallel = false }
 
 [tasks.build-host]
-command = "cargo"
-args = ["build"]
+command = "bash"
+args = [
+    "-lc",
+    # "$@" at the end to inject `--target aarch64...`
+    "set -euo pipefail\ncargo build $HOST_PACKAGES \"$@\"\n", 
+]
 
 [tasks.build-rp235x]
 command = "bash"

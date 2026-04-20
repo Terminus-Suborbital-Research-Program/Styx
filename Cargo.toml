@@ -27,15 +27,13 @@ default-members = [
   "ground/gs-cli",
   "machines/pi-4/munin",
   "machines/pi-5/odin-compute",
+  "machines/pi-5/jupiter-fsw",
   "sensors/bme280",
   "sensors/bmm350-rs",
   "sensors/cd74hc4067",
   "sensors/ina260",
 ]
 
-exclude = [
-  "machines/pi-5/jupiter-fsw",
-]
 resolver = "3"
 
 [workspace.dependencies]

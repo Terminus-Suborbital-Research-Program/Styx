@@ -70,7 +70,7 @@ pkgs.rustPlatform.buildRustPackage {
   buildPhase = ''
     runHook preBuild
     export RUSTFLAGS="-C lto=off -C codegen-units=16 $RUSTFLAGS"
-    cargo make --profile release build-host -- --jobs 2    
+    cargo make --profile release build-host -- --jobs 2 --target ${pkgs.stdenv.hostPlatform.rust.rustcTarget}  
     runHook postBuild
   '';
 
@@ -78,8 +78,7 @@ pkgs.rustPlatform.buildRustPackage {
     runHook preInstall
     
     mkdir -p $out/bin
-    cp target/release/jupiter-fsw $out/bin/ 2>/dev/null || cp machines/pi-5/jupiter-fsw/target/release/jupiter-fsw $out/bin/
-    
+    cp target/${pkgs.stdenv.hostPlatform.rust.rustcTarget}/release/jupiter-fsw $out/bin/ 2>/dev/null || cp machines/pi-5/jupiter-fsw/target/${pkgs.stdenv.hostPlatform.rust.rustcTarget}/release/jupiter-fsw $out/bin/    
     runHook postInstall
   '';
 
