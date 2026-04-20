@@ -30,7 +30,7 @@ run_task = { name = ["install-devtools", "verify-devtools"], fork = false, paral
 [tasks.build-host]
 command = "bash"
 args = [
-    "-lc",
+    "-c",
     # "$@" at the end to inject `--target aarch64...`
     "set -euo pipefail\ncargo build $HOST_PACKAGES \"$@\"\n", 
 ]

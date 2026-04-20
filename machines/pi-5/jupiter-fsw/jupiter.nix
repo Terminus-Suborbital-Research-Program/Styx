@@ -67,16 +67,13 @@ pkgs.rustPlatform.buildRustPackage {
 
   cargoBuildFlags = [ "-j" "2" ];
 
-  #export RUSTFLAGS="-C lto=off -C codegen-units=16 $RUSTFLAGS"
-  #cargo make --profile release build-host -- --jobs 2 --target ${pkgs.stdenv.hostPlatform.rust.rustcTarget}  
+  #
 
   buildPhase = ''
     runHook preBuild
     
-    cargo build --release \
-      -p jupiter-fsw \
-      --target ${pkgs.stdenv.hostPlatform.rust.rustcTarget} \
-      --jobs 2
+    export RUSTFLAGS="-C lto=off -C codegen-units=16 $RUSTFLAGS"
+    cargo make --profile release build-host -- --jobs 2 --target ${pkgs.stdenv.hostPlatform.rust.rustcTarget}  
 
     runHook postBuild
   '';
@@ -103,8 +100,7 @@ pkgs.rustPlatform.buildRustPackage {
     # lockFile = ./Cargo.lock;
   # };
 
-  # sha256-PpX3aP6p/8MBoOJHsih2sYbCYVV5m13PwMFect838AM=
-  cargoHash = "";
+  cargoHash = "sha256-PpX3aP6p/8MBoOJHsih2sYbCYVV5m13PwMFect838AM=";
   doCheck = false;
   auditable = false;
 }
