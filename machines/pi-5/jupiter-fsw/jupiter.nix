@@ -36,7 +36,7 @@ pkgs.rustPlatform.buildRustPackage {
     pkgs.pkg-config 
     pkgs.makeWrapper
     pkgs.cargo-make
-
+    pkgs.rustPlatform.bindgenHook
   ];
 
   buildInputs = [ 
@@ -44,15 +44,30 @@ pkgs.rustPlatform.buildRustPackage {
     pkgs.libgpiod 
     pkgs.libusb1
     pkgs.zlib
+    pkgs.clang              
+    pkgs.llvmPackages.libclang 
+    pkgs.linuxHeaders
     basler-pylon 
   ];
 
+  LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+  BINDGEN_EXTRA_CLANG_ARGS = "-I${pkgs.linuxHeaders}/include -I${pkgs.glibc.dev}/include";
 
+  
 
   buildPhase = ''
     runHook preBuild
     cargo make --profile release build-host
     runHook postBuild
+  '';
+
+  installPhase = ''
+    runHook preInstall
+    
+    mkdir -p $out/bin
+    cp target/release/jupiter-fsw $out/bin/ 2>/dev/null || cp machines/pi-5/jupiter-fsw/target/release/jupiter-fsw $out/bin/
+    
+    runHook postInstall
   '';
 
   PYLON_ROOT = "${basler-pylon}/opt/pylon";
