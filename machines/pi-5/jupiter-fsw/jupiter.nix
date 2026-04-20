@@ -17,7 +17,8 @@ pkgs.rustPlatform.buildRustPackage {
   # src = isolatedSrc;
   inherit src;
 
-  sourceRoot = "isolated-styx-src/machines/pi-5/jupiter-fsw";
+  
+  # sourceRoot = "isolated-styx-src/machines/pi-5/jupiter-fsw";
 
 
   nativeBuildInputs = [ 
