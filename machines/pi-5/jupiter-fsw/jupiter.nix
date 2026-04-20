@@ -69,8 +69,8 @@ pkgs.rustPlatform.buildRustPackage {
 
   buildPhase = ''
     runHook preBuild
-    cargo make --profile release build-host
-    runHook postBuild
+    export RUSTFLAGS="-C lto=off -C codegen-units=16 $RUSTFLAGS"
+    cargo make --profile release build-host -- --jobs 2    runHook postBuild
   '';
 
   installPhase = ''
