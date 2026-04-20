@@ -28,17 +28,38 @@ fn main() {
     // let mut accumulator: Vec<Complex<f32>> = Vec::with_capacity(radio_config.target_packet_size + radio_config.read_chunk_size);
 
     let mut samples: [Complex<f32>; BUFF_SIZE] = [Complex::new(0.0, 0.0); BUFF_SIZE];
-    if record_baseline {
-        let mut psd_recorder = SignalLogger::new(psd_path.to_str().unwrap());
-        let (time_stamp, samples_read) = sdr.read_and_timestamp(&mut samples).unwrap();
-        let power_spectrum = spectrum_analyzer.psd(&mut samples);
-        let power_spectrum_bin_averaged = spectrum_analyzer.spectral_bin_avg(power_spectrum);
+    // if record_baseline {
+    //     let mut psd_recorder = SignalLogger::new(psd_path.to_str().unwrap());
+    //     let (time_stamp, samples_read) = sdr.read_and_timestamp(&mut samples).unwrap();
+    //     let power_spectrum = spectrum_analyzer.psd(&mut samples);
+    //     let power_spectrum_bin_averaged = spectrum_analyzer.spectral_bin_avg(power_spectrum);
 
-        psd_recorder.record_psd(power_spectrum_bin_averaged);
+    //     psd_recorder.record_psd(power_spectrum_bin_averaged);
+    //     return;
+    // }
+    if record_baseline {
+        println!("Integrating baseline over 100 frames. Please wait...");
+        let mut final_psd = Vec::new();
+        
+        for _ in 0..100 {
+            let (_time_stamp, _samples_read) = sdr.read_and_timestamp(&mut samples).unwrap();
+            let power_spectrum = spectrum_analyzer.psd(&mut samples);
+            final_psd = spectrum_analyzer.spectral_bin_avg(power_spectrum);
+        }
+
+        // Remove DC spike
+        let mid = final_psd.len() / 2;
+        final_psd[mid] = (final_psd[mid - 1] + final_psd[mid + 1]) / 2.0;
+
+        let mut psd_recorder = SignalLogger::new(psd_path.to_str().unwrap());
+        psd_recorder.record_psd(final_psd);
+        println!("Baseline saved.");
         return;
     }
     let mut signal_reader = SignalReader::new(psd_path.to_str().unwrap());
-    let expected_average = signal_reader.read_psd();
+    let mut expected_average = signal_reader.read_psd();
+    let mid = expected_average.len() / 2;
+    expected_average[mid] = (expected_average[mid - 1] + expected_average[mid + 1]) / 2.0;
     println!("Baseline loaded: {} bins", expected_average.len());
 
     let mut iq_recorder = SignalLogger::new(signal_config.capture_output.clone().to_str().unwrap());
@@ -54,6 +75,9 @@ fn main() {
 
         let power_spectrum = spectrum_analyzer.psd(&mut samples);
         let mut current_average = spectrum_analyzer.spectral_bin_avg(power_spectrum);
+
+        let mid = current_average.len() / 2;
+        current_average[mid] = (current_average[mid - 1] + current_average[mid + 1]) / 2.0;
 
         let estimate = matching.match_estimate_advanced(&mut current_average);
 
@@ -342,5 +366,89 @@ mod tests {
         }
 
         println!("Replay finished cleanly.");
+    }
+
+
+    use rand::prelude::*;
+    use rand_distr::{Normal, Distribution};
+
+    // Helper to generate synthetic time-domain I/Q baseband data with AWGN
+    fn generate_iq_baseband(freq_offset_hz: f32, amplitude: f32, noise_level: f32, sample_rate: f32, seed: u64) -> [Complex<f32>; BUFF_SIZE] {
+        let mut buf = [Complex::new(0.0, 0.0); BUFF_SIZE];
+        
+        let mut rng = StdRng::seed_from_u64(seed);
+        
+        // Create a Gaussian (Normal) distribution with a mean of 0.0 and our noise_level as the standard deviation
+        let normal_dist = Normal::new(0.0, noise_level).unwrap();
+
+        for i in 0..TARGET_PACKET_SIZE {
+            let t = i as f32 / sample_rate;
+            
+            let signal = if amplitude > 0.0 {
+                Complex::new(
+                    (2.0 * PI * freq_offset_hz * t).cos() * amplitude,
+                    (2.0 * PI * freq_offset_hz * t).sin() * amplitude,
+                )
+            } else {
+                Complex::new(0.0, 0.0)
+            };
+            
+            // Sample true Gaussian thermal noise for both I and Q channels
+            let noise_re = normal_dist.sample(&mut rng);
+            let noise_im = normal_dist.sample(&mut rng);
+            
+            buf[i] = signal + Complex::new(noise_re, noise_im);
+        }
+        buf
+    }
+
+    #[test]
+    fn test_end_to_end_pipeline_discrimination() {
+        let sample_rate = 100_000.0; 
+        let down_size = 64; 
+        
+        // ---------------------------------------------------------
+        // 1. Build the Baseline (Seed 1)
+        // ---------------------------------------------------------
+        let mut baseline_analyzer = SpectrumAnalyzer::new(down_size, TARGET_PACKET_SIZE);
+        let mut baseline_iq = generate_iq_baseband(15_000.0, 1.0, 3.0, sample_rate, 1);
+        
+        // Run through the exact pipeline used in main.rs
+        let baseline_psd = baseline_analyzer.psd(&mut baseline_iq);
+        let mut baseline_avg = baseline_analyzer.spectral_bin_avg(baseline_psd);
+        
+        let mid = baseline_avg.len() / 2;
+        baseline_avg[mid] = (baseline_avg[mid - 1] + baseline_avg[mid + 1]) / 2.0;
+
+        let mut estimator = MatchingEstimator::new(baseline_avg.clone(), 50);
+
+        // ---------------------------------------------------------
+        // 2. Live Match (Seed 2)
+        // ---------------------------------------------------------
+        let mut match_analyzer = SpectrumAnalyzer::new(down_size, TARGET_PACKET_SIZE);
+        let mut live_match_iq = generate_iq_baseband(15_500.0, 1.0, 3.0, sample_rate, 2);
+        
+        let live_match_psd = match_analyzer.psd(&mut live_match_iq);
+        let mut live_match_avg = match_analyzer.spectral_bin_avg(live_match_psd);
+        live_match_avg[mid] = (live_match_avg[mid - 1] + live_match_avg[mid + 1]) / 2.0;
+
+        let score_match = estimator.match_estimate_advanced(&mut live_match_avg);
+        println!("End-to-End Shifted Match Score: {}", score_match);
+
+        // ---------------------------------------------------------
+        // 3. Live Noise (Seed 3)
+        // ---------------------------------------------------------
+        let mut noise_analyzer = SpectrumAnalyzer::new(down_size, TARGET_PACKET_SIZE);
+        let mut live_noise_iq = generate_iq_baseband(0.0, 0.0, 3.0, sample_rate, 3);
+        
+        let live_noise_psd = noise_analyzer.psd(&mut live_noise_iq);
+        let mut live_noise_avg = noise_analyzer.spectral_bin_avg(live_noise_psd);
+        live_noise_avg[mid] = (live_noise_avg[mid - 1] + live_noise_avg[mid + 1]) / 2.0;
+
+        let score_noise = estimator.match_estimate_advanced(&mut live_noise_avg);
+        println!("End-to-End Pure Noise Score: {}", score_noise);
+
+        assert!(score_match > 0.6, "Pipeline failed to recognize a shifted signal in noise.");
+        assert!(score_noise < 0.3, "Pipeline generated a false positive on flat noise.");
     }
 }
