@@ -15,16 +15,17 @@ pkgs.rustPlatform.buildRustPackage {
   
   # lobotomized source
   # src = isolatedSrc;
-  inherit src;
+  # inherit src;
 
 
   # sourceRoot = "isolated-styx-src/machines/pi-5/jupiter-fsw";
-
+  src = lib.cleanSource src;
 
   nativeBuildInputs = [ 
     pkgs.pkg-config 
     pkgs.makeWrapper
     pkgs.cargo-make
+
   ];
 
   buildInputs = [ 
@@ -35,9 +36,7 @@ pkgs.rustPlatform.buildRustPackage {
     basler-pylon 
   ];
 
-  # preBuild = ''
-  #   cargo make my-custom-setup-task
-  # '';
+
 
   buildPhase = ''
     runHook preBuild
