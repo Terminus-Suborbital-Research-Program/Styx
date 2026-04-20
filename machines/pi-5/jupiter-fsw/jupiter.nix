@@ -17,7 +17,7 @@ pkgs.rustPlatform.buildRustPackage {
   # src = isolatedSrc;
   inherit src;
 
-  
+
   # sourceRoot = "isolated-styx-src/machines/pi-5/jupiter-fsw";
 
 
@@ -55,11 +55,11 @@ pkgs.rustPlatform.buildRustPackage {
   '';
 
   buildFeatures = [ "packet_logging" ];
-  cargoLock = {
-    lockFile = ./Cargo.lock;
-  };
+  # cargoLock = {
+    # lockFile = ./Cargo.lock;
+  # };
 
-  # cargoHash = "sha256-M3vbkixpirKhxSIiEGIhqGe7+VsEFunzREzbD4yHPrk=";
+  cargoHash = "";
 
   doCheck = false;
 }
