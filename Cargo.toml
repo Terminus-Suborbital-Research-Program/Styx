@@ -8,6 +8,7 @@ members = [
   "ground/gs-cli",
   "machines/pi-4/munin",
   "machines/pi-5/odin-compute",
+  "machines/pi-5/jupiter-fsw",
   "machines/rp235x/ejector",
   "machines/rp235x/elara",
   "machines/rp235x/jupiter-telemetry",
