@@ -27,8 +27,9 @@ use rp235x_hal as hal;
 use defmt_rtt as _; // global logger
 
 // Monotonics
-use rtic_monotonics::systick::prelude::*;
-systick_monotonic!(Mono, 1_000_000);
+use rtic_monotonics::rp235x::prelude::*;
+rp235x_timer_monotonic!(Mono);
+
 
 mod rtic_device {
     pub use rp235x_pac::*;

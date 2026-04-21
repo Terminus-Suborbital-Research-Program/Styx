@@ -67,7 +67,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     .ok()
     .unwrap();
 
-    Mono::start(ctx.core.SYST, clocks.system_clock.freq().to_Hz());
+    Mono::start(ctx.device.TIMER0, &ctx.device.RESETS);
 
     // The single-cycle I/O block controls our GPIO pins
     let sio = Sio::new(ctx.device.SIO);
