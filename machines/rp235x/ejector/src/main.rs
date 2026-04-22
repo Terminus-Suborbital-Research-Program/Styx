@@ -158,7 +158,7 @@ mod app {
         // pub ejection_pin: EjectionDetectionPin,
         pub status_link: JupiterRX,
         pub camera_mosfet: CamMosfetPin,
-        pub thermocouple: MCP9600<ThermoI2cBus>,
+        // pub thermocouple: MCP9600<ThermoI2cBus>,
         pub rgb_driver: WS2812<RGBLed>,
         pub ejection_trigger_tx: SignalWriter<'static, ()>,
         pub ejection_trigger_rx: SignalReader<'static, ()>,
@@ -184,8 +184,8 @@ mod app {
         #[task(shared = [downlink_packets],  priority = 1)]
         async fn heartbeat(mut ctx: heartbeat::Context);
 
-        #[task( local = [thermocouple], priority = 1)]
-        async fn poll_temperature(mut ctx: poll_temperature::Context);
+        // #[task( local = [thermocouple], priority = 1)]
+        // async fn poll_temperature(mut ctx: poll_temperature::Context);
 
         #[task(shared = [downlink_packets], local = [downlink], priority = 1)]
         async fn downlink_jupiter(mut ctx: downlink_jupiter::Context);

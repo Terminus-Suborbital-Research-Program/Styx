@@ -118,21 +118,21 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         clocks.peripheral_clock.freq(),
     );
 
-    let mut thermocouple =
-        MCP9600::new(thermo_i2c_bus, DeviceAddr::AD7).expect("Failed to initialize MCP9600");
+    // let mut thermocouple =
+    //     MCP9600::new(thermo_i2c_bus, DeviceAddr::AD7).expect("Failed to initialize MCP9600");
 
-    thermocouple
-        .set_sensor_configuration(ThermocoupleType::TypeK, FilterCoefficient::FilterMedium)
-        .unwrap();
+    // thermocouple
+    //     .set_sensor_configuration(ThermocoupleType::TypeK, FilterCoefficient::FilterMedium)
+    //     .unwrap();
 
-    thermocouple
-        .set_device_configuration(
-            ColdJunctionResolution::High,
-            ADCResolution::Bit18,
-            BurstModeSamples::Sample1,
-            ShutdownMode::NormalMode,
-        )
-        .unwrap();
+    // thermocouple
+    //     .set_device_configuration(
+    //         ColdJunctionResolution::High,
+    //         ADCResolution::Bit18,
+    //         BurstModeSamples::Sample1,
+    //         ShutdownMode::NormalMode,
+    //     )
+    //     .unwrap();
 
     // adc.free_running(&gegier_pin);
     // loop {
@@ -269,7 +269,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     heartbeat::spawn().ok();
     ejector_sequencer::spawn().ok();
     camera_sequencer::spawn().ok();
-    poll_temperature::spawn().ok();
+    // poll_temperature::spawn().ok();
     downlink_jupiter::spawn().ok();
     write_sd_card::spawn().ok();
 
@@ -291,7 +291,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             ejecctor_magnet: ejector_magnet,
             // arming_led: red_led_pin,
             // packet_led: packet_indicator,
-            thermocouple,
+            // thermocouple,
             rgb_driver,
             ejection_trigger_tx,
             ejection_trigger_rx,

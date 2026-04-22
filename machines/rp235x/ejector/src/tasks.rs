@@ -42,7 +42,7 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     // Still blink, but toggle as it is done
     loop {
         // onboard_led.toggle().unwrap();
-        info!("Alive?");
+        // info!("Alive?");
         if Mono::now().duration_since_epoch().to_secs() > JUPITER_BOOT_LOCKOUT_TIME_SECONDS {
             let status = Status::new(DeviceIdentifier::Ejector, now_timestamp(), sequence_number);
 
@@ -94,31 +94,87 @@ pub async fn camera_sequencer(mut ctx: camera_sequencer::Context<'_>) {
 ///
 /// NOTE: When the RBF pin is inserted, this task will idle and block ejection until the pin is removed.
 pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
-    while !ctx.shared.ejection_enabled.lock(|enabled| *enabled) {
-        debug!("Ejector sequencer idling while RBF pin is inserted");
-        Mono::delay(100_u64.millis()).await;
-    }
+    // while !ctx.shared.ejection_enabled.lock(|enabled| *enabled) {
+    //     debug!("Ejector sequencer idling while RBF pin is inserted");
+    //     Mono::delay(100_u64.millis()).await;
+    // }
 
     let servo = ctx.local.ejector_servo;
     let e_magnet = ctx.local.ejecctor_magnet;
 
     // Latch ejector servos closed
-    servo.hold();
+    Mono::delay(1000_u64.millis()).await;
     servo.enable();
+    // servo.hold();
+
+// servo.servo.set_angle(150);
+    info!("Ejecting!");
+
+    // servo.eject();
+    // servo.servo.set_angle(200);
+
+
+    // s
+    
+
+    info!("Here");
+    for i in (14..23) {
+        info!("i {}!", i);
+
+        let angle = (i * 10) as u16;
+        info!("Set {}!", angle);
+
+        servo.servo.set_angle(angle);
+        info!("Set {}!", angle);
+        Mono::delay(50_u64.millis()).await;
+    }
+
+    // info!("Here");
+    // for i in (14..23).rev() {
+    //     info!("i {}!", i);
+
+    //     let angle = (i * 10) as u16;
+    //     info!("Set {}!", angle);
+
+    //     servo.servo.set_angle(angle);
+    //     info!("Set {}!", angle);
+    //     Mono::delay(100_u64.millis()).await;
+    // }
+
+    // for i in (5..14).rev() {
+    //     info!("i {}!", i);
+
+    //     let angle = (i * 10) as u16;
+    //     info!("Set {}!", angle);
+
+    //     servo.servo.set_angle(angle);
+    //     info!("Set {}!", angle);
+    //     Mono::delay(50_u64.millis()).await;
+    // }
+
+    // for i in (18..9) {
+    //     let angle = (i * 10) as u16;
+    //     servo.servo.set_angle(angle);
+    //     info!("Set {}!", angle);
+    //     Mono::delay(1000_u64.millis()).await;
+    // }
+
+    // servo.servo.set_angle();
+
+
 
     // Turn on the magnet
     e_magnet.enable();
-    e_magnet.polarity_switch(); // Maybe
 
     // let ejection_pin = ctx.local.ejection_pin;
 
     // Lockout for one minute to let JUPITER boot up
-    warn!("Idling sequencer");
-    Mono::delay(JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs()).await;
+    // warn!("Idling sequencer");
+    // Mono::delay(JUPITER_BOOT_LOCKOUT_TIME_SECONDS.secs()).await;
     // ctx.local.arming_led.set_low().ok();
-    info!("Sequencer unlocked, waiting for ejection signal");
+    // info!("Sequencer unlocked, waiting for ejection signal");
 
-    ctx.local.ejection_trigger_rx.wait().await;
+    // ctx.local.ejection_trigger_rx.wait().await;
     // Right now we don't have a pin read from jupiter, although this may be re-added later
     // Wait until ejection pin from JUPITER reads high
     // while !ejection_pin.is_high().unwrap_or(false) {
@@ -126,18 +182,22 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
     //     Mono::delay(100_u64.millis()).await;
     // }
 
-    info!("Ejection signal high!");
+    // info!("Ejection signal high!");
 
     // Eject, wait 5 seconds, then retract
-    info!("Ejecting!");
     e_magnet.polarity_switch();
-    servo.eject();
-    Mono::delay(5000_u64.millis()).await;
+    // loop {}
+    // servo.eject();
+    // servo.hold();
+    info!("Hold!");
+
     servo.hold();
 
+
     // Give three seconds to retract, then disable to save power
-    Mono::delay(3000_u64.millis()).await;
-    servo.disable();
+    Mono::delay(7000_u64.millis()).await;
+    e_magnet.polarity_switch();
+    // servo.disable();
     e_magnet.disable();
     info!("Ejector disabled, servo and magnet disabled. Ejector sequencing complete.");
 }
@@ -145,39 +205,39 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
 /// Task to measure the temperature for the thermal dissipation layer experiment
 ///
 /// Timing: Every second
-pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
-    let sensor = &mut ctx.local.thermocouple;
+// pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
+//     let sensor = &mut ctx.local.thermocouple;
 
-    info!("Mcp start");
+//     info!("Mcp start");
 
-    loop {
-        match sensor.read_hot_junction() {
-            Ok(temp) => info!("Thermocouple Temperature: {} C", temp),
-            Err(_) => warn!("Failed to read MCP9600 thermocouple"),
-        }
+//     loop {
+//         match sensor.read_hot_junction() {
+//             Ok(temp) => info!("Thermocouple Temperature: {} C", temp),
+//             Err(_) => warn!("Failed to read MCP9600 thermocouple"),
+//         }
 
-        Mono::delay(1000_u64.millis()).await;
-    }
-}
+//         Mono::delay(1000_u64.millis()).await;
+//     }
+// }
 
 /// Task to poll the RBF pin and block ejection if it is inserted
 ///
 /// Timing: Every 100 ms
 pub async fn poll_rbf(mut ctx: poll_rbf::Context<'_>) {
-    loop {
-        if ctx
-            .local
-            .rbf_pin
-            .is_low()
-            .expect("Failed to read the RBF pin state")
-        {
-            info!("RBF pin is low, blocking ejection code...");
-            ctx.shared.ejection_enabled.lock(|blocked| *blocked = false);
-        } else {
-            info!("RBF pin is high, ejection code enabled.");
-            ctx.shared.ejection_enabled.lock(|blocked| *blocked = true);
-        }
-    }
+    // loop {
+    //     if ctx
+    //         .local
+    //         .rbf_pin
+    //         .is_low()
+    //         .expect("Failed to read the RBF pin state")
+    //     {
+    //         info!("RBF pin is low, blocking ejection code...");
+    //         ctx.shared.ejection_enabled.lock(|blocked| *blocked = false);
+    //     } else {
+    //         info!("RBF pin is high, ejection code enabled.");
+    //         ctx.shared.ejection_enabled.lock(|blocked| *blocked = true);
+    //     }
+    // }
 }
 
 pub async fn write_sd_card(mut ctx: write_sd_card::Context<'_>) {
