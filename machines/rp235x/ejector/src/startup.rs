@@ -26,11 +26,8 @@ use rp235x_hal::{Clock, Sio, Watchdog};
 use rtic_monotonics::Monotonic;
 use rtic_sync::make_signal;
 use rtic_sync::signal::{self, Signal};
-// use ws2812_rs::{Color, GlowColor, WS2812};
 use rp235x_hal::pio::PIOExt;
 use ws2812_pio::Ws2812Direct;
-// use ws2812_rs::{Color, AsyncGlowColor, WS2812};
-// use smart_leds_trait::SmartLedsWrite;
 use smart_leds::{SmartLedsWrite, RGB8};
 
 // use rp235x_hal::timer::monotonic::Monotonic;

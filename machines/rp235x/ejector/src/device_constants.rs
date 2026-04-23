@@ -107,21 +107,21 @@ pub type JupiterTX = Writer<UART0, (JupiterTxPin, JupiterRxPin)>;
 /// Samples per second of the geiger counter
 pub static SAMPLE_COUNT: usize = 100;
 
-use ws2812_rs::Color;
+use smart_leds::RGB8;
 
 pub struct RGBStatus {
-    pub RBF: Color,
-    pub HaLow: Color,
-    pub Esp: Color,
-    pub Infratracker: Color,
-    pub Guard: Color,
-    pub Jupiter: Color,
-    pub ElectroMagnet: Color,
-    pub Servos: Color,
-    pub Jupiter_Avionics_Health: Color,
-    pub Ejector_Health: Color,
-    pub Odin_Compute_Health: Color,
-    pub Odin_Pico_Health: Color,
+    pub RBF: RGB8,
+    pub HaLow: RGB8,
+    pub Esp: RGB8,
+    pub Infratracker: RGB8,
+    pub Guard: RGB8,
+    pub Jupiter: RGB8,
+    pub ElectroMagnet: RGB8,
+    pub Servos: RGB8,
+    pub Jupiter_Avionics_Health: RGB8,
+    pub Ejector_Health: RGB8,
+    pub Odin_Compute_Health: RGB8,
+    pub Odin_Pico_Health: RGB8,
 }
 
 use bin_packets::rgbstatus::{RGBOptions, WireColor};
@@ -170,18 +170,19 @@ impl RGBStatus {
 
 impl Default for RGBStatus {
     fn default() -> Self {
-        let dim_red     = Color::rgb(50, 0, 0);
-        let dim_green   = Color::rgb(0, 50, 0);
-        let dim_blue    = Color::rgb(0, 0, 50);
+        let dim_red     = RGB8::new(50, 0, 0);
+        let dim_green   = RGB8::new(0, 50, 0);
+        let dim_blue    = RGB8::new(0, 0, 50);
 
-        let dim_yellow  = Color::rgb(40, 40, 0);
-        let dim_cyan    = Color::rgb(0, 40, 40);
-        let dim_magenta = Color::rgb(40, 0, 40);
+        let dim_yellow  = RGB8::new(40, 40, 0);
+        let dim_cyan    = RGB8::new(0, 40, 40);
+        let dim_magenta = RGB8::new(40, 0, 40);
 
-        let dim_orange  = Color::rgb(50, 20, 0);
-        let dim_purple  = Color::rgb(25, 0, 50);
-        let dim_white   = Color::rgb(30, 30, 30);
-        let off         = Color::rgb(0, 0, 0);
+        let dim_orange  = RGB8::new(50, 20, 0);
+        let dim_purple  = RGB8::new(25, 0, 50);
+        let dim_white   = RGB8::new(30, 30, 30);
+        let off         = RGB8::new(0, 0, 0);
+        
         Self {
             RBF: dim_red,
             HaLow: dim_green,

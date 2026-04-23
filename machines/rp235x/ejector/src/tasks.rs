@@ -20,13 +20,10 @@ use heapless::{deque::DequeInner, vec::ViewVecStorage, Deque, Vec};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use tinyframe::frame::Frame;
-// use ws2812_rs::GlowColor;
-// use rtic_sync::portable_atomic::{AtomicBool, Ordering};
+
 use bin_packets::phases::EjectorPhase;
 use rtic_sync::signal::Signal;
-//use cortex_m::interrupt;
-// use ws2812_rs::{Color, AsyncGlowColor};
-// use ws2812_rs::{Color, GlowColor};
+
 use ws2812_pio::Ws2812Direct;
 use smart_leds::{SmartLedsWrite, RGB8};
 
@@ -372,93 +369,51 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
 //         //     ]
 //         // });
 
-
-//         let dim_red     = RGB8::new(50, 0, 0);
-//         let dim_green   = RGB8::new(0, 50, 0);
-//         let dim_blue    = RGB8::new(0, 0, 50);
-
-//         let dim_yellow  = RGB8::new(40, 40, 0);
-//         let dim_cyan    = RGB8::new(0, 40, 40);
-//         let dim_magenta = RGB8::new(40, 0, 40);
-
-//         let dim_orange  = RGB8::new(50, 20, 0);
-//         let dim_purple  = RGB8::new(25, 0, 50);
-//         let dim_white   = RGB8::new(30, 30, 30);
-//         let off         = RGB8::new(0, 0, 0);
-
-//         let current_colors = [
-//             dim_red,
-//             dim_green,
-//             dim_blue,
-
-//             dim_yellow,
-//             dim_cyan,
-//             dim_magenta,
-
-//             dim_orange,
-//             dim_purple,
-//             dim_white,
-//             off,
-//             dim_orange,
-//             dim_purple,
-//         ];
-
 //         rgb_driver.write(current_colors.iter().cloned()).unwrap();
 
-
-
-//         // let dim_red     = Color::rgb(50, 0, 0);
-//         // let dim_green   = Color::rgb(0, 50, 0);
-//         // let dim_blue    = Color::rgb(0, 0, 50);
-
-//         // let dim_yellow  = Color::rgb(40, 40, 0);
-//         // let dim_cyan    = Color::rgb(0, 40, 40);
-//         // let dim_magenta = Color::rgb(40, 0, 40);
-
-//         // let dim_orange  = Color::rgb(50, 20, 0);
-//         // let dim_purple  = Color::rgb(25, 0, 50);
-//         // let dim_white   = Color::rgb(30, 30, 30);
-//         // let off         = Color::rgb(0, 0, 0);
-
-//         // let current_colors = [
-//         //      dim_red,
-//         //     dim_green,
-//         //     dim_blue,
-
-//         //     dim_yellow,
-//         //     dim_cyan,
-//         //     dim_magenta,
-
-//         //     dim_orange,
-//         //     dim_purple,
-//         //     dim_white,
-//         //     off
-//         // ];
-//         // &mut rgb_driver.async_send_color(current_colors).await;
-
-        
-//         // cortex_m::interrupt::free(|_| { 
-
-//         // rgb_driver.send_color([
-        
-//         // ]);
-//         // });
-
-//         // cortex_m::interrupt::free(|_| { 
-//         //     rgb_driver.send_color(current_colors);
-//         // });
-
-//         // for color in current_colors {
-//         //     // info!("Loop");
-//         //     rgb_driver.send_color([color]);
-//         //     // Mono::delay(3_u64.micros()).await;
-//         // }
-//         Mono::delay(1000_u64.millis()).await;
-
-//         // rgb_driver.send_color(current_colors);
-//         // Mono::delay(10_u64.millis()).await;
-
-//         // Mono::delay(10_u64.millis()).await;
+//         // Mono::delay(1000_u64.millis()).await;
 //     }
 // }
+
+
+// Party Anim
+pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
+    let rgb_driver = &mut ctx.local.rgb_driver; 
+    
+    // 8 bit color wheel, 50 intensity max
+    fn dim_wheel(mut pos: u8) -> RGB8 {
+        pos = 255 - pos;
+        if pos < 85 {
+            RGB8::new((255 - pos * 3) / 5, 0, (pos * 3) / 5)
+        } else if pos < 170 {
+            pos -= 85;
+            RGB8::new(0, (pos * 3) / 5, (255 - pos * 3) / 5)
+        } else {
+            pos -= 170;
+            RGB8::new((pos * 3) / 5, (255 - pos * 3) / 5, 0)
+        }
+    }
+
+    let mut tick: u8 = 0;
+
+    loop {
+        let mut current_colors = [RGB8::new(0, 0, 0); 12];
+
+        for i in 0..12 {
+            // Space the 12 LEDs evenly across the 0-255 color spectrum
+            let offset = (i * 256 / 12) as u8;
+            let pixel_pos = tick.wrapping_add(offset);
+            
+            current_colors[i] = dim_wheel(pixel_pos);
+        }
+
+        rgb_driver.write(current_colors.iter().cloned()).unwrap();
+
+        // Greater value = faster swirl
+        tick = tick.wrapping_add(4); 
+
+        // 50 fps
+        Mono::delay(20_u64.millis()).await;
+    }
+}
 
