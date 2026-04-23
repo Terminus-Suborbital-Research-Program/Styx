@@ -20,10 +20,17 @@ use heapless::{deque::DequeInner, vec::ViewVecStorage, Deque, Vec};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use tinyframe::frame::Frame;
-use ws2812_rs::GlowColor;
+// use ws2812_rs::GlowColor;
 // use rtic_sync::portable_atomic::{AtomicBool, Ordering};
 use bin_packets::phases::EjectorPhase;
 use rtic_sync::signal::Signal;
+//use cortex_m::interrupt;
+// use ws2812_rs::{Color, AsyncGlowColor};
+// use ws2812_rs::{Color, GlowColor};
+use ws2812_pio::Ws2812Direct;
+use smart_leds::{SmartLedsWrite, RGB8};
+
+
 
 #[cfg(not(feature = "fast-startup"))]
 const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 180;
@@ -205,20 +212,20 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
 /// Task to measure the temperature for the thermal dissipation layer experiment
 ///
 /// Timing: Every second
-// pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
-//     let sensor = &mut ctx.local.thermocouple;
+pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
+    let sensor = &mut ctx.local.thermocouple;
 
-//     info!("Mcp start");
+    info!("Mcp start");
 
-//     loop {
-//         match sensor.read_hot_junction() {
-//             Ok(temp) => info!("Thermocouple Temperature: {} C", temp),
-//             Err(_) => warn!("Failed to read MCP9600 thermocouple"),
-//         }
+    loop {
+        match sensor.read_hot_junction() {
+            Ok(temp) => info!("Thermocouple Temperature: {} C", temp),
+            Err(_) => warn!("Failed to read MCP9600 thermocouple"),
+        }
 
-//         Mono::delay(1000_u64.millis()).await;
-//     }
-// }
+        Mono::delay(1000_u64.millis()).await;
+    }
+}
 
 /// Task to poll the RBF pin and block ejection if it is inserted
 ///
@@ -344,27 +351,114 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
     }
 }
 
-pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
-    let rgb_driver = ctx.local.rgb_driver;
-    loop {
-        let current_colors = ctx.shared.status_config.lock(|status| {
-            [
-                status.RBF,
-                status.HaLow,
-                status.Esp,
-                status.Infratracker,
-                status.Guard,
-                status.Jupiter,
-                status.ElectroMagnet,
-                status.Servos,
-                status.Jupiter_Avionics_Health,
-                status.Ejector_Health,
-                status.Odin_Compute_Health,
-                status.Odin_Pico_Health,
-            ]
-        });
+// pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
+//     let rgb_driver = ctx.local.rgb_driver;
+//     loop {
+        
+//         // let current_colors = ctx.shared.status_config.lock(|status| {
+//         //     [
+//         //         status.RBF,
+//         //         status.HaLow,
+//         //         status.Esp,
+//         //         status.Infratracker,
+//         //         status.Guard,
+//         //         status.Jupiter,
+//         //         status.ElectroMagnet,
+//         //         status.Servos,
+//         //         status.Jupiter_Avionics_Health,
+//         //         status.Ejector_Health,
+//         //         status.Odin_Compute_Health,
+//         //         status.Odin_Pico_Health,
+//         //     ]
+//         // });
 
-        rgb_driver.send_color(current_colors);
-        Mono::delay(1000_u64.millis()).await;
-    }
-}
+
+//         let dim_red     = RGB8::new(50, 0, 0);
+//         let dim_green   = RGB8::new(0, 50, 0);
+//         let dim_blue    = RGB8::new(0, 0, 50);
+
+//         let dim_yellow  = RGB8::new(40, 40, 0);
+//         let dim_cyan    = RGB8::new(0, 40, 40);
+//         let dim_magenta = RGB8::new(40, 0, 40);
+
+//         let dim_orange  = RGB8::new(50, 20, 0);
+//         let dim_purple  = RGB8::new(25, 0, 50);
+//         let dim_white   = RGB8::new(30, 30, 30);
+//         let off         = RGB8::new(0, 0, 0);
+
+//         let current_colors = [
+//             dim_red,
+//             dim_green,
+//             dim_blue,
+
+//             dim_yellow,
+//             dim_cyan,
+//             dim_magenta,
+
+//             dim_orange,
+//             dim_purple,
+//             dim_white,
+//             off,
+//             dim_orange,
+//             dim_purple,
+//         ];
+
+//         rgb_driver.write(current_colors.iter().cloned()).unwrap();
+
+
+
+//         // let dim_red     = Color::rgb(50, 0, 0);
+//         // let dim_green   = Color::rgb(0, 50, 0);
+//         // let dim_blue    = Color::rgb(0, 0, 50);
+
+//         // let dim_yellow  = Color::rgb(40, 40, 0);
+//         // let dim_cyan    = Color::rgb(0, 40, 40);
+//         // let dim_magenta = Color::rgb(40, 0, 40);
+
+//         // let dim_orange  = Color::rgb(50, 20, 0);
+//         // let dim_purple  = Color::rgb(25, 0, 50);
+//         // let dim_white   = Color::rgb(30, 30, 30);
+//         // let off         = Color::rgb(0, 0, 0);
+
+//         // let current_colors = [
+//         //      dim_red,
+//         //     dim_green,
+//         //     dim_blue,
+
+//         //     dim_yellow,
+//         //     dim_cyan,
+//         //     dim_magenta,
+
+//         //     dim_orange,
+//         //     dim_purple,
+//         //     dim_white,
+//         //     off
+//         // ];
+//         // &mut rgb_driver.async_send_color(current_colors).await;
+
+        
+//         // cortex_m::interrupt::free(|_| { 
+
+//         // rgb_driver.send_color([
+        
+//         // ]);
+//         // });
+
+//         // cortex_m::interrupt::free(|_| { 
+//         //     rgb_driver.send_color(current_colors);
+//         // });
+
+//         // for color in current_colors {
+//         //     // info!("Loop");
+//         //     rgb_driver.send_color([color]);
+//         //     // Mono::delay(3_u64.micros()).await;
+//         // }
+//         Mono::delay(1000_u64.millis()).await;
+
+//         // rgb_driver.send_color(current_colors);
+//         // Mono::delay(10_u64.millis()).await;
+
+//         // Mono::delay(10_u64.millis()).await;
+//     }
+// }
+

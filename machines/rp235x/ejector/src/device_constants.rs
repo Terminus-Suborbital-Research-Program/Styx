@@ -16,8 +16,7 @@ use rp235x_hal::{
 pub mod pins {
     use rp235x_hal::gpio::{
         bank0::{
-            Gpio0, Gpio1, Gpio10, Gpio11, Gpio12, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio24,
-            Gpio25, Gpio26, Gpio27, Gpio32, Gpio33, Gpio4, Gpio5, Gpio6, Gpio7, Gpio8, Gpio9,
+            *
         },
         FunctionI2C, FunctionSio, FunctionUart, Pin, PullDown, PullUp, SioInput, SioOutput,
     };
@@ -35,6 +34,7 @@ pub mod pins {
     /// Camera GPIO activation
     pub type CamMosfetPin = Pin<Gpio12, FunctionSio<SioOutput>, PullDown>;
 
+    // pub type RGBLedPin = Gpio26;
     pub type RGBLedPin = Gpio24;
 
     /// RBF PIN
@@ -170,20 +170,31 @@ impl RGBStatus {
 
 impl Default for RGBStatus {
     fn default() -> Self {
-        let red = Color::red();
+        let dim_red     = Color::rgb(50, 0, 0);
+        let dim_green   = Color::rgb(0, 50, 0);
+        let dim_blue    = Color::rgb(0, 0, 50);
+
+        let dim_yellow  = Color::rgb(40, 40, 0);
+        let dim_cyan    = Color::rgb(0, 40, 40);
+        let dim_magenta = Color::rgb(40, 0, 40);
+
+        let dim_orange  = Color::rgb(50, 20, 0);
+        let dim_purple  = Color::rgb(25, 0, 50);
+        let dim_white   = Color::rgb(30, 30, 30);
+        let off         = Color::rgb(0, 0, 0);
         Self {
-            RBF: red,
-            HaLow: Color::purple(),
-            Esp: Color::orange(),
-            Infratracker: red,
-            Guard: red,
-            Jupiter: red,
-            ElectroMagnet: red,
-            Servos: red,
-            Jupiter_Avionics_Health: red,
-            Ejector_Health: red,
-            Odin_Compute_Health: red,
-            Odin_Pico_Health: red,
+            RBF: dim_red,
+            HaLow: dim_green,
+            Esp: dim_blue,
+            Infratracker: dim_yellow,
+            Guard: dim_cyan,
+            Jupiter: dim_magenta,
+            ElectroMagnet: dim_orange,
+            Servos: dim_purple,
+            Jupiter_Avionics_Health: dim_white,
+            Ejector_Health: off,
+            Odin_Compute_Health: dim_orange,
+            Odin_Pico_Health: dim_cyan,
         }
     }
 }

@@ -1171,9 +1171,11 @@ dependencies = [
  "rtic",
  "rtic-monotonics 2.1.0 (git+https://github.com/rtic-rs/rtic.git)",
  "rtic-sync",
+ "smart-leds",
  "tinyframe",
  "usb-device",
  "usbd-serial",
+ "ws2812-pio",
  "ws2812-rs",
 ]
 
@@ -3648,6 +3650,9 @@ name = "rgb"
 version = "0.8.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47b34b781b31e5d73e9fbc8689c70551fd1ade9a19e3e28cfec8580a79290cc4"
+dependencies = [
+ "bytemuck",
+]
 
 [[package]]
 name = "ring"
@@ -4520,6 +4525,33 @@ name = "smallvec"
 version = "1.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
+
+[[package]]
+name = "smart-leds"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "66df34e571fa9993fa6f99131a374d58ca3d694b75f9baac93458fe0d6057bf0"
+dependencies = [
+ "smart-leds-trait 0.3.2",
+]
+
+[[package]]
+name = "smart-leds-trait"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ebf6d833fa93f16a1c1874e62c2aebe8567e5bdd436d59bf543ed258b6f7a8e3"
+dependencies = [
+ "rgb",
+]
+
+[[package]]
+name = "smart-leds-trait"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7f4441a131924d58da6b83a7ad765c460e64630cce504376c3a87a2558c487f"
+dependencies = [
+ "rgb",
+]
 
 [[package]]
 name = "soapysdr"
@@ -5537,13 +5569,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ffae5123b2d3fc086436f8834ae3ab053a283cfac8fe0a0b8eaae044768a4c4"
 
 [[package]]
+name = "ws2812-pio"
+version = "0.9.0"
+dependencies = [
+ "cortex-m",
+ "embedded-hal 0.2.7",
+ "fugit",
+ "nb 1.1.0",
+ "pio",
+ "rp235x-hal",
+ "smart-leds-trait 0.2.1",
+ "smart-leds-trait 0.3.2",
+]
+
+[[package]]
 name = "ws2812-rs"
 version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a31238e916943f43bc2cc4572e121688091483c89b31eec5e861f54853d60a4d"
 dependencies = [
  "embassy-time",
  "embedded-hal 1.0.0",
+ "embedded-hal-async",
 ]
 
 [[package]]

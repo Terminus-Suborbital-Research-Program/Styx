@@ -85,8 +85,9 @@ mod app {
         },
         Pin,
     };
-    use rp235x_hal::gpio::{PullDown, SioOutput};
-    use rp235x_hal::pac::SPI0;
+    use rp235x_hal::pio::SM0;
+    use rp235x_hal::gpio::{PullDown, SioOutput, FunctionPio0, bank0::Gpio24};
+    use rp235x_hal::pac::{SPI0, PIO0};
     use rp235x_hal::pwm::{Channel, FreeRunning, Slice, A, B};
     use rp235x_hal::spi::{Enabled, Spi, ValidSpiPinout};
     use rp235x_hal::timer::CopyableTimer1;
@@ -94,7 +95,9 @@ mod app {
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
     use mcp9600::MCP9600;
     use rtic_sync::signal::{SignalReader, SignalWriter};
-    use ws2812_rs::WS2812;
+    // use ws2812_rs::WS2812;
+    use ws2812_pio::Ws2812Direct;
+
 
     pub type UART0Bus = UartPeripheral<
         rp235x_hal::uart::Enabled,
@@ -158,8 +161,13 @@ mod app {
         // pub ejection_pin: EjectionDetectionPin,
         pub status_link: JupiterRX,
         pub camera_mosfet: CamMosfetPin,
-        // pub thermocouple: MCP9600<ThermoI2cBus>,
-        pub rgb_driver: WS2812<RGBLed>,
+        pub thermocouple: MCP9600<ThermoI2cBus>,
+        // pub rgb_driver: WS2812<RGBLed>,
+        pub rgb_driver: Ws2812Direct<
+            PIO0,
+            SM0,
+            Pin<Gpio24, FunctionPio0, PullDown>, 
+        >,
         pub ejection_trigger_tx: SignalWriter<'static, ()>,
         pub ejection_trigger_rx: SignalReader<'static, ()>,
     }
@@ -181,13 +189,13 @@ mod app {
 
         // Heartbeats the main led (and sends packets after arming)
         //  local = [onboard_led],
-        #[task(shared = [downlink_packets],  priority = 1)]
+        #[task(shared = [downlink_packets],  priority = 2)]
         async fn heartbeat(mut ctx: heartbeat::Context);
 
-        // #[task( local = [thermocouple], priority = 1)]
-        // async fn poll_temperature(mut ctx: poll_temperature::Context);
+        #[task( local = [thermocouple], priority = 1)]
+        async fn poll_temperature(mut ctx: poll_temperature::Context);
 
-        #[task(shared = [downlink_packets], local = [downlink], priority = 1)]
+        #[task(shared = [downlink_packets], local = [downlink], priority = 2)]
         async fn downlink_jupiter(mut ctx: downlink_jupiter::Context);
 
         #[task(shared = [ejection_enabled], local = [rbf_pin], priority = 2)]
@@ -200,7 +208,7 @@ mod app {
         #[task(shared = [status_config], local = [status_link, ejection_trigger_tx], priority = 2)]
         async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context);
 
-        #[task(shared = [status_config], local = [rgb_driver], priority = 2)]
+        #[task(shared = [status_config], local = [rgb_driver], priority = 1)]
         async fn set_rgb_status(mut ctx: set_rgb_status::Context);
 
         // #[task(binds = ADC_IRQ_FIFO, priority = 3, shared = [samples_buffer], local = [ counter: usize = 1])]
