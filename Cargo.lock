@@ -3909,7 +3909,7 @@ dependencies = [
  "cortex-m",
  "fugit",
  "portable-atomic",
- "rp235x-pac 0.2.0",
+ "rp235x-pac",
  "rtic-time 2.0.1 (git+https://github.com/rtic-rs/rtic.git)",
 ]
 

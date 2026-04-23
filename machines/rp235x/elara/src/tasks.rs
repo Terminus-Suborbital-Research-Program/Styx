@@ -1,3 +1,5 @@
+#![warn(missing_docs, clippy::unwrap_used)]
+
 use bin_packets::data::adcs::AttitudeMetrics;
 use bin_packets::devices::DeviceIdentifier;
 use bin_packets::packets::status::Status;
