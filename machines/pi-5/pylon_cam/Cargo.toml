@@ -7,6 +7,7 @@ edition = "2024"
 bindgen = "0.72.1"
 
 [dependencies]
-pylon-cxx = {path="../pylon-cxx"}
+#pylon-cxx = {path="../pylon-cxx"}
+pylon-cxx = { git = "https://github.com/Ethan-Pascuales/pylon-cxx.git"}
 anyhow = "1.0.102"
 
