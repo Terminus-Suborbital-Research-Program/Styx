@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use status::Status;
 
 use crate::commands::CommandPacket;
-use crate::i2c::{self, I2CPacket};
+use crate::i2c::I2CPacket;
 // use crate::data::adcs::AttitudeMetrics;
 
 #[derive(Debug, Clone, Copy, Encode, Decode, Format, Serialize, Deserialize)]
