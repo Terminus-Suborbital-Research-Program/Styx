@@ -2495,7 +2495,7 @@ dependencies = [
 [[package]]
 name = "mcp9600"
 version = "0.1.1"
-source = "git+https://github.com/besselfunct/mcp9600.git#8f08330af4482cc66d9c091677b86100505226f5"
+source = "git+https://github.com/Ethan-Pascuales/mcp9600.git#954f60a4c8e4211b6c677352022befa879e9bea8"
 dependencies = [
  "bitvec",
  "embedded-hal 0.2.7",
