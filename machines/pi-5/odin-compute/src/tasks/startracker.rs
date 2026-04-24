@@ -2,7 +2,6 @@ use v4l::buffer::Type;
 use v4l::io::traits::CaptureStream;
 
 use v4l::Device;
-use v4l::io::mmap::Stream;
 
 use v4l::io::mmap::Stream as MmapStream;
 // use v4l::prelude::*;
@@ -17,32 +16,22 @@ use wayfarer::startrack::quest::quest_real;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::{self, JoinHandle};
 
-use wayfarer::{
-    perception::{
-    camera_model::CameraModel,
-    centroiding::Starfinder,
-    },
-    startrack::{
-        solver::Startracker,
-        quest::quest,
-    },
-};// pub use crate::io::mmap::Stream as MmapStream;
 use aether::attitude::Quaternion;
-use aether::reference_frame::{
-    Body,
-    ICRF
-};
-use log::{error, info, LevelFilter};
+use aether::reference_frame::{Body, ICRF};
+use log::error;
+use wayfarer::{
+    perception::{camera_model::CameraModel, centroiding::Starfinder},
+    startrack::solver::Startracker,
+}; // pub use crate::io::mmap::Stream as MmapStream;
 
 // use aether::
-pub struct StartrackerThread{
-    quaternion_sender: Sender<[f32 ; 4]>,
+pub struct StartrackerThread {
+    quaternion_sender: Sender<Quaternion<f32, ICRF<f32>, Body<f32>>>,
     // Sender<Quaternion<f64, ICRF<f64>,Body<f64>>>
 }
 
 impl StartrackerThread {
-
-    pub fn new() -> (Self, Receiver<[f32 ; 4]>) {
+    pub fn new() -> (Self, Receiver<Quaternion<f32, ICRF<f32>, Body<f32>>>) {
         let (quaternion_tx, quaternion_rx) = channel();
 
         let startracker = Self {
@@ -51,28 +40,25 @@ impl StartrackerThread {
 
         (startracker, quaternion_rx)
     }
-    
-    pub fn begin_startracking(self)  -> JoinHandle<()> {
 
-        let mut dev = Device::new(0).expect("Failed to open device");
+    pub fn begin_startracking(self) -> JoinHandle<()> {
+        let dev = Device::new(0).expect("Failed to open device");
         let fmt = dev.format().expect("Failed to read format");
 
-        let height= fmt.height;
+        let height = fmt.height;
         let width = fmt.width;
 
-        let mut stream: MmapStream =
-            MmapStream::with_buffers(&mut dev, Type::VideoCapture, 4).expect("Failed to create buffer stream");
-        
+        let mut stream: MmapStream = MmapStream::with_buffers(&dev, Type::VideoCapture, 4)
+            .expect("Failed to create buffer stream");
+
         let starfinder = Starfinder::default();
         let camera_model = CameraModel::default();
         let startracker = Startracker::default();
 
-        let thread = thread::spawn(move || {
-
-            
-
+        
+        thread::spawn(move || {
             loop {
-                let (buf, meta): (&[u8], &Metadata) = stream.next().expect("Failed to get frame");
+                let (buf, _meta): (&[u8], &Metadata) = stream.next().expect("Failed to get frame");
 
                 // Looks like I cannot take the raw image buffer with v4l and mutate it, so will have to perform one copy.
                 // This causes an issue based on the way I scan for centroids, where I blot out dead pixels as a pass through. Will
@@ -89,31 +75,27 @@ impl StartrackerThread {
 
                 let buffer = buf.to_vec();
 
-                let mut img: ImageBuffer<Luma<u8>, Vec<u8>> = ImageBuffer::from_raw(width, height, buffer)
-                    .expect("Buffer size mismatch");
-                
+                let mut img: ImageBuffer<Luma<u8>, Vec<u8>> =
+                    ImageBuffer::from_raw(width, height, buffer).expect("Buffer size mismatch");
+
                 let mut centroids = starfinder.star_find(&mut img);
                 camera_model.undistort_centroids(&mut centroids);
                 match startracker.pyramid_solve(centroids) {
-                // match startracker.exhaustive_solve(centroids, 100) {
+                    // match startracker.exhaustive_solve(centroids, 100) {
                     Ok((reference_vectors, body_vectors)) => {
-                        let quat: Quaternion<f32, ICRF<f32>,Body<f32>>  = quest_real(&reference_vectors, &body_vectors);
-                        
-                        // Note there are two alternating convertions, i,j,k,w and w,i,j,k
-                        // Providing as is in the library
-                        let q = [quat.w(), quat.i(), quat.j(), quat.k()];
+                        let q: Quaternion<f32, ICRF<f32>, Body<f32>> =
+                            quest_real(&reference_vectors, &body_vectors);
 
-                         if let Err(e) = self.quaternion_sender.send(q) {
+                        if let Err(e) = self.quaternion_sender.send(q) {
                             error!("Error sending estimate: {}", e);
                         }
                     }
 
                     Err(e) => {
-                        error!("{}",e);
+                        error!("{}", e);
                     }
                 }
             }
-        });
-        thread
+        })
     }
 }
