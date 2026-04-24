@@ -122,20 +122,20 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     );
 
     let mut thermocouple =
-        MCP9600::new(thermo_i2c_bus, DeviceAddr::AD7).expect("Failed to initialize MCP9600");
+        MCP9600::new(thermo_i2c_bus, DeviceAddr::AD7).expect("Failed to initialize MCP9600 struct");
 
-    thermocouple
-        .set_sensor_configuration(ThermocoupleType::TypeK, FilterCoefficient::FilterMedium)
-        .unwrap();
+    if let Err(_) = thermocouple.set_sensor_configuration(ThermocoupleType::TypeK, FilterCoefficient::FilterMedium) {
+        warn!("MCP9600 missing or failed to set sensor config");
+    }
 
-    thermocouple
-        .set_device_configuration(
-            ColdJunctionResolution::High,
-            ADCResolution::Bit18,
-            BurstModeSamples::Sample1,
-            ShutdownMode::NormalMode,
-        )
-        .unwrap();
+    if let Err(_) = thermocouple.set_device_configuration(
+        ColdJunctionResolution::High,
+        ADCResolution::Bit18,
+        BurstModeSamples::Sample1,
+        ShutdownMode::NormalMode,
+    ) {
+        warn!("MCP9600 missing or failed to set device config");
+    }
 
     // adc.free_running(&gegier_pin);
     // loop {
