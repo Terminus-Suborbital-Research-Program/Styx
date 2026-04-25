@@ -20,7 +20,7 @@ use env_logger::Env;
 use gpio::{Pin, read::ReadPin, write::WritePin};
 use i2cdev::linux::LinuxI2CDevice;
 use states::JupiterStateMachine;
-use tasks::{Atmega, spawn_camera_thread};
+use tasks::{Atmega, spawn_camera_thread, InfratrackerThread};
 
 mod avionics;
 mod constants;
@@ -64,6 +64,8 @@ fn main() {
 
     let mut onboard_packet_storage = OnboardPacketStorage::get_current_run();
 
+    let (infratracker_thread, infratracker_packet_rx) = InfratrackerThread::new();
+    let infratracker_handle = infratracker_thread.begin_startracking();
 
     let mut state_machine = JupiterStateMachine::new(atmega, ejection_pin);
     let mut counter = 0;
@@ -76,6 +78,12 @@ fn main() {
             }
             #[cfg(feature = "packet_logging")]
             info!("Got a packet: {packet:?}");
+        }
+
+        while let Ok(quat) = infratracker_packet_rx.try_recv() {
+            onboard_packet_storage.write(quat); // Write quat to the onboard storage
+            #[cfg(feature = "packet_logging")]
+            info!("Got a infratracker packet: {quat:?}");
         }
 
         match accel.read_data() {
