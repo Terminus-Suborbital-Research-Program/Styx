@@ -80,7 +80,7 @@ impl StartrackerThread {
 
                 let mut centroids = starfinder.star_find(&mut img);
                 camera_model.undistort_centroids(&mut centroids);
-                match startracker.pyramid_solve(centroids) {
+                match startracker.adaptive_pyramid_solve(centroids) {
                     // match startracker.exhaustive_solve(centroids, 100) {
                     Ok((reference_vectors, body_vectors)) => {
                         let q: Quaternion<f32, ICRF<f32>, Body<f32>> =

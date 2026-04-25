@@ -3,6 +3,9 @@ name = "jupiter-fsw"
 version = "0.1.1"
 edition = "2024"
 
+[build-dependencies]
+bindgen = "0.72.1"
+
 [dependencies]
 bin-packets = { path = "../../../common/messages/bin-packets", features = ["std"] }
 env_logger = "0.11.7"
@@ -17,6 +20,11 @@ serialport = "4.7.1"
 ureq = { version = "3.0.10", features = ["json"] }
 common-states = { path = "../../../common/states" }
 embedded-hal = "1.0.0"
+pylon-cxx = { git = "https://github.com/Ethan-Pascuales/pylon-cxx.git"}
+wayfarer = { git = "https://github.com/Terminus-Suborbital-Research-Program/Wayfarer.git", branch = "main"}
+aether = { git = "https://github.com/AtmoPierce/aether.git", features = ["std", "serde"]}
+image = "0.25.10"
+
 
 [features]
 default = []

@@ -5,7 +5,8 @@ use log::info;
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::time::{Duration, SystemTime};
 
-/// The original “guess” we started with at power-on.
+/// JUPITER startup ends roughly 150 seconds before launch
+/// This value is a guess The original “guess” we started with at power-on.
 static POWER_ON_T_ESTIMATE_SEC: i32 = -150;
 
 lazy_static! {
@@ -26,6 +27,7 @@ pub fn power_on_time() -> i32 {
 }
 
 pub fn t_time_estimate() -> i32 {
+    // 
     power_on_time() + T_CALIBRATION_OFFSET.load(Ordering::Relaxed)
 }
 

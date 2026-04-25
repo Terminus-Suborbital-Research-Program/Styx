@@ -1,5 +1,7 @@
 #![warn(missing_docs)]
 
+//! TERMINUS RS-X 2026 Elara JUPITER Code
+
 use std::{
     thread::sleep,
     time::{Duration, Instant},
@@ -18,7 +20,7 @@ use env_logger::Env;
 use gpio::{Pin, read::ReadPin, write::WritePin};
 use i2cdev::linux::LinuxI2CDevice;
 use states::JupiterStateMachine;
-use tasks::{Atmega, spawn_camera_thread};
+use tasks::{Atmega, spawn_camera_thread, InfratrackerThread};
 
 mod avionics;
 mod constants;
@@ -47,13 +49,11 @@ fn main() {
         .open()
         .unwrap();
     let mut interface = Device::new(port);
-    let rbf_pin = ActiveHighRbf::new(ReadPin::from(Pin::new(RBF_PIN)));
-    let ejection_pin: WritePin = Pin::new(EJECTION_IND_PIN).into();
+
+    let ejection_pin: WritePin = Pin::new(EJECTION_IND_PIN).into(); //Don't think this is a pin any more? Seems like it should be a i2c or uart message
     ejection_pin.write(false).unwrap();
 
     let atmega = Atmega::new(LinuxI2CDevice::new("/dev/i2c-1", 0x26u16).unwrap());
-
-    let rbf = RbfTask::new(rbf_pin).spawn(100);
 
     // Main camera
     spawn_camera_thread();
@@ -64,9 +64,10 @@ fn main() {
 
     let mut onboard_packet_storage = OnboardPacketStorage::get_current_run();
 
-    info!("RBF At Boot: {}", rbf.read());
+    let (infratracker_thread, infratracker_packet_rx) = InfratrackerThread::new();
+    let infratracker_handle = infratracker_thread.begin_startracking();
 
-    let mut state_machine = JupiterStateMachine::new(atmega, ejection_pin, rbf.clone());
+    let mut state_machine = JupiterStateMachine::new(atmega, ejection_pin);
     let mut counter = 0;
 
     loop {
@@ -77,6 +78,12 @@ fn main() {
             }
             #[cfg(feature = "packet_logging")]
             info!("Got a packet: {packet:?}");
+        }
+
+        while let Ok(quat) = infratracker_packet_rx.try_recv() {
+            onboard_packet_storage.write(quat); // Write quat to the onboard storage
+            #[cfg(feature = "packet_logging")]
+            info!("Got a infratracker packet: {quat:?}");
         }
 
         match accel.read_data() {

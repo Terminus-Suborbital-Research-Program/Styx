@@ -4,7 +4,7 @@ use bin_packets::phases::JupiterPhase;
 use embedded_hal::digital::PinState;
 use log::{info, warn};
 
-use crate::states::main_cam::Launch;
+use crate::states::launch::Launch;
 
 use super::traits::{StateContext, ValidState};
 
@@ -28,7 +28,7 @@ impl ValidState for PowerOn {
             Box::new(Launch::default())
         } else {
             // Stay in power on
-            Box::new(PowerOn::default())
+            Box::new(Self::default())
         }
     }
 }
