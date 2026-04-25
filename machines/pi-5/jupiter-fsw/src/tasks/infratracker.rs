@@ -1,15 +1,38 @@
-const COUNT_IMAGES_TO_GRAB: u32 = 100;
+use std::fs::create_dir;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{channel, Receiver, RecvError, SendError, Sender};
+use std::thread::{self, sleep, JoinHandle};
+use std::time::{Duration, SystemTime};
 
 use bin_packets::packets::ApplicationPacket;
-use std::thread::{self, JoinHandle};
-use std::sync::mpsc::{Sender, Receiver, SendError, RecvError, channel};
-use std::time::SystemTime;
+use lazy_static::lazy_static;
+use log::info;
+use std::time::UNIX_EPOCH;
+
+use log::error;
+
+use image::{ImageBuffer, Luma};
+
+use wayfarer::perception::centroiding::Starfinder;
+use wayfarer::perception::camera_model::CameraModel;
+use wayfarer::startrack::solver::Startracker;
+use wayfarer::startrack::quest::quest_real;
+
+use aether::attitude::Quaternion;
+use aether::reference_frame::{ICRF, Body};
+
+const COUNT_IMAGES_TO_GRAB: u32 = 100;
+const STAR_TRACKER_DIR: &str = "/home/terminus/basler/";
+static BUFFER_TIME_MS: u64 = 1000;
+
+lazy_static! {
+    pub static ref TRACKING: AtomicBool = AtomicBool::new(false);
+}
 
 
 
 pub struct InfratrackerThread {
     quaternion_sender: Sender<ApplicationPacket>,
-    // Sender<Quaternion<f64, ICRF<f64>,Body<f64>>>
 }
 
 impl InfratrackerThread {
@@ -25,125 +48,112 @@ impl InfratrackerThread {
 
     pub fn begin_startracking(self) -> JoinHandle<()> {
         
-
-        let starfinder = Starfinder::default();
-        let camera_model = CameraModel::default();
-        let startracker = Startracker::default();
-
+        info!("Starting Basler camera!");
+        create_dir(STAR_TRACKER_DIR).ok();
         
         thread::spawn(move || {
             let result: Result<(), Box<dyn std::error::Error>> = (|| {
-            // Before using any pylon methods, the pylon runtime must be initialized.
-            let pylon = pylon_cxx::Pylon::new();
 
-            // Create an instant camera object with the camera device found first.
-            let camera = pylon_cxx::TlFactory::instance(&pylon).create_first_device()?;
+                // Cam
+                let pylon = pylon_cxx::Pylon::new();
+                let camera = pylon_cxx::TlFactory::instance(&pylon).create_first_device()?;
+                let mut was_tracking = false;
+                let mut grab_result = pylon_cxx::GrabResult::new()?;
 
-            // Print the model name of the camera.
-            println!("Using device {:?}", camera.device_info().model_name()?);
+                camera.open()?;
+                println!("Camera opened and idling. Waiting for TRACKING signal..."); 
 
-            camera.open()?;
-          
+                // Startracker
+                let starfinder = Starfinder::default();
+                // IMPORTANT : REPLACE THIS WITH BASLER CAM PARAMETERS BECAUSE DEFAULT IS TEVS
+                let camera_model = CameraModel::default();
+                let startracker = Startracker::default();
 
-            
+                               
 
-            
+                loop {
 
-            // camera.enum_node("PixelFormat")?.set_value("RGB8")?;
+                    let is_tracking = TRACKING.load(Ordering::Relaxed);
 
-            // Start the grabbing of COUNT_IMAGES_TO_GRAB images.
-            // The camera device is parameterized with a default configuration which
-            // sets up free-running continuous acquisition.
-            camera.start_grabbing(&pylon_cxx::GrabOptions::default().count(COUNT_IMAGES_TO_GRAB))?;
-
-            match camera.node_map()?.enum_node("PixelFormat") {
-                Ok(node) => println!(
-                    "pixel format: {}",
-                    node.value().unwrap_or("could not read value".to_string())
-                ),
-                Err(e) => eprintln!("Ignoring error getting PixelFormat node: {}", e),
-            };
-
-            let mut grab_result = pylon_cxx::GrabResult::new()?;
-
-            // Camera.StopGrabbing() is called automatically by the RetrieveResult() method
-            // when c_countOfImagesToGrab images have been retrieved.
-            while camera.is_grabbing() {
-                // Wait for an image and then retrieve it. A timeout of 5000 ms is used.
-                camera.retrieve_result(
-                    5000,
-                    &mut grab_result,
-                    pylon_cxx::TimeoutHandling::ThrowException,
-                )?;
-
-                // Image grabbed successfully?
-                if grab_result.grab_succeeded()? {
-                    // Access the image data.
-                    println!("SizeX: {}", grab_result.width()?);
-                    println!("SizeY: {}", grab_result.height()?);
-
-                    let image_buffer = grab_result.buffer()?;
-                    println!("Value of first pixel: {}\n", image_buffer[0]);
-                } else {
-                    println!(
-                        "Error: {} {}",
-                        grab_result.error_code()?,
-                        grab_result.error_description()?
-                    );
-                }
-            }
-
-            // Looks like I cannot take the raw image buffer with v4l and mutate it, so will have to perform one copy.
-            // This causes an issue based on the way I scan for centroids, where I blot out dead pixels as a pass through. Will
-            // Retest and benchmark later to see if I can get away without doing that, and if so, then this isn't as much a worry.
-
-            // Also look into using userptr buffers later on (we own)
-
-            // println!(
-            //     "Buffer size: {}, seq: {}, timestamp: {}",
-            //     buf.len(),      // buf is a &[u8] slice
-            //     meta.sequence,  // meta is v4l::buffer::Metadata
-            //     meta.timestamp  // timestamp is v4l::buffer::Timestamp
-            // );
-
-            let buffer = buf.to_vec();
-
-            let mut img: ImageBuffer<Luma<u8>, Vec<u8>> =
-                ImageBuffer::from_raw(width, height, buffer).expect("Buffer size mismatch");
-
-            let mut centroids = starfinder.star_find(&mut img);
-            camera_model.undistort_centroids(&mut centroids);
-            match startracker.adaptive_pyramid_solve(centroids) {
-                Ok((reference_vectors, body_vectors)) => {
-
-                    let q: Quaternion<f32, ICRF<f32>, Body<f32>> =
-                        quest_real(&reference_vectors, &body_vectors);
-
-                    let timestamp = SystemTime::now()
-                                .duration_since(UNIX_EPOCH)?
-                                .as_millis() as u64;
-
-                    let infra_packet = ApplicationPacket::InfratrackerData { 
-                        timestamp: timestamp,
-                        quaternion: [
-                            quaternion.w(),
-                            quaternion.i(),
-                            quaternion.j(),
-                            quaternion.k(),
-                        ],
-                    };
-
-                    if let Err(e) = self.quaternion_sender.send(infra_packet) {
-                        error!("Error sending estimate: {}", e);
+                    // Handle opening and closing cam with two bools
+                    // so that we do not try to restart grabbing every time
+                    if is_tracking && !was_tracking {
+                        info!("Tracking on, start grabbing");
+                        camera.start_grabbing(&pylon_cxx::GrabOptions::default()
+                            .strategy(pylon_cxx::GrabStrategy::LatestImageOnly))?;
+                        was_tracking = true;
+                    } 
+                    else if !is_tracking && was_tracking {
+                        info!("Tracking disabled. Safely stop grabbing");
+                        camera.stop_grabbing()?;
+                        was_tracking = false;
                     }
-                }
 
-                Err(e) => {
-                    error!("{}", e);
+                    if is_tracking {
+                        if camera.is_grabbing() {
+                            match camera.retrieve_result(500, &mut grab_result, pylon_cxx::TimeoutHandling::Return) {
+                                Ok(true) if grab_result.grab_succeeded().unwrap_or(false) => {
+                                    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as u64;
+                                    
+                                    let raw_buffer: &[u8] = grab_result.buffer()?;
+                                    let img: ImageBuffer<Luma<u8>, &[u8]> = ImageBuffer::from_raw(
+                                        grab_result.width()?, grab_result.height()?, raw_buffer
+                                    ).expect("Buffer size mismatch");
+
+                                    if let Some(quaternion) = Self::solve_attitude(&img, &starfinder, &camera_model, &startracker) {
+                                        self.send_packet(timestamp, quaternion);
+                                    }
+                                    img.save(format!("{STAR_TRACKER_DIR}/infratracker{timestamp}.tiff")).ok();
+                                }
+                                _ => {
+                                    error!("Timeout or grab fail");
+                                }
+                            }
+                        }
+                        // Don't run as fast as possible so we don't overwhelm sd card with
+                        // data.
+                        thread::sleep(Duration::from_millis(200));
+                    } 
+                    else {
+                        thread::sleep(Duration::from_millis(200)); 
+                    }
+                    
                 }
-            }
             Ok(())
         })();
+            if let Err(thread_error) = result {
+                error!("Error in running infratracker task: {thread_error}")
+            }
         })
     }
+
+    fn solve_attitude(
+        img: &ImageBuffer<Luma<u8>, &[u8]>, 
+        finder: &Starfinder, 
+        model: &CameraModel, 
+        solver: &Startracker
+    ) -> Option<Quaternion<f32, ICRF<f32>, Body<f32>>> {
+        let mut centroids = finder.star_find(img);
+        model.undistort_centroids(&mut centroids);
+        
+        match solver.adaptive_pyramid_solve(centroids) {
+            Ok((refs, body)) => Some(quest_real(&refs, &body)),
+            Err(e) => {
+                error!("Pyramid solve failed: {}", e);
+                None
+            }
+        }
+    }
+
+    fn send_packet(&self, timestamp: u64, q: Quaternion<f32, ICRF<f32>, Body<f32>>) {
+        let packet = ApplicationPacket::InfratrackerData { 
+            timestamp,
+            quaternion: [q.w(), q.i(), q.j(), q.k()],
+        };
+        if let Err(e) = self.quaternion_sender.send(packet) {
+            error!("Error sending estimate: {}", e);
+        }
+    }
+
+
 }
