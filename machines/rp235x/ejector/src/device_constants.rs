@@ -16,8 +16,7 @@ use rp235x_hal::{
 pub mod pins {
     use rp235x_hal::gpio::{
         bank0::{
-            Gpio0, Gpio1, Gpio10, Gpio11, Gpio12, Gpio16, Gpio17, Gpio2, Gpio20, Gpio21, Gpio24,
-            Gpio25, Gpio26, Gpio27, Gpio32, Gpio33, Gpio4, Gpio5, Gpio6, Gpio7, Gpio8, Gpio9,
+            *
         },
         FunctionI2C, FunctionSio, FunctionUart, Pin, PullDown, PullUp, SioInput, SioOutput,
     };
@@ -35,6 +34,7 @@ pub mod pins {
     /// Camera GPIO activation
     pub type CamMosfetPin = Pin<Gpio12, FunctionSio<SioOutput>, PullDown>;
 
+    // pub type RGBLedPin = Gpio26;
     pub type RGBLedPin = Gpio24;
 
     /// RBF PIN
@@ -107,21 +107,21 @@ pub type JupiterTX = Writer<UART0, (JupiterTxPin, JupiterRxPin)>;
 /// Samples per second of the geiger counter
 pub static SAMPLE_COUNT: usize = 100;
 
-use ws2812_rs::Color;
+use smart_leds::RGB8;
 
 pub struct RGBStatus {
-    pub RBF: Color,
-    pub HaLow: Color,
-    pub Esp: Color,
-    pub Infratracker: Color,
-    pub Guard: Color,
-    pub Jupiter: Color,
-    pub ElectroMagnet: Color,
-    pub Servos: Color,
-    pub Jupiter_Avionics_Health: Color,
-    pub Ejector_Health: Color,
-    pub Odin_Compute_Health: Color,
-    pub Odin_Pico_Health: Color,
+    pub RBF: RGB8,
+    pub HaLow: RGB8,
+    pub Esp: RGB8,
+    pub Infratracker: RGB8,
+    pub Guard: RGB8,
+    pub Jupiter: RGB8,
+    pub ElectroMagnet: RGB8,
+    pub Servos: RGB8,
+    pub Jupiter_Avionics_Health: RGB8,
+    pub Ejector_Health: RGB8,
+    pub Odin_Compute_Health: RGB8,
+    pub Odin_Pico_Health: RGB8,
 }
 
 use bin_packets::rgbstatus::{RGBOptions, WireColor};
@@ -170,20 +170,32 @@ impl RGBStatus {
 
 impl Default for RGBStatus {
     fn default() -> Self {
-        let red = Color::red();
+        let dim_red     = RGB8::new(50, 0, 0);
+        let dim_green   = RGB8::new(0, 50, 0);
+        let dim_blue    = RGB8::new(0, 0, 50);
+
+        let dim_yellow  = RGB8::new(40, 40, 0);
+        let dim_cyan    = RGB8::new(0, 40, 40);
+        let dim_magenta = RGB8::new(40, 0, 40);
+
+        let dim_orange  = RGB8::new(50, 20, 0);
+        let dim_purple  = RGB8::new(25, 0, 50);
+        let dim_white   = RGB8::new(30, 30, 30);
+        let off         = RGB8::new(0, 0, 0);
+        
         Self {
-            RBF: red,
-            HaLow: Color::purple(),
-            Esp: Color::orange(),
-            Infratracker: red,
-            Guard: red,
-            Jupiter: red,
-            ElectroMagnet: red,
-            Servos: red,
-            Jupiter_Avionics_Health: red,
-            Ejector_Health: red,
-            Odin_Compute_Health: red,
-            Odin_Pico_Health: red,
+            RBF: dim_red,
+            HaLow: dim_green,
+            Esp: dim_blue,
+            Infratracker: dim_yellow,
+            Guard: dim_cyan,
+            Jupiter: dim_magenta,
+            ElectroMagnet: dim_orange,
+            Servos: dim_purple,
+            Jupiter_Avionics_Health: dim_white,
+            Ejector_Health: off,
+            Odin_Compute_Health: dim_orange,
+            Odin_Pico_Health: dim_cyan,
         }
     }
 }

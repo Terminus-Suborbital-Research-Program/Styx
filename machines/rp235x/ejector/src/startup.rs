@@ -16,7 +16,7 @@ use mcp9600::{
 use rp235x_hal::adc::AdcPin;
 use rp235x_hal::clocks::init_clocks_and_plls;
 use rp235x_hal::gpio::{
-    FunctionSio, FunctionSpi, FunctionUart, PinState, PullDown, PullNone, SioInput,
+    FunctionSio, FunctionSpi, FunctionUart, PinState, PullDown, PullNone, SioInput, FunctionPio0
 };
 use rp235x_hal::i2c::I2C;
 use rp235x_hal::pwm::Slices;
@@ -26,7 +26,10 @@ use rp235x_hal::{Clock, Sio, Watchdog};
 use rtic_monotonics::Monotonic;
 use rtic_sync::make_signal;
 use rtic_sync::signal::{self, Signal};
-use ws2812_rs::WS2812;
+use rp235x_hal::pio::PIOExt;
+use ws2812_pio::Ws2812Direct;
+use smart_leds::{SmartLedsWrite, RGB8};
+
 // use rp235x_hal::timer::monotonic::Monotonic;
 
 use crate::actuators::electromag::{ElectroMagnet, ElectroMagnetPolarity, HBridge};
@@ -119,20 +122,20 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     );
 
     let mut thermocouple =
-        MCP9600::new(thermo_i2c_bus, DeviceAddr::AD7).expect("Failed to initialize MCP9600");
+        MCP9600::new(thermo_i2c_bus, DeviceAddr::AD7).expect("Failed to initialize MCP9600 struct");
 
-    thermocouple
-        .set_sensor_configuration(ThermocoupleType::TypeK, FilterCoefficient::FilterMedium)
-        .unwrap();
+    if let Err(_) = thermocouple.set_sensor_configuration(ThermocoupleType::TypeK, FilterCoefficient::FilterMedium) {
+        warn!("MCP9600 missing or failed to set sensor config");
+    }
 
-    thermocouple
-        .set_device_configuration(
-            ColdJunctionResolution::High,
-            ADCResolution::Bit18,
-            BurstModeSamples::Sample1,
-            ShutdownMode::NormalMode,
-        )
-        .unwrap();
+    if let Err(_) = thermocouple.set_device_configuration(
+        ColdJunctionResolution::High,
+        ADCResolution::Bit18,
+        BurstModeSamples::Sample1,
+        ShutdownMode::NormalMode,
+    ) {
+        warn!("MCP9600 missing or failed to set device config");
+    }
 
     // adc.free_running(&gegier_pin);
     // loop {
@@ -235,19 +238,84 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     // Functionality currently not enabled
     // let gpio_detect: EjectionDetectionPin = bank0_pins.gpio8.into_pull_down_input();
 
-    let rgb_ctl_pin: RGBLed = bank0_pins
-        .gpio24
-        .into_pull_type::<PullNone>()
-        .into_push_pull_output();
+    
+
+    // let rgb_ctl_pin: RGBLed = bank0_pins
+    //     .gpio24
+    //     // .gpio26
+    //     .into_pull_type::<PullNone>()
+    //     .into_push_pull_output();
 
     let mut rgb_wake = bank0_pins.gpio25.into_push_pull_output();
 
     rgb_wake.set_high().unwrap();
 
-    let sys_freq = clocks.system_clock.freq().to_Hz();
-    let mut rgb_driver = WS2812::new(rgb_ctl_pin, sys_freq as u64);
+    let (mut pio, sm0, _, _, _) = ctx.device.PIO0.split(&mut ctx.device.RESETS);
 
-    // SI1445 I2C
+    let rgb_ctl_pin = bank0_pins
+        .gpio24
+        .into_pull_type::<PullDown>()
+        .into_function::<FunctionPio0>();
+
+    let mut rgb_driver = Ws2812Direct::new(
+        rgb_ctl_pin,
+        &mut pio,
+        sm0,
+        clocks.peripheral_clock.freq(),
+    );
+
+
+    // let sys_freq = clocks.system_clock.freq().to_Hz();
+    // let mut rgb_driver = WS2812::new(rgb_ctl_pin, (sys_freq / 2) as u64);
+   
+    // let dim_red     = Color([50, 0, 0]);
+    // let dim_green   = Color([0, 50, 0]);
+    // let dim_blue    = Color([0, 0, 50]);
+
+    // let dim_yellow  = Color([40, 40, 0]);
+    // let dim_cyan    = Color([0, 40, 40]);
+    // let dim_magenta = Color([40, 0, 40]);
+
+    // let dim_orange  = Color([50, 20, 0]);
+    // let dim_purple  = Color([25, 0, 50]);
+    // let dim_white   = Color([30, 30, 30]);
+    // let off         = Color([0, 0, 0]);
+
+    let dim_red     = RGB8::new(50, 0, 0);
+    let dim_green   = RGB8::new(0, 50, 0);
+    let dim_blue    = RGB8::new(0, 0, 50);
+
+    let dim_yellow  = RGB8::new(40, 40, 0);
+    let dim_cyan    = RGB8::new(0, 40, 40);
+    let dim_magenta = RGB8::new(40, 0, 40);
+
+    let dim_orange  = RGB8::new(50, 20, 0);
+    let dim_purple  = RGB8::new(25, 0, 50);
+    let dim_white   = RGB8::new(30, 30, 30);
+    let off         = RGB8::new(0, 0, 0);
+
+
+    let current_colors = [
+        dim_red,
+        dim_green,
+        dim_blue,
+
+        dim_yellow,
+        dim_cyan,
+        dim_magenta,
+
+        dim_orange,
+        dim_purple,
+        dim_white,
+        off
+    ];
+
+    rgb_driver.write(current_colors.iter().cloned()).unwrap();
+        
+
+           
+
+    
     // let guard_i2c: GuardI2C = I2C::i2c1(
     //     ctx.device.I2C1,
     //     bank0_pins.gpio26.reconfigure(),
@@ -265,13 +333,16 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     // Tasks
 
-    poll_rbf::spawn().ok();
+    // poll_rbf::spawn().ok();
     heartbeat::spawn().ok();
-    ejector_sequencer::spawn().ok();
-    camera_sequencer::spawn().ok();
+    // ejector_sequencer::spawn().ok();
+    // camera_sequencer::spawn().ok();
     poll_temperature::spawn().ok();
-    downlink_jupiter::spawn().ok();
-    write_sd_card::spawn().ok();
+    // downlink_jupiter::spawn().ok();
+    // write_sd_card::spawn().ok();
+    // rgb_driver.send_color([Color::red()]);
+
+    set_rgb_status::spawn().ok();
 
     (
         Shared {
