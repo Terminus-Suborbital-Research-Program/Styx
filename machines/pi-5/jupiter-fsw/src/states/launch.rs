@@ -1,7 +1,7 @@
 use bin_packets::phases::JupiterPhase;
 use embedded_hal::digital::PinState;
 
-use crate::states::{secondary_cam::StartCameraRecording, skirt_seperation::SkirtSeperation};
+use crate::states::{secondary_cam::StartCameraRecording,}; //skirt_seperation::SkirtSeperation};
 
 use super::traits::{StateContext, ValidState};
 

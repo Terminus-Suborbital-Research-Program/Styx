@@ -8,7 +8,7 @@ mod ejection;
 mod main_cam;
 mod power_on;
 mod shutdown;
-mod skirt_seperation;
+//mod skirt_seperation;
 mod rocket_despin;
 mod secondary_cam;
 mod launch;

@@ -17,7 +17,7 @@ impl ValidState for Ejection {
 
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
         if ctx.t_time >= 90 {
-            return Box::new(InfratrackerStart::default());
+            return Box::new(InfratrackerStart::enter());
         } else {
             return Box::new(Self::default());
         }        

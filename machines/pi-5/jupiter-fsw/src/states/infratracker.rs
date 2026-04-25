@@ -1,9 +1,11 @@
 #![warn(missing_docs)]
 
+use std::sync::atomic::Ordering;
+
 use bin_packets::phases::JupiterPhase;
 use log::info;
 
-use crate::states::{battery_power::BatteryPower, shutdown::Shutdown};
+use crate::{states::{battery_power::BatteryPower, shutdown::Shutdown}, tasks::TRACKING, timing::POWER_ON_TIME};
 
 use super::{
     traits::{StateContext, ValidState},
@@ -14,7 +16,8 @@ pub struct InfratrackerStart {}
 
 impl InfratrackerStart {
     pub fn enter() -> Self {
-        
+        TRACKING.store(true, Ordering::Relaxed);
+        return  Self{};
     }
 }
 static POWEROFF_T_TIME_SECS: i32 = 600;
