@@ -1,15 +1,12 @@
 use std::fs::create_dir;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{channel, Receiver, RecvError, SendError, Sender};
-use std::thread::{self, sleep, JoinHandle};
-use std::time::{Duration, SystemTime};
+use std::sync::mpsc::{channel, sync_channel, Receiver, Sender, TrySendError, RecvTimeoutError};
+use std::thread::{self, JoinHandle};
+use std::time::{Duration, SystemTime, Instant, UNIX_EPOCH};
 
 use bin_packets::packets::ApplicationPacket;
 use lazy_static::lazy_static;
-use log::info;
-use std::time::UNIX_EPOCH;
-
-use log::error;
+use log::{info, error};
 
 use image::{ImageBuffer, Luma};
 
@@ -21,15 +18,15 @@ use wayfarer::startrack::quest::quest_real;
 use aether::attitude::Quaternion;
 use aether::reference_frame::{ICRF, Body};
 
-const COUNT_IMAGES_TO_GRAB: u32 = 100;
 const STAR_TRACKER_DIR: &str = "/home/terminus/basler/";
-static BUFFER_TIME_MS: u64 = 1000;
+
+// capture image and solve every 1Hz or 1000 millis
+// Save will happen no matter what but solve can be delayed
+const CAPTURE_RATE: u64 = 1000;
 
 lazy_static! {
     pub static ref TRACKING: AtomicBool = AtomicBool::new(false);
 }
-
-
 
 pub struct InfratrackerThread {
     quaternion_sender: Sender<ApplicationPacket>,
@@ -38,23 +35,34 @@ pub struct InfratrackerThread {
 impl InfratrackerThread {
     pub fn new() -> (Self, Receiver<ApplicationPacket>) {
         let (quaternion_tx, quaternion_rx) = channel();
-
-        let startracker = Self {
-            quaternion_sender: quaternion_tx,
-        };
-
-        (startracker, quaternion_rx)
+        (Self { quaternion_sender: quaternion_tx }, quaternion_rx)
     }
 
     pub fn begin_startracking(self) -> JoinHandle<()> {
-        
         info!("Starting Basler camera!");
         create_dir(STAR_TRACKER_DIR).ok();
         
         thread::spawn(move || {
             let result: Result<(), Box<dyn std::error::Error>> = (|| {
+                
+                
+                let (solver_tx, solver_rx) = sync_channel::<(u64, ImageBuffer<Luma<u8>, Vec<u8>>)>(1);
+                let (result_tx, result_rx) = channel::<(u64, Option<Quaternion<f32, ICRF<f32>, Body<f32>>>)>();
 
-                // Cam
+                thread::spawn(move || {
+                    let starfinder = Starfinder::default();
+                    let camera_model = CameraModel::default();
+                    let startracker = Startracker::default();
+
+                    // Simple looping thread to that will return solves for every
+                    // image recieved until parent dies
+                    while let Ok((timestamp, img)) = solver_rx.recv() {
+                        let q = Self::solve_attitude(&img, &starfinder, &camera_model, &startracker);
+                        let _ = result_tx.send((timestamp, q));
+                    }
+                });
+
+                
                 let pylon = pylon_cxx::Pylon::new();
                 let camera = pylon_cxx::TlFactory::instance(&pylon).create_first_device()?;
                 let mut was_tracking = false;
@@ -63,25 +71,20 @@ impl InfratrackerThread {
                 camera.open()?;
                 println!("Camera opened and idling. Waiting for TRACKING signal..."); 
 
-                // Startracker
-                let starfinder = Starfinder::default();
-                // IMPORTANT : REPLACE THIS WITH BASLER CAM PARAMETERS BECAUSE DEFAULT IS TEVS
-                let camera_model = CameraModel::default();
-                let startracker = Startracker::default();
+                let frame_interval = Duration::from_millis(CAPTURE_RATE);
+                let mut next_frame_time = Instant::now();
 
-                               
-
+                // Cam loop
                 loop {
-
                     let is_tracking = TRACKING.load(Ordering::Relaxed);
 
-                    // Handle opening and closing cam with two bools
-                    // so that we do not try to restart grabbing every time
+                    // Handle camera start/stop
                     if is_tracking && !was_tracking {
                         info!("Tracking on, start grabbing");
                         camera.start_grabbing(&pylon_cxx::GrabOptions::default()
                             .strategy(pylon_cxx::GrabStrategy::LatestImageOnly))?;
                         was_tracking = true;
+                        next_frame_time = Instant::now() + frame_interval; // Initialize metronome
                     } 
                     else if !is_tracking && was_tracking {
                         info!("Tracking disabled. Safely stop grabbing");
@@ -91,36 +94,84 @@ impl InfratrackerThread {
 
                     if is_tracking {
                         if camera.is_grabbing() {
+                            
+                            // Set the next time we'll take a picture now
+                            // and adjust later based off of how much
+                            // time spent on computation
+                            next_frame_time += frame_interval;
+
                             match camera.retrieve_result(500, &mut grab_result, pylon_cxx::TimeoutHandling::Return) {
                                 Ok(true) if grab_result.grab_succeeded().unwrap_or(false) => {
                                     let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as u64;
                                     
                                     let raw_buffer: &[u8] = grab_result.buffer()?;
-                                    let img: ImageBuffer<Luma<u8>, &[u8]> = ImageBuffer::from_raw(
-                                        grab_result.width()?, grab_result.height()?, raw_buffer
-                                    ).expect("Buffer size mismatch");
+                                    let width = grab_result.width()?;
+                                    let height = grab_result.height()?;
 
-                                    if let Some(quaternion) = Self::solve_attitude(&img, &starfinder, &camera_model, &startracker) {
-                                        self.send_packet(timestamp, quaternion);
+                                    // Copy
+                                    let img_vec = raw_buffer.to_vec(); 
+                                    let solve_img = ImageBuffer::from_raw(width, height, img_vec)
+                                        .expect("Buffer size mismatch");
+
+                                    // Try sending an image to be solved
+                                    match solver_tx.try_send((timestamp, solve_img)) {
+                                        Ok(_) => {
+                                            // Wait for the solver up to 600ms leaving 400ms buffer for save and sleep
+                                            // May want to adjust to handle initial case and then switch to tracking mode
+                                            // But infratracker particularly has to deal with large rotations
+                                            // so it's likely it will just have to stay in LOST IN SPACE mode 
+                                            // the entire times
+                                            match result_rx.recv_timeout(Duration::from_millis(600)) {
+                                                Ok((ret_stamp, Some(quaternion))) if ret_stamp == timestamp => {
+                                                    self.send_packet(timestamp, quaternion);
+                                                }
+                                                Ok(_) | Err(RecvTimeoutError::Timeout) => {
+                                                    error!("Solver thread timeout! Skipping telemetry.");
+                                                }
+                                                Err(RecvTimeoutError::Disconnected) => {
+                                                    error!("Solver thread crashed!");
+                                                }
+                                            }
+                                        }
+                                        Err(TrySendError::Full(_)) => {
+                                            error!("Solver thread hung, Skipping telemetry to save image.");
+                                        }
+                                        Err(TrySendError::Disconnected(_)) => {
+                                            error!("Solver thread dead");
+                                        }
                                     }
-                                    img.save(format!("{STAR_TRACKER_DIR}/infratracker{timestamp}.tiff")).ok();
+
+                                    // Do file save with zero copy
+                                    // cuz we can get away with it
+                                    let local_img: ImageBuffer<Luma<u8>, &[u8]> = 
+                                        ImageBuffer::from_raw(width, height, raw_buffer).unwrap();
+                                    
+                                    local_img.save(format!("{STAR_TRACKER_DIR}/infratracker{timestamp}.tiff")).ok();
                                 }
                                 _ => {
                                     error!("Timeout or grab fail");
                                 }
                             }
                         }
-                        // Don't run as fast as possible so we don't overwhelm sd card with
-                        // data.
-                        thread::sleep(Duration::from_millis(200));
+
+                        let now = Instant::now();
+                        if next_frame_time > now {
+                            thread::sleep(next_frame_time - now);
+                        } else {
+                            // Startracking and saving took longer than 1 second
+                            // so immediately solve next frame
+                            next_frame_time = now;
+                        }
                     } 
                     else {
+                        // Idle loop
                         thread::sleep(Duration::from_millis(200)); 
                     }
-                    
                 }
-            Ok(())
-        })();
+                #[allow(unreachable_code)]
+                Ok(())
+            })();
+            
             if let Err(thread_error) = result {
                 error!("Error in running infratracker task: {thread_error}")
             }
@@ -128,7 +179,7 @@ impl InfratrackerThread {
     }
 
     fn solve_attitude(
-        img: &ImageBuffer<Luma<u8>, &[u8]>, 
+        img: &ImageBuffer<Luma<u8>, Vec<u8>>, 
         finder: &Starfinder, 
         model: &CameraModel, 
         solver: &Startracker
