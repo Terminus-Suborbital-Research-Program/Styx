@@ -71,4 +71,9 @@ pub enum ApplicationPacket {
         timestamp: u64,
         vector: [u16; 8],
     },
+    InfratrackerData {
+        timestamp: u64,
+        /// Quaternion encoded as [w, i, j, k].
+        quaternion: [f32; 4],
+    }
 }
