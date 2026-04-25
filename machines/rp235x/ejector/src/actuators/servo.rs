@@ -32,11 +32,22 @@ pub type EjectionServo = Servo<
 //     gpio::Pin<gpio::bank0::Gpio3, gpio::FunctionSioOutput, gpio::PullDown>;
 
 // For the servo
-static MAX_DUTY: u32 = 8200;
-static MIN_DUTY: u32 = 2200;
+// static MAX_DUTY: u32 = 8200;
+// static MIN_DUTY: u32 = 2200;
 
-pub static EJECTION_ANGLE: u16 = 145;
-pub static HOLDING_ANGLE: u16 = 85;
+const PWM_DIV_INT: u8 = 64;
+const PWM_TOP: u16 = 46_874;
+
+const TOP: u16 = PWM_TOP + 1;
+// 0.5ms is 2.5% of 20ms; 0 degrees in servo
+const MIN_DUTY: u16 = (TOP as f64 * (2.5 / 100.)) as u16; 
+// 1.5ms is 7.5% of 20ms; 90 degrees in servo
+// const HALF_DUTY: u16 = (TOP as f64 * (7.5 / 100.)) as u16; 
+// 2.4ms is 12% of 20ms; 180 degree in servo
+const MAX_DUTY: u16 = (TOP as f64 * (12.5 / 100.)) as u16;
+
+pub static EJECTION_ANGLE: u16 = 240;
+pub static HOLDING_ANGLE: u16 = 150;
 // pub static LOCKING_SERVO_LOCKED: u16 = 105;
 // pub static LOCKING_SERVO_UNLOCKED: u16 = 20;
 
@@ -83,7 +94,7 @@ where
 
 /// Ejector servo
 pub struct EjectorServo {
-    servo: Servo<
+    pub servo: Servo<
         Channel<EjectionServoSlice, B>,
         gpio::Pin<EjectionServoPin, gpio::FunctionPwm, gpio::PullDown>,
         EjectionServoMosfet,

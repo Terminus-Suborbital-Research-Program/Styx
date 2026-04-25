@@ -1,16 +1,19 @@
 use bincode::{Decode, Encode};
 use defmt::Format;
-use ws2812_rs::Color;
-
 use serde::{Deserialize, Serialize};
+use smart_leds::RGB8;
 
 // Have to make seperate type for color because of Rust's Orphan rule
 #[derive(Debug, Clone, Copy, Encode, Decode, Format, Deserialize, Serialize)]
-pub struct WireColor(pub [u8; 3]);
+pub struct WireColor { 
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+}
 
-impl From<WireColor> for Color {
+impl From<WireColor> for RGB8 {
     fn from(wire: WireColor) -> Self {
-        Color(wire.0)
+        RGB8::new(wire.r, wire.g, wire.b)
     }
 }
 

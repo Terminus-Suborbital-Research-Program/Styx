@@ -20,10 +20,14 @@ use heapless::{deque::DequeInner, vec::ViewVecStorage, Deque, Vec};
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use tinyframe::frame::Frame;
-use ws2812_rs::GlowColor;
-// use rtic_sync::portable_atomic::{AtomicBool, Ordering};
+
 use bin_packets::phases::EjectorPhase;
 use rtic_sync::signal::Signal;
+
+use ws2812_pio::Ws2812Direct;
+use smart_leds::{SmartLedsWrite, RGB8};
+
+
 
 #[cfg(not(feature = "fast-startup"))]
 const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 180;
@@ -42,7 +46,7 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     // Still blink, but toggle as it is done
     loop {
         // onboard_led.toggle().unwrap();
-        info!("Alive?");
+        // info!("Alive?");
         if Mono::now().duration_since_epoch().to_secs() > JUPITER_BOOT_LOCKOUT_TIME_SECONDS {
             let status = Status::new(DeviceIdentifier::Ejector, now_timestamp(), sequence_number);
 
@@ -103,12 +107,8 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
     let e_magnet = ctx.local.ejecctor_magnet;
 
     // Latch ejector servos closed
-    servo.hold();
     servo.enable();
-
-    // Turn on the magnet
-    e_magnet.enable();
-    e_magnet.polarity_switch(); // Maybe
+    servo.hold();
 
     // let ejection_pin = ctx.local.ejection_pin;
 
@@ -119,6 +119,25 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
     info!("Sequencer unlocked, waiting for ejection signal");
 
     ctx.local.ejection_trigger_rx.wait().await;
+    
+
+
+    info!("Ejecting!");
+    // For current servo a graduated angle change has worked for fast ejection, but not just setting to the final angle
+    for i in (14..23) {
+        info!("i {}!", i);
+
+        let angle = (i * 10) as u16;
+        info!("Set {}!", angle);
+
+        servo.servo.set_angle(angle);
+        info!("Set {}!", angle);
+        Mono::delay(50_u64.millis()).await;
+    }
+
+    e_magnet.enable();
+    e_magnet.polarity_switch();
+
     // Right now we don't have a pin read from jupiter, although this may be re-added later
     // Wait until ejection pin from JUPITER reads high
     // while !ejection_pin.is_high().unwrap_or(false) {
@@ -126,19 +145,13 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
     //     Mono::delay(100_u64.millis()).await;
     // }
 
-    info!("Ejection signal high!");
-
-    // Eject, wait 5 seconds, then retract
-    info!("Ejecting!");
+    // Give seven seconds to retract, then disable to save power
+    Mono::delay(7000_u64.millis()).await;
     e_magnet.polarity_switch();
-    servo.eject();
-    Mono::delay(5000_u64.millis()).await;
+    // servo.disable();
+    e_magnet.disable();
     servo.hold();
 
-    // Give three seconds to retract, then disable to save power
-    Mono::delay(3000_u64.millis()).await;
-    servo.disable();
-    e_magnet.disable();
     info!("Ejector disabled, servo and magnet disabled. Ejector sequencing complete.");
 }
 
@@ -284,27 +297,72 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
     }
 }
 
-pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
-    let rgb_driver = ctx.local.rgb_driver;
-    loop {
-        let current_colors = ctx.shared.status_config.lock(|status| {
-            [
-                status.RBF,
-                status.HaLow,
-                status.Esp,
-                status.Infratracker,
-                status.Guard,
-                status.Jupiter,
-                status.ElectroMagnet,
-                status.Servos,
-                status.Jupiter_Avionics_Health,
-                status.Ejector_Health,
-                status.Odin_Compute_Health,
-                status.Odin_Pico_Health,
-            ]
-        });
+// pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
+//     let rgb_driver = ctx.local.rgb_driver;
+//     loop {
+        
+//         // let current_colors = ctx.shared.status_config.lock(|status| {
+//         //     [
+//         //         status.RBF,
+//         //         status.HaLow,
+//         //         status.Esp,
+//         //         status.Infratracker,
+//         //         status.Guard,
+//         //         status.Jupiter,
+//         //         status.ElectroMagnet,
+//         //         status.Servos,
+//         //         status.Jupiter_Avionics_Health,
+//         //         status.Ejector_Health,
+//         //         status.Odin_Compute_Health,
+//         //         status.Odin_Pico_Health,
+//         //     ]
+//         // });
 
-        rgb_driver.send_color(current_colors);
-        Mono::delay(1000_u64.millis()).await;
+//         rgb_driver.write(current_colors.iter().cloned()).unwrap();
+
+//         // Mono::delay(1000_u64.millis()).await;
+//     }
+// }
+
+
+// Party Anim
+pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
+    let rgb_driver = &mut ctx.local.rgb_driver; 
+    
+    // 8 bit color wheel, 50 intensity max
+    fn dim_wheel(mut pos: u8) -> RGB8 {
+        pos = 255 - pos;
+        if pos < 85 {
+            RGB8::new((255 - pos * 3) / 5, 0, (pos * 3) / 5)
+        } else if pos < 170 {
+            pos -= 85;
+            RGB8::new(0, (pos * 3) / 5, (255 - pos * 3) / 5)
+        } else {
+            pos -= 170;
+            RGB8::new((pos * 3) / 5, (255 - pos * 3) / 5, 0)
+        }
+    }
+
+    let mut tick: u8 = 0;
+
+    loop {
+        let mut current_colors = [RGB8::new(0, 0, 0); 12];
+
+        for i in 0..12 {
+            // Space the 12 LEDs evenly across the 0-255 color spectrum
+            let offset = (i * 256 / 12) as u8;
+            let pixel_pos = tick.wrapping_add(offset);
+            
+            current_colors[i] = dim_wheel(pixel_pos);
+        }
+
+        rgb_driver.write(current_colors.iter().cloned()).unwrap();
+
+        // Greater value = faster swirl
+        tick = tick.wrapping_add(4); 
+
+        // 50 fps
+        Mono::delay(20_u64.millis()).await;
     }
 }
+

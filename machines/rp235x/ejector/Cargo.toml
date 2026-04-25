@@ -42,11 +42,13 @@ bin-packets = { path = "../../../common/messages/bin-packets" }
 
 common-states = { path = "../../../common/states" }
 tinyframe = { version = "0.1.0", path = "../../../common/messages/tinyframe" }
-mcp9600 = { git = "https://github.com/besselfunct/mcp9600.git", default-features = false }
-
+mcp9600 = { git = "https://github.com/Ethan-Pascuales/mcp9600.git" }
 embedded-sdmmc = "0.9.0"
 embedded-hal-bus = "*"
-ws2812-rs = "0.3.1"
+
+ws2812-pio = { git = "https://github.com/Ethan-Pascuales/ws2812-pio-rs.git" }
+smart-leds = "0.4.0"
+
 
 
 # Target features

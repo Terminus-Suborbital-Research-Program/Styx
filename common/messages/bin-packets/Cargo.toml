@@ -15,7 +15,7 @@ defmt = "*"
 embedded-io = { version = "0.6.1", features = ["defmt-03"] }
 heapless = { version = "0.8.0", features = ["defmt-03"] }
 serde = { version = "*", features = ["derive"], default-features = false }
-ws2812-rs = "0.3.1"
+smart-leds = "0.4.0"
 
 
 [features]
