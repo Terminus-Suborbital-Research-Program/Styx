@@ -95,7 +95,6 @@ mod app {
     pub const XTAL_FREQ_HZ: u32 = 12_000_000u32;
     use mcp9600::MCP9600;
     use rtic_sync::signal::{SignalReader, SignalWriter};
-    // use ws2812_rs::WS2812;
     use ws2812_pio::Ws2812Direct;
 
 
