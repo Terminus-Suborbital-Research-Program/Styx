@@ -75,5 +75,9 @@ pub enum ApplicationPacket {
         timestamp: u64,
         /// Quaternion encoded as [w, i, j, k].
         quaternion: [f32; 4],
+    },
+    ThermocoupleData {
+        timestamp: u64,
+        hot_junction_temp: f32,
     }
 }

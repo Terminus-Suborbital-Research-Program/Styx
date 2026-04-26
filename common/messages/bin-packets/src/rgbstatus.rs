@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use smart_leds::RGB8;
 
 // Have to make seperate type for color because of Rust's Orphan rule
-#[derive(Debug, Clone, Copy, Encode, Decode, Format, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Encode, Decode, Format, Deserialize, Serialize, PartialEq, Eq)]
 pub struct WireColor { 
     pub r: u8,
     pub g: u8,
@@ -18,7 +18,7 @@ impl From<WireColor> for RGB8 {
 }
 
 impl WireColor {
-    pub fn new(r: u8,g: u8,b: u8) -> Self {
+    pub const fn new(r: u8,g: u8,b: u8) -> Self {
         Self {
             r,
             g,
@@ -27,7 +27,7 @@ impl WireColor {
     }
 }
 
-#[derive(Debug, Clone, Copy, Encode, Decode, Format, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Encode, Decode, Format, Deserialize, Serialize,  PartialEq, Eq)]
 pub struct RGBOptions {
     pub RBF: Option<WireColor>,
     pub HaLow: Option<WireColor>,
