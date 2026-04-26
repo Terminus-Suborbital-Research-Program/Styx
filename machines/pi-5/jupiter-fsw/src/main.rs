@@ -3,8 +3,7 @@
 //! TERMINUS RS-X 2026 Elara JUPITER Code
 
 use std::{
-    thread::sleep,
-    time::{Duration, Instant},
+    os::unix::thread, thread::sleep, time::{Duration, Instant}
 };
 
 use aether::color;
@@ -46,23 +45,47 @@ fn main() {
     // Immediantly access POWER_ON_TIME to evaluate the lazy_static
     let _ = timing::POWER_ON_TIME;
 
-    let port = serialport::new(SERIAL_PORT, 115200)
+    let port_res = serialport::new(SERIAL_PORT, 115200)
         .timeout(Duration::from_millis(10))
-        .open()
-        .unwrap();
-    let mut interface = Device::new(port);
+        .open();
+    
+    let mut interface = match port_res {
+        Ok(port) => Some(Device::new(port)),
+        Err(e) => {
+            error!("Failed to open serial port {SERIAL_PORT}: {e}");
+            None // Continue booting so we can still log to SD card
+        }
+    };
 
-    let ejection_pin: WritePin = Pin::new(EJECTION_IND_PIN).into(); //Don't think this is a pin any more? Seems like it should be a i2c or uart message
-    ejection_pin.write(false).unwrap();
+    let ejection_pin: WritePin = Pin::new(EJECTION_IND_PIN).into();
+    if let Err(e) = ejection_pin.write(false) {
+        error!("Failed to set ejection pin low on boot: {:?}", e);
+    }
 
-    let atmega = Atmega::new(LinuxI2CDevice::new("/dev/i2c-1", 0x26u16).unwrap());
+    // Graceful exit for ATMega. If we're going with jupiter 1 this is neccessary, but 
+    // if not we will remove this later
+    let i2c_device = match LinuxI2CDevice::new("/dev/i2c-1", 0x26u16) {
+        Ok(dev) => dev,
+        Err(e) => {
+            error!("Critical, Failed to initialize Atmega I2C device: {e}");
+            return; 
+        }
+    };
+    let atmega = Atmega::new(i2c_device);
 
     // Main camera
     spawn_camera_thread();
 
-    // Get accelerometer
-    let accel = Lsm6DslAccel::new().unwrap();
-    info!("Accelerometer read: {:?}", accel.read_data());
+    let accel = match Lsm6DslAccel::new() {
+        Ok(a) => {
+            info!("Accelerometer read: {:?}", a.read_data());
+            Some(a)
+        }
+        Err(e) => {
+            error!("Failed to initialize accelerometer: {e}");
+            None
+        }
+    };
 
     let mut onboard_packet_storage = OnboardPacketStorage::get_current_run();
 
@@ -75,23 +98,22 @@ fn main() {
     let mut color_status = ExperimentColorState::new();
     let mut last_rgb_options = color_status.current_status();
     loop {
-        while let Some(packet) = interface.read() {
-            match &packet {
-                ApplicationPacket::GeigerData { timestamp_ms: _, recorded_pulses: _ } => {
-                    color_status.feed_geiger();
+        if let Some(iface) = &mut interface {
+            while let Some(packet) = iface.read() {
+                match &packet {
+                    ApplicationPacket::GeigerData { timestamp_ms: _, recorded_pulses: _ } => {
+                        color_status.feed_geiger();
+                    }
+                    ApplicationPacket::ThermocoupleData { timestamp: _, hot_junction_temp: _ }=> {
+                        color_status.feed_thermocouple();
+                    }
+                    _ => {}
                 }
-                ApplicationPacket::ThermocoupleData { timestamp: _, hot_junction_temp: _ }=> {
-                    color_status.feed_thermocouple();
-                }
-                _ => {}
-            }
 
-            onboard_packet_storage.write(packet); // Write to the onboard storage
-            // if let Err(e) = interface.write(packet) {
-            //     error!("Failed to write packet down: {e}");
-            // }
-            #[cfg(feature = "packet_logging")]
-            info!("Got a packet: {packet:?}");
+                onboard_packet_storage.write(packet); // Write to the onboard storage
+                #[cfg(feature = "packet_logging")]
+                info!("Got a packet: {packet:?}");
+            }
         }
 
         while let Ok(quat) = infratracker_packet_rx.try_recv() {
@@ -101,21 +123,25 @@ fn main() {
             info!("Got a infratracker packet: {quat:?}");
         }
 
-        match accel.read_data() {
-            Ok(t) => {
-                let packet = ApplicationPacket::JupiterAccelerometer {
-                    timestamp_ms: std::time::Instant::now()
-                        .duration_since(startup)
-                        .as_millis() as u64,
-                    vector: t,
-                };
-                color_status.feed_avionics();
+        if let Some(ref a) = accel {
+            match a.read_data() {
+                Ok(t) => {
+                    let packet = ApplicationPacket::JupiterAccelerometer {
+                        timestamp_ms: std::time::Instant::now()
+                            .duration_since(startup)
+                            .as_millis() as u64,
+                        vector: t,
+                    };
+                    color_status.feed_avionics();
 
-                onboard_packet_storage.write(packet);
-                interface.write(packet).ok();
-            }
-            Err(e) => {
-                error!("Issue with the accelerometer: {e:?}");
+                    onboard_packet_storage.write(packet);
+                    if let Some(iface) = &mut interface {
+                        iface.write(packet).ok();
+                    }
+                }
+                Err(e) => {
+                    error!("Issue with the accelerometer: {e:?}");
+                }
             }
         }
 
@@ -123,13 +149,14 @@ fn main() {
         color_status.feed_jupiter_state_machine(state_machine.phase());
 
         let rgb_options = color_status.current_status();
-
         let current_rgb_options = color_status.current_status();
 
         // Send new rgb colors on state change
         if current_rgb_options != last_rgb_options {
-            if let Err(e) = interface.write(ApplicationPacket::Command(CommandPacket::ColorSet(current_rgb_options))) {
-                error!("Failed to write color packet down: {e}");
+            if let Some(iface) = &mut interface {
+                if let Err(e) = iface.write(ApplicationPacket::Command(CommandPacket::ColorSet(current_rgb_options))) {
+                    error!("Failed to write color packet down: {e}");
+                }
             }
             last_rgb_options = current_rgb_options;
         }
