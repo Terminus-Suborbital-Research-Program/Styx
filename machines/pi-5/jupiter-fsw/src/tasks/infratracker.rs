@@ -65,11 +65,21 @@ impl InfratrackerThread {
                 
                 let pylon = pylon_cxx::Pylon::new();
                 let camera = pylon_cxx::TlFactory::instance(&pylon).create_first_device()?;
+
+                let mut pixel_format_node = camera.node_map()?.enum_node("PixelFormat")?;
+
+                // Retrieve the Vec<String> of all formats supported by the connected sensor
+                let available_formats = pixel_format_node.settable_values()?;
+
+                info!("Listing available pixel formats for this camera:");
+                for format in available_formats {
+                    info!(" - {}", format);
+                }
                 let mut was_tracking = false;
                 let mut grab_result = pylon_cxx::GrabResult::new()?;
 
                 camera.open()?;
-                println!("Camera opened and idling. Waiting for TRACKING signal..."); 
+                info!("Camera opened and idling. Waiting for TRACKING signal..."); 
 
                 let frame_interval = Duration::from_millis(CAPTURE_RATE);
                 let mut next_frame_time = Instant::now();

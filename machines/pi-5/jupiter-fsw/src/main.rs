@@ -7,10 +7,10 @@ use std::{
     time::{Duration, Instant},
 };
 
+use aether::color;
 use avionics::lsm6dsl::Lsm6DslAccel;
 use bin_packets::{
-    device::{PacketReader, PacketWriter, std::Device},
-    packets::ApplicationPacket,
+    data::status, device::{PacketReader, PacketWriter, std::Device}, packets::ApplicationPacket
 };
 use common_states::rbf::ActiveHighRbf;
 use constants::{EJECTION_IND_PIN, RBF_PIN};
@@ -30,8 +30,10 @@ mod states;
 mod tasks;
 mod timing;
 
+use data::status::ExperimentColorState;
 use log::{error, info};
 use tasks::RbfTask;
+use bin_packets::commands::CommandPacket;
 
 static SERIAL_PORT: &str = "/dev/ttyS0";
 
@@ -70,17 +72,30 @@ fn main() {
     let mut state_machine = JupiterStateMachine::new(atmega, ejection_pin);
     let mut counter = 0;
 
+    let mut color_status = ExperimentColorState::new();
+    let mut last_rgb_options = color_status.current_status();
     loop {
         while let Some(packet) = interface.read() {
-            onboard_packet_storage.write(packet); // Write to the onboard storage
-            if let Err(e) = interface.write(packet) {
-                error!("Failed to write packet down: {e}");
+            match &packet {
+                ApplicationPacket::GeigerData { timestamp_ms: _, recorded_pulses: _ } => {
+                    color_status.feed_geiger();
+                }
+                ApplicationPacket::ThermocoupleData { timestamp: _, hot_junction_temp: _ }=> {
+                    color_status.feed_thermocouple();
+                }
+                _ => {}
             }
+
+            onboard_packet_storage.write(packet); // Write to the onboard storage
+            // if let Err(e) = interface.write(packet) {
+            //     error!("Failed to write packet down: {e}");
+            // }
             #[cfg(feature = "packet_logging")]
             info!("Got a packet: {packet:?}");
         }
 
         while let Ok(quat) = infratracker_packet_rx.try_recv() {
+            color_status.feed_infratracker();
             onboard_packet_storage.write(quat); // Write quat to the onboard storage
             #[cfg(feature = "packet_logging")]
             info!("Got a infratracker packet: {quat:?}");
@@ -94,6 +109,7 @@ fn main() {
                         .as_millis() as u64,
                     vector: t,
                 };
+                color_status.feed_avionics();
 
                 onboard_packet_storage.write(packet);
                 interface.write(packet).ok();
@@ -104,6 +120,20 @@ fn main() {
         }
 
         state_machine.update();
+        color_status.feed_jupiter_state_machine(state_machine.phase());
+
+        let rgb_options = color_status.current_status();
+
+        let current_rgb_options = color_status.current_status();
+
+        // Send new rgb colors on state change
+        if current_rgb_options != last_rgb_options {
+            if let Err(e) = interface.write(ApplicationPacket::Command(CommandPacket::ColorSet(current_rgb_options))) {
+                error!("Failed to write color packet down: {e}");
+            }
+            last_rgb_options = current_rgb_options;
+        }
+
         if counter % 10 == 0 {
             info!(
                 "T{}: {:#?}",
