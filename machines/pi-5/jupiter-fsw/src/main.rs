@@ -9,8 +9,7 @@ use std::{
 
 use avionics::lsm6dsl::Lsm6DslAccel;
 use bin_packets::{
-    device::{PacketReader, PacketWriter, std::Device},
-    packets::ApplicationPacket,
+    data::status, device::{PacketReader, PacketWriter, std::Device}, packets::ApplicationPacket
 };
 use common_states::rbf::ActiveHighRbf;
 use constants::{EJECTION_IND_PIN, RBF_PIN};
@@ -30,6 +29,7 @@ mod states;
 mod tasks;
 mod timing;
 
+use data::status::{ExperimentColorState, GuardStates};
 use log::{error, info};
 use tasks::RbfTask;
 
@@ -70,8 +70,14 @@ fn main() {
     let mut state_machine = JupiterStateMachine::new(atmega, ejection_pin);
     let mut counter = 0;
 
+    let color_status = ExperimentColorState::new();
     loop {
+        // let guard_bool
         while let Some(packet) = interface.read() {
+            // match packet {
+            //     App
+                
+            // }
             onboard_packet_storage.write(packet); // Write to the onboard storage
             if let Err(e) = interface.write(packet) {
                 error!("Failed to write packet down: {e}");

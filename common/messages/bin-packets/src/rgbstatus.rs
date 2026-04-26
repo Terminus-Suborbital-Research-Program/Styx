@@ -17,6 +17,16 @@ impl From<WireColor> for RGB8 {
     }
 }
 
+impl WireColor {
+    pub fn new(r: u8,g: u8,b: u8) -> Self {
+        Self {
+            r,
+            g,
+            b
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Encode, Decode, Format, Deserialize, Serialize)]
 pub struct RGBOptions {
     pub RBF: Option<WireColor>,
