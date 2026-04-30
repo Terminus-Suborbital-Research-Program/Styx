@@ -31,7 +31,7 @@ mod timing;
 
 use data::status::ExperimentColorState;
 use log::{error, info};
-use tasks::RbfTask;
+use tasks::{RbfTask, GpioHardware};
 use bin_packets::commands::CommandPacket;
 
 static SERIAL_PORT: &str = "/dev/ttyS0";
@@ -62,16 +62,14 @@ fn main() {
         error!("Failed to set ejection pin low on boot: {:?}", e);
     }
 
-    // Graceful exit for ATMega. If we're going with jupiter 1 this is neccessary, but 
-    // if not we will remove this later
-    let i2c_device = match LinuxI2CDevice::new("/dev/i2c-1", 0x26u16) {
-        Ok(dev) => dev,
-        Err(e) => {
-            error!("Critical, Failed to initialize Atmega I2C device: {e}");
-            return; 
-        }
+    #[cfg(feature = "legacy_atmega")]
+    let hardware = {
+        let i2c_device = LinuxI2CDevice::new("/dev/i2c-1", 0x26u16).expect("CRITICAL: Failed Atmega I2C");
+        Atmega::new(i2c_device)
     };
-    let atmega = Atmega::new(i2c_device);
+
+    #[cfg(not(feature = "legacy_atmega"))]
+    let hardware = GpioHardware::new();
 
     // Main camera
     spawn_camera_thread();
@@ -92,7 +90,7 @@ fn main() {
     let (infratracker_thread, infratracker_packet_rx) = InfratrackerThread::new();
     let infratracker_handle = infratracker_thread.begin_startracking();
 
-    let mut state_machine = JupiterStateMachine::new(atmega, ejection_pin);
+    let mut state_machine = JupiterStateMachine::new(hardware, ejection_pin);
     let mut counter = 0;
 
     let mut color_status = ExperimentColorState::new();

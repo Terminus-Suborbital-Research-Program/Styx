@@ -5,6 +5,7 @@ use bin_packets::phases::JupiterPhase;
 use crate::states::{launch::Launch, rocket_despin::RocketDespin};
 
 use super::traits::{StateContext, ValidState};
+use crate::tasks::hardware::BoardHardware;
 
 #[derive(Debug, Default)]
 pub struct StartCameraRecording {
@@ -17,7 +18,7 @@ impl ValidState for StartCameraRecording {
     }
 
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
-        match ctx.atmega.pins().unwrap_or_default().te2() {
+        match ctx.hardware.pins().unwrap_or_default().te2() {
             PinState::High => { return Box::new(RocketDespin::default()); },
             PinState::Low => { return Box::new(Self::default()); },
         }

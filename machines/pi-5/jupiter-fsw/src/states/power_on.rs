@@ -7,6 +7,7 @@ use log::{info, warn};
 use crate::states::launch::Launch;
 
 use super::traits::{StateContext, ValidState};
+use crate::tasks::hardware::BoardHardware;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct PowerOn {}
@@ -17,7 +18,7 @@ impl ValidState for PowerOn {
     }
 
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
-        if ctx.atmega.pins().unwrap_or_default().te1() == PinState::High {
+        if ctx.hardware.pins().unwrap_or_default().te1() == PinState::High {
             // Crap, we have late power on for some reason
             warn!("Late power on: TE1 is high. Emergency transition to MainCamStart");
             return Box::new(Launch::default());
