@@ -10,23 +10,20 @@ use crate::{
 
 
 use crate::tasks::hardware::{ActiveHardware, BoardHardware};
-use bin_packets::device::std::Device;
 
 // Active hardware is an alias for atmega or gpios, whichever we are using
-pub struct StateContext<'a> {
+pub struct StateContext {
     pub t_time: i32,
     pub ejection_pin: WritePin,
     pub hardware: ActiveHardware,
-    pub serial_interface: &'a mut Device<D>,
 }
 
-impl<D> StateContext {
-    pub fn new(hardware: ActiveHardware, ejection_pin: WritePin, &mut serial_interface: Device<D>) -> Self {
+impl StateContext {
+    pub fn new(hardware: ActiveHardware, ejection_pin: WritePin) -> Self {
         Self {
             t_time: t_time_estimate(),
             ejection_pin,
             hardware,
-            serial_interface
         }
     }
 }

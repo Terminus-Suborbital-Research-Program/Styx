@@ -5,7 +5,7 @@ use crate::{states::{ejection::Ejection, launch::Launch}, timing::{self, t_time_
 
 use super::traits::{StateContext, ValidState};
 
-const DELAY_TO_EJECT_SEC: i32 = 3; 
+const D:i32 = 3; 
 
 #[derive(Debug, Default)]
 pub struct RocketDespin {
@@ -28,18 +28,11 @@ impl ValidState for RocketDespin {
     }
 
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
-        if self.te3_recieved_at + DELAY_TO_EJECT_SEC < ctx.t_time {
-            info!("Ejection complete, idling.");
-            // ctx.ejection_pin.write(true).unwrap();
-
-
-            Box::new(Ejection::default())
-        } else {
-            info!(
-                "Waiting for ejection to complete. Time recieved: {}, current time: {}",
-                self.te3_recieved_at, ctx.t_time
-            );
-            Box::new(Self::default())
+        if true {
+            return Box::new(Ejection::default());
+        }
+        else {
+            return Box::new(Self::default());
         }
     }
 }

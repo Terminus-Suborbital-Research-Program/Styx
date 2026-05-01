@@ -90,7 +90,7 @@ fn main() {
     let (infratracker_thread, infratracker_packet_rx) = InfratrackerThread::new();
     let infratracker_handle = infratracker_thread.begin_startracking();
 
-    let mut state_machine = JupiterStateMachine::new(hardware, ejection_pin, &mut interface.unwrap());
+    let mut state_machine = JupiterStateMachine::new(hardware, ejection_pin);
     let mut counter = 0;
 
     let mut color_status = ExperimentColorState::new();
