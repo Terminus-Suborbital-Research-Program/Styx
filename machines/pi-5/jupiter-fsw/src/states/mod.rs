@@ -24,7 +24,9 @@ use crate::{
 };
 
 use crate::tasks::{ActiveHardware, BoardHardware};
-
+use bin_packets::{
+    data::status, device::{PacketReader, PacketWriter, std::Device}, packets::ApplicationPacket
+};
 
 /// State machine for JUPITER
 pub struct JupiterStateMachine {
@@ -32,12 +34,12 @@ pub struct JupiterStateMachine {
     context: StateContext,
 }
 
-impl JupiterStateMachine {
+impl<D> JupiterStateMachine {
     /// Create a new state machine from a pin provider
-    pub fn new(atmega: ActiveHardware, ejection_pin: WritePin) -> Self {
+    pub fn new(hardware: ActiveHardware, ejection_pin: WritePin, serial_interface: &mut Device<D>) -> Self {
         Self {
             state: Box::new(PowerOn::default()),
-            context: StateContext::new(atmega, ejection_pin),
+            context: StateContext::new(hardware, ejection_pin, serial_interface),
         }
     }
 
