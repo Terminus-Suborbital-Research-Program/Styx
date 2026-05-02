@@ -163,8 +163,14 @@ pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
 
     info!("Mcp start");
 
+    let mut packet_count = 0;
+    let report_threshold = 5;
+
 
     loop {
+        // Report every fifth packet to Jupiter to update state machine.
+        // May change this to just do so for every packet but for now
+        // do not feel like cloning everything and doubling up on data.
         match sensor.read_hot_junction() {
             Ok(temp) => {
                 let time_stamp = now_timestamp();
@@ -174,6 +180,14 @@ pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
                     timestamp: time_stamp.nanos(), 
                     hot_junction_temp: temp, 
                 };
+                packet_count += 1;
+
+                if packet_count >= report_threshold {
+                    ctx.shared
+                    .downlink_packets
+                    .lock(|q| q.push_back(thermo_packet.clone()).ok());
+                    packet_count = 0;
+                }
                 
                 ctx.shared
                     .temp_store

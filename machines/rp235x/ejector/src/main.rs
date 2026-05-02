@@ -192,7 +192,7 @@ mod app {
         #[task(shared = [downlink_packets],  priority = 2)]
         async fn heartbeat(mut ctx: heartbeat::Context);
 
-        #[task( shared = [temp_store], local = [thermocouple], priority = 1)]
+        #[task( shared = [temp_store, downlink_packets], local = [thermocouple], priority = 1)]
         async fn poll_temperature(mut ctx: poll_temperature::Context);
 
         #[task(shared = [downlink_packets], local = [downlink], priority = 2)]
