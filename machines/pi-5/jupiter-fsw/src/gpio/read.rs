@@ -19,6 +19,8 @@ impl ReadPin {
 impl From<Pin> for ReadPin {
     fn from(pin: Pin) -> Self {
         let mut cmd = Command::new("gpioget")
+            .arg("-c")
+            .arg("0")
             .arg(pin.pin())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -33,6 +35,8 @@ impl From<Pin> for ReadPin {
 impl ReadPin {
     pub fn read(&self) -> Result<bool, super::PinError> {
         let output = Command::new("gpioget")
+            .arg("-c")
+            .arg("0")
             .arg(&self.pin)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

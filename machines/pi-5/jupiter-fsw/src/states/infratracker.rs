@@ -5,7 +5,7 @@ use std::sync::atomic::Ordering;
 use bin_packets::phases::JupiterPhase;
 use log::info;
 
-use crate::{states::{battery_power::BatteryPower, shutdown::Shutdown}, tasks::TRACKING, timing::POWER_ON_TIME};
+use crate::{states::{battery_power::BatteryPower, shutdown::Shutdown}, tasks::{TRACKING,BoardHardware}, timing::POWER_ON_TIME};
 
 use super::{
     traits::{StateContext, ValidState},
@@ -16,6 +16,7 @@ pub struct InfratrackerStart {}
 
 impl InfratrackerStart {
     pub fn enter() -> Self {
+        info!("Infratracker start - Begin tracking");
         TRACKING.store(true, Ordering::Relaxed);
         return  Self{};
     }
@@ -30,7 +31,7 @@ impl ValidState for InfratrackerStart {
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
         if ctx.t_time > POWEROFF_T_TIME_SECS {
             info!("System Shutdown");
-           // ctx.atmega.deactivate_latch();
+           ctx.hardware.deactivate_latch();
             Box::new(Shutdown::enter())
         } else {
             // No change

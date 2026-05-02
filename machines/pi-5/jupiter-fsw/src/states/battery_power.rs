@@ -6,6 +6,7 @@ use log::info;
 use crate::states::shutdown::Shutdown;
 
 use super::traits::{StateContext, ValidState};
+use crate::tasks::hardware::BoardHardware;
 
 /// JUPITER PHASE: Battery Power
 ///
@@ -25,7 +26,7 @@ impl ValidState for BatteryPower {
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
         if ctx.t_time > POWEROFF_T_TIME_SECS {
             info!("Powering off latch");
-            ctx.atmega.deactivate_latch();
+            ctx.hardware.deactivate_latch();
             Box::new(Shutdown::enter())
         } else {
             // No change

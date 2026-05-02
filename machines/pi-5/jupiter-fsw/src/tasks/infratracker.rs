@@ -156,7 +156,9 @@ impl InfratrackerThread {
                                     let local_img: ImageBuffer<Luma<u8>, &[u8]> = 
                                         ImageBuffer::from_raw(width, height, raw_buffer).unwrap();
                                     
-                                    local_img.save(format!("{STAR_TRACKER_DIR}/infratracker{timestamp}.tiff")).ok();
+                                    if let Err(e) = local_img.save(format!("{STAR_TRACKER_DIR}/infratracker{timestamp}.tiff")) {
+                                        error!("Image save error, bad directory")
+                                    }
                                 }
                                 _ => {
                                     error!("Timeout or grab fail");

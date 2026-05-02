@@ -5,6 +5,10 @@ use crate::{states::{ejection::Ejection, launch::Launch}, timing::{self, t_time_
 
 use super::traits::{StateContext, ValidState};
 
+
+use log::info;
+
+
 const D:i32 = 3; 
 
 #[derive(Debug, Default)]
@@ -28,7 +32,8 @@ impl ValidState for RocketDespin {
     }
 
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
-        if true {
+        if true {            
+            info!("Despin complete, entering ejection");
             return Box::new(Ejection::default());
         }
         else {

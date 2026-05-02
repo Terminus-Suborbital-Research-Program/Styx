@@ -23,6 +23,9 @@ use crate::{
     timing::t_time_estimate,
 };
 
+use crate::tasks::{ActiveHardware, BoardHardware};
+
+
 /// State machine for JUPITER
 pub struct JupiterStateMachine {
     state: Box<dyn ValidState>,
@@ -31,10 +34,13 @@ pub struct JupiterStateMachine {
 
 impl JupiterStateMachine {
     /// Create a new state machine from a pin provider
-    pub fn new(atmega: Atmega, ejection_pin: WritePin) -> Self {
+    pub fn new(atmega: ActiveHardware, ejection_pin: WritePin) -> Self {
+        let mut ctx = StateContext::new(atmega, ejection_pin);
+        let state = PowerOn::enter(&mut ctx);
+
         Self {
-            state: Box::new(PowerOn::default()),
-            context: StateContext::new(atmega, ejection_pin),
+            state,
+            context: ctx,
         }
     }
 
