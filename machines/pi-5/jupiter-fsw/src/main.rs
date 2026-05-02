@@ -31,7 +31,7 @@ mod timing;
 
 use data::status::ExperimentColorState;
 use log::{error, info};
-use tasks::{RbfTask, GpioHardware};
+use tasks::{RbfTask, GpioHardware, GuardMonitor};
 use bin_packets::commands::CommandPacket;
 
 static SERIAL_PORT: &str = "/dev/ttyS0";
@@ -94,6 +94,9 @@ fn main() {
     let mut counter = 0;
 
     let mut color_status = ExperimentColorState::new();
+
+    let mut guard_monitor = GuardMonitor::new("/home/terminus/rad_data", 3);
+
     let mut last_rgb_options = color_status.current_status();
     loop {
         if let Some(iface) = &mut interface {
@@ -113,6 +116,9 @@ fn main() {
                 info!("Got a packet: {packet:?}");
             }
         }
+
+        // Update geiger feed either if we get a geiger packet through serial, or have file update
+        guard_monitor.update(&mut color_status);
 
         while let Ok(quat) = infratracker_packet_rx.try_recv() {
             color_status.feed_infratracker();
