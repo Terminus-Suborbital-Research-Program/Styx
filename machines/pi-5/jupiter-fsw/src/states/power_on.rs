@@ -26,6 +26,7 @@ impl ValidState for PowerOn {
 
         if ctx.t_time > 0 {
             info!("Launch!");
+            ctx.hardware.activate_latch();
             Box::new(Launch::default())
         } else {
             // Stay in power on
