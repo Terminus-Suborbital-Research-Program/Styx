@@ -35,8 +35,8 @@ pub struct JupiterStateMachine {
 impl JupiterStateMachine {
     /// Create a new state machine from a pin provider
     pub fn new(atmega: ActiveHardware, ejection_pin: WritePin) -> Self {
-        let ctx = StateContext::new(atmega, ejection_pin);
-        let state = PowerOn::enter(ctx);
+        let mut ctx = StateContext::new(atmega, ejection_pin);
+        let state = PowerOn::enter(&mut ctx);
 
         Self {
             state,
