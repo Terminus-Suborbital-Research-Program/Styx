@@ -6,6 +6,7 @@ use std::io::Read;
 use std::num::ParseIntError;
 use std::path::PathBuf;
 use std::string::FromUtf8Error;
+use std::fmt;
 
 pub mod lsm6dsl;
 
@@ -33,6 +34,28 @@ impl From<std::string::FromUtf8Error> for Error {
 impl From<ParseIntError> for Error {
     fn from(value: ParseIntError) -> Self {
         Self::Parse(value)
+    }
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Error::Io(err) => write!(f, "IO error: {}", err),
+            Error::SensorNotFound(sensor) => write!(f, "Sensor not found: {}", sensor),
+            Error::Parse(err) => write!(f, "Integer parsing error: {}", err),
+            Error::Utf(err) => write!(f, "UTF-8 conversion error: {}", err),
+        }
+    }
+}
+
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Error::Io(err) => Some(err),
+            Error::SensorNotFound(_) => None,
+            Error::Parse(err) => Some(err),
+            Error::Utf(err) => Some(err),
+        }
     }
 }
 

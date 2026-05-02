@@ -5,22 +5,21 @@ edition = "2021"
 publish = false
 
 [dependencies]
-# Interim this points to Ethan's fork, but should be restored to the main branch in the future
-#aether = {git = "https://github.com/Ethan-Pascuales/aether.git", features = ["serde", "bincode"]}
-aether = {git = "https://github.com/AtmoPierce/aether.git", features = ["serde", "bincode"], optional=true}
+#aether = {git = "https://github.com/AtmoPierce/aether.git", features = ["bincode"],  default-features = false, optional=true}
 
-# , features = ["serde"]
 #bincode = { workspace = true, features = ["derive"], default-features = false }
 # Some need bincode with std and some don't so better not to have this workspace pinned
 bincode = {version = "2.0.1", default-features = false, features = ["derive"]}
-defmt = { workspace = true}
+#defmt = { workspace = true}
+defmt = "*"
 embedded-io = { version = "0.6.1", features = ["defmt-03"] }
 heapless = { version = "0.8.0", features = ["defmt-03"] }
 serde = { version = "*", features = ["derive"], default-features = false }
+smart-leds = "0.4.0"
 
 
 [features]
 default = []
-std = ["bincode/std", "serde/std", "embedded-io/std", "aether"]
+std = ["bincode/std", "serde/std", "embedded-io/std"]
 
 

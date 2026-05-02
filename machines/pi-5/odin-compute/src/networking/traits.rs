@@ -1,6 +1,5 @@
-
-use bin_packets::packets::ApplicationPacket;
 use crate::networking::error::IOError;
+use bin_packets::packets::ApplicationPacket;
 trait NetworkSocket {
-    fn send(application_packet: &ApplicationPacket) -> Result<(),IOError>;
+    fn send(application_packet: &ApplicationPacket) -> Result<(), IOError>;
 }

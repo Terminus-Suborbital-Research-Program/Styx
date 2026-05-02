@@ -8,24 +8,27 @@ use crate::{
     timing::t_time_estimate,
 };
 
+
+use crate::tasks::hardware::{ActiveHardware, BoardHardware};
+
+// Active hardware is an alias for atmega or gpios, whichever we are using
 pub struct StateContext {
     pub t_time: i32,
     pub ejection_pin: WritePin,
-    pub rbf: RbfReader,
-    pub atmega: Atmega,
+    pub hardware: ActiveHardware,
 }
 
 impl StateContext {
-    pub fn new(atmega: Atmega, ejection_pin: WritePin, rbf: RbfReader) -> Self {
+    pub fn new(hardware: ActiveHardware, ejection_pin: WritePin) -> Self {
         Self {
             t_time: t_time_estimate(),
             ejection_pin,
-            rbf,
-            atmega,
+            hardware,
         }
     }
 }
 
+/// A trait that represents a valid state machine state
 pub trait ValidState {
     /// Get the current state as a telemetry phase
     fn phase(&self) -> JupiterPhase;

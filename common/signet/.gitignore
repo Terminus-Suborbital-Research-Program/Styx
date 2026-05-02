@@ -1,3 +1,5 @@
 /target
 *.iq
 *.psd
+*.png
+*.bin

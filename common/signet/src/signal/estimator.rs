@@ -5,11 +5,11 @@ pub struct MatchingEstimator {
     max_shift: usize,
 }
 
+// Cutoff margin for signal comparison to avoid filter walls. Between 0 - 1.0
+const MARGIN: f32 = 0.25;
+
 impl MatchingEstimator {
-    pub fn new(
-        expected_power_spectrum: Vec<f32>,
-        max_shift: usize,
-    ) -> Self {
+    pub fn new(expected_power_spectrum: Vec<f32>, max_shift: usize) -> Self {
         Self {
             expected_power_spectrum,
             max_shift,
@@ -64,7 +64,12 @@ impl MatchingEstimator {
     }
 
     // Rework to handle divide by zero
-    pub fn chi_square(&mut self, best_score: f32, best_index: usize, current_power_spectrum: &Vec<f32>) -> f32 {
+    pub fn chi_square(
+        &mut self,
+        best_score: f32,
+        best_index: usize,
+        current_power_spectrum: &Vec<f32>,
+    ) -> f32 {
         let shift: usize = &self.max_shift / 2;
         let current_start = shift;
         let current_end = current_power_spectrum.len() - shift;
@@ -86,7 +91,7 @@ impl MatchingEstimator {
         return chi_sqr.test_statistic as f32;
     }
 
-    pub fn sliding_window_advanced(&mut self, current_power_spectrum: &Vec<f32>) -> (f32, isize) {
+    pub fn sliding_window_advanced(&self, current_power_spectrum: &[f32], expected_power_spectrum: &[f32]) -> (f32, isize) {
         let shift: isize = (&self.max_shift / 2) as isize;
 
         let full_len = current_power_spectrum.len();
@@ -108,7 +113,7 @@ impl MatchingEstimator {
             };
 
             let window_slice = &current_power_spectrum[window_start..window_end];
-            let compare_slice = &self.expected_power_spectrum[compare_start..compare_end];
+            let compare_slice = &expected_power_spectrum[compare_start..compare_end];
 
             let window_mean: f32 = window_slice.iter().sum::<f32>() / window_slice.len() as f32;
             let window_den: f32 = window_slice
@@ -123,6 +128,11 @@ impl MatchingEstimator {
                 .map(|bin| (bin - compare_mean).powi(2))
                 .sum::<f32>()
                 .sqrt();
+            
+            // Avoid divide by 0 nan in flat case noise case
+            if compare_den * window_den == 0.0 {
+                continue;
+            }
 
             for (compare_bin, window_bin) in compare_slice.iter().zip(window_slice.iter()) {
                 res += (compare_bin - compare_mean) * (window_bin - window_mean);
@@ -138,7 +148,12 @@ impl MatchingEstimator {
         return (best_score, best_index);
     }
 
-    pub fn chi_square_advanced(&mut self, best_score: f32, best_index: isize, current_power_spectrum: &Vec<f32>) -> f32 {
+    pub fn chi_square_advanced(
+        &mut self,
+        best_score: f32,
+        best_index: isize,
+        current_power_spectrum: &Vec<f32>,
+    ) -> f32 {
         let full_len = current_power_spectrum.len();
 
         let (window_start, window_end) = if best_index < 0 {
@@ -193,13 +208,23 @@ impl MatchingEstimator {
 
     pub fn match_estimate(&mut self, current_power_spectrum: &mut Vec<f32>) {
         let (best_score, best_index) = self.sliding_window_match(current_power_spectrum);
-        let chi_score = self.chi_square(best_score, best_index, current_power_spectrum);
+        // let chi_score = self.chi_square(best_score, best_index, current_power_spectrum);
+        // best_score
     }
 
     pub fn match_estimate_advanced(&mut self, current_power_spectrum: &mut Vec<f32>) -> f32 {
-        let (best_score, best_index) = self.sliding_window_advanced(current_power_spectrum);
-        let chi_square = self.chi_square_advanced(best_score, best_index, current_power_spectrum);
+        // Ignore the edges of the spectrum because due to the filter, they will cause every type of signal to have
+        // atleast 60% match, since the dropoff looks the same
+        let spectrum_len = current_power_spectrum.len();
+        let margin = (MARGIN * spectrum_len as f32) as usize;
+        let passband =  &current_power_spectrum[margin..spectrum_len - margin];
+
+
+        let cropped_expected = &self.expected_power_spectrum[margin..self.expected_power_spectrum.len() - margin];
+        let (best_score, best_index) = self.sliding_window_advanced(passband, cropped_expected);
+        // let chi_square = self.chi_square_advanced(best_score, best_index, current_power_spectrum);
         // self.quality_estimate(chi_square)
-        self.sigmoid(chi_square)
+        // self.sigmoid(chi_square)
+        best_score.max(0.0)
     }
 }

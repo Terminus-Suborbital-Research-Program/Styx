@@ -9,12 +9,14 @@ use serde::{Deserialize, Serialize};
 use status::Status;
 
 use crate::commands::CommandPacket;
+use crate::i2c::I2CPacket;
 // use crate::data::adcs::AttitudeMetrics;
 
 #[derive(Debug, Clone, Copy, Encode, Decode, Format, Serialize, Deserialize)]
 pub enum ApplicationPacket {
     Command(CommandPacket),
     Status(Status),
+    I2C(I2CPacket),
     // ADCS(AttitudeMetrics),
     VoltageData {
         timestamp: [u64; 4],
@@ -69,4 +71,13 @@ pub enum ApplicationPacket {
         timestamp: u64,
         vector: [u16; 8],
     },
+    InfratrackerData {
+        timestamp: u64,
+        /// Quaternion encoded as [w, i, j, k].
+        quaternion: [f32; 4],
+    },
+    ThermocoupleData {
+        timestamp: u64,
+        hot_junction_temp: f32,
+    }
 }

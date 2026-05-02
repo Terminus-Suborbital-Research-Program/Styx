@@ -37,19 +37,10 @@ impl ValidState for SkirtSeperation {
         JupiterPhase::SkirtSeperation
     }
 
-    fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
+    fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> { // <-- What
         if self.te_recieved_at + DELAY_TO_EJECT_SEC < ctx.t_time {
             info!("Ejection complete, idling.");
-            match ctx.rbf.read() {
-                RbfState::Uninhibited => {
-                    info!("Ejected!");
-                    ctx.ejection_pin.write(true).unwrap();
-                }
-
-                RbfState::Inhibited => {
-                    warn!("RBF Inserted, Not ejecting");
-                }
-            }
+          
             Box::new(Ejection::default())
         } else {
             info!(

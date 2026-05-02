@@ -1,8 +1,3 @@
-#![no_std]
-use crate::{Register};
-#[cfg(feature = "defmt")]
-use defmt::error;
-use defmt::info;
 #[cfg(feature = "async")]
 use embedded_hal_async::delay::DelayNs;
 use embedded_hal_async::i2c::I2c as AsyncI2c;
@@ -27,7 +22,7 @@ where
     }
     pub async fn init(&mut self) -> Result<(), I2C::Error> {
         self.i2c.write(self.address, &[0xF2, 0x01]).await?;
-    
+
         // ctrl_meas (0xF4): temp and pressure oversampling x1, mode = normal
         self.i2c.write(self.address, &[0xF4, 0x27]).await?;
 
@@ -38,11 +33,14 @@ where
         Ok(())
     }
 
-    pub async fn sample(&mut self)-> ([u8; 8], u32, u32, u16){
+    pub async fn sample(&mut self) -> ([u8; 8], u32, u32, u16) {
         let register = [0xF7]; // start of pressure/temp/humidity registers
         let mut buffer = [0u8; 8]; // pressure[3] + temp[3] + humidity[2]
 
-        self.i2c.write_read(self.address, &register, &mut buffer).await;
+        let _ = self
+            .i2c
+            .write_read(self.address, &register, &mut buffer)
+            .await;
 
         // Parse raw readings from MSB → LSB
         let raw_pressure: u32 =
