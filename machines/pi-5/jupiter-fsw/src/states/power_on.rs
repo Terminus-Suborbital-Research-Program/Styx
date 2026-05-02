@@ -12,21 +12,31 @@ use crate::tasks::hardware::BoardHardware;
 #[derive(Debug, Clone, Copy, Default)]
 pub struct PowerOn {}
 
+impl PowerOn {
+    pub fn enter(ctx: &mut StateContext) -> Box<dyn ValidState> {
+        ctx.hardware.activate_latch();
+        Box::new(Self::default())
+    }
+}
+
 impl ValidState for PowerOn {
     fn phase(&self) -> JupiterPhase {
         JupiterPhase::PowerOn
     }
+    // fn enter(ctx: &mut StateContext) -> Box<dyn ValidState> {
+    //     Box::new(Self::default())
+    // }
 
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
-        if ctx.hardware.pins().unwrap_or_default().te1() == PinState::High {
-            // Crap, we have late power on for some reason
-            warn!("Late power on: TE1 is high. Emergency transition to MainCamStart");
-            return Box::new(Launch::default());
-        }
+        // if ctx.hardware.pins().unwrap_or_default().te1() == PinState::High {
+        //     // Crap, we have late power on for some reason
+        //     warn!("Late power on: TE1 is high. Emergency transition to MainCamStart");
+        //     return Box::new(Launch::default());
+        // }
 
         if ctx.t_time > 0 {
             info!("Launch!");
-            ctx.hardware.activate_latch();
+            // ctx.hardware.activate_latch();
             Box::new(Launch::default())
         } else {
             // Stay in power on
