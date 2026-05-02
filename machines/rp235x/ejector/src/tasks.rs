@@ -208,25 +208,39 @@ pub async fn poll_rbf(mut ctx: poll_rbf::Context<'_>) {
 }
 
 pub async fn write_sd_card(mut ctx: write_sd_card::Context<'_>) {
-    let mut enc_buf = [0u8; SCRATCH];
+    // f32 + u64 ; 12 bytes
+    let mut write_buf = [0u8; SCRATCH];
     let config = standard();
+    
     loop {
-        let mut packet: Option<ApplicationPacket> = ctx.shared
-                    .temp_store
-                    .lock(|store| store.pop_front());
+        let should_write = ctx.shared.temp_store.lock(|store| store.len() >= 40);
 
-        if let Some(p) = packet {
-            if let Ok(sz) = encode_into_slice(p, &mut enc_buf, config) {
+        if should_write {
+            let mut head: usize = 0;
+
+            for i in 0..40 {
+                let packet = ctx.shared.temp_store.lock(|store| store.pop_front());
+                
+                if let Some(p) = packet {
+                    if let Ok(sz) = encode_into_slice(p, &mut write_buf[head..], config) {
+                        head += sz;
+                    }
+                } else {
+                    break; // Queue is empty earlier than expected
+                }
+            }
+
+            // let file_data = b"GLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\n";
+
+            if head > 0 {
                 ctx.shared.sd_card.lock(|sd_card| {
-                    // let file_data = b"GLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\n";
-                    info!("Before Writing!");
-                    sd_card.write_data(EJECTOR_GAURD_FILENAME, &enc_buf[..sz]);
-                    info!("After Writing!");
+                    info!("Writing {} byte sector to SD!", head);
+                    sd_card.write_data(EJECTOR_GAURD_FILENAME, &write_buf[..head]);
                 });
             }
-        } else {
-            Mono::delay(200_u64.millis()).await;
         }
+
+        Mono::delay(1000_u64.millis()).await;
     }
 }
 
@@ -324,72 +338,72 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
     }
 }
 
-// pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
-//     let rgb_driver = ctx.local.rgb_driver;
-//     loop {
-        
-//         // let current_colors = ctx.shared.status_config.lock(|status| {
-//         //     [
-//         //         status.RBF,
-//         //         status.HaLow,
-//         //         status.Esp,
-//         //         status.Infratracker,
-//         //         status.Guard,
-//         //         status.Jupiter,
-//         //         status.ElectroMagnet,
-//         //         status.Servos,
-//         //         status.Jupiter_Avionics_Health,
-//         //         status.Ejector_Health,
-//         //         status.Odin_Compute_Health,
-//         //         status.Odin_Pico_Health,
-//         //     ]
-//         // });
-
-//         rgb_driver.write(current_colors.iter().cloned()).unwrap();
-
-//         // Mono::delay(1000_u64.millis()).await;
-//     }
-// }
-
-
-// Party Anim
 pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
-    let rgb_driver = &mut ctx.local.rgb_driver; 
-    
-    // 8 bit color wheel, 50 intensity max
-    fn dim_wheel(mut pos: u8) -> RGB8 {
-        pos = 255 - pos;
-        if pos < 85 {
-            RGB8::new((255 - pos * 3) / 5, 0, (pos * 3) / 5)
-        } else if pos < 170 {
-            pos -= 85;
-            RGB8::new(0, (pos * 3) / 5, (255 - pos * 3) / 5)
-        } else {
-            pos -= 170;
-            RGB8::new((pos * 3) / 5, (255 - pos * 3) / 5, 0)
-        }
-    }
-
-    let mut tick: u8 = 0;
-
+    let rgb_driver = ctx.local.rgb_driver;
     loop {
-        let mut current_colors = [RGB8::new(0, 0, 0); 12];
-
-        for i in 0..12 {
-            // Space the 12 LEDs evenly across the 0-255 color spectrum
-            let offset = (i * 256 / 12) as u8;
-            let pixel_pos = tick.wrapping_add(offset);
-            
-            current_colors[i] = dim_wheel(pixel_pos);
-        }
+        
+        let current_colors = ctx.shared.status_config.lock(|status| {
+            [
+                status.RBF,
+                status.HaLow,
+                status.Esp,
+                status.Infratracker,
+                status.Guard,
+                status.Jupiter,
+                status.ElectroMagnet,
+                status.Servos,
+                status.Jupiter_Avionics_Health,
+                status.Ejector_Health,
+                status.Odin_Compute_Health,
+                status.Odin_Pico_Health,
+            ]
+        });
 
         rgb_driver.write(current_colors.iter().cloned()).unwrap();
 
-        // Greater value = faster swirl
-        tick = tick.wrapping_add(4); 
-
-        // 50 fps
-        Mono::delay(20_u64.millis()).await;
+        Mono::delay(1000_u64.millis()).await;
     }
 }
+
+
+// Party Anim
+// pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
+//     let rgb_driver = &mut ctx.local.rgb_driver; 
+    
+//     // 8 bit color wheel, 50 intensity max
+//     fn dim_wheel(mut pos: u8) -> RGB8 {
+//         pos = 255 - pos;
+//         if pos < 85 {
+//             RGB8::new((255 - pos * 3) / 5, 0, (pos * 3) / 5)
+//         } else if pos < 170 {
+//             pos -= 85;
+//             RGB8::new(0, (pos * 3) / 5, (255 - pos * 3) / 5)
+//         } else {
+//             pos -= 170;
+//             RGB8::new((pos * 3) / 5, (255 - pos * 3) / 5, 0)
+//         }
+//     }
+
+//     let mut tick: u8 = 0;
+
+//     loop {
+//         let mut current_colors = [RGB8::new(0, 0, 0); 12];
+
+//         for i in 0..12 {
+//             // Space the 12 LEDs evenly across the 0-255 color spectrum
+//             let offset = (i * 256 / 12) as u8;
+//             let pixel_pos = tick.wrapping_add(offset);
+            
+//             current_colors[i] = dim_wheel(pixel_pos);
+//         }
+
+//         rgb_driver.write(current_colors.iter().cloned()).unwrap();
+
+//         // Greater value = faster swirl
+//         tick = tick.wrapping_add(4); 
+
+//         // 50 fps
+//         Mono::delay(20_u64.millis()).await;
+//     }
+// }
 

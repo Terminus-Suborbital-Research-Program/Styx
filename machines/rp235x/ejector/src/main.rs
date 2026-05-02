@@ -144,7 +144,7 @@ mod app {
         pub sd_card: EjectorSD,
         pub ejection_enabled: bool,
         pub status_config: RGBStatus,
-        pub temp_store: Deque<ApplicationPacket, 128>
+        pub temp_store: Deque<ApplicationPacket, 100>
     }
 
     #[local]
