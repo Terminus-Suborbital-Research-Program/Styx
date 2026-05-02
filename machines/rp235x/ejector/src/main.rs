@@ -144,6 +144,7 @@ mod app {
         pub sd_card: EjectorSD,
         pub ejection_enabled: bool,
         pub status_config: RGBStatus,
+        pub temp_store: Deque<ApplicationPacket, 128>
     }
 
     #[local]
@@ -191,7 +192,7 @@ mod app {
         #[task(shared = [downlink_packets],  priority = 2)]
         async fn heartbeat(mut ctx: heartbeat::Context);
 
-        #[task( local = [thermocouple], priority = 1)]
+        #[task( shared = [temp_store], local = [thermocouple], priority = 1)]
         async fn poll_temperature(mut ctx: poll_temperature::Context);
 
         #[task(shared = [downlink_packets], local = [downlink], priority = 2)]
@@ -200,7 +201,7 @@ mod app {
         #[task(shared = [ejection_enabled], local = [rbf_pin], priority = 2)]
         async fn poll_rbf(mut ctx: poll_rbf::Context);
 
-        #[task(shared = [sd_card], priority = 2)]
+        #[task(shared = [sd_card, temp_store], priority = 2)]
         async fn write_sd_card(mut ctx: write_sd_card::Context);
         // Commands
         // Status for status LED

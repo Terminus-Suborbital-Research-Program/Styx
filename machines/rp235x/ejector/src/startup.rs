@@ -351,6 +351,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             ejection_enabled: false,
             sd_card: sd_card,
             status_config,
+            temp_store: Deque::new(),
         },
         Local {
             camera_mosfet: cam_pin,

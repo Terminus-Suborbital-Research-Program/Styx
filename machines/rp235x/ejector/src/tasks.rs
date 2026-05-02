@@ -163,9 +163,23 @@ pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
 
     info!("Mcp start");
 
+
     loop {
         match sensor.read_hot_junction() {
-            Ok(temp) => info!("Thermocouple Temperature: {} C", temp),
+            Ok(temp) => {
+                let time_stamp = now_timestamp();
+                info!("Thermocouple Temperature: {} C", temp);
+
+                let thermo_packet = ApplicationPacket::ThermocoupleData { 
+                    timestamp: time_stamp.nanos(), 
+                    hot_junction_temp: temp, 
+                };
+                
+                ctx.shared
+                    .temp_store
+                    .lock(|store| store.push_back(thermo_packet).ok());
+
+            }
             Err(_) => warn!("Failed to read MCP9600 thermocouple"),
         }
 
@@ -194,13 +208,26 @@ pub async fn poll_rbf(mut ctx: poll_rbf::Context<'_>) {
 }
 
 pub async fn write_sd_card(mut ctx: write_sd_card::Context<'_>) {
-    ctx.shared.sd_card.lock(|sd_card| {
-        let file_data =
-            b"GLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\n";
-        info!("Berofe Writting!");
-        sd_card.write_data(EJECTOR_GAURD_FILENAME, file_data);
-        info!("After Writting!");
-    });
+    let mut enc_buf = [0u8; SCRATCH];
+    let config = standard();
+    loop {
+        let mut packet: Option<ApplicationPacket> = ctx.shared
+                    .temp_store
+                    .lock(|store| store.pop_front());
+
+        if let Some(p) = packet {
+            if let Ok(sz) = encode_into_slice(p, &mut enc_buf, config) {
+                ctx.shared.sd_card.lock(|sd_card| {
+                    // let file_data = b"GLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\n";
+                    info!("Before Writing!");
+                    sd_card.write_data(EJECTOR_GAURD_FILENAME, &enc_buf[..sz]);
+                    info!("After Writing!");
+                });
+            }
+        } else {
+            Mono::delay(200_u64.millis()).await;
+        }
+    }
 }
 
 pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
