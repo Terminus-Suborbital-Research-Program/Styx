@@ -2,7 +2,6 @@
 
 //! RTIC Task defintions for the Ejector
 
-use crate::device_constants::RGBStatus;
 use crate::sd_card::EJECTOR_GAURD_FILENAME;
 use crate::{app::*, device_constants::SAMPLE_COUNT, sd_card, Mono};
 use bin_packets::{
@@ -26,6 +25,18 @@ use rtic_sync::signal::Signal;
 
 use ws2812_pio::Ws2812Direct;
 use smart_leds::{SmartLedsWrite, RGB8};
+use rtic_sync::portable_atomic::{AtomicBool, AtomicU8, Ordering};
+
+use crate::device_constants::{
+    MagnetState, ServoState, COLOR_DIM_BLUE, COLOR_DIM_GREEN, 
+    COLOR_DIM_MAGENTA, COLOR_DIM_RED, COLOR_OFF
+};
+
+
+static LOCAL_RBF_IN: AtomicBool = AtomicBool::new(true);
+static LOCAL_MAGNET_STATE: AtomicU8 = AtomicU8::new(0);
+static LOCAL_SERVO_STATE: AtomicU8 = AtomicU8::new(0); 
+static LOCAL_RX_ALIVE: AtomicBool = AtomicBool::new(false);
 
 
 
@@ -46,7 +57,7 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     // Still blink, but toggle as it is done
     loop {
         // onboard_led.toggle().unwrap();
-        // info!("Alive?");
+        LOCAL_RX_ALIVE.store(true, Ordering::Relaxed);
         if Mono::now().duration_since_epoch().to_secs() > JUPITER_BOOT_LOCKOUT_TIME_SECONDS {
             let status = Status::new(DeviceIdentifier::Ejector, now_timestamp(), sequence_number);
 
@@ -57,7 +68,7 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
             sequence_number = sequence_number.wrapping_add(1);
         }
 
-        Mono::delay(300_u64.millis()).await;
+        Mono::delay(1000_u64.millis()).await;
     }
 }
 
@@ -109,6 +120,8 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
     // Latch ejector servos closed
     servo.enable();
     servo.hold();
+    LOCAL_SERVO_STATE.store(ServoState::PowerOn as u8, Ordering::Relaxed);
+    LOCAL_MAGNET_STATE.store(MagnetState::Holding as u8, Ordering::Relaxed);
 
     // let ejection_pin = ctx.local.ejection_pin;
 
@@ -123,6 +136,7 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
 
 
     info!("Ejecting!");
+    LOCAL_SERVO_STATE.store(ServoState::Release as u8, Ordering::Relaxed);
     // For current servo a graduated angle change has worked for fast ejection, but not just setting to the final angle
     for i in (14..23) {
         info!("i {}!", i);
@@ -137,6 +151,7 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
 
     e_magnet.enable();
     e_magnet.polarity_switch();
+    LOCAL_MAGNET_STATE.store(MagnetState::Ejecting as u8, Ordering::Relaxed);
 
     // Right now we don't have a pin read from jupiter, although this may be re-added later
     // Wait until ejection pin from JUPITER reads high
@@ -152,6 +167,8 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
     e_magnet.disable();
     servo.hold();
 
+    LOCAL_MAGNET_STATE.store(MagnetState::Off as u8, Ordering::Relaxed);
+    LOCAL_SERVO_STATE.store(ServoState::Off as u8, Ordering::Relaxed);
     info!("Ejector disabled, servo and magnet disabled. Ejector sequencing complete.");
 }
 
@@ -214,9 +231,11 @@ pub async fn poll_rbf(mut ctx: poll_rbf::Context<'_>) {
         {
             info!("RBF pin is low, blocking ejection code...");
             ctx.shared.ejection_enabled.lock(|blocked| *blocked = false);
+            LOCAL_RBF_IN.store(true, Ordering::Relaxed);
         } else {
             info!("RBF pin is high, ejection code enabled.");
             ctx.shared.ejection_enabled.lock(|blocked| *blocked = true);
+            LOCAL_RBF_IN.store(false, Ordering::Relaxed);
         }
     }
 }
@@ -354,9 +373,13 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
 
 pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
     let rgb_driver = ctx.local.rgb_driver;
+
+    let mut blink_toggle = false;
+    let mut rx_timeout_counter: u8 = 0;
+
     loop {
         
-        let current_colors = ctx.shared.status_config.lock(|status| {
+        let mut current_colors = ctx.shared.status_config.lock(|status| {
             [
                 status.RBF,
                 status.HaLow,
@@ -372,6 +395,8 @@ pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
                 status.Odin_Pico_Health,
             ]
         });
+
+        apply_local_states(&mut current_colors, blink_toggle, &mut rx_timeout_counter);
 
         rgb_driver.write(current_colors.iter().cloned()).unwrap();
 
@@ -420,4 +445,38 @@ pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
 //         Mono::delay(20_u64.millis()).await;
 //     }
 // }
+
+fn apply_local_states(
+    current_colors: &mut [RGB8; 12],
+    blink_toggle: bool,
+    rx_timeout_counter: &mut u8,
+) {
+    // Index 0: RBF
+    current_colors[0] = if LOCAL_RBF_IN.load(Ordering::Relaxed) {
+        COLOR_DIM_RED
+    } else {
+        COLOR_DIM_GREEN
+    };
+
+    // Index 6: Electromagnet
+    let magnet_state = MagnetState::from(LOCAL_MAGNET_STATE.load(Ordering::Relaxed));
+    current_colors[6] = magnet_state.color();
+
+    // Index 7: Servos
+    let servo_state = ServoState::from(LOCAL_SERVO_STATE.load(Ordering::Relaxed));
+    current_colors[7] = servo_state.color();
+
+    // Index 9: Ejector Health (Blink green if alive, solid red if dead for > 2s)
+    if LOCAL_RX_ALIVE.swap(false, Ordering::Relaxed) {
+        *rx_timeout_counter = 0;
+    } else {
+        *rx_timeout_counter = rx_timeout_counter.saturating_add(1);
+    }
+
+    current_colors[9] = if *rx_timeout_counter > 4 { 
+        COLOR_DIM_RED
+    } else {
+        if blink_toggle { COLOR_DIM_GREEN } else { COLOR_OFF } 
+    };
+}
 

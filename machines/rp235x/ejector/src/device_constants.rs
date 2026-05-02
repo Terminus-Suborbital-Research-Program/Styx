@@ -199,3 +199,69 @@ impl Default for RGBStatus {
         }
     }
 }
+
+pub const COLOR_DIM_RED: RGB8     = RGB8::new(50, 0, 0);
+pub const COLOR_DIM_GREEN: RGB8   = RGB8::new(0, 50, 0);
+pub const COLOR_DIM_BLUE: RGB8    = RGB8::new(0, 0, 50);
+pub const COLOR_DIM_MAGENTA: RGB8 = RGB8::new(50, 0, 50);
+pub const COLOR_OFF: RGB8         = RGB8::new(0, 0, 0);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MagnetState {
+    Off = 0,
+    Holding = 1,
+    Ejecting = 2,
+    Unknown,
+}
+
+impl From<u8> for MagnetState {
+    fn from(val: u8) -> Self {
+        match val {
+            0 => MagnetState::Off,
+            1 => MagnetState::Holding,
+            2 => MagnetState::Ejecting,
+            _ => MagnetState::Unknown,
+        }
+    }
+}
+
+impl MagnetState {
+    pub fn color(&self) -> RGB8 {
+        match self {
+            MagnetState::Off => COLOR_OFF,
+            MagnetState::Holding => COLOR_DIM_BLUE,
+            MagnetState::Ejecting => COLOR_DIM_MAGENTA,
+            MagnetState::Unknown => COLOR_OFF,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ServoState {
+    Off = 0,
+    PowerOn = 1,
+    Release = 2,
+    Unknown,
+}
+
+impl From<u8> for ServoState {
+    fn from(val: u8) -> Self {
+        match val {
+            0 => ServoState::Off,
+            1 => ServoState::PowerOn,
+            2 => ServoState::Release,
+            _ => ServoState::Unknown,
+        }
+    }
+}
+
+impl ServoState {
+    pub fn color(&self) -> RGB8 {
+        match self {
+            ServoState::Off => COLOR_OFF,
+            ServoState::PowerOn => COLOR_DIM_GREEN,
+            ServoState::Release => COLOR_DIM_MAGENTA,
+            ServoState::Unknown => COLOR_OFF,
+        }
+    }
+}
