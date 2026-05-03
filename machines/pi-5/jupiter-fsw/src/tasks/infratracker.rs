@@ -157,7 +157,7 @@ impl InfratrackerThread {
                                     let mut solve_img = ImageBuffer::from_raw(width, height, img_vec)
                                         .expect("Buffer size mismatch");
 
-                                    // avger.apply_average(&mut solve_img);
+                                    avger.apply_average(&mut solve_img);
 
                                     // Try sending an image to be solved
                                     match solver_tx.try_send((timestamp, solve_img)) {
