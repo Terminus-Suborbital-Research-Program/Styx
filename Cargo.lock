@@ -3045,6 +3045,7 @@ dependencies = [
 name = "odin-compute"
 version = "0.1.0"
 dependencies = [
+ "DarkAverager",
  "aether",
  "bin-packets",
  "bincode",

@@ -24,7 +24,7 @@ use wayfarer::{
     startrack::solver::Startracker,
 }; // pub use crate::io::mmap::Stream as MmapStream;
 
-use darkaverager::ImageAveragerFromBuffer;
+use DarkAverager::ImageAveragerFromBuffer;
 
 // use aether::
 pub struct StartrackerThread {
