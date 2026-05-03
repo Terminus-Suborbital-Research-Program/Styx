@@ -19,6 +19,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "adxl345_driver2"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73db65445e21166a64a7d0dbb4d04f11854e70b0005d8035091f81b229488c89"
+dependencies = [
+ "bitflags 2.11.1",
+ "c2rust-bitfields",
+ "embedded-hal 1.0.0",
+]
+
+[[package]]
 name = "aether"
 version = "0.1.1"
 source = "git+https://github.com/AtmoPierce/aether.git#c487acb602a32bfaa61e3c3f8278ad745440b442"
@@ -594,6 +605,15 @@ dependencies = [
 [[package]]
 name = "bmi323"
 version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e7e6d1fbf5b5be1ffd15bcc6fb9addc7e9f3838b4dd7f5518a66b3e0524bbf6"
+dependencies = [
+ "embedded-hal 1.0.0",
+]
+
+[[package]]
+name = "bmi323"
+version = "0.2.0"
 source = "git+https://github.com/wyatt-mattas/bmi323-rs.git#8fc72e1e2637efabf1da36d19b4b156a95e3a33c"
 dependencies = [
  "defmt 1.0.1",
@@ -692,6 +712,26 @@ name = "bytes"
 version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e748733b7cbc798e1434b6ac524f0c1ff2ab456fe201501e6497c8417a4fc33"
+
+[[package]]
+name = "c2rust-bitfields"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b43c3f07ab0ef604fa6f595aa46ec2f8a22172c975e186f6f5bf9829a3b72c41"
+dependencies = [
+ "c2rust-bitfields-derive",
+]
+
+[[package]]
+name = "c2rust-bitfields-derive"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3cbc102e2597c9744c8bd8c15915d554300601c91a079430d309816b0912545"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
 
 [[package]]
 name = "c_linked_list"
@@ -1307,7 +1347,7 @@ dependencies = [
  "bin-packets",
  "bincode",
  "bme280",
- "bmi323",
+ "bmi323 0.2.0 (git+https://github.com/wyatt-mattas/bmi323-rs.git)",
  "bmm350",
  "cd74hc4067",
  "cortex-m",
@@ -2366,9 +2406,11 @@ dependencies = [
 name = "jupiter-fsw"
 version = "0.1.1"
 dependencies = [
+ "adxl345_driver2",
  "aether",
  "bin-packets",
  "bindgen 0.72.1",
+ "bmi323 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "common-states",
  "embedded-hal 1.0.0",
  "env_logger",
@@ -2377,6 +2419,7 @@ dependencies = [
  "i2cdev",
  "image",
  "lazy_static",
+ "linux-embedded-hal",
  "log",
  "notify",
  "pylon-cxx",
@@ -2395,7 +2438,7 @@ dependencies = [
  "bin-packets",
  "bincode",
  "bme280",
- "bmi323",
+ "bmi323 0.2.0 (git+https://github.com/wyatt-mattas/bmi323-rs.git)",
  "bmm350",
  "bmp5",
  "cortex-m",
@@ -2809,7 +2852,7 @@ version = "0.1.0"
 dependencies = [
  "aether_core",
  "aether_models",
- "bmi323",
+ "bmi323 0.2.0 (git+https://github.com/wyatt-mattas/bmi323-rs.git)",
  "bmm350",
  "embedded-hal 1.0.0",
  "linux-embedded-hal",
@@ -4808,7 +4851,7 @@ checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
 name = "simple"
 version = "0.1.1"
 dependencies = [
- "bmi323",
+ "bmi323 0.2.0 (git+https://github.com/wyatt-mattas/bmi323-rs.git)",
  "cortex-m",
  "cortex-m-rt",
  "cortex-m-rtic",
@@ -4831,7 +4874,7 @@ dependencies = [
 name = "simple-async"
 version = "0.1.0"
 dependencies = [
- "bmi323",
+ "bmi323 0.2.0 (git+https://github.com/wyatt-mattas/bmi323-rs.git)",
  "defmt 1.0.1",
  "defmt-rtt",
  "embedded-hal 1.0.0",

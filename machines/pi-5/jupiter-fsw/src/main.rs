@@ -33,6 +33,7 @@ use data::status::ExperimentColorState;
 use log::{error, info};
 use tasks::{RbfTask, GpioHardware, GuardMonitor};
 use bin_packets::commands::CommandPacket;
+use avionics::imu::{AvionicsImuManager, IMUError};
 
 static SERIAL_PORT: &str = "/dev/ttyS0";
 
@@ -74,13 +75,17 @@ fn main() {
     // Main camera
     spawn_camera_thread();
 
-    let accel = match Lsm6DslAccel::new() {
-        Ok(a) => {
-            info!("Accelerometer read: {:?}", a.read_data());
-            Some(a)
+    let mut avionics = match AvionicsImuManager::new() {
+        Ok(manager) => {
+            info!("Avionics IMU Manager initialized successfully.");
+            Some(manager)
         }
         Err(e) => {
-            error!("Failed to initialize accelerometer: {e}");
+            match e {
+                IMUError::BusFailed(i2c_err) => error!("IMU Init Failed (I2C Bus Error): {:?}", i2c_err),
+                IMUError::SensorFailed(adxl_err) => error!("IMU Init Failed (ADXL375 Error): {:?}", adxl_err),
+                IMUError::BMIFail(bmi_err) => error!("IMU Init Failed (BMI323 Error): {:?}", bmi_err),
+            }
             None
         }
     };
@@ -127,25 +132,46 @@ fn main() {
             info!("Got a infratracker packet: {quat:?}");
         }
 
-        if let Some(ref a) = accel {
-            match a.read_data() {
-                Ok(t) => {
-                    let packet = ApplicationPacket::JupiterAccelerometer {
-                        timestamp_ms: std::time::Instant::now()
-                            .duration_since(startup)
-                            .as_millis() as u64,
-                        vector: t,
-                    };
-                    color_status.feed_avionics();
+        if let Some(ref mut a) = avionics {
+            let imu_data = a.read_all(startup);
+            let mut imu_alive = false;
 
-                    onboard_packet_storage.write(packet);
-                    if let Some(iface) = &mut interface {
-                        iface.write(packet).ok();
-                    }
-                }
-                Err(e) => {
-                    error!("Issue with the accelerometer: {e:?}");
-                }
+            if let Some(packet) = imu_data.high_range {
+                imu_alive = true;
+                onboard_packet_storage.write(packet.clone());
+                
+                #[cfg(feature = "packet_logging")]
+                info!("Got High-G Accel packet: {packet:?}");
+            } else {
+                #[cfg(feature = "packet_logging")]
+                error!("Read failure: High-G (ADXL375) missing from read_all");
+            }
+
+            if let Some(packet) = imu_data.low_range {
+                imu_alive = true;
+                onboard_packet_storage.write(packet.clone());
+                
+                #[cfg(feature = "packet_logging")]
+                info!("Got Low-G Accel packet: {packet:?}");
+            } else {
+                #[cfg(feature = "packet_logging")]
+                error!("Read failure: Low-G (BMI323) Accel missing from read_all");
+            }
+
+            if let Some(packet) = imu_data.gyro {
+                imu_alive = true;
+                onboard_packet_storage.write(packet.clone());
+                
+                #[cfg(feature = "packet_logging")]
+                info!("Got Low-G Gyro packet: {packet:?}");
+            } else {
+                #[cfg(feature = "packet_logging")]
+                error!("Read failure: Low-G (BMI323) Gyro missing from read_all");
+            }
+
+            // If any data gotten from IMU's, update health
+            if imu_alive {
+                color_status.feed_avionics();
             }
         }
 

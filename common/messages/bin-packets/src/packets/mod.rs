@@ -79,5 +79,5 @@ pub enum ApplicationPacket {
     ThermocoupleData {
         timestamp: u64,
         hot_junction_temp: f32,
-    }
+    },
 }
