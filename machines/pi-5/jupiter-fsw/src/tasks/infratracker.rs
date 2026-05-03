@@ -18,6 +18,8 @@ use wayfarer::startrack::quest::quest_real;
 use aether::attitude::Quaternion;
 use aether::reference_frame::{ICRF, Body};
 
+use DarkAverager::ImageAveragerFromBuffer;
+
 const STAR_TRACKER_DIR: &str = "/home/terminus/basler/";
 
 // capture image and solve every 1Hz or 1000 millis
@@ -84,6 +86,37 @@ impl InfratrackerThread {
                 let frame_interval = Duration::from_millis(CAPTURE_RATE);
                 let mut next_frame_time = Instant::now();
 
+                camera.start_grabbing(&pylon_cxx::GrabOptions::default()
+                    .strategy(pylon_cxx::GrabStrategy::LatestImageOnly))?;
+
+                let mut darkframe_source: Vec<ImageBuffer<Luma<u8>, Vec<u8>>> = vec![];
+
+                for _ in [0..20]
+                {
+                    match camera.retrieve_result(500, &mut grab_result, pylon_cxx::TimeoutHandling::Return) {
+                        Ok(true) if grab_result.grab_succeeded().unwrap_or(false) =>
+                        {
+                            let raw_buffer: &[u8] = grab_result.buffer()?;
+                            let width = grab_result.width()?;
+                            let height = grab_result.height()?;
+
+                            darkframe_source.push(ImageBuffer::from_raw(width, height, raw_buffer.to_vec())
+                                .expect("Buffer size mismatch"));
+                        }
+                        _ => {
+                            error!("Timeout or grab fail");
+                        }
+                }
+                    let avger = ImageAveragerFromBuffer::new_with_source(darkframe_source);
+
+                    if let Err(e) = avger.get_average().save(format!("{STAR_TRACKER_DIR}/dark_frame.tiff")) {
+                        error!("Dark frame image save error, bad directory");
+                    }
+
+
+
+                camera.stop_grabbing()?;
+
                 // Cam loop
                 loop {
                     let is_tracking = TRACKING.load(Ordering::Relaxed);
@@ -120,8 +153,10 @@ impl InfratrackerThread {
 
                                     // Copy
                                     let img_vec = raw_buffer.to_vec(); 
-                                    let solve_img = ImageBuffer::from_raw(width, height, img_vec)
+                                    let mut solve_img = ImageBuffer::from_raw(width, height, img_vec)
                                         .expect("Buffer size mismatch");
+
+                                    avger.apply_average(&mut solve_img);
 
                                     // Try sending an image to be solved
                                     match solver_tx.try_send((timestamp, solve_img)) {
