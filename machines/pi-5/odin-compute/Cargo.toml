@@ -20,5 +20,5 @@ image = "0.25.9"
 wayfarer = { git = "https://github.com/Terminus-Suborbital-Research-Program/Wayfarer.git", branch = "main"}
 aether = { git = "https://github.com/AtmoPierce/aether.git", features = ["std", "serde"]}
 serialport = "4.8.1"
-darkaverager = {path="../../../common/DarkAverager/"}
+DarkAverager = {path="../../../common/DarkAverager"}
 
