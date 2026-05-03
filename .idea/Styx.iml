@@ -19,6 +19,7 @@
       <sourceFolder url="file://$MODULE_DIR$/sensors/bmm350-rs/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sensors/cd74hc4067/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sensors/ina260/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/common/DarkAverager/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/machines/pi-4/munin/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/machines/pi-5/odin-compute/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/machines/rp235x/ejector/src" isTestSource="false" />
@@ -26,6 +27,7 @@
       <sourceFolder url="file://$MODULE_DIR$/machines/rp235x/jupiter-telemetry/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/machines/rp235x/simple-async/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/machines/rp235x/simple/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/common/DarkAverager/target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />
