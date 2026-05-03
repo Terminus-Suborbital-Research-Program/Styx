@@ -33,3 +33,4 @@ DarkAverager = {path="../../../common/DarkAverager"}
 [features]
 default = []
 packet_logging = []
+legacy_atmega = []
