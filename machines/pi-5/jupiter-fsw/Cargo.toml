@@ -28,7 +28,7 @@ notify = "8.2.0"
 linux-embedded-hal = "0.4.1"
 adxl345_driver2 = "2.0.1"
 bmi323 = { version = "0.2.0", features = ["sync"]}
-
+DarkAverager = {path="../../../common/DarkAverager"}
 
 [features]
 default = []
