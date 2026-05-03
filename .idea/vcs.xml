@@ -2,7 +2,6 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/sensors/bmi323-rs" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/sensors/bmm350-rs" vcs="Git" />
   </component>
 </project>

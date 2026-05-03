@@ -1,5 +1,6 @@
 mod networking;
 mod tasks;
+pub mod img_avg;
 
 use std::{
     fs::{File, OpenOptions},

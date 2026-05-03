@@ -24,6 +24,8 @@ use wayfarer::{
     startrack::solver::Startracker,
 }; // pub use crate::io::mmap::Stream as MmapStream;
 
+use crate::img_avg::ImageAveragerFromBuffer;
+
 // use aether::
 pub struct StartrackerThread {
     quaternion_sender: Sender<Quaternion<f32, ICRF<f32>, Body<f32>>>,
@@ -57,6 +59,18 @@ impl StartrackerThread {
 
         
         thread::spawn(move || {
+
+            let mut darkframe_source: Vec<ImageBuffer<Luma<u8>, Vec<u8>>> = vec![];
+            for _ in [0..20]
+            {
+                let (buf, _meta): (&[u8], &Metadata) = stream.next().expect("Failed to get frame");
+                let buffer = buf.to_vec();
+
+                darkframe_source.push(ImageBuffer::from_raw(width, height, buffer).expect("Buffer size mismatch"));
+            }
+
+            let avger = ImageAveragerFromBuffer::new_with_source(darkframe_source);
+
             loop {
                 let (buf, _meta): (&[u8], &Metadata) = stream.next().expect("Failed to get frame");
 
@@ -77,6 +91,8 @@ impl StartrackerThread {
 
                 let mut img: ImageBuffer<Luma<u8>, Vec<u8>> =
                     ImageBuffer::from_raw(width, height, buffer).expect("Buffer size mismatch");
+
+                avger.apply_average(&mut img);
 
                 let mut centroids = starfinder.star_find(&mut img);
                 camera_model.undistort_centroids(&mut centroids);
