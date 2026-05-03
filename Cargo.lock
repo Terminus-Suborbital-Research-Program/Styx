@@ -2413,8 +2413,8 @@ dependencies = [
 name = "jupiter-fsw"
 version = "0.1.1"
 dependencies = [
- "adxl345_driver2",
  "DarkAverager",
+ "adxl345_driver2",
  "aether",
  "bin-packets",
  "bindgen 0.72.1",
