@@ -91,8 +91,7 @@ impl InfratrackerThread {
 
                 let mut darkframe_source: Vec<ImageBuffer<Luma<u8>, Vec<u8>>> = vec![];
 
-                for _ in [0..20]
-                {
+                for _ in 0..20 {
                     match camera.retrieve_result(500, &mut grab_result, pylon_cxx::TimeoutHandling::Return) {
                         Ok(true) if grab_result.grab_succeeded().unwrap_or(false) =>
                         {
@@ -106,12 +105,14 @@ impl InfratrackerThread {
                         _ => {
                             error!("Timeout or grab fail");
                         }
-                }
-                    let avger = ImageAveragerFromBuffer::new_with_source(darkframe_source);
-
-                    if let Err(e) = avger.get_average().save(format!("{STAR_TRACKER_DIR}/dark_frame.tiff")) {
-                        error!("Dark frame image save error, bad directory");
                     }
+                }
+                
+                let avger = ImageAveragerFromBuffer::new_with_source(darkframe_source);
+
+                if let Err(e) = avger.get_average().save(format!("{STAR_TRACKER_DIR}/dark_frame.tiff")) {
+                    error!("Dark frame image save error, bad directory");
+                }
 
 
 
@@ -156,7 +157,7 @@ impl InfratrackerThread {
                                     let mut solve_img = ImageBuffer::from_raw(width, height, img_vec)
                                         .expect("Buffer size mismatch");
 
-                                    avger.apply_average(&mut solve_img);
+                                    // avger.apply_average(&mut solve_img);
 
                                     // Try sending an image to be solved
                                     match solver_tx.try_send((timestamp, solve_img)) {
