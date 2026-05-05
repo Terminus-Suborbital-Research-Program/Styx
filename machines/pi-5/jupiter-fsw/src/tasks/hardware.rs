@@ -32,14 +32,14 @@ pub struct GpioHardware {
 impl GpioHardware {
     pub fn new() -> Self {
         Self {
-            gse1: Pin::new("GPIO2").into(),
-            gse2: Pin::new("GPIO3").into(),
+            gse1: Pin::new("GPIO6").into(),
+            gse2: Pin::new("GPIO25").into(),
             te_ra: Pin::new("GPIO4").into(),
             te_rb: Pin::new("GPIO5").into(),
             te1: Pin::new("GPIO6").into(),
-            te2: Pin::new("GPIO7").into(),
-            te3: Pin::new("GPIO8").into(),
-            battery_latch: Pin::new("GPIO9").into(),
+            te2: Pin::new("GPIO23").into(),
+            te3: Pin::new("GPIO24").into(),
+            battery_latch: Pin::new("GPIO13").into(),
         }
     }
 }
