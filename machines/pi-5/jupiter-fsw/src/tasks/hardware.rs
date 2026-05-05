@@ -39,7 +39,7 @@ impl GpioHardware {
             te1: Pin::new("GPIO6").into(),
             te2: Pin::new("GPIO23").into(),
             te3: Pin::new("GPIO24").into(),
-            battery_latch: Pin::new("GPIO13").into(),
+            battery_latch: Pin::new("GPIO26").into(),
         }
     }
 }

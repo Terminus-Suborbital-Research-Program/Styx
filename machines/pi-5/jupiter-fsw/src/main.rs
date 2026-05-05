@@ -35,6 +35,9 @@ use tasks::{RbfTask, GpioHardware, GuardMonitor};
 use bin_packets::commands::CommandPacket;
 use avionics::imu::{AvionicsImuManager, IMUError};
 
+
+pub const CAM_ON_PIN: &str = "GPIO18"; // G3
+
 static SERIAL_PORT: &str = "/dev/ttyS0";
 
 fn main() {
@@ -61,7 +64,13 @@ fn main() {
     let ejection_pin: WritePin = Pin::new(EJECTION_IND_PIN).into();
     if let Err(e) = ejection_pin.write(false) {
         error!("Failed to set ejection pin low on boot: {:?}", e);
-    }
+    }    
+    
+    let cam_pin: WritePin = Pin::new(CAM_ON_PIN).into();
+     if let Err(e) = cam_pin.write(true) {
+        error!("Failed to set ejection pin low on boot: {:?}", e);
+    }    
+
 
     #[cfg(feature = "legacy_atmega")]
     let hardware = {
