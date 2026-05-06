@@ -198,12 +198,13 @@ fn main() {
         state_machine.update();
         color_status.feed_jupiter_state_machine(state_machine.phase());
 
-        let rgb_options = color_status.current_status();
-        let current_rgb_options = color_status.current_status();
+        // let rgb_options = color_status.current_status();
 
         let now = Instant::now();
 
         if now.duration_since(last_update) >= status_interval {
+            let current_rgb_options = color_status.current_status();
+
              // Send new rgb colors on state change
             // if current_rgb_options != last_rgb_options {
             info!("Status update");

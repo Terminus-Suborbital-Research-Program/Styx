@@ -48,6 +48,7 @@ pub struct ExperimentColorState {
     latest_infratracker: Option<Instant>,
     latest_avionics: Option<Instant>,
     latest_phase: JupiterPhase,
+    toggle: bool
 }   
 
 impl ExperimentColorState {
@@ -58,6 +59,7 @@ impl ExperimentColorState {
             latest_infratracker: None,
             latest_avionics: None,
             latest_phase: JupiterPhase::PowerOn,
+            toggle: false,
         }
     }
 
@@ -74,7 +76,7 @@ impl ExperimentColorState {
         latest.is_some_and(|t| now.duration_since(t) <= STATUS_TIMEOUT)
     }
 
-    pub fn current_status(&self) -> RGBOptions {
+    pub fn current_status(&mut self) -> RGBOptions {
         let now = Instant::now();
 
         let thermo_active = Self::is_active(self.latest_thermocouple, now);
@@ -88,13 +90,15 @@ impl ExperimentColorState {
             (false, true)  => COLOR_PINK,
             (false, false) => COLOR_OFF,
         };
+
+        self.toggle = !self.toggle;
         
         RGBOptions { 
             RBF: None, 
             HaLow: None, 
             Esp: None, 
-            Infratracker: if infra_active { COLOR_CYAN } else { COLOR_OFF }, 
-            Guard: guard_color, 
+            Infratracker: if infra_active && self.toggle { COLOR_CYAN } else { COLOR_OFF }, 
+            Guard: if self.toggle {guard_color} else {COLOR_OFF},
             Jupiter: match self.latest_phase {
                 JupiterPhase::PowerOn => COLOR_GREEN,
                 JupiterPhase::Launch => COLOR_GREEN,
