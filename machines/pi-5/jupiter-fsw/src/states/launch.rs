@@ -1,7 +1,7 @@
 use bin_packets::phases::JupiterPhase;
 use embedded_hal::digital::PinState;
 
-use crate::states::{secondary_cam::StartCameraRecording,}; //skirt_seperation::SkirtSeperation};
+use crate::{states::secondary_cam::StartCameraRecording, tasks::BoardHardware}; //skirt_seperation::SkirtSeperation};
 
 use super::traits::{StateContext, ValidState};
 
@@ -19,6 +19,7 @@ impl ValidState for Launch {
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
         if ctx.t_time >= 60 {
             info!("60 seconds since launch, start cam");
+            ctx.hardware.cams_on();
             return Box::new(StartCameraRecording::default());
         } else {
             return Box::new(Self::default());
