@@ -24,7 +24,7 @@ const STAR_TRACKER_DIR: &str = "/home/terminus/basler/";
 
 // capture image and solve every 1Hz or 1000 millis
 // Save will happen no matter what but solve can be delayed
-const CAPTURE_RATE: u64 = 1000;
+const CAPTURE_RATE: u64 = 17;
 
 lazy_static! {
     pub static ref TRACKING: AtomicBool = AtomicBool::new(false);

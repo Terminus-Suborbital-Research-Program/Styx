@@ -20,6 +20,7 @@ use gpio::{Pin, read::ReadPin, write::WritePin};
 use i2cdev::linux::LinuxI2CDevice;
 use states::JupiterStateMachine;
 use tasks::{Atmega, spawn_camera_thread, InfratrackerThread};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 mod avionics;
 mod constants;
@@ -31,7 +32,7 @@ mod timing;
 
 use data::status::ExperimentColorState;
 use log::{error, info};
-use tasks::{RbfTask, GpioHardware, GuardMonitor};
+use tasks::{RbfTask, GpioHardware, GuardMonitor, TRACKING};
 use bin_packets::commands::CommandPacket;
 use avionics::imu::{AvionicsImuManager, IMUError};
 
@@ -84,7 +85,8 @@ fn main() {
     let hardware = GpioHardware::new();
 
     // Main camera
-    spawn_camera_thread();
+    // spawn_camera_thread();
+    TRACKING.store(true, Ordering::Relaxed);
 
     let mut avionics = match AvionicsImuManager::new() {
         Ok(manager) => {
