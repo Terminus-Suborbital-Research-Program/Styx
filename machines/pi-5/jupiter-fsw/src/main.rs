@@ -86,7 +86,7 @@ fn main() {
 
     // Main camera
     // spawn_camera_thread();
-    TRACKING.store(true, Ordering::Relaxed);
+    // TRACKING.store(true, Ordering::Relaxed);
 
     let mut avionics = match AvionicsImuManager::new() {
         Ok(manager) => {
