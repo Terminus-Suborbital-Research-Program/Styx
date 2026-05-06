@@ -167,16 +167,8 @@ impl InfratrackerThread {
                                             // But infratracker particularly has to deal with large rotations
                                             // so it's likely it will just have to stay in LOST IN SPACE mode 
                                             // the entire times
-                                            match result_rx.recv_timeout(Duration::from_millis(600)) {
-                                                Ok((ret_stamp, Some(quaternion))) if ret_stamp == timestamp => {
-                                                    self.send_packet(timestamp, quaternion);
-                                                }
-                                                Ok(_) | Err(RecvTimeoutError::Timeout) => {
-                                                    error!("Solver thread timeout! Skipping telemetry.");
-                                                }
-                                                Err(RecvTimeoutError::Disconnected) => {
-                                                    error!("Solver thread crashed!");
-                                                }
+                                            while let Ok((ret_stamp, Some(quaternion))) = result_rx.try_recv() {
+                                                self.send_packet(timestamp, quaternion);
                                             }
                                         }
                                         Err(TrySendError::Full(_)) => {
