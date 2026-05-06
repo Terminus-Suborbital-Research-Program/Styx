@@ -281,17 +281,17 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     // let dim_white   = Color([30, 30, 30]);
     // let off         = Color([0, 0, 0]);
 
-    let dim_red     = RGB8::new(50, 0, 0);
-    let dim_green   = RGB8::new(0, 50, 0);
-    let dim_blue    = RGB8::new(0, 0, 50);
+    let dim_red     = RGB8::new(0, 0, 0);
+    let dim_green   = RGB8::new(0, 0, 0);
+    let dim_blue    = RGB8::new(0, 0, 0);
 
-    let dim_yellow  = RGB8::new(40, 40, 0);
-    let dim_cyan    = RGB8::new(0, 40, 40);
-    let dim_magenta = RGB8::new(40, 0, 40);
+    let dim_yellow  = RGB8::new(0, 0, 0);
+    let dim_cyan    = RGB8::new(0, 0, 0);
+    let dim_magenta = RGB8::new(0, 0, 0);
 
-    let dim_orange  = RGB8::new(50, 20, 0);
-    let dim_purple  = RGB8::new(25, 0, 50);
-    let dim_white   = RGB8::new(30, 30, 30);
+    let dim_orange  = RGB8::new(0, 0, 0);
+    let dim_purple  = RGB8::new(0, 0, 0);
+    let dim_white   =RGB8::new(0, 0, 0);
     let off         = RGB8::new(0, 0, 0);
 
 
@@ -307,7 +307,9 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         dim_orange,
         dim_purple,
         dim_white,
-        off
+        off,
+        off,
+        off,
     ];
 
     rgb_driver.write(current_colors.iter().cloned()).unwrap();
@@ -333,15 +335,15 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     // Tasks
 
-    // poll_rbf::spawn().ok();
+    poll_rbf::spawn().ok();
     heartbeat::spawn().ok();
-    // ejector_sequencer::spawn().ok();
+    ejector_sequencer::spawn().ok();
     // camera_sequencer::spawn().ok();
     poll_temperature::spawn().ok();
-    // downlink_jupiter::spawn().ok();
+    downlink_jupiter::spawn().ok();
     // write_sd_card::spawn().ok();
     // rgb_driver.send_color([Color::red()]);
-
+    rx_from_jupiter::spawn().ok();
     set_rgb_status::spawn().ok();
 
     (

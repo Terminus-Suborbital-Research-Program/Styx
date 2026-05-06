@@ -16,6 +16,7 @@ use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
 use embedded_io::{Read, ReadReady, Write};
 use fugit::ExtU64;
 use heapless::{deque::DequeInner, vec::ViewVecStorage, Deque, Vec};
+use rp235x_pac::hstx_fifo::stat;
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use tinyframe::frame::Frame;
@@ -38,10 +39,13 @@ static LOCAL_MAGNET_STATE: AtomicU8 = AtomicU8::new(0);
 static LOCAL_SERVO_STATE: AtomicU8 = AtomicU8::new(0); 
 static LOCAL_RX_ALIVE: AtomicBool = AtomicBool::new(false);
 
+static STATUS_UPDATE: AtomicBool = AtomicBool::new(false);
+
+
 
 
 #[cfg(not(feature = "fast-startup"))]
-const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 180;
+const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 5;
 /// Constant to prevent ejector from interfering with JUPITER's u-boot sequence
 #[cfg(feature = "fast-startup")]
 const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 10;
@@ -57,6 +61,7 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     // Still blink, but toggle as it is done
     loop {
         // onboard_led.toggle().unwrap();
+        // info!("Heartbeat");
         LOCAL_RX_ALIVE.store(true, Ordering::Relaxed);
         if Mono::now().duration_since_epoch().to_secs() > JUPITER_BOOT_LOCKOUT_TIME_SECONDS {
             let status = Status::new(DeviceIdentifier::Ejector, now_timestamp(), sequence_number);
@@ -191,7 +196,7 @@ pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
         match sensor.read_hot_junction() {
             Ok(temp) => {
                 let time_stamp = now_timestamp();
-                info!("Thermocouple Temperature: {} C", temp);
+                // info!("Thermocouple Temperature: {} C", temp);
 
                 let thermo_packet = ApplicationPacket::ThermocoupleData { 
                     timestamp: time_stamp.nanos(), 
@@ -237,6 +242,8 @@ pub async fn poll_rbf(mut ctx: poll_rbf::Context<'_>) {
             ctx.shared.ejection_enabled.lock(|blocked| *blocked = true);
             LOCAL_RBF_IN.store(false, Ordering::Relaxed);
         }
+        Mono::delay(3000_u64.millis()).await;
+
     }
 }
 
@@ -316,6 +323,7 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
                     ApplicationPacket::Command(CommandPacket::ColorSet(status_options)),
                     bytes_used,
                 )) => {
+                    info!("Color command");
                     ctx.shared.status_config.lock(|status_config| {
                         status_config.update_from_options(status_options);
                     });
@@ -325,6 +333,7 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
                         rx_buf.copy_within(bytes_used..idx, 0);
                     }
                     idx = remaining;
+                    STATUS_UPDATE.store(true, Ordering::Relaxed);
                 }
 
                 // This would be way better with just a pin toggle
@@ -334,6 +343,7 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
                     )),
                     bytes_used,
                 )) => {
+                    info!("Ejector phase set");
                     ctx.local.ejection_trigger_tx.write(());
 
                     let remaining = idx - bytes_used;
@@ -345,6 +355,7 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
 
                 // Successfully decoded a packet, but it's not a ColorSet command
                 Ok((_, bytes_used)) => {
+                    info!("Other");
                     let remaining = idx - bytes_used;
                     if remaining > 0 {
                         rx_buf.copy_within(bytes_used..idx, 0);
@@ -354,11 +365,13 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
 
                 // Incomplete packet: wait for more bytes on the next loop
                 Err(bincode::error::DecodeError::UnexpectedEnd { .. }) => {
+                    error!("Decode error");
                     break;
                 }
 
                 // Corrupt data, so drop the oldest byte and slide the window to resync
                 Err(_) => {
+                    error!("corrupt data error");
                     rx_buf.copy_within(1..idx, 0);
                     idx -= 1;
                 }
@@ -376,8 +389,10 @@ pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
 
     let mut blink_toggle = false;
     let mut rx_timeout_counter: u8 = 0;
+    let mut feed = 0;
 
     loop {
+
         
         let mut current_colors = ctx.shared.status_config.lock(|status| {
             [
@@ -396,10 +411,44 @@ pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
             ]
         });
 
+        if STATUS_UPDATE.load(Ordering::Relaxed) {
+            feed = 0;
+            STATUS_UPDATE.store(false, Ordering::Relaxed)
+        }
+
+
+        if feed >= 10 {
+            // Infratracker
+            current_colors[3] = COLOR_OFF;
+            
+            // Guard
+            current_colors[4] = COLOR_OFF;
+
+            // Jupiter State machine
+            current_colors[5] = COLOR_OFF;
+
+            // Jupiter Avionics
+            current_colors[8] = COLOR_OFF;
+        }
+        feed += 1;
+
+
+        
+        info!("Color update");
+
+        // Infratracker blink
+        current_colors[3] = if blink_toggle { current_colors[3] } else { COLOR_OFF };
+
+        // Guard blink
+        current_colors[4] = if blink_toggle { current_colors[4] } else { COLOR_OFF };
+        
+
+
         apply_local_states(&mut current_colors, blink_toggle, &mut rx_timeout_counter);
 
         rgb_driver.write(current_colors.iter().cloned()).unwrap();
 
+        blink_toggle = !blink_toggle;
         Mono::delay(1000_u64.millis()).await;
     }
 }

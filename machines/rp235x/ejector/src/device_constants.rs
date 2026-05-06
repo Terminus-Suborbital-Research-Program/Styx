@@ -184,18 +184,18 @@ impl Default for RGBStatus {
         let off         = RGB8::new(0, 0, 0);
         
         Self {
-            RBF: dim_red,
-            HaLow: dim_green,
-            Esp: dim_blue,
-            Infratracker: dim_yellow,
-            Guard: dim_cyan,
-            Jupiter: dim_magenta,
-            ElectroMagnet: dim_orange,
-            Servos: dim_purple,
-            Jupiter_Avionics_Health: dim_white,
+            RBF: off,
+            HaLow: off,
+            Esp: off,
+            Infratracker: off,
+            Guard: off,
+            Jupiter: off,
+            ElectroMagnet: off,
+            Servos: off,
+            Jupiter_Avionics_Health: off,
             Ejector_Health: off,
-            Odin_Compute_Health: dim_orange,
-            Odin_Pico_Health: dim_cyan,
+            Odin_Compute_Health: off,
+            Odin_Pico_Health: off,
         }
     }
 }
