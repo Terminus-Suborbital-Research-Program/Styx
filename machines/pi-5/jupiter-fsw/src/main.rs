@@ -116,7 +116,7 @@ fn main() {
     let mut last_rgb_options = color_status.current_status();
 
     let mut last_update = Instant::now();
-    let status_interval: Duration::from_millis(STATUS_INTERVAL);
+    let status_interval = Duration::from_millis(STATUS_INTERVAL);
 
     loop {
         if let Some(iface) = &mut interface {
