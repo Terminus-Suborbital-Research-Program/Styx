@@ -32,7 +32,7 @@ mod timing;
 
 use data::status::ExperimentColorState;
 use log::{error, info};
-use tasks::{RbfTask, GpioHardware, GuardMonitor, TRACKING};
+use tasks::{RbfTask, GpioHardware, LogMonitor, TRACKING};
 use bin_packets::commands::CommandPacket;
 use avionics::imu::{AvionicsImuManager, IMUError};
 
@@ -113,11 +113,14 @@ fn main() {
 
     let mut color_status = ExperimentColorState::new();
 
-    let mut guard_monitor = GuardMonitor::new("/home/terminus/rad_data", 3);
+    let mut guard_monitor = LogMonitor::new("/home/terminus/rad_data", 3);
+
+    let mut infratracker_monitor = LogMonitor::new("/home/terminus/basler", 3);
+
 
     let mut last_rgb_options = color_status.current_status();
 
-    // let mut last_update = Instant::now();
+    let mut last_update = Instant::now();
     let status_interval = Duration::from_millis(STATUS_INTERVAL);
 
     loop {
@@ -142,12 +145,20 @@ fn main() {
         }
 
         // Update geiger feed either if we get a geiger packet through serial, or have file update
-        guard_monitor.update(&mut color_status);
+        if guard_monitor.is_updated() {
+            color_status.feed_geiger();
+        }
+
+
+        if infratracker_monitor.is_updated() {
+            color_status.feed_infratracker();
+        }
+
+
 
         while let Ok(quat) = infratracker_packet_rx.try_recv() {
             info!("Infratracker alive");
 
-            color_status.feed_infratracker();
             onboard_packet_storage.write(quat); // Write quat to the onboard storage
             #[cfg(feature = "packet_logging")]
             info!("Got a infratracker packet: {quat:?}");
@@ -202,25 +213,25 @@ fn main() {
 
         let rgb_options = color_status.current_status();
 
-        // let now = Instant::now();
+        let now = Instant::now();
 
-        // if now.duration_since(last_update) >= status_interval {
+        if now.duration_since(last_update) >= status_interval {
         let current_rgb_options = color_status.current_status();
 
         // Send new rgb colors on state change
-        if current_rgb_options != last_rgb_options {
+        // if current_rgb_options != last_rgb_options {
             info!("Status update");
             if let Some(iface) = &mut interface {
                 if let Err(e) = iface.write(ApplicationPacket::Command(CommandPacket::ColorSet(current_rgb_options))) {
                     error!("Failed to write color packet down: {e}");
                 }
             }
-            // last_update = now;
-        // }
+            last_update = now;
+        }
 
        
-            last_rgb_options = current_rgb_options;
-        }
+        //     last_rgb_options = current_rgb_options;
+        // }
 
         if counter % 10 == 0 {
             info!(
