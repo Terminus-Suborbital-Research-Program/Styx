@@ -115,7 +115,7 @@ fn main() {
 
     let mut last_rgb_options = color_status.current_status();
 
-    let mut last_update = Instant::now();
+    // let mut last_update = Instant::now();
     let status_interval = Duration::from_millis(STATUS_INTERVAL);
 
     loop {
@@ -198,27 +198,27 @@ fn main() {
         state_machine.update();
         color_status.feed_jupiter_state_machine(state_machine.phase());
 
-        // let rgb_options = color_status.current_status();
+        let rgb_options = color_status.current_status();
 
-        let now = Instant::now();
+        // let now = Instant::now();
 
-        if now.duration_since(last_update) >= status_interval {
-            let current_rgb_options = color_status.current_status();
+        // if now.duration_since(last_update) >= status_interval {
+        let current_rgb_options = color_status.current_status();
 
-             // Send new rgb colors on state change
-            // if current_rgb_options != last_rgb_options {
+        // Send new rgb colors on state change
+        if current_rgb_options != last_rgb_options {
             info!("Status update");
             if let Some(iface) = &mut interface {
                 if let Err(e) = iface.write(ApplicationPacket::Command(CommandPacket::ColorSet(current_rgb_options))) {
                     error!("Failed to write color packet down: {e}");
                 }
             }
-            last_update = now;
-        }
+            // last_update = now;
+        // }
 
        
-            // last_rgb_options = current_rgb_options;
-        // }
+            last_rgb_options = current_rgb_options;
+        }
 
         if counter % 10 == 0 {
             info!(
