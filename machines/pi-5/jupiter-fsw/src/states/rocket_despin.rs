@@ -23,7 +23,7 @@ impl RocketDespin {
         // 78 - skirt sep finish
 
         // TE 3 - 30 second to powerdown - t + 347
-        timing::calibrate_to(68);
+        timing::calibrate_to(78);
         Self {
             te3_recieved_at: t_time_estimate(),
         }
