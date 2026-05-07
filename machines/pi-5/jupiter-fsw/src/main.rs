@@ -130,7 +130,7 @@ fn main() {
                     ApplicationPacket::GeigerData { timestamp_ms: _, recorded_pulses: _ } => {
                         color_status.feed_geiger();
                     }
-                    ApplicationPacket::ThermocoupleData { timestamp: _, hot_junction_temp: _ }=> {
+                    ApplicationPacket::ThermocoupleData { timestamp: _, channel: _, hot_junction_temp: _ }=> {
                         color_status.feed_thermocouple();
                     }
                     _ => {}
