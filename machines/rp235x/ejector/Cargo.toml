@@ -48,7 +48,7 @@ embedded-hal-bus = "*"
 
 ws2812-pio = { git = "https://github.com/Ethan-Pascuales/ws2812-pio-rs.git" }
 smart-leds = "0.4.0"
-
+bme280 = { git = "https://github.com/VersBinarii/bme280-rs.git" }
 
 
 # Target features

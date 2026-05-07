@@ -183,13 +183,24 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
 ///
 /// Timing: Every second
 pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
-    let manager = &mut ctx.local.tc_manager;
+    let manager = &mut ctx.local.sensor_manager;
 
     loop {
         let time_stamp = now_timestamp().nanos();
         
         // Get max of 5 packets
-        let packets = manager.poll_all_packets(time_stamp);
+        let packets = manager.poll_thermocouples(time_stamp);
+
+        match manager.poll_bme280(time_stamp) {
+            Some(packet) => {
+                //  ctx.shared
+                // .downlink_packets
+                // .lock(|q| q.push_back(packet).ok());
+                info!("BME Packet retrieved, {:?}",packet )
+            }
+            None => error!("Failed to poll bme280")
+        }
+
 
         for packet in packets {
             if let ApplicationPacket::ThermocoupleData { channel, hot_junction_temp, .. } = &packet {

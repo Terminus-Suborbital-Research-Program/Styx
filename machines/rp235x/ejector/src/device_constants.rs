@@ -269,29 +269,31 @@ impl ServoState {
 
 
 // Thermo struct:
-
 use mcp9600::{
     ADCResolution, BurstModeSamples, ColdJunctionResolution, DeviceAddr, FilterCoefficient,
     ShutdownMode, ThermocoupleType, MCP9600,
 };
+use bme280::i2c::BME280;
 use bin_packets::packets::ApplicationPacket;
-use defmt::{info, warn};
+use defmt::{warn, error};
 use heapless::Vec;
+
 
 pub struct ThermocoupleChannel {
     pub id: u8,
     pub address: DeviceAddr,
 }
 
-pub struct ThermocoupleManager {
+pub struct SensorI2cManager {
     pub bus: ThermoI2cBus,
-    pub channels: [ThermocoupleChannel; 5],
+    pub tc_channels: [ThermocoupleChannel; 5],
+    pub timer: Timer<CopyableTimer1>,
 }
 
-impl ThermocoupleManager {
-    pub fn new(mut bus: ThermoI2cBus) -> Self {
+impl SensorI2cManager {
+    pub fn new(mut bus: ThermoI2cBus, timer: Timer<CopyableTimer1>) -> Self {
         // Ids mapped from lowest id to lowest addr, and upwards
-        let channels = [
+        let tc_channels = [
             ThermocoupleChannel { id: 1, address: DeviceAddr::AD3 },
             ThermocoupleChannel { id: 2, address: DeviceAddr::AD4 },
             ThermocoupleChannel { id: 3, address: DeviceAddr::AD5 },
@@ -299,8 +301,8 @@ impl ThermocoupleManager {
             ThermocoupleChannel { id: 5, address: DeviceAddr::AD7 },
         ];
 
-        // Temporarily instantiate driver to configrure
-        for ch in &channels {
+        // Temporarily instantiate driver to configure
+        for ch in &tc_channels {
             if let Ok(mut sensor) = MCP9600::new(&mut bus, ch.address) {
                 let _ = sensor.set_sensor_configuration(ThermocoupleType::TypeK, FilterCoefficient::FilterMedium);
                 let _ = sensor.set_device_configuration(
@@ -314,15 +316,16 @@ impl ThermocoupleManager {
             }
         }
 
-        Self { bus, channels }
+        Self { bus, tc_channels, timer }
     }
 
-    pub fn poll_all_packets(&mut self, timestamp: u64) -> Vec<ApplicationPacket, 5> {
+    /// Read all 5 thermocouples
+    pub fn poll_thermocouples(&mut self, timestamp: u64) -> Vec<ApplicationPacket, 5> {
         let mut packets = Vec::new();
         
-        // Re-instantiate ebcause mcp9600 is literally just a ref to an i2c bus, and the address to send to. 
+        // Re-instantiate because mcp9600 is literally just a ref to an i2c bus, and the address to send to. 
         // This way we don't have to deal with any locks or sharing abstractions around the bus 
-        for ch in &self.channels {
+        for ch in &self.tc_channels {
             if let Ok(mut sensor) = MCP9600::new(&mut self.bus, ch.address) {
                 match sensor.read_hot_junction() {
                     Ok(temp) => {
@@ -337,5 +340,23 @@ impl ThermocoupleManager {
             }
         }
         packets
+    }
+
+    pub fn poll_bme280(&mut self, timestamp: u64) -> Option<ApplicationPacket> {
+        let mut bme = BME280::new_primary(&mut self.bus);
+        
+        if bme.init(&mut self.timer).is_ok() {
+            if let Ok(measurements) = bme.measure(&mut self.timer) {
+                return Some(ApplicationPacket::EnvironmentData {
+                    timestamp,
+                    temperature: measurements.temperature,
+                    pressure: measurements.pressure,
+                    humidity: measurements.humidity,
+                });
+            }
+        }
+        
+        warn!("Failed to read BME280");
+        None
     }
 }

@@ -37,7 +37,7 @@ use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
 use crate::device_constants::pins::{CamMosfetPin, RBFPin};
 use crate::device_constants::{
     Cam1, Cam1Pin, Cam2, EjectionDetectionPin, JupiterUart, RGBLed, RGBStatus, ThermoI2CSclPin,
-    ThermoI2CSdaPin, ThermoI2cBus, SAMPLE_COUNT, ThermocoupleManager
+    ThermoI2CSdaPin, ThermoI2cBus, SAMPLE_COUNT, SensorI2cManager
 };
 use crate::{app::*, Mono};
 use crate::{hal, sd_card};
@@ -139,7 +139,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
  
 
     // Let the manager handle the configuring of all 5 addresses
-    let tc_manager = ThermocoupleManager::new(thermo_i2c_bus);
+    let sensor_manager = SensorI2cManager::new(thermo_i2c_bus, timer.clone());
 
     // adc.free_running(&gegier_pin);
     // loop {
@@ -171,7 +171,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     let sd_card = sd_card::EjectorSdCard::new(spi, timer.clone());
 
-    let mut timer_two = timer;
 
     // Jupiter downlink UART
     let jupiter_uart: JupiterUart = UartPeripheral::new(
@@ -323,7 +322,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     poll_temperature::spawn().ok();
     downlink_jupiter::spawn().ok();
     // write_sd_card::spawn().ok();
-    // rgb_driver.send_color([Color::red()]);
     rx_from_jupiter::spawn().ok();
     set_rgb_status::spawn().ok();
 
@@ -346,7 +344,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             ejecctor_magnet: ejector_magnet,
             // arming_led: red_led_pin,
             // packet_led: packet_indicator,
-            tc_manager,
+            sensor_manager,
             rgb_driver,
             ejection_trigger_tx,
             ejection_trigger_rx,
