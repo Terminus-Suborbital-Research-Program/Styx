@@ -114,7 +114,7 @@ impl AvionicsImuManager {
         // }
 
         if let Ok(bmi_accel) = self.bmi.read_accel_data_scaled() {
-            info!("Low-G (BMI323): x={}, y={}, z={}", bmi_accel.x, bmi_accel.y, bmi_accel.z);
+            // info!("Low-G (BMI323): x={}, y={}, z={}", bmi_accel.x, bmi_accel.y, bmi_accel.z);
             
             results.low_range = Some(ApplicationPacket::AccelerometerData { 
                 timestamp: timestamp_ms, 
@@ -123,11 +123,11 @@ impl AvionicsImuManager {
                 z: bmi_accel.z
             });
         } else {
-            error!("Failed to read Low-G BMI323 Accelerometer");
+            // error!("Failed to read Low-G BMI323 Accelerometer");
         }
 
         if let Ok(bmi_gyro) = self.bmi.read_gyro_data_scaled() {
-            info!("Gyro (BMI323): x={}, y={}, z={}", bmi_gyro.x, bmi_gyro.y, bmi_gyro.z);
+            // info!("Gyro (BMI323): x={}, y={}, z={}", bmi_gyro.x, bmi_gyro.y, bmi_gyro.z);
             
             results.gyro = Some(ApplicationPacket::GyroscopeData { 
                 timestamp: timestamp_ms, 
@@ -136,7 +136,7 @@ impl AvionicsImuManager {
                 z: bmi_gyro.z
             });
         } else {
-            error!("Failed to read BMI323 Gyroscope");
+            // error!("Failed to read BMI323 Gyroscope");
         }
 
         results
