@@ -54,13 +54,13 @@ impl HighGAccel {
 
 pub struct AvionicsImuManager {
     bmi: Bmi323<I2cInterface<I2cdev>, Delay>,
-    high_g: HighGAccel,
+    // high_g: HighGAccel,
 }
 
 
 #[derive(Default)]
 pub struct IMU_Results {
-    pub high_range: Option<ApplicationPacket>,
+    // pub high_range: Option<ApplicationPacket>,
     pub low_range: Option<ApplicationPacket>,
     pub gyro: Option<ApplicationPacket>,
 }
@@ -68,10 +68,10 @@ pub struct IMU_Results {
 impl AvionicsImuManager {
     pub fn new() -> Result<Self, IMUError> {
         let i2c_bmi = I2cdev::new("/dev/i2c-1").map_err(I2CError::from)?;
-        let i2c_adxl = I2cdev::new("/dev/i2c-1").map_err(I2CError::from)?;
+        // let i2c_adxl = I2cdev::new("/dev/i2c-1").map_err(I2CError::from)?;
 
-        let adxl_device = AdxlDevice::new(i2c_adxl)?;
-        let high_g = HighGAccel::new(adxl_device);
+        // let adxl_device = AdxlDevice::new(i2c_adxl)?;
+        // let high_g = HighGAccel::new(adxl_device);
 
         let delay = Delay; 
         let mut bmi = Bmi323::new_with_i2c(i2c_bmi, 0x68, delay);
@@ -89,7 +89,9 @@ impl AvionicsImuManager {
             .build();
         bmi.set_gyro_config(gyro_config)?;
 
-        Ok(Self { bmi, high_g })
+        Ok(Self { bmi
+            // , high_g 
+        })
     }
 
     pub fn read_all(&mut self, startup: std::time::Instant) -> IMU_Results {
@@ -100,16 +102,16 @@ impl AvionicsImuManager {
                             .duration_since(startup)
                             .as_millis() as u64;
         
-        if let Ok(adxl_data) = self.high_g.read_data() {
-            info!("High-G (ADXL375): x={}, y={}, z={}", adxl_data[0], adxl_data[1], adxl_data[2]);
+        // if let Ok(adxl_data) = self.high_g.read_data() {
+        //     info!("High-G (ADXL375): x={}, y={}, z={}", adxl_data[0], adxl_data[1], adxl_data[2]);
             
-            results.high_range = Some(ApplicationPacket::JupiterAccelerometer {
-                timestamp_ms,
-                vector: adxl_data,
-            });
-        } else {
-            error!("Failed to read High-G ADXL375");
-        }
+        //     results.high_range = Some(ApplicationPacket::JupiterAccelerometer {
+        //         timestamp_ms,
+        //         vector: adxl_data,
+        //     });
+        // } else {
+        //     error!("Failed to read High-G ADXL375");
+        // }
 
         if let Ok(bmi_accel) = self.bmi.read_accel_data_scaled() {
             info!("Low-G (BMI323): x={}, y={}, z={}", bmi_accel.x, bmi_accel.y, bmi_accel.z);

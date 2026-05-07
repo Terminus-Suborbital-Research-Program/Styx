@@ -166,16 +166,16 @@ fn main() {
             let imu_data = a.read_all(startup);
             let mut imu_alive = false;
 
-            if let Some(packet) = imu_data.high_range {
-                imu_alive = true;
-                onboard_packet_storage.write(packet.clone());
+            // if let Some(packet) = imu_data.high_range {
+            //     imu_alive = true;
+            //     onboard_packet_storage.write(packet.clone());
                 
-                #[cfg(feature = "packet_logging")]
-                info!("Got High-G Accel packet: {packet:?}");
-            } else {
-                #[cfg(feature = "packet_logging")]
-                error!("Read failure: High-G (ADXL375) missing from read_all");
-            }
+            //     #[cfg(feature = "packet_logging")]
+            //     info!("Got High-G Accel packet: {packet:?}");
+            // } else {
+            //     #[cfg(feature = "packet_logging")]
+            //     error!("Read failure: High-G (ADXL375) missing from read_all");
+            // }
 
             if let Some(packet) = imu_data.low_range {
                 imu_alive = true;
