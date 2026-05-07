@@ -8,6 +8,7 @@ pub trait BoardHardware {
     fn activate_latch(&mut self);
     fn idle_latch(&mut self);
     fn deactivate_latch(&mut self);
+    fn cams_on(&mut self);
 }
 
 impl BoardHardware for Atmega {
@@ -15,6 +16,7 @@ impl BoardHardware for Atmega {
     fn activate_latch(&mut self) { self.activate_latch() }
     fn idle_latch(&mut self) { self.idle_latch() }
     fn deactivate_latch(&mut self) { self.deactivate_latch() }
+    fn cams_on(&mut self) {}
 }
 
 // When directly reading through jupiter instead of having an atmega interface
@@ -27,19 +29,21 @@ pub struct GpioHardware {
     te2: ReadPin,
     te3: ReadPin,
     battery_latch: WritePin,
+    cam_active: WritePin,
 }
 
 impl GpioHardware {
     pub fn new() -> Self {
         Self {
-            gse1: Pin::new("GPIO2").into(),
-            gse2: Pin::new("GPIO3").into(),
+            gse1: Pin::new("GPIO6").into(),
+            gse2: Pin::new("GPIO25").into(),
             te_ra: Pin::new("GPIO4").into(),
             te_rb: Pin::new("GPIO5").into(),
             te1: Pin::new("GPIO6").into(),
-            te2: Pin::new("GPIO7").into(),
-            te3: Pin::new("GPIO8").into(),
-            battery_latch: Pin::new("GPIO9").into(),
+            te2: Pin::new("GPIO23").into(),
+            te3: Pin::new("GPIO24").into(),
+            battery_latch: Pin::new("GPIO26").into(),
+            cam_active: Pin::new("GPIO21").into(),
         }
     }
 }
@@ -63,6 +67,7 @@ impl BoardHardware for GpioHardware {
     fn activate_latch(&mut self) { self.battery_latch.write(true).ok(); }
     fn idle_latch(&mut self) {  }
     fn deactivate_latch(&mut self) { self.battery_latch.write(false).ok(); }
+    fn cams_on(&mut self) { self.cam_active.write(true).ok();  }
 }
 
 // Use conditional type alias so atmega and gpio can be switched out with just a config flag.

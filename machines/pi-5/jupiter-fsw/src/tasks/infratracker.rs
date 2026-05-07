@@ -24,7 +24,7 @@ const STAR_TRACKER_DIR: &str = "/home/terminus/basler/";
 
 // capture image and solve every 1Hz or 1000 millis
 // Save will happen no matter what but solve can be delayed
-const CAPTURE_RATE: u64 = 1000;
+const CAPTURE_RATE: u64 = 17;
 
 lazy_static! {
     pub static ref TRACKING: AtomicBool = AtomicBool::new(false);
@@ -167,16 +167,8 @@ impl InfratrackerThread {
                                             // But infratracker particularly has to deal with large rotations
                                             // so it's likely it will just have to stay in LOST IN SPACE mode 
                                             // the entire times
-                                            match result_rx.recv_timeout(Duration::from_millis(600)) {
-                                                Ok((ret_stamp, Some(quaternion))) if ret_stamp == timestamp => {
-                                                    self.send_packet(timestamp, quaternion);
-                                                }
-                                                Ok(_) | Err(RecvTimeoutError::Timeout) => {
-                                                    error!("Solver thread timeout! Skipping telemetry.");
-                                                }
-                                                Err(RecvTimeoutError::Disconnected) => {
-                                                    error!("Solver thread crashed!");
-                                                }
+                                            while let Ok((ret_stamp, Some(quaternion))) = result_rx.try_recv() {
+                                                self.send_packet(timestamp, quaternion);
                                             }
                                         }
                                         Err(TrySendError::Full(_)) => {

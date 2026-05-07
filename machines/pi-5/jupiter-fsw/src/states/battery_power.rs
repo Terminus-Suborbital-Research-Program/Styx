@@ -26,7 +26,6 @@ impl ValidState for BatteryPower {
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
         if ctx.t_time > POWEROFF_T_TIME_SECS {
             info!("Powering off latch");
-            ctx.hardware.deactivate_latch();
             Box::new(Shutdown::enter())
         } else {
             // No change

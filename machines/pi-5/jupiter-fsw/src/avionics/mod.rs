@@ -9,6 +9,7 @@ use std::string::FromUtf8Error;
 use std::fmt;
 
 pub mod lsm6dsl;
+pub mod imu;
 
 #[derive(Debug)]
 #[allow(dead_code)]
