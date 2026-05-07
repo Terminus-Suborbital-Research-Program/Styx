@@ -116,7 +116,7 @@ impl InfratrackerThread {
 
 
 
-                camera.stop_grabbing()?;
+                // camera.stop_grabbing()?;
 
                 // Cam loop
                 loop {
