@@ -45,7 +45,7 @@ static STATUS_UPDATE: AtomicBool = AtomicBool::new(false);
 
 
 #[cfg(not(feature = "fast-startup"))]
-const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 5;
+const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 40;
 /// Constant to prevent ejector from interfering with JUPITER's u-boot sequence
 #[cfg(feature = "fast-startup")]
 const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 10;
@@ -81,6 +81,8 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 pub async fn downlink_jupiter(mut ctx: downlink_jupiter::Context<'_>) {
     let mut enc_buf = [0u8; SCRATCH];
     let config = standard();
+    Mono::delay((JUPITER_BOOT_LOCKOUT_TIME_SECONDS * 1000).millis()).await;
+
     loop {
         let packet = ctx
             .shared
@@ -290,6 +292,7 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
 
     let mut rx_buf = [0u8; SCRATCH];
     let mut idx = 0;
+    Mono::delay((JUPITER_BOOT_LOCKOUT_TIME_SECONDS * 1000).millis()).await;
 
     loop {
         let mut data_received = false;
