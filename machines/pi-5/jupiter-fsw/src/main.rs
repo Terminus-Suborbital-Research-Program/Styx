@@ -131,8 +131,6 @@ fn main() {
                         color_status.feed_geiger();
                     }
                     ApplicationPacket::ThermocoupleData { timestamp: _, hot_junction_temp: _ }=> {
-                        info!("Avionics alive");
-
                         color_status.feed_thermocouple();
                     }
                     _ => {}
@@ -215,11 +213,10 @@ fn main() {
 
         let now = Instant::now();
 
-        if now.duration_since(last_update) >= status_interval {
-        let current_rgb_options = color_status.current_status();
-
         // Send new rgb colors on state change
-        // if current_rgb_options != last_rgb_options {
+        if now.duration_since(last_update) >= status_interval {
+            let current_rgb_options = color_status.current_status();
+
             info!("Status update");
             if let Some(iface) = &mut interface {
                 if let Err(e) = iface.write(ApplicationPacket::Command(CommandPacket::ColorSet(current_rgb_options))) {
@@ -228,10 +225,6 @@ fn main() {
             }
             last_update = now;
         }
-
-       
-        //     last_rgb_options = current_rgb_options;
-        // }
 
         if counter % 10 == 0 {
             info!(
