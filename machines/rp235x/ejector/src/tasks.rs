@@ -81,6 +81,8 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 pub async fn downlink_jupiter(mut ctx: downlink_jupiter::Context<'_>) {
     let mut enc_buf = [0u8; SCRATCH];
     let config = standard();
+    // Ejector lockout
+    Mono::delay(40000_u64.millis()).await;
     loop {
         let packet = ctx
             .shared
@@ -181,42 +183,28 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
 ///
 /// Timing: Every second
 pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
-    let sensor = &mut ctx.local.thermocouple;
-
-    info!("Mcp start");
-
-    let mut packet_count = 0;
-    let report_threshold = 5;
-
+    let manager = &mut ctx.local.tc_manager;
 
     loop {
-        // Report every fifth packet to Jupiter to update state machine.
-        // May change this to just do so for every packet but for now
-        // do not feel like cloning everything and doubling up on data.
-        match sensor.read_hot_junction() {
-            Ok(temp) => {
-                let time_stamp = now_timestamp();
-                // info!("Thermocouple Temperature: {} C", temp);
+        let time_stamp = now_timestamp().nanos();
+        
+        // Get max of 5 packets
+        let packets = manager.poll_all_packets(time_stamp);
 
-                let thermo_packet = ApplicationPacket::ThermocoupleData { 
-                    timestamp: time_stamp.nanos(), 
-                    hot_junction_temp: temp, 
-                };
-                packet_count += 1;
-
-                if packet_count >= report_threshold {
-                    ctx.shared
-                    .downlink_packets
-                    .lock(|q| q.push_back(thermo_packet.clone()).ok());
-                    packet_count = 0;
-                }
-                
-                ctx.shared
-                    .temp_store
-                    .lock(|store| store.push_back(thermo_packet).ok());
-
+        for packet in packets {
+            if let ApplicationPacket::ThermocoupleData { channel, hot_junction_temp, .. } = &packet {
+                info!("Thermocouple CH{}: {} C", channel, hot_junction_temp);
             }
-            Err(_) => warn!("Failed to read MCP9600 thermocouple"),
+
+
+            ctx.shared
+                .downlink_packets
+                .lock(|q| q.push_back(packet.clone()).ok());
+            
+            
+            ctx.shared
+                .temp_store
+                .lock(|store| store.push_back(packet).ok());
         }
 
         Mono::delay(1000_u64.millis()).await;
@@ -234,11 +222,11 @@ pub async fn poll_rbf(mut ctx: poll_rbf::Context<'_>) {
             .is_low()
             .expect("Failed to read the RBF pin state")
         {
-            info!("RBF pin is low, blocking ejection code...");
+            // info!("RBF pin is low, blocking ejection code...");
             ctx.shared.ejection_enabled.lock(|blocked| *blocked = false);
             LOCAL_RBF_IN.store(true, Ordering::Relaxed);
         } else {
-            info!("RBF pin is high, ejection code enabled.");
+            // info!("RBF pin is high, ejection code enabled.");
             ctx.shared.ejection_enabled.lock(|blocked| *blocked = true);
             LOCAL_RBF_IN.store(false, Ordering::Relaxed);
         }
@@ -290,6 +278,7 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
 
     let mut rx_buf = [0u8; SCRATCH];
     let mut idx = 0;
+    Mono::delay(40000_u64.millis()).await;
 
     loop {
         let mut data_received = false;
@@ -298,7 +287,7 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
         while jupiter_rx.read_ready().expect("RX Uart fault") {
             // Prevent buffer overflow if garbage data fills the array
             if idx >= SCRATCH {
-                error!("RX buffer overflow, dropping oldest byte");
+                // error!("RX buffer overflow, dropping oldest byte");
                 rx_buf.copy_within(1..idx, 0);
                 idx -= 1;
             }
@@ -310,7 +299,7 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
                 }
                 Ok(_) => break, // 0 bytes read
                 Err(_) => {
-                    error!("Error reading bytes from uart rx");
+                    // error!("Error reading bytes from uart rx");
                     break;
                 }
             }
@@ -323,7 +312,7 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
                     ApplicationPacket::Command(CommandPacket::ColorSet(status_options)),
                     bytes_used,
                 )) => {
-                    info!("Color command");
+                    // info!("Color command");
                     ctx.shared.status_config.lock(|status_config| {
                         status_config.update_from_options(status_options);
                     });
@@ -365,7 +354,7 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
 
                 // Incomplete packet: wait for more bytes on the next loop
                 Err(bincode::error::DecodeError::UnexpectedEnd { .. }) => {
-                    error!("Decode error");
+                    // error!("Decode error");
                     break;
                 }
 
@@ -434,7 +423,7 @@ pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
 
 
         
-        info!("Color update");
+        // info!("Color update");
 
         // Infratracker blink
         current_colors[3] = if blink_toggle { current_colors[3] } else { COLOR_OFF };

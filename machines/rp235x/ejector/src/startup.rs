@@ -37,7 +37,7 @@ use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
 use crate::device_constants::pins::{CamMosfetPin, RBFPin};
 use crate::device_constants::{
     Cam1, Cam1Pin, Cam2, EjectionDetectionPin, JupiterUart, RGBLed, RGBStatus, ThermoI2CSclPin,
-    ThermoI2CSdaPin, ThermoI2cBus, SAMPLE_COUNT,
+    ThermoI2CSdaPin, ThermoI2cBus, SAMPLE_COUNT, ThermocoupleManager
 };
 use crate::{app::*, Mono};
 use crate::{hal, sd_card};
@@ -121,21 +121,25 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         clocks.peripheral_clock.freq(),
     );
 
-    let mut thermocouple =
-        MCP9600::new(thermo_i2c_bus, DeviceAddr::AD7).expect("Failed to initialize MCP9600 struct");
+    // let mut thermocouple =
+    //     MCP9600::new(thermo_i2c_bus, DeviceAddr::AD7).expect("Failed to initialize MCP9600 struct");
 
-    if let Err(_) = thermocouple.set_sensor_configuration(ThermocoupleType::TypeK, FilterCoefficient::FilterMedium) {
-        warn!("MCP9600 missing or failed to set sensor config");
-    }
+    // if let Err(_) = thermocouple.set_sensor_configuration(ThermocoupleType::TypeK, FilterCoefficient::FilterMedium) {
+    //     warn!("MCP9600 missing or failed to set sensor config");
+    // }
 
-    if let Err(_) = thermocouple.set_device_configuration(
-        ColdJunctionResolution::High,
-        ADCResolution::Bit18,
-        BurstModeSamples::Sample1,
-        ShutdownMode::NormalMode,
-    ) {
-        warn!("MCP9600 missing or failed to set device config");
-    }
+    // if let Err(_) = thermocouple.set_device_configuration(
+    //     ColdJunctionResolution::High,
+    //     ADCResolution::Bit18,
+    //     BurstModeSamples::Sample1,
+    //     ShutdownMode::NormalMode,
+    // ) {
+    //     warn!("MCP9600 missing or failed to set device config");
+    // }
+ 
+
+    // Let the manager handle the configuring of all 5 addresses
+    let tc_manager = ThermocoupleManager::new(thermo_i2c_bus);
 
     // adc.free_running(&gegier_pin);
     // loop {
@@ -238,13 +242,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     // Functionality currently not enabled
     // let gpio_detect: EjectionDetectionPin = bank0_pins.gpio8.into_pull_down_input();
 
-    
-
-    // let rgb_ctl_pin: RGBLed = bank0_pins
-    //     .gpio24
-    //     // .gpio26
-    //     .into_pull_type::<PullNone>()
-    //     .into_push_pull_output();
 
     let mut rgb_wake = bank0_pins.gpio25.into_push_pull_output();
 
@@ -264,22 +261,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         clocks.peripheral_clock.freq(),
     );
 
-
-    // let sys_freq = clocks.system_clock.freq().to_Hz();
-    // let mut rgb_driver = WS2812::new(rgb_ctl_pin, (sys_freq / 2) as u64);
-   
-    // let dim_red     = Color([50, 0, 0]);
-    // let dim_green   = Color([0, 50, 0]);
-    // let dim_blue    = Color([0, 0, 50]);
-
-    // let dim_yellow  = Color([40, 40, 0]);
-    // let dim_cyan    = Color([0, 40, 40]);
-    // let dim_magenta = Color([40, 0, 40]);
-
-    // let dim_orange  = Color([50, 20, 0]);
-    // let dim_purple  = Color([25, 0, 50]);
-    // let dim_white   = Color([30, 30, 30]);
-    // let off         = Color([0, 0, 0]);
 
     let dim_red     = RGB8::new(0, 0, 0);
     let dim_green   = RGB8::new(0, 0, 0);
@@ -365,10 +346,11 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             ejecctor_magnet: ejector_magnet,
             // arming_led: red_led_pin,
             // packet_led: packet_indicator,
-            thermocouple,
+            tc_manager,
             rgb_driver,
             ejection_trigger_tx,
             ejection_trigger_rx,
+
         },
     )
 }

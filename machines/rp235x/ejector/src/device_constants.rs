@@ -265,3 +265,77 @@ impl ServoState {
         }
     }
 }
+
+
+
+// Thermo struct:
+
+use mcp9600::{
+    ADCResolution, BurstModeSamples, ColdJunctionResolution, DeviceAddr, FilterCoefficient,
+    ShutdownMode, ThermocoupleType, MCP9600,
+};
+use bin_packets::packets::ApplicationPacket;
+use defmt::{info, warn};
+use heapless::Vec;
+
+pub struct ThermocoupleChannel {
+    pub id: u8,
+    pub address: DeviceAddr,
+}
+
+pub struct ThermocoupleManager {
+    pub bus: ThermoI2cBus,
+    pub channels: [ThermocoupleChannel; 5],
+}
+
+impl ThermocoupleManager {
+    pub fn new(mut bus: ThermoI2cBus) -> Self {
+        // Ids mapped from lowest id to lowest addr, and upwards
+        let channels = [
+            ThermocoupleChannel { id: 1, address: DeviceAddr::AD3 },
+            ThermocoupleChannel { id: 2, address: DeviceAddr::AD4 },
+            ThermocoupleChannel { id: 3, address: DeviceAddr::AD5 },
+            ThermocoupleChannel { id: 4, address: DeviceAddr::AD6 },
+            ThermocoupleChannel { id: 5, address: DeviceAddr::AD7 },
+        ];
+
+        // Temporarily instantiate driver to configrure
+        for ch in &channels {
+            if let Ok(mut sensor) = MCP9600::new(&mut bus, ch.address) {
+                let _ = sensor.set_sensor_configuration(ThermocoupleType::TypeK, FilterCoefficient::FilterMedium);
+                let _ = sensor.set_device_configuration(
+                    ColdJunctionResolution::High,
+                    ADCResolution::Bit18,
+                    BurstModeSamples::Sample1,
+                    ShutdownMode::NormalMode,
+                );
+            } else {
+                warn!("Failed to initialize MCP9600 CH{} at address {:?}", ch.id, ch.address as u8);
+            }
+        }
+
+        Self { bus, channels }
+    }
+
+    pub fn poll_all_packets(&mut self, timestamp: u64) -> Vec<ApplicationPacket, 5> {
+        let mut packets = Vec::new();
+        
+        // Re-instantiate ebcause mcp9600 is literally just a ref to an i2c bus, and the address to send to. 
+        // This way we don't have to deal with any locks or sharing abstractions around the bus 
+        for ch in &self.channels {
+            if let Ok(mut sensor) = MCP9600::new(&mut self.bus, ch.address) {
+                match sensor.read_hot_junction() {
+                    Ok(temp) => {
+                        let _ = packets.push(ApplicationPacket::ThermocoupleData {
+                            timestamp,
+                            channel: ch.id,
+                            hot_junction_temp: temp,
+                        });
+                    }
+                    Err(_) => warn!("Failed to read MCP9600 CH{}", ch.id),
+                }
+            }
+        }
+        packets
+    }
+}

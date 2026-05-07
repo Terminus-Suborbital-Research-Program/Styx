@@ -161,7 +161,8 @@ mod app {
         // pub ejection_pin: EjectionDetectionPin,
         pub status_link: JupiterRX,
         pub camera_mosfet: CamMosfetPin,
-        pub thermocouple: MCP9600<ThermoI2cBus>,
+        // pub thermocouple: MCP9600<ThermoI2cBus>,
+        pub tc_manager: crate::device_constants::ThermocoupleManager,
         // pub rgb_driver: WS2812<RGBLed>,
         pub rgb_driver: Ws2812Direct<
             PIO0,
@@ -192,7 +193,7 @@ mod app {
         #[task(shared = [downlink_packets],  priority = 2)]
         async fn heartbeat(mut ctx: heartbeat::Context);
 
-        #[task( shared = [temp_store, downlink_packets], local = [thermocouple], priority = 1)]
+        #[task( shared = [temp_store, downlink_packets], local = [tc_manager], priority = 1)]
         async fn poll_temperature(mut ctx: poll_temperature::Context);
 
         #[task(shared = [downlink_packets], local = [downlink], priority = 2)]
