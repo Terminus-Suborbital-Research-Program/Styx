@@ -8,6 +8,7 @@ bindgen = "0.72.1"
 
 [dependencies]
 bin-packets = { path = "../../../common/messages/bin-packets", features = ["std"] }
+signet = { path="../../../common/signet"}
 env_logger = "0.11.7"
 get_if_addrs = "0.5.3"
 gpio = "0.4.1"

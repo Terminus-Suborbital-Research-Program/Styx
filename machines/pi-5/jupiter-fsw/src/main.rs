@@ -3,9 +3,11 @@
 //! TERMINUS RS-X 2026 Elara JUPITER Code
 
 use std::{
-    os::unix::thread, thread::sleep, time::{Duration, Instant}
+    os::unix::thread, thread::sleep, time::{Duration, Instant},
+    net::{TcpListener, TcpStream}
 };
-
+use std::fs::OpenOptions;
+use std::io::{BufWriter, Read, Write};
 use aether::color;
 use avionics::lsm6dsl::Lsm6DslAccel;
 use bin_packets::{
@@ -20,6 +22,8 @@ use gpio::{Pin, read::ReadPin, write::WritePin};
 use i2cdev::linux::LinuxI2CDevice;
 use states::JupiterStateMachine;
 use tasks::{Atmega, spawn_camera_thread, InfratrackerThread};
+
+use signet::sdr::radio_config::BUFF_SIZE;
 
 mod avionics;
 mod constants;
@@ -142,6 +146,71 @@ fn main() {
                 }
             }
         }
+
+        // JUPITER-ODIN Packet Comms
+        let sdr_listener = TcpListener::bind("127.0.0.1:7878").expect("Failed to bind");
+        info!("Recorder listening on 127.0.0.1:7878...");
+
+        let adcs_listener = TcpListener::bind("127.0.0.2:7878").expect("Failed to bind");
+        info!("Recorder listening on 127.0.0.2:7878...");
+
+        let mut sdr_buffer = [0u8; BUFF_SIZE * 10];
+        let mut adcs_buffer = [0u8; 1000];
+
+        for stream in sdr_listener.incoming() {
+            match stream {
+                Ok(mut stream) => {
+                    info!("Connection established: {:?}", stream.peer_addr());
+
+                    loop {
+                        match stream.read(&mut sdr_buffer) {
+                            Ok(0) => {
+                                info!("Sender disconnected. Closing file.");
+                                break;
+                            }
+                            Ok(bytes_read) => {
+                                if let Err(e) = onboard_packet_storage.write(&sdr_buffer[..bytes_read]) {
+                                    error!("Error writing encoded data {}", e);
+                                }
+                            }
+
+                            Err(e) => {
+                                error!("Error reading from socket{}", e);
+                            }
+                        }
+                    }
+                }
+                Err(e) => error!("Connection failed: {}", e),
+            }
+        }
+
+        for stream in adcs_listener.incoming() {
+            match stream {
+                Ok(mut stream) => {
+                    info!("Connection established: {:?}", stream.peer_addr());
+
+                    loop {
+                        match stream.read(&mut adcs_buffer) {
+                            Ok(0) => {
+                                info!("Sender disconnected. Closing file.");
+                                break;
+                            }
+                            Ok(bytes_read) => {
+                                if let Err(e) = onboard_packet_storage.write(&adcs_buffer[..bytes_read]) {
+                                    error!("Error writing encoded data {}", e);
+                                }
+                            }
+
+                            Err(e) => {
+                                error!("Error reading from socket{}", e);
+                            }
+                        }
+                    }
+                }
+                Err(e) => error!("Connection failed: {}", e),
+            }
+        }
+        ////
 
         state_machine.update();
         color_status.feed_jupiter_state_machine(state_machine.phase());

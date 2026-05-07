@@ -28,6 +28,7 @@ use signet::{
 };
 
 use bin_packets::data::adcs::AttitudeMetrics;
+use bin_packets::packets::ApplicationPacket;
 use bin_packets::time::Timestamp;
 
 
@@ -44,9 +45,15 @@ fn main() {
         .open()
         .expect("Failed to open UART port");
 
-    let (samples_producer, mut samples_consumer) = RingBuffer::<SdrPacketLog>::new(100);
+    let (sdr_samples_producer, mut sdr_samples_consumer) = RingBuffer::<SdrPacketLog>::new(100);
 
-    let _sampling_task = SDRListener::begin_sampling(samples_producer).unwrap();
+    // PLACEHOLDER: RingBuffer type should NOT be SdrPacketLog in the final product
+    let (adcs_samples_producer, mut adcs_samples_consumer) = RingBuffer::<SdrPacketLog>::new(100);
+
+    let _sdr_sampling_task = SDRListener::begin_sampling(sdr_samples_producer).unwrap();
+
+    // PLACEHOLDER
+    //let _adcs_sampling_task = SDRListener::begin_sampling(adcs_samples_producer).unwrap();
 
     // Refactor to be one combined call, but not ugly.
     let (startracking_thread, quaternion_reciever) = StartrackerThread::new();
@@ -58,11 +65,19 @@ fn main() {
 
     std::thread::sleep(Duration::from_millis(500));
 
-    let mut stream = TcpStream::connect("127.0.0.1:7878").expect("Failed to connect to Jupiter");
-    stream
+    let mut sdr_stream = TcpStream::connect("127.0.0.1:7878").expect("Failed to connect to Jupiter");
+    sdr_stream
         .set_nonblocking(true)
         .expect("Failed to set non-blocking");
-    stream
+    sdr_stream
+        .set_write_timeout(Some(Duration::from_micros(100)))
+        .unwrap();
+
+    let mut adcs_stream = TcpStream::connect("127.0.0.2:7878").expect("Failed to connect to Jupiter");
+    adcs_stream
+        .set_nonblocking(true)
+        .expect("Failed to set non-blocking");
+    adcs_stream
         .set_write_timeout(Some(Duration::from_micros(100)))
         .unwrap();
 
@@ -82,7 +97,7 @@ fn main() {
         .spawn(move || {
             let mut cnt = 0;
             loop {
-                match samples_consumer.read_chunk(1) {
+                match sdr_samples_consumer.read_chunk(1) {
                     Ok(mut read_chunk) => {
                         let (slc_1, _slc_2) = read_chunk.as_mut_slices();
                         let sdr_packet = &mut slc_1[0];
@@ -93,7 +108,7 @@ fn main() {
                             // if let Err(e) = socket.send(&packet_buf) {
                             //     error!("Error sending packet: {}", e);
                             // }
-                            if let Err(e) = stream.write_all(&packet_buf[..bytes_written]) {
+                            if let Err(e) = sdr_stream.write_all(&packet_buf[..bytes_written]) {
                                 error!("Error sending packet: {}", e);
                             }
                         } else {
@@ -125,13 +140,79 @@ fn main() {
                                         standard(),
                                     )
                                         && let Err(serial_write_error) =
-                                            uart_port.write_all(&adcs_buffer[..bytes_written])
-                                        {
-                                            error!(
+                                        uart_port.write_all(&adcs_buffer[..bytes_written])
+                                    {
+                                        error!(
+                                            "Serial Write Error to Uart {}",
+                                            serial_write_error
+                                        );
+                                    };
+                                }
+
+                                // bincode::encode_into_slice(val, dst, config)
+                                info!("Estimate: {}", estimate);
+                            };
+                        }
+
+                        read_chunk.commit(1);
+                    }
+                    Err(_e) => {
+                        // Producer hasn't produced yet, back off
+                        // std::thread::sleep(Duration::from_micros(500));
+                    }
+                }
+
+                match adcs_samples_consumer.read_chunk(1) {
+                    Ok(mut read_chunk) => {
+                        let (slc_1, _slc_2) = read_chunk.as_mut_slices();
+
+                        // PLACEHOLDER WARNING! adcs_packet is initialized as an SdrPacketLog. A telemetry packet log must be created.
+                        let adcs_packet = &mut slc_1[0];
+
+                        if let Ok(bytes_written) =
+                            encode_into_slice(&adcs_packet, packet_buf.as_mut_slice(), standard())
+                        {
+                            if let Err(e) = adcs_stream.write_all(&packet_buf[..bytes_written]) {
+                                error!("Error sending packet: {}", e);
+                            }
+                        } else {
+                            error!("Error encoding packet");
+                        }
+
+                        cnt += 1;
+                        if cnt % 30 == 0 {
+                            if let Err(e) = packet_tx.send(Box::new(*adcs_packet)) {
+                                error!("Error Sending Packet Data {}", e);
+                            };
+                            if let Ok(estimate) =
+                                estimate_rx.recv_timeout(Duration::from_micros(20))
+                            {
+                                if let Ok(quaternion) = quaternion_reciever.recv() {
+
+                                    // PLACEHOLDER
+                                    /*let adcs_packet = AttitudeMetrics {
+                                        timestamp: Timestamp::new(adcs_packet.timestamp as u64),
+                                        quaternion: [
+                                            quaternion.w(),
+                                            quaternion.i(),
+                                            quaternion.j(),
+                                            quaternion.k(),
+                                        ],
+                                        signal_match: estimate,
+                                    };
+                                    if let Ok(bytes_written) = bincode::encode_into_slice(
+                                        adcs_packet,
+                                        &mut adcs_buffer,
+                                        standard(),
+                                    )
+                                        && let Err(serial_write_error) =
+                                        uart_port.write_all(&adcs_buffer[..bytes_written])
+                                    {
+                                        error!(
                                                 "Serial Write Error to Uart {}",
                                                 serial_write_error
                                             );
-                                        };
+                                    };*/
                                 }
 
                                 // bincode::encode_into_slice(val, dst, config)
