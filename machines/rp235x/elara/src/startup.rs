@@ -33,14 +33,16 @@ use rp235x_hal::{
     uart::{DataBits, StopBits, UartConfig, UartPeripheral},
     Clock, Sio, Watchdog, I2C,
 };
+use rp235x_hal::adc::AdcPin;
 use rtic_sync::arbiter::{i2c::ArbiterDevice, Arbiter};
 
 // Sensors
 // use crate::device_constants::IcarusHC12;
-use crate::device_constants::MpChannel;
 use bme280::AsyncBME280;
 use bmi323::AsyncBmi323;
 use bmm350::AsyncBmm350;
+
+use crate::pdmux_controller::PDMuxController;
 
 // Logs our time for demft
 defmt::timestamp!("{=u64:us}", { epoch_ns() });
@@ -142,20 +144,13 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
     let bmi323 = AsyncBmi323::new_with_i2c(ArbiterDevice::new(avionics_i2c_arbiter), 0x68, Mono);
     let bme280 = AsyncBME280::new(ArbiterDevice::new(avionics_i2c_arbiter), 0x77, Mono);
 
+
+    // let mut adc = rp235x_hal::Adc::new(ctx.device.ADC, &mut ctx.device.RESETS);
+    // let mut adc_photoresistors: rp235x_hal::adc::AdcPin<Pin<rp235x_hal::gpio::bank0::Gpio40, rp235x_hal::gpio::FunctionNull, rp235x_hal::gpio::PullDown>> = rp235x_hal::adc::AdcPin::new(pins.gpio40).unwrap();
+
     *ctx.local.adc = Some(rp235x_hal::Adc::new(ctx.device.ADC, &mut ctx.device.RESETS));
     let adc = ctx.local.adc.as_mut().unwrap();
 
-    let mut adc_pin_0 = rp235x_hal::adc::AdcPin::new(pins.gpio28.into_floating_input()).unwrap();
-
-    let mut adc_fifo = adc
-        .build_fifo()
-        // Set clock divider to target a sample rate of 1000 samples per second (1ksps).
-        // The value was calculated by `(48MHz / 1ksps) - 1 = 47999.0`.
-        // Please check the `clock_divider` method documentation for details.
-        .clock_divider(47999, 0)
-        .set_channel(&mut adc_pin_0)
-        //.enable_interrupt(1)
-        .start();
 
     let adc_fifo = Some(adc_fifo);
 
@@ -173,22 +168,24 @@ pub fn startup(mut ctx: init::Context) -> (Shared, Local) {
             bmm350,
             bmi323,
             bme280,
-            adc_fifo_l: adc_fifo,
-            adc_outputs: [0u16; 24],
-            mp_channel: MpChannel::PD1_4,
-            pin19: pins
-                .gpio19
-                .into_pull_type::<PullNone>()
-                .into_push_pull_output(),
-            pin20: pins
-                .gpio20
-                .into_pull_type::<PullNone>()
-                .into_push_pull_output(),
-            pin21: pins
-                .gpio21
-                .into_pull_type::<PullNone>()
-                .into_push_pull_output(),
+            ina260_1,
+            ina260_2,
+            ina260_3,
+            rbf,
+            ina260_4,
+            pd_mux: PDMuxController::new(
+                pins.gpio19.into_pull_type::<PullNone>().into_push_pull_output(), // S0
+                pins.gpio20.into_pull_type::<PullNone>().into_push_pull_output(), // S1
+                pins.gpio21.into_pull_type::<PullNone>().into_push_pull_output(), // S2
+                pins.gpio12.into_pull_type::<PullNone>().into_push_pull_output(), // Disable pin
+                AdcPin::new(pins.gpio14.into_floating_input()).unwrap(), // Input 0
+                AdcPin::new(pins.gpio13.into_floating_input()).unwrap(), // Input 1
+                AdcPin::new(pins.gpio11.into_floating_input()).unwrap(), // Input 2
+                AdcPin::new(pins.gpio10.into_floating_input()).unwrap(), // Input 3
+                adc
+            ),
             compute_link,
+
         },
     )
 }

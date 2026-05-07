@@ -74,7 +74,7 @@ impl ExperimentColorState {
         latest.is_some_and(|t| now.duration_since(t) <= STATUS_TIMEOUT)
     }
 
-    pub fn current_status(&self) -> RGBOptions {
+    pub fn current_status(&mut self) -> RGBOptions {
         let now = Instant::now();
 
         let thermo_active = Self::is_active(self.latest_thermocouple, now);
@@ -88,13 +88,14 @@ impl ExperimentColorState {
             (false, true)  => COLOR_PINK,
             (false, false) => COLOR_OFF,
         };
+
         
         RGBOptions { 
             RBF: None, 
             HaLow: None, 
             Esp: None, 
             Infratracker: if infra_active { COLOR_CYAN } else { COLOR_OFF }, 
-            Guard: guard_color, 
+            Guard: guard_color,
             Jupiter: match self.latest_phase {
                 JupiterPhase::PowerOn => COLOR_GREEN,
                 JupiterPhase::Launch => COLOR_GREEN,
@@ -107,7 +108,7 @@ impl ExperimentColorState {
             }, 
             ElectroMagnet: None, 
             Servos: None, 
-            Jupiter_Avionics_Health: if avionics_active { COLOR_GREEN } else { COLOR_OFF }, 
+            Jupiter_Avionics_Health: if avionics_active { COLOR_GREEN } else { COLOR_RED }, 
             Ejector_Health: None, 
             Odin_Compute_Health: None, 
             Odin_Pico_Health: None

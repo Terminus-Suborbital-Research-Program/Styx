@@ -2,7 +2,7 @@
 members = [
   "common/messages/bin-packets",
   "common/messages/tinyframe",
-  "common/signet",
+  #"common/signet",
   "common/states",
   "ground/data-cli",
   "ground/gs-cli",
@@ -17,7 +17,8 @@ members = [
   "sensors/bme280",
   "sensors/bmm350-rs",
   "sensors/cd74hc4067",
-  "sensors/ina260", 
+  "sensors/ina260",
+  "common/DarkAverager"
 ]
 
 default-members = [
