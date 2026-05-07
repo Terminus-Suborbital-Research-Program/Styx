@@ -155,7 +155,7 @@ fn main() {
 
 
         while let Ok(quat) = infratracker_packet_rx.try_recv() {
-            info!("Infratracker alive");
+            // info!("Infratracker alive");
 
             onboard_packet_storage.write(quat); // Write quat to the onboard storage
             #[cfg(feature = "packet_logging")]
@@ -201,7 +201,7 @@ fn main() {
 
             // If any data gotten from IMU's, update health
             if imu_alive {
-                info!("Avionics alive");
+                // info!("Avionics alive");
                 color_status.feed_avionics();
             }
         }
@@ -217,7 +217,7 @@ fn main() {
         if now.duration_since(last_update) >= status_interval {
             let current_rgb_options = color_status.current_status();
 
-            info!("Status update");
+            // info!("Status update");
             if let Some(iface) = &mut interface {
                 if let Err(e) = iface.write(ApplicationPacket::Command(CommandPacket::ColorSet(current_rgb_options))) {
                     error!("Failed to write color packet down: {e}");
