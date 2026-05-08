@@ -24,7 +24,7 @@ const STAR_TRACKER_DIR: &str = "/home/terminus/basler/";
 
 // capture image and solve every 1Hz or 1000 millis
 // Save will happen no matter what but solve can be delayed
-const CAPTURE_RATE: u64 = 500;
+const CAPTURE_RATE: u64 = 2000;
 
 lazy_static! {
     pub static ref TRACKING: AtomicBool = AtomicBool::new(false);
@@ -119,14 +119,14 @@ impl InfratrackerThread {
                 // camera.stop_grabbing()?;
                 // camera.close()?;
                 
-                // let (save_tx, save_rx) = channel::<(u64, Vec<u8>, u32, u32)>();
+                let (save_tx, save_rx) = channel::<(u64, Vec<u8>, u32, u32)>();
 
-                // thread::spawn(move || {
-                //     while let Ok((stamp, buf, w, h)) = save_rx.recv() {
-                //         let img = ImageBuffer::<Luma<u8>, _>::from_raw(w, h, buf).unwrap();
-                //         img.save(format!("{STAR_TRACKER_DIR}/infratracker{stamp}.tiff")).ok();
-                //     }
-                // });
+                thread::spawn(move || {
+                    while let Ok((stamp, buf, w, h)) = save_rx.recv() {
+                        let img = ImageBuffer::<Luma<u8>, _>::from_raw(w, h, buf).unwrap();
+                        img.save(format!("{STAR_TRACKER_DIR}/infratracker{stamp}.tiff")).ok();
+                    }
+                });
 
                 // Cam loop
                 loop {
@@ -174,34 +174,34 @@ impl InfratrackerThread {
                                     // avger.apply_average(&mut solve_img);
 
                                     // Try sending an image to be solved
-                                    match solver_tx.try_send((timestamp, solve_img)) {
-                                        Ok(_) => {
-                                            // Wait for the solver up to 600ms leaving 400ms buffer for save and sleep
-                                            // May want to adjust to handle initial case and then switch to tracking mode
-                                            // But infratracker particularly has to deal with large rotations
-                                            // so it's likely it will just have to stay in LOST IN SPACE mode 
-                                            // the entire times
-                                            while let Ok((ret_stamp, Some(quaternion))) = result_rx.try_recv() {
-                                                self.send_packet(timestamp, quaternion);
-                                            }
-                                        }
-                                        Err(TrySendError::Full(_)) => {
-                                            error!("Solver thread hung, Skipping telemetry to save image.");
-                                        }
-                                        Err(TrySendError::Disconnected(_)) => {
-                                            error!("Solver thread dead");
-                                        }
-                                    }
+                                    // match solver_tx.try_send((timestamp, solve_img)) {
+                                    //     Ok(_) => {
+                                    //         // Wait for the solver up to 600ms leaving 400ms buffer for save and sleep
+                                    //         // May want to adjust to handle initial case and then switch to tracking mode
+                                    //         // But infratracker particularly has to deal with large rotations
+                                    //         // so it's likely it will just have to stay in LOST IN SPACE mode 
+                                    //         // the entire times
+                                    //         while let Ok((ret_stamp, Some(quaternion))) = result_rx.try_recv() {
+                                    //             self.send_packet(timestamp, quaternion);
+                                    //         }
+                                    //     }
+                                    //     Err(TrySendError::Full(_)) => {
+                                    //         error!("Solver thread hung, Skipping telemetry to save image.");
+                                    //     }
+                                    //     Err(TrySendError::Disconnected(_)) => {
+                                    //         error!("Solver thread dead");
+                                    //     }
+                                    // }
 
-                                    // save_tx.send((timestamp, img_vec.clone(), width, height)).ok();
+                                    save_tx.send((timestamp, img_vec.clone(), width, height)).ok();
                                     // Do file save with zero copy
                                     // cuz we can get away with it
-                                    let local_img: ImageBuffer<Luma<u8>, &[u8]> = 
-                                        ImageBuffer::from_raw(width, height, raw_buffer).unwrap();
+                                    // let local_img: ImageBuffer<Luma<u8>, &[u8]> = 
+                                    //     ImageBuffer::from_raw(width, height, raw_buffer).unwrap();
                                     
-                                    if let Err(e) = local_img.save(format!("{STAR_TRACKER_DIR}/infratracker{timestamp}.tiff")) {
-                                        error!("Image save error, bad directory")
-                                    }
+                                    // if let Err(e) = local_img.save(format!("{STAR_TRACKER_DIR}/infratracker{timestamp}.tiff")) {
+                                    //     error!("Image save error, bad directory")
+                                    // }
                                 }
                                 _ => {
                                     error!("Timeout or grab fail");
