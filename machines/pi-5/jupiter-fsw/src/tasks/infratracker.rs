@@ -168,8 +168,8 @@ impl InfratrackerThread {
 
                                     // Copy
                                     let img_vec = raw_buffer.to_vec(); 
-                                    let mut solve_img = ImageBuffer::from_raw(width, height, img_vec)
-                                        .expect("Buffer size mismatch");
+                                    // let mut solve_img = ImageBuffer::from_raw(width, height, img_vec)
+                                    //     .expect("Buffer size mismatch");
 
                                     // avger.apply_average(&mut solve_img);
 
