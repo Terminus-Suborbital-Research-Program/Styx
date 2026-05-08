@@ -114,9 +114,9 @@ impl InfratrackerThread {
                     error!("Dark frame image save error, bad directory");
                 }
 
+                camera.stop_grabbing()?;
+                camera.close()?;
 
-
-                // camera.stop_grabbing()?;
 
                 // Cam loop
                 loop {
@@ -125,6 +125,8 @@ impl InfratrackerThread {
                     // Handle camera start/stop
                     if is_tracking && !was_tracking {
                         info!("Tracking on, start grabbing");
+                        camera.open()?;
+
                         camera.start_grabbing(&pylon_cxx::GrabOptions::default()
                             .strategy(pylon_cxx::GrabStrategy::LatestImageOnly))?;
                         was_tracking = true;
@@ -133,6 +135,8 @@ impl InfratrackerThread {
                     else if !is_tracking && was_tracking {
                         info!("Tracking disabled. Safely stop grabbing");
                         camera.stop_grabbing()?;
+                        camera.close()?;
+
                         was_tracking = false;
                     }
 
