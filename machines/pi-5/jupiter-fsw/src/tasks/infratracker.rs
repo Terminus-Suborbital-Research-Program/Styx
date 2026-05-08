@@ -24,7 +24,7 @@ const STAR_TRACKER_DIR: &str = "/home/terminus/basler/";
 
 // capture image and solve every 1Hz or 1000 millis
 // Save will happen no matter what but solve can be delayed
-const CAPTURE_RATE: u64 = 17;
+const CAPTURE_RATE: u64 = 500;
 
 lazy_static! {
     pub static ref TRACKING: AtomicBool = AtomicBool::new(false);
@@ -118,7 +118,15 @@ impl InfratrackerThread {
 
                 // camera.stop_grabbing()?;
                 // camera.close()?;
+                
+                // let (save_tx, save_rx) = channel::<(u64, Vec<u8>, u32, u32)>();
 
+                // thread::spawn(move || {
+                //     while let Ok((stamp, buf, w, h)) = save_rx.recv() {
+                //         let img = ImageBuffer::<Luma<u8>, _>::from_raw(w, h, buf).unwrap();
+                //         img.save(format!("{STAR_TRACKER_DIR}/infratracker{stamp}.tiff")).ok();
+                //     }
+                // });
 
                 // Cam loop
                 loop {
@@ -150,7 +158,7 @@ impl InfratrackerThread {
                             // time spent on computation
                             next_frame_time += frame_interval;
 
-                            match camera.retrieve_result(500, &mut grab_result, pylon_cxx::TimeoutHandling::Return) {
+                            match camera.retrieve_result(5000, &mut grab_result, pylon_cxx::TimeoutHandling::Return) {
                                 Ok(true) if grab_result.grab_succeeded().unwrap_or(false) => {
                                     let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as u64;
                                     
@@ -185,6 +193,7 @@ impl InfratrackerThread {
                                         }
                                     }
 
+                                    // save_tx.send((timestamp, img_vec.clone(), width, height)).ok();
                                     // Do file save with zero copy
                                     // cuz we can get away with it
                                     let local_img: ImageBuffer<Luma<u8>, &[u8]> = 
