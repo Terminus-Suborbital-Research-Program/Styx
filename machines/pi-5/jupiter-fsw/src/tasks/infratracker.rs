@@ -101,6 +101,8 @@ impl InfratrackerThread {
 
                             darkframe_source.push(ImageBuffer::from_raw(width, height, raw_buffer.to_vec())
                                 .expect("Buffer size mismatch"));
+                            thread::sleep(Duration::from_millis(200)); 
+
                         }
                         _ => {
                             error!("Timeout or grab fail");
@@ -114,8 +116,8 @@ impl InfratrackerThread {
                     error!("Dark frame image save error, bad directory");
                 }
 
-                camera.stop_grabbing()?;
-                camera.close()?;
+                // camera.stop_grabbing()?;
+                // camera.close()?;
 
 
                 // Cam loop
@@ -140,7 +142,7 @@ impl InfratrackerThread {
                         was_tracking = false;
                     }
 
-                    if is_tracking {
+                    // if is_tracking {
                         if camera.is_grabbing() {
                             
                             // Set the next time we'll take a picture now
@@ -206,11 +208,11 @@ impl InfratrackerThread {
                             // so immediately solve next frame
                             next_frame_time = now;
                         }
-                    } 
-                    else {
-                        // Idle loop
-                        thread::sleep(Duration::from_millis(200)); 
-                    }
+                    // } 
+                    // else {
+                    //     // Idle loop
+                    //     thread::sleep(Duration::from_millis(200)); 
+                    // }
                 }
                 #[allow(unreachable_code)]
                 Ok(())
