@@ -86,35 +86,35 @@ impl InfratrackerThread {
                 let frame_interval = Duration::from_millis(CAPTURE_RATE);
                 let mut next_frame_time = Instant::now();
 
-                camera.start_grabbing(&pylon_cxx::GrabOptions::default()
-                    .strategy(pylon_cxx::GrabStrategy::LatestImageOnly))?;
+                // camera.start_grabbing(&pylon_cxx::GrabOptions::default()
+                //     .strategy(pylon_cxx::GrabStrategy::LatestImageOnly))?;
 
-                let mut darkframe_source: Vec<ImageBuffer<Luma<u8>, Vec<u8>>> = vec![];
+                // let mut darkframe_source: Vec<ImageBuffer<Luma<u8>, Vec<u8>>> = vec![];
 
-                for _ in 0..20 {
-                    match camera.retrieve_result(500, &mut grab_result, pylon_cxx::TimeoutHandling::Return) {
-                        Ok(true) if grab_result.grab_succeeded().unwrap_or(false) =>
-                        {
-                            let raw_buffer: &[u8] = grab_result.buffer()?;
-                            let width = grab_result.width()?;
-                            let height = grab_result.height()?;
+                // for _ in 0..20 {
+                //     match camera.retrieve_result(500, &mut grab_result, pylon_cxx::TimeoutHandling::Return) {
+                //         Ok(true) if grab_result.grab_succeeded().unwrap_or(false) =>
+                //         {
+                //             let raw_buffer: &[u8] = grab_result.buffer()?;
+                //             let width = grab_result.width()?;
+                //             let height = grab_result.height()?;
 
-                            darkframe_source.push(ImageBuffer::from_raw(width, height, raw_buffer.to_vec())
-                                .expect("Buffer size mismatch"));
-                            thread::sleep(Duration::from_millis(200)); 
+                //             darkframe_source.push(ImageBuffer::from_raw(width, height, raw_buffer.to_vec())
+                //                 .expect("Buffer size mismatch"));
+                //             thread::sleep(Duration::from_millis(200)); 
 
-                        }
-                        _ => {
-                            error!("Timeout or grab fail");
-                        }
-                    }
-                }
+                //         }
+                //         _ => {
+                //             error!("Timeout or grab fail");
+                //         }
+                //     }
+                // }
                 
-                let avger = ImageAveragerFromBuffer::new_with_source(darkframe_source);
+                // let avger = ImageAveragerFromBuffer::new_with_source(darkframe_source);
 
-                if let Err(e) = avger.get_average().save(format!("{STAR_TRACKER_DIR}/dark_frame.tiff")) {
-                    error!("Dark frame image save error, bad directory");
-                }
+                // if let Err(e) = avger.get_average().save(format!("{STAR_TRACKER_DIR}/dark_frame.tiff")) {
+                //     error!("Dark frame image save error, bad directory");
+                // }
 
                 // camera.stop_grabbing()?;
                 // camera.close()?;
@@ -142,7 +142,7 @@ impl InfratrackerThread {
                         was_tracking = false;
                     }
 
-                    // if is_tracking {
+                    if is_tracking {
                         if camera.is_grabbing() {
                             
                             // Set the next time we'll take a picture now
@@ -163,7 +163,7 @@ impl InfratrackerThread {
                                     let mut solve_img = ImageBuffer::from_raw(width, height, img_vec)
                                         .expect("Buffer size mismatch");
 
-                                    avger.apply_average(&mut solve_img);
+                                    // avger.apply_average(&mut solve_img);
 
                                     // Try sending an image to be solved
                                     match solver_tx.try_send((timestamp, solve_img)) {
@@ -208,11 +208,11 @@ impl InfratrackerThread {
                             // so immediately solve next frame
                             next_frame_time = now;
                         }
-                    // } 
-                    // else {
-                    //     // Idle loop
-                    //     thread::sleep(Duration::from_millis(200)); 
-                    // }
+                    } 
+                    else {
+                        // Idle loop
+                        thread::sleep(Duration::from_millis(200)); 
+                    }
                 }
                 #[allow(unreachable_code)]
                 Ok(())
