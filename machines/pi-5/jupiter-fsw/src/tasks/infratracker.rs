@@ -24,7 +24,7 @@ const STAR_TRACKER_DIR: &str = "/home/terminus/basler/";
 
 // capture image and solve every 1Hz or 1000 millis
 // Save will happen no matter what but solve can be delayed
-const CAPTURE_RATE: u64 = 2000;
+const CAPTURE_RATE: u64 = 200;
 
 lazy_static! {
     pub static ref TRACKING: AtomicBool = AtomicBool::new(false);
@@ -86,38 +86,38 @@ impl InfratrackerThread {
                 let frame_interval = Duration::from_millis(CAPTURE_RATE);
                 let mut next_frame_time = Instant::now();
 
-                // camera.start_grabbing(&pylon_cxx::GrabOptions::default()
-                //     .strategy(pylon_cxx::GrabStrategy::LatestImageOnly))?;
+                camera.start_grabbing(&pylon_cxx::GrabOptions::default()
+                    .strategy(pylon_cxx::GrabStrategy::LatestImageOnly))?;
 
-                // let mut darkframe_source: Vec<ImageBuffer<Luma<u8>, Vec<u8>>> = vec![];
+                let mut darkframe_source: Vec<ImageBuffer<Luma<u8>, Vec<u8>>> = vec![];
 
-                // for _ in 0..20 {
-                //     match camera.retrieve_result(500, &mut grab_result, pylon_cxx::TimeoutHandling::Return) {
-                //         Ok(true) if grab_result.grab_succeeded().unwrap_or(false) =>
-                //         {
-                //             let raw_buffer: &[u8] = grab_result.buffer()?;
-                //             let width = grab_result.width()?;
-                //             let height = grab_result.height()?;
+                for _ in 0..20 {
+                    match camera.retrieve_result(500, &mut grab_result, pylon_cxx::TimeoutHandling::Return) {
+                        Ok(true) if grab_result.grab_succeeded().unwrap_or(false) =>
+                        {
+                            let raw_buffer: &[u8] = grab_result.buffer()?;
+                            let width = grab_result.width()?;
+                            let height = grab_result.height()?;
 
-                //             darkframe_source.push(ImageBuffer::from_raw(width, height, raw_buffer.to_vec())
-                //                 .expect("Buffer size mismatch"));
-                //             thread::sleep(Duration::from_millis(200)); 
+                            darkframe_source.push(ImageBuffer::from_raw(width, height, raw_buffer.to_vec())
+                                .expect("Buffer size mismatch"));
+                            thread::sleep(Duration::from_millis(200)); 
 
-                //         }
-                //         _ => {
-                //             error!("Timeout or grab fail");
-                //         }
-                //     }
-                // }
+                        }
+                        _ => {
+                            error!("Timeout or grab fail");
+                        }
+                    }
+                }
                 
-                // let avger = ImageAveragerFromBuffer::new_with_source(darkframe_source);
+                let avger = ImageAveragerFromBuffer::new_with_source(darkframe_source);
 
-                // if let Err(e) = avger.get_average().save(format!("{STAR_TRACKER_DIR}/dark_frame.tiff")) {
-                //     error!("Dark frame image save error, bad directory");
-                // }
+                if let Err(e) = avger.get_average().save(format!("{STAR_TRACKER_DIR}/dark_frame.tiff")) {
+                    error!("Dark frame image save error, bad directory");
+                }
 
-                // camera.stop_grabbing()?;
-                // camera.close()?;
+                camera.stop_grabbing()?;
+                camera.close()?;
                 
                 let (save_tx, save_rx) = channel::<(u64, Vec<u8>, u32, u32)>();
 
@@ -168,30 +168,30 @@ impl InfratrackerThread {
 
                                     // Copy
                                     let img_vec = raw_buffer.to_vec(); 
-                                    // let mut solve_img = ImageBuffer::from_raw(width, height, img_vec)
-                                    //     .expect("Buffer size mismatch");
+                                    let mut solve_img = ImageBuffer::from_raw(width, height, img_vec)
+                                        .expect("Buffer size mismatch");
 
-                                    // avger.apply_average(&mut solve_img);
+                                    avger.apply_average(&mut solve_img);
 
                                     // Try sending an image to be solved
-                                    // match solver_tx.try_send((timestamp, solve_img)) {
-                                    //     Ok(_) => {
-                                    //         // Wait for the solver up to 600ms leaving 400ms buffer for save and sleep
-                                    //         // May want to adjust to handle initial case and then switch to tracking mode
-                                    //         // But infratracker particularly has to deal with large rotations
-                                    //         // so it's likely it will just have to stay in LOST IN SPACE mode 
-                                    //         // the entire times
-                                    //         while let Ok((ret_stamp, Some(quaternion))) = result_rx.try_recv() {
-                                    //             self.send_packet(timestamp, quaternion);
-                                    //         }
-                                    //     }
-                                    //     Err(TrySendError::Full(_)) => {
-                                    //         error!("Solver thread hung, Skipping telemetry to save image.");
-                                    //     }
-                                    //     Err(TrySendError::Disconnected(_)) => {
-                                    //         error!("Solver thread dead");
-                                    //     }
-                                    // }
+                                    match solver_tx.try_send((timestamp, solve_img)) {
+                                        Ok(_) => {
+                                            // Wait for the solver up to 600ms leaving 400ms buffer for save and sleep
+                                            // May want to adjust to handle initial case and then switch to tracking mode
+                                            // But infratracker particularly has to deal with large rotations
+                                            // so it's likely it will just have to stay in LOST IN SPACE mode 
+                                            // the entire times
+                                            while let Ok((ret_stamp, Some(quaternion))) = result_rx.try_recv() {
+                                                self.send_packet(timestamp, quaternion);
+                                            }
+                                        }
+                                        Err(TrySendError::Full(_)) => {
+                                            error!("Solver thread hung, Skipping telemetry to save image.");
+                                        }
+                                        Err(TrySendError::Disconnected(_)) => {
+                                            error!("Solver thread dead");
+                                        }
+                                    }
 
                                     save_tx.send((timestamp, img_vec.clone(), width, height)).ok();
                                     // Do file save with zero copy

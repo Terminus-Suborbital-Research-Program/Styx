@@ -123,7 +123,6 @@ fn main() {
     let mut last_update = Instant::now();
     let status_interval = Duration::from_millis(STATUS_INTERVAL);
 
-    TRACKING.store(true, Ordering::Relaxed);
 
     loop {
         if let Some(iface) = &mut interface {
