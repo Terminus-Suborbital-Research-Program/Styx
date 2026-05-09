@@ -58,14 +58,20 @@ pub enum ApplicationPacket {
     },
     EnvironmentData {
         timestamp: u64,
-        temperature: u32,
-        pressure: u32,
-        humidity: u16,
+        temperature: f32,
+        pressure: f32,
+        humidity: f32,
     },
     BMPData {
         timestamp: u64,
         temperature: f32,
         pressure: f32,
+    },
+    BMEData {
+        timestamp: u64,
+        temperature: f32,
+        pressure: f32,
+        humidity: f32,
     },
     PhotoresistorData {
         timestamp: u64,

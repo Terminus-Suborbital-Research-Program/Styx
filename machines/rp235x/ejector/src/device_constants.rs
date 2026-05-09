@@ -184,18 +184,180 @@ impl Default for RGBStatus {
         let off         = RGB8::new(0, 0, 0);
         
         Self {
-            RBF: dim_red,
-            HaLow: dim_green,
-            Esp: dim_blue,
-            Infratracker: dim_yellow,
-            Guard: dim_cyan,
-            Jupiter: dim_magenta,
-            ElectroMagnet: dim_orange,
-            Servos: dim_purple,
-            Jupiter_Avionics_Health: dim_white,
+            RBF: off,
+            HaLow: off,
+            Esp: off,
+            Infratracker: off,
+            Guard: off,
+            Jupiter: off,
+            ElectroMagnet: off,
+            Servos: off,
+            Jupiter_Avionics_Health: off,
             Ejector_Health: off,
-            Odin_Compute_Health: dim_orange,
-            Odin_Pico_Health: dim_cyan,
+            Odin_Compute_Health: off,
+            Odin_Pico_Health: off,
         }
+    }
+}
+
+pub const COLOR_DIM_RED: RGB8     = RGB8::new(50, 0, 0);
+pub const COLOR_DIM_GREEN: RGB8   = RGB8::new(0, 50, 0);
+pub const COLOR_DIM_BLUE: RGB8    = RGB8::new(0, 0, 50);
+pub const COLOR_DIM_MAGENTA: RGB8 = RGB8::new(50, 0, 50);
+pub const COLOR_OFF: RGB8         = RGB8::new(0, 0, 0);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MagnetState {
+    Off = 0,
+    Holding = 1,
+    Ejecting = 2,
+    Unknown,
+}
+
+impl From<u8> for MagnetState {
+    fn from(val: u8) -> Self {
+        match val {
+            0 => MagnetState::Off,
+            1 => MagnetState::Holding,
+            2 => MagnetState::Ejecting,
+            _ => MagnetState::Unknown,
+        }
+    }
+}
+
+impl MagnetState {
+    pub fn color(&self) -> RGB8 {
+        match self {
+            MagnetState::Off => COLOR_OFF,
+            MagnetState::Holding => COLOR_DIM_BLUE,
+            MagnetState::Ejecting => COLOR_DIM_MAGENTA,
+            MagnetState::Unknown => COLOR_OFF,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ServoState {
+    Off = 0,
+    PowerOn = 1,
+    Release = 2,
+    Unknown,
+}
+
+impl From<u8> for ServoState {
+    fn from(val: u8) -> Self {
+        match val {
+            0 => ServoState::Off,
+            1 => ServoState::PowerOn,
+            2 => ServoState::Release,
+            _ => ServoState::Unknown,
+        }
+    }
+}
+
+impl ServoState {
+    pub fn color(&self) -> RGB8 {
+        match self {
+            ServoState::Off => COLOR_OFF,
+            ServoState::PowerOn => COLOR_DIM_GREEN,
+            ServoState::Release => COLOR_DIM_MAGENTA,
+            ServoState::Unknown => COLOR_OFF,
+        }
+    }
+}
+
+
+
+use mcp9600::{
+    ADCResolution, BurstModeSamples, ColdJunctionResolution, DeviceAddr, FilterCoefficient,
+    ShutdownMode, ThermocoupleType, MCP9600,
+};
+use bme280::i2c::BME280;
+use bin_packets::packets::ApplicationPacket;
+use defmt::{warn, error, info};
+use heapless::Vec;
+
+
+pub struct ThermocoupleChannel {
+    pub id: u8,
+    pub address: DeviceAddr,
+}
+
+pub struct SensorI2cManager {
+    pub bus: ThermoI2cBus,
+    pub tc_channels: [ThermocoupleChannel; 5],
+    pub timer: Timer<CopyableTimer1>,
+}
+
+impl SensorI2cManager {
+    pub fn new(mut bus: ThermoI2cBus, timer: Timer<CopyableTimer1>) -> Self {
+        // Ids mapped from lowest id to lowest addr, and upwards
+        let tc_channels = [
+            ThermocoupleChannel { id: 1, address: DeviceAddr::AD3 },
+            ThermocoupleChannel { id: 2, address: DeviceAddr::AD0 },
+            ThermocoupleChannel { id: 3, address: DeviceAddr::AD1 },
+            ThermocoupleChannel { id: 4, address: DeviceAddr::AD2 },
+            ThermocoupleChannel { id: 5, address: DeviceAddr::AD7 },
+        ];
+
+        // Temporarily instantiate driver to configure
+        for ch in &tc_channels {
+            if let Ok(mut sensor) = MCP9600::new(&mut bus, ch.address) {
+                info!("Successfully initialized MCP9600 CH{} at address {:?}", ch.id, ch.address as u8);
+
+                let _ = sensor.set_sensor_configuration(ThermocoupleType::TypeK, FilterCoefficient::FilterMedium);
+                let _ = sensor.set_device_configuration(
+                    ColdJunctionResolution::High,
+                    ADCResolution::Bit18,
+                    BurstModeSamples::Sample1,
+                    ShutdownMode::NormalMode,
+                );
+            } else {
+                warn!("Failed to initialize MCP9600 CH{} at address {:?}", ch.id, ch.address as u8);
+            }
+        }
+
+        Self { bus, tc_channels, timer }
+    }
+
+    /// Read all 5 thermocouples
+    pub fn poll_thermocouples(&mut self, timestamp: u64) -> Vec<ApplicationPacket, 5> {
+        let mut packets = Vec::new();
+        
+        // Re-instantiate because mcp9600 is literally just a ref to an i2c bus, and the address to send to. 
+        // This way we don't have to deal with any locks or sharing abstractions around the bus 
+        for ch in &self.tc_channels {
+            if let Ok(mut sensor) = MCP9600::new(&mut self.bus, ch.address) {
+                match sensor.read_hot_junction() {
+                    Ok(temp) => {
+                        let _ = packets.push(ApplicationPacket::ThermocoupleData {
+                            timestamp,
+                            channel: ch.id,
+                            hot_junction_temp: temp,
+                        });
+                    }
+                    Err(_) => warn!("Failed to read MCP9600 CH{}", ch.id),
+                }
+            }
+        }
+        packets
+    }
+
+    pub fn poll_bme280(&mut self, timestamp: u64) -> Option<ApplicationPacket> {
+        let mut bme = BME280::new_primary(&mut self.bus);
+        
+        if bme.init(&mut self.timer).is_ok() {
+            if let Ok(measurements) = bme.measure(&mut self.timer) {
+                return Some(ApplicationPacket::BMEData {
+                    timestamp,
+                    temperature: measurements.temperature,
+                    pressure: measurements.pressure,
+                    humidity: measurements.humidity,
+                });
+            }
+        }
+        
+        warn!("Failed to read BME280");
+        None
     }
 }
