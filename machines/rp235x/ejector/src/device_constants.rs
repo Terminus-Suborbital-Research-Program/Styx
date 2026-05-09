@@ -268,14 +268,13 @@ impl ServoState {
 
 
 
-// Thermo struct:
 use mcp9600::{
     ADCResolution, BurstModeSamples, ColdJunctionResolution, DeviceAddr, FilterCoefficient,
     ShutdownMode, ThermocoupleType, MCP9600,
 };
 use bme280::i2c::BME280;
 use bin_packets::packets::ApplicationPacket;
-use defmt::{warn, error};
+use defmt::{warn, error, info};
 use heapless::Vec;
 
 
@@ -295,15 +294,17 @@ impl SensorI2cManager {
         // Ids mapped from lowest id to lowest addr, and upwards
         let tc_channels = [
             ThermocoupleChannel { id: 1, address: DeviceAddr::AD3 },
-            ThermocoupleChannel { id: 2, address: DeviceAddr::AD4 },
-            ThermocoupleChannel { id: 3, address: DeviceAddr::AD5 },
-            ThermocoupleChannel { id: 4, address: DeviceAddr::AD6 },
+            ThermocoupleChannel { id: 2, address: DeviceAddr::AD0 },
+            ThermocoupleChannel { id: 3, address: DeviceAddr::AD1 },
+            ThermocoupleChannel { id: 4, address: DeviceAddr::AD2 },
             ThermocoupleChannel { id: 5, address: DeviceAddr::AD7 },
         ];
 
         // Temporarily instantiate driver to configure
         for ch in &tc_channels {
             if let Ok(mut sensor) = MCP9600::new(&mut bus, ch.address) {
+                info!("Successfully initialized MCP9600 CH{} at address {:?}", ch.id, ch.address as u8);
+
                 let _ = sensor.set_sensor_configuration(ThermocoupleType::TypeK, FilterCoefficient::FilterMedium);
                 let _ = sensor.set_device_configuration(
                     ColdJunctionResolution::High,
@@ -347,7 +348,7 @@ impl SensorI2cManager {
         
         if bme.init(&mut self.timer).is_ok() {
             if let Ok(measurements) = bme.measure(&mut self.timer) {
-                return Some(ApplicationPacket::EnvironmentData {
+                return Some(ApplicationPacket::BMEData {
                     timestamp,
                     temperature: measurements.temperature,
                     pressure: measurements.pressure,

@@ -67,6 +67,12 @@ pub enum ApplicationPacket {
         temperature: f32,
         pressure: f32,
     },
+    BMEData {
+        timestamp: u64,
+        temperature: f32,
+        pressure: f32,
+        humidity: f32,
+    },
     PhotoresistorData {
         timestamp: u64,
         vector: [u16; 8],
