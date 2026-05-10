@@ -8,6 +8,8 @@ use crate::timing::t_time_estimate;
 use super::traits::{StateContext, ValidState};
 use std::process::Command;
 
+use crate::tasks::BoardHardware;   
+
 static DELAY_TO_SHUTDOWN: i32 = 30;
 
 #[derive(Debug, Clone, Default)]

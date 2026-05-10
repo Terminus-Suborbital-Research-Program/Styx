@@ -1,3 +1,4 @@
+use std::clone;
 use std::fs::create_dir;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{channel, sync_channel, Receiver, Sender, TrySendError, RecvTimeoutError};
@@ -24,7 +25,7 @@ const STAR_TRACKER_DIR: &str = "/home/terminus/basler/";
 
 // capture image and solve every 1Hz or 1000 millis
 // Save will happen no matter what but solve can be delayed
-const CAPTURE_RATE: u64 = 17;
+const CAPTURE_RATE: u64 = 200;
 
 lazy_static! {
     pub static ref TRACKING: AtomicBool = AtomicBool::new(false);
@@ -101,6 +102,8 @@ impl InfratrackerThread {
 
                             darkframe_source.push(ImageBuffer::from_raw(width, height, raw_buffer.to_vec())
                                 .expect("Buffer size mismatch"));
+                            thread::sleep(Duration::from_millis(200)); 
+
                         }
                         _ => {
                             error!("Timeout or grab fail");
@@ -114,9 +117,17 @@ impl InfratrackerThread {
                     error!("Dark frame image save error, bad directory");
                 }
 
-
-
                 camera.stop_grabbing()?;
+                camera.close()?;
+                
+                let (save_tx, save_rx) = channel::<(u64, Vec<u8>, u32, u32)>();
+
+                thread::spawn(move || {
+                    while let Ok((stamp, buf, w, h)) = save_rx.recv() {
+                        let img = ImageBuffer::<Luma<u8>, _>::from_raw(w, h, buf).unwrap();
+                        img.save(format!("{STAR_TRACKER_DIR}/infratracker{stamp}.tiff")).ok();
+                    }
+                });
 
                 // Cam loop
                 loop {
@@ -125,6 +136,8 @@ impl InfratrackerThread {
                     // Handle camera start/stop
                     if is_tracking && !was_tracking {
                         info!("Tracking on, start grabbing");
+                        camera.open()?;
+
                         camera.start_grabbing(&pylon_cxx::GrabOptions::default()
                             .strategy(pylon_cxx::GrabStrategy::LatestImageOnly))?;
                         was_tracking = true;
@@ -133,6 +146,8 @@ impl InfratrackerThread {
                     else if !is_tracking && was_tracking {
                         info!("Tracking disabled. Safely stop grabbing");
                         camera.stop_grabbing()?;
+                        camera.close()?;
+
                         was_tracking = false;
                     }
 
@@ -144,7 +159,7 @@ impl InfratrackerThread {
                             // time spent on computation
                             next_frame_time += frame_interval;
 
-                            match camera.retrieve_result(500, &mut grab_result, pylon_cxx::TimeoutHandling::Return) {
+                            match camera.retrieve_result(5000, &mut grab_result, pylon_cxx::TimeoutHandling::Return) {
                                 Ok(true) if grab_result.grab_succeeded().unwrap_or(false) => {
                                     let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as u64;
                                     
@@ -154,7 +169,7 @@ impl InfratrackerThread {
 
                                     // Copy
                                     let img_vec = raw_buffer.to_vec(); 
-                                    let mut solve_img = ImageBuffer::from_raw(width, height, img_vec)
+                                    let mut solve_img = ImageBuffer::from_raw(width, height, img_vec.clone())
                                         .expect("Buffer size mismatch");
 
                                     avger.apply_average(&mut solve_img);
@@ -179,14 +194,15 @@ impl InfratrackerThread {
                                         }
                                     }
 
+                                    save_tx.send((timestamp, img_vec, width, height)).ok();
                                     // Do file save with zero copy
                                     // cuz we can get away with it
-                                    let local_img: ImageBuffer<Luma<u8>, &[u8]> = 
-                                        ImageBuffer::from_raw(width, height, raw_buffer).unwrap();
+                                    // let local_img: ImageBuffer<Luma<u8>, &[u8]> = 
+                                    //     ImageBuffer::from_raw(width, height, raw_buffer).unwrap();
                                     
-                                    if let Err(e) = local_img.save(format!("{STAR_TRACKER_DIR}/infratracker{timestamp}.tiff")) {
-                                        error!("Image save error, bad directory")
-                                    }
+                                    // if let Err(e) = local_img.save(format!("{STAR_TRACKER_DIR}/infratracker{timestamp}.tiff")) {
+                                    //     error!("Image save error, bad directory")
+                                    // }
                                 }
                                 _ => {
                                     error!("Timeout or grab fail");

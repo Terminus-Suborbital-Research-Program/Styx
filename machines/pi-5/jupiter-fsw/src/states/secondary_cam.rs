@@ -24,7 +24,7 @@ impl ValidState for StartCameraRecording {
         match ctx.hardware.pins().unwrap_or_default().te2() {
             PinState::High => { 
                 info!("Cam recording complete, entering despin");
-                return Box::new(RocketDespin::default()); 
+                return Box::new(RocketDespin::enter()); 
             },
             PinState::Low => { return Box::new(Self::default()); },
         }

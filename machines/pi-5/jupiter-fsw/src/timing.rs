@@ -7,7 +7,7 @@ use std::time::{Duration, SystemTime};
 
 /// JUPITER startup ends roughly 150 seconds before launch
 /// This value is a guess The original “guess” we started with at power-on.
-static POWER_ON_T_ESTIMATE_SEC: i32 = -180;
+static POWER_ON_T_ESTIMATE_SEC: i32 = -150;
 
 lazy_static! {
     pub static ref POWER_ON_TIME: SystemTime = SystemTime::now();
