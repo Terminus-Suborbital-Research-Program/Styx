@@ -20,6 +20,7 @@ use rtrb::RingBuffer;
 
 use crate::tasks::{
     signal_process::SignalProcessor, signal_read::SDRListener, startracker::StartrackerThread,
+    radio_handler::RadioHandler, serial_handler::SerialHandler
 };
 
 use signet::{
@@ -47,25 +48,27 @@ fn main() {
 
     let (sdr_samples_producer, mut sdr_samples_consumer) = RingBuffer::<SdrPacketLog>::new(100);
 
-    // PLACEHOLDER: RingBuffer type should NOT be SdrPacketLog in the final product
-    let (adcs_samples_producer, mut adcs_samples_consumer) = RingBuffer::<SdrPacketLog>::new(100);
-
     let _sdr_sampling_task = SDRListener::begin_sampling(sdr_samples_producer).unwrap();
 
     // PLACEHOLDER
     //let _adcs_sampling_task = SDRListener::begin_sampling(adcs_samples_producer).unwrap();
 
     // Refactor to be one combined call, but not ugly.
-    let (startracking_thread, quaternion_reciever) = StartrackerThread::new();
-    let _startracking_thread_handle = startracking_thread.begin_startracking();
+    // Initialize Main Camera Thread
+    let (main_tracker, main_quaternion_rx) = StartrackerThread::new("/dev/tevs-main");
+    let _main_tracker_handle = main_tracker.begin_startracking();
+
+    // Initialize Aux Camera Thread
+    let (aux_tracker, aux_quaternion_rx) = StartrackerThread::new("/dev/tevs-aux");
+    let _aux_tracker_handle = aux_tracker.begin_startracking();
 
     // start_test_tcp_receiver();
     // verify_recording("sdr_recording.bin");
-    start_file_recorder();
+    // start_file_recorder();
 
     std::thread::sleep(Duration::from_millis(500));
 
-    let mut sdr_stream = TcpStream::connect("127.0.0.1:7878").expect("Failed to connect to Jupiter");
+    let mut sdr_stream = TcpStream::connect("10.0.0.1:7878").expect("Failed to connect to Jupiter");
     sdr_stream
         .set_nonblocking(true)
         .expect("Failed to set non-blocking");
@@ -73,7 +76,7 @@ fn main() {
         .set_write_timeout(Some(Duration::from_micros(100)))
         .unwrap();
 
-    let mut adcs_stream = TcpStream::connect("127.0.0.2:7878").expect("Failed to connect to Jupiter");
+    let mut adcs_stream = TcpStream::connect("10.0.0.1:7879").expect("Failed to connect to Jupiter");
     adcs_stream
         .set_nonblocking(true)
         .expect("Failed to set non-blocking");
@@ -86,153 +89,27 @@ fn main() {
     let (signal_processor, packet_tx, estimate_rx) = SignalProcessor::default();
 
     signal_processor.begin_signal_processing();
+    
+    let serial_handler = SerialHandler {
+        uart_port,
+        adcs_stream, 
+        main_q_rx: main_quaternion_rx,
+        aux_q_rx: aux_quaternion_rx,
+        estimate_rx,
+    };
+    let serial_thread = serial_handler.spawn();
 
-    let mut packet_buf: [u8; BUFF_SIZE * 10] = [0; BUFF_SIZE * 10];
+    let sdr_radio_handler = RadioHandler {
+        consumer: sdr_samples_consumer,
+        stream: sdr_stream,
+        processor_tx: packet_tx, 
+        process_interval: 30,
+    };
+    let sdr_thread = sdr_radio_handler.spawn();
 
-    let mut adcs_buffer: [u8; 1000] = [0; 1000];
-    // Run main IO loop in a thread with larger stack to handle large fixed-size arrays
-    let io_handle = thread::Builder::new()
-        .name("io-loop".into())
-        .stack_size(8 * 1024 * 1024) // 4 MB stack
-        .spawn(move || {
-            let mut cnt = 0;
-            loop {
-                match sdr_samples_consumer.read_chunk(1) {
-                    Ok(mut read_chunk) => {
-                        let (slc_1, _slc_2) = read_chunk.as_mut_slices();
-                        let sdr_packet = &mut slc_1[0];
 
-                        if let Ok(bytes_written) =
-                            encode_into_slice(&sdr_packet, packet_buf.as_mut_slice(), standard())
-                        {
-                            // if let Err(e) = socket.send(&packet_buf) {
-                            //     error!("Error sending packet: {}", e);
-                            // }
-                            if let Err(e) = sdr_stream.write_all(&packet_buf[..bytes_written]) {
-                                error!("Error sending packet: {}", e);
-                            }
-                        } else {
-                            error!("Error encoding packet");
-                        }
-
-                        cnt += 1;
-                        if cnt % 30 == 0 {
-                            if let Err(e) = packet_tx.send(Box::new(*sdr_packet)) {
-                                error!("Error Sending Packet Data {}", e);
-                            };
-                            if let Ok(estimate) =
-                                estimate_rx.recv_timeout(Duration::from_micros(20))
-                            {
-                                if let Ok(quaternion) = quaternion_reciever.recv() {
-                                    let adcs_packet = AttitudeMetrics {
-                                        timestamp: Timestamp::new(sdr_packet.timestamp as u64),
-                                        quaternion: [
-                                            quaternion.w(),
-                                            quaternion.i(),
-                                            quaternion.j(),
-                                            quaternion.k(),
-                                        ],
-                                        signal_match: estimate,
-                                    };
-                                    if let Ok(bytes_written) = bincode::encode_into_slice(
-                                        adcs_packet,
-                                        &mut adcs_buffer,
-                                        standard(),
-                                    )
-                                        && let Err(serial_write_error) =
-                                        uart_port.write_all(&adcs_buffer[..bytes_written])
-                                    {
-                                        error!(
-                                            "Serial Write Error to Uart {}",
-                                            serial_write_error
-                                        );
-                                    };
-                                }
-
-                                // bincode::encode_into_slice(val, dst, config)
-                                info!("Estimate: {}", estimate);
-                            };
-                        }
-
-                        read_chunk.commit(1);
-                    }
-                    Err(_e) => {
-                        // Producer hasn't produced yet, back off
-                        // std::thread::sleep(Duration::from_micros(500));
-                    }
-                }
-
-                match adcs_samples_consumer.read_chunk(1) {
-                    Ok(mut read_chunk) => {
-                        let (slc_1, _slc_2) = read_chunk.as_mut_slices();
-
-                        // PLACEHOLDER WARNING! adcs_packet is initialized as an SdrPacketLog. A telemetry packet log must be created.
-                        let adcs_packet = &mut slc_1[0];
-
-                        if let Ok(bytes_written) =
-                            encode_into_slice(&adcs_packet, packet_buf.as_mut_slice(), standard())
-                        {
-                            if let Err(e) = adcs_stream.write_all(&packet_buf[..bytes_written]) {
-                                error!("Error sending packet: {}", e);
-                            }
-                        } else {
-                            error!("Error encoding packet");
-                        }
-
-                        cnt += 1;
-                        if cnt % 30 == 0 {
-                            if let Err(e) = packet_tx.send(Box::new(*adcs_packet)) {
-                                error!("Error Sending Packet Data {}", e);
-                            };
-                            if let Ok(estimate) =
-                                estimate_rx.recv_timeout(Duration::from_micros(20))
-                            {
-                                if let Ok(quaternion) = quaternion_reciever.recv() {
-
-                                    // PLACEHOLDER
-                                    /*let adcs_packet = AttitudeMetrics {
-                                        timestamp: Timestamp::new(adcs_packet.timestamp as u64),
-                                        quaternion: [
-                                            quaternion.w(),
-                                            quaternion.i(),
-                                            quaternion.j(),
-                                            quaternion.k(),
-                                        ],
-                                        signal_match: estimate,
-                                    };
-                                    if let Ok(bytes_written) = bincode::encode_into_slice(
-                                        adcs_packet,
-                                        &mut adcs_buffer,
-                                        standard(),
-                                    )
-                                        && let Err(serial_write_error) =
-                                        uart_port.write_all(&adcs_buffer[..bytes_written])
-                                    {
-                                        error!(
-                                                "Serial Write Error to Uart {}",
-                                                serial_write_error
-                                            );
-                                    };*/
-                                }
-
-                                // bincode::encode_into_slice(val, dst, config)
-                                info!("Estimate: {}", estimate);
-                            };
-                        }
-
-                        read_chunk.commit(1);
-                    }
-                    Err(_e) => {
-                        // Producer hasn't produced yet, back off
-                        // std::thread::sleep(Duration::from_micros(500));
-                    }
-                }
-            }
-        })
-        .expect("Failed to spawn IO thread");
-
-    // Main thread waits for IO thread (which runs forever)
-    io_handle.join().expect("IO thread panicked");
+    serial_thread.join().expect("Serial task panicked");
+    sdr_thread.join().expect("SDR Radio task panicked");
 }
 
 fn start_file_recorder() {

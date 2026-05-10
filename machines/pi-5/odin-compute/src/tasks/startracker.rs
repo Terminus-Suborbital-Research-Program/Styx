@@ -29,22 +29,25 @@ use DarkAverager::ImageAveragerFromBuffer;
 // use aether::
 pub struct StartrackerThread {
     quaternion_sender: Sender<Quaternion<f32, ICRF<f32>, Body<f32>>>,
+    device_path: String,
     // Sender<Quaternion<f64, ICRF<f64>,Body<f64>>>
 }
 
 impl StartrackerThread {
-    pub fn new() -> (Self, Receiver<Quaternion<f32, ICRF<f32>, Body<f32>>>) {
-        let (quaternion_tx, quaternion_rx) = channel();
+pub fn new(device_path: &str) -> (Self, Receiver<Quaternion<f32, ICRF<f32>, Body<f32>>>) {        let (quaternion_tx, quaternion_rx) = channel();
 
         let startracker = Self {
             quaternion_sender: quaternion_tx,
+            device_path: device_path.to_string(),
         };
 
         (startracker, quaternion_rx)
     }
 
     pub fn begin_startracking(self) -> JoinHandle<()> {
-        let dev = Device::new(0).expect("Failed to open device");
+        let dev = Device::with_path(&self.device_path)
+                .expect(&format!("Failed to open device: {}", self.device_path));
+
         let fmt = dev.format().expect("Failed to read format");
 
         let height = fmt.height;
