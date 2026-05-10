@@ -25,8 +25,13 @@ pylon-cxx = { git = "https://github.com/Ethan-Pascuales/pylon-cxx.git"}
 wayfarer = { git = "https://github.com/Terminus-Suborbital-Research-Program/Wayfarer.git", branch = "main"}
 aether = { git = "https://github.com/AtmoPierce/aether.git", features = ["std", "serde"]}
 image = "0.25.10"
+notify = "8.2.0"
+linux-embedded-hal = "0.4.1"
+adxl345_driver2 = "2.0.1"
+bmi323 = { version = "0.2.0", features = ["sync"]}
 DarkAverager = {path="../../../common/DarkAverager"}
 
 [features]
 default = []
 packet_logging = []
+legacy_atmega = []

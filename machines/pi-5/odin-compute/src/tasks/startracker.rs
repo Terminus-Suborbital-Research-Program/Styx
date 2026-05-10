@@ -64,7 +64,7 @@ pub fn new(device_path: &str) -> (Self, Receiver<Quaternion<f32, ICRF<f32>, Body
         thread::spawn(move || {
 
             let mut darkframe_source: Vec<ImageBuffer<Luma<u8>, Vec<u8>>> = vec![];
-            for _ in [0..20]
+            for _ in 0..20
             {
                 let (buf, _meta): (&[u8], &Metadata) = stream.next().expect("Failed to get frame");
                 let buffer = buf.to_vec();

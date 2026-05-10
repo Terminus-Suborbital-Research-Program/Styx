@@ -6,6 +6,9 @@ use log::info;
 use crate::timing::t_time_estimate;
 
 use super::traits::{StateContext, ValidState};
+use std::process::Command;
+
+use crate::tasks::BoardHardware;   
 
 static DELAY_TO_SHUTDOWN: i32 = 30;
 
@@ -32,6 +35,8 @@ impl ValidState for Shutdown {
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
         if self.time_since_switch + DELAY_TO_SHUTDOWN < ctx.t_time {
             info!("Shutting Down!");
+            ctx.hardware.deactivate_latch();
+
             // Replace with actual shutdown behavior <-- ??
             Box::new(Self::enter())
         } else {

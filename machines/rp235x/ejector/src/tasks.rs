@@ -2,7 +2,6 @@
 
 //! RTIC Task defintions for the Ejector
 
-use crate::device_constants::RGBStatus;
 use crate::sd_card::EJECTOR_GAURD_FILENAME;
 use crate::{app::*, device_constants::SAMPLE_COUNT, sd_card, Mono};
 use bin_packets::{
@@ -17,6 +16,7 @@ use embedded_hal::digital::{InputPin, OutputPin, StatefulOutputPin};
 use embedded_io::{Read, ReadReady, Write};
 use fugit::ExtU64;
 use heapless::{deque::DequeInner, vec::ViewVecStorage, Deque, Vec};
+use rp235x_pac::hstx_fifo::stat;
 use rtic::Mutex;
 use rtic_monotonics::Monotonic;
 use tinyframe::frame::Frame;
@@ -26,11 +26,26 @@ use rtic_sync::signal::Signal;
 
 use ws2812_pio::Ws2812Direct;
 use smart_leds::{SmartLedsWrite, RGB8};
+use rtic_sync::portable_atomic::{AtomicBool, AtomicU8, Ordering};
+
+use crate::device_constants::{
+    MagnetState, ServoState, COLOR_DIM_BLUE, COLOR_DIM_GREEN, 
+    COLOR_DIM_MAGENTA, COLOR_DIM_RED, COLOR_OFF
+};
+
+
+static LOCAL_RBF_IN: AtomicBool = AtomicBool::new(true);
+static LOCAL_MAGNET_STATE: AtomicU8 = AtomicU8::new(0);
+static LOCAL_SERVO_STATE: AtomicU8 = AtomicU8::new(0); 
+static LOCAL_RX_ALIVE: AtomicBool = AtomicBool::new(false);
+
+static STATUS_UPDATE: AtomicBool = AtomicBool::new(false);
+
 
 
 
 #[cfg(not(feature = "fast-startup"))]
-const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 180;
+const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 5;
 /// Constant to prevent ejector from interfering with JUPITER's u-boot sequence
 #[cfg(feature = "fast-startup")]
 const JUPITER_BOOT_LOCKOUT_TIME_SECONDS: u64 = 10;
@@ -46,7 +61,8 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
     // Still blink, but toggle as it is done
     loop {
         // onboard_led.toggle().unwrap();
-        // info!("Alive?");
+        // info!("Heartbeat");
+        LOCAL_RX_ALIVE.store(true, Ordering::Relaxed);
         if Mono::now().duration_since_epoch().to_secs() > JUPITER_BOOT_LOCKOUT_TIME_SECONDS {
             let status = Status::new(DeviceIdentifier::Ejector, now_timestamp(), sequence_number);
 
@@ -57,7 +73,7 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
             sequence_number = sequence_number.wrapping_add(1);
         }
 
-        Mono::delay(300_u64.millis()).await;
+        Mono::delay(1000_u64.millis()).await;
     }
 }
 
@@ -65,6 +81,8 @@ pub async fn heartbeat(mut ctx: heartbeat::Context<'_>) {
 pub async fn downlink_jupiter(mut ctx: downlink_jupiter::Context<'_>) {
     let mut enc_buf = [0u8; SCRATCH];
     let config = standard();
+    // Ejector lockout
+    Mono::delay(40000_u64.millis()).await;
     loop {
         let packet = ctx
             .shared
@@ -109,6 +127,8 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
     // Latch ejector servos closed
     servo.enable();
     servo.hold();
+    LOCAL_SERVO_STATE.store(ServoState::PowerOn as u8, Ordering::Relaxed);
+    LOCAL_MAGNET_STATE.store(MagnetState::Holding as u8, Ordering::Relaxed);
 
     // let ejection_pin = ctx.local.ejection_pin;
 
@@ -123,6 +143,7 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
 
 
     info!("Ejecting!");
+    LOCAL_SERVO_STATE.store(ServoState::Release as u8, Ordering::Relaxed);
     // For current servo a graduated angle change has worked for fast ejection, but not just setting to the final angle
     for i in (14..23) {
         info!("i {}!", i);
@@ -137,6 +158,7 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
 
     e_magnet.enable();
     e_magnet.polarity_switch();
+    LOCAL_MAGNET_STATE.store(MagnetState::Ejecting as u8, Ordering::Relaxed);
 
     // Right now we don't have a pin read from jupiter, although this may be re-added later
     // Wait until ejection pin from JUPITER reads high
@@ -152,6 +174,8 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
     e_magnet.disable();
     servo.hold();
 
+    LOCAL_MAGNET_STATE.store(MagnetState::Off as u8, Ordering::Relaxed);
+    LOCAL_SERVO_STATE.store(ServoState::Off as u8, Ordering::Relaxed);
     info!("Ejector disabled, servo and magnet disabled. Ejector sequencing complete.");
 }
 
@@ -159,14 +183,39 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
 ///
 /// Timing: Every second
 pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
-    let sensor = &mut ctx.local.thermocouple;
-
-    info!("Mcp start");
+    let manager = &mut ctx.local.sensor_manager;
 
     loop {
-        match sensor.read_hot_junction() {
-            Ok(temp) => info!("Thermocouple Temperature: {} C", temp),
-            Err(_) => warn!("Failed to read MCP9600 thermocouple"),
+        let time_stamp = now_timestamp().nanos();
+        
+        // Get max of 5 packets
+        let packets = manager.poll_thermocouples(time_stamp);
+
+        match manager.poll_bme280(time_stamp) {
+            Some(packet) => {
+                //  ctx.shared
+                // .downlink_packets
+                // .lock(|q| q.push_back(packet).ok());
+                info!("BME Packet retrieved, {:?}",packet )
+            }
+            None => error!("Failed to poll bme280")
+        }
+
+
+        for packet in packets {
+            if let ApplicationPacket::ThermocoupleData { channel, hot_junction_temp, .. } = &packet {
+                info!("Thermocouple CH{}: {} C", channel, hot_junction_temp);
+            }
+
+
+            ctx.shared
+                .downlink_packets
+                .lock(|q| q.push_back(packet.clone()).ok());
+            
+            
+            ctx.shared
+                .temp_store
+                .lock(|store| store.push_back(packet).ok());
         }
 
         Mono::delay(1000_u64.millis()).await;
@@ -184,23 +233,54 @@ pub async fn poll_rbf(mut ctx: poll_rbf::Context<'_>) {
             .is_low()
             .expect("Failed to read the RBF pin state")
         {
-            info!("RBF pin is low, blocking ejection code...");
+            // info!("RBF pin is low, blocking ejection code...");
             ctx.shared.ejection_enabled.lock(|blocked| *blocked = false);
+            LOCAL_RBF_IN.store(true, Ordering::Relaxed);
         } else {
-            info!("RBF pin is high, ejection code enabled.");
+            // info!("RBF pin is high, ejection code enabled.");
             ctx.shared.ejection_enabled.lock(|blocked| *blocked = true);
+            LOCAL_RBF_IN.store(false, Ordering::Relaxed);
         }
+        Mono::delay(3000_u64.millis()).await;
+
     }
 }
 
 pub async fn write_sd_card(mut ctx: write_sd_card::Context<'_>) {
-    ctx.shared.sd_card.lock(|sd_card| {
-        let file_data =
-            b"GLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\n";
-        info!("Berofe Writting!");
-        sd_card.write_data(EJECTOR_GAURD_FILENAME, file_data);
-        info!("After Writting!");
-    });
+    // f32 + u64 ; 12 bytes
+    let mut write_buf = [0u8; SCRATCH];
+    let config = standard();
+    
+    loop {
+        let should_write = ctx.shared.temp_store.lock(|store| store.len() >= 40);
+
+        if should_write {
+            let mut head: usize = 0;
+
+            for i in 0..40 {
+                let packet = ctx.shared.temp_store.lock(|store| store.pop_front());
+                
+                if let Some(p) = packet {
+                    if let Ok(sz) = encode_into_slice(p, &mut write_buf[head..], config) {
+                        head += sz;
+                    }
+                } else {
+                    break; // Queue is empty earlier than expected
+                }
+            }
+
+            // let file_data = b"GLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\n";
+
+            if head > 0 {
+                ctx.shared.sd_card.lock(|sd_card| {
+                    info!("Writing {} byte sector to SD!", head);
+                    sd_card.write_data(EJECTOR_GAURD_FILENAME, &write_buf[..head]);
+                });
+            }
+        }
+
+        Mono::delay(1000_u64.millis()).await;
+    }
 }
 
 pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
@@ -209,6 +289,7 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
 
     let mut rx_buf = [0u8; SCRATCH];
     let mut idx = 0;
+    Mono::delay(40000_u64.millis()).await;
 
     loop {
         let mut data_received = false;
@@ -217,7 +298,7 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
         while jupiter_rx.read_ready().expect("RX Uart fault") {
             // Prevent buffer overflow if garbage data fills the array
             if idx >= SCRATCH {
-                error!("RX buffer overflow, dropping oldest byte");
+                // error!("RX buffer overflow, dropping oldest byte");
                 rx_buf.copy_within(1..idx, 0);
                 idx -= 1;
             }
@@ -229,7 +310,7 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
                 }
                 Ok(_) => break, // 0 bytes read
                 Err(_) => {
-                    error!("Error reading bytes from uart rx");
+                    // error!("Error reading bytes from uart rx");
                     break;
                 }
             }
@@ -242,6 +323,7 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
                     ApplicationPacket::Command(CommandPacket::ColorSet(status_options)),
                     bytes_used,
                 )) => {
+                    // info!("Color command");
                     ctx.shared.status_config.lock(|status_config| {
                         status_config.update_from_options(status_options);
                     });
@@ -251,6 +333,7 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
                         rx_buf.copy_within(bytes_used..idx, 0);
                     }
                     idx = remaining;
+                    STATUS_UPDATE.store(true, Ordering::Relaxed);
                 }
 
                 // This would be way better with just a pin toggle
@@ -260,6 +343,7 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
                     )),
                     bytes_used,
                 )) => {
+                    info!("Ejector phase set");
                     ctx.local.ejection_trigger_tx.write(());
 
                     let remaining = idx - bytes_used;
@@ -271,6 +355,7 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
 
                 // Successfully decoded a packet, but it's not a ColorSet command
                 Ok((_, bytes_used)) => {
+                    info!("Other");
                     let remaining = idx - bytes_used;
                     if remaining > 0 {
                         rx_buf.copy_within(bytes_used..idx, 0);
@@ -280,11 +365,13 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
 
                 // Incomplete packet: wait for more bytes on the next loop
                 Err(bincode::error::DecodeError::UnexpectedEnd { .. }) => {
+                    // error!("Decode error");
                     break;
                 }
 
                 // Corrupt data, so drop the oldest byte and slide the window to resync
                 Err(_) => {
+                    error!("corrupt data error");
                     rx_buf.copy_within(1..idx, 0);
                     idx -= 1;
                 }
@@ -297,72 +384,148 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
     }
 }
 
-// pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
-//     let rgb_driver = ctx.local.rgb_driver;
-//     loop {
-        
-//         // let current_colors = ctx.shared.status_config.lock(|status| {
-//         //     [
-//         //         status.RBF,
-//         //         status.HaLow,
-//         //         status.Esp,
-//         //         status.Infratracker,
-//         //         status.Guard,
-//         //         status.Jupiter,
-//         //         status.ElectroMagnet,
-//         //         status.Servos,
-//         //         status.Jupiter_Avionics_Health,
-//         //         status.Ejector_Health,
-//         //         status.Odin_Compute_Health,
-//         //         status.Odin_Pico_Health,
-//         //     ]
-//         // });
-
-//         rgb_driver.write(current_colors.iter().cloned()).unwrap();
-
-//         // Mono::delay(1000_u64.millis()).await;
-//     }
-// }
-
-
-// Party Anim
 pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
-    let rgb_driver = &mut ctx.local.rgb_driver; 
-    
-    // 8 bit color wheel, 50 intensity max
-    fn dim_wheel(mut pos: u8) -> RGB8 {
-        pos = 255 - pos;
-        if pos < 85 {
-            RGB8::new((255 - pos * 3) / 5, 0, (pos * 3) / 5)
-        } else if pos < 170 {
-            pos -= 85;
-            RGB8::new(0, (pos * 3) / 5, (255 - pos * 3) / 5)
-        } else {
-            pos -= 170;
-            RGB8::new((pos * 3) / 5, (255 - pos * 3) / 5, 0)
-        }
-    }
+    let rgb_driver = ctx.local.rgb_driver;
 
-    let mut tick: u8 = 0;
+    let mut blink_toggle = false;
+    let mut rx_timeout_counter: u8 = 0;
+    let mut feed = 0;
 
     loop {
-        let mut current_colors = [RGB8::new(0, 0, 0); 12];
 
-        for i in 0..12 {
-            // Space the 12 LEDs evenly across the 0-255 color spectrum
-            let offset = (i * 256 / 12) as u8;
-            let pixel_pos = tick.wrapping_add(offset);
-            
-            current_colors[i] = dim_wheel(pixel_pos);
+        
+        let mut current_colors = ctx.shared.status_config.lock(|status| {
+            [
+                status.RBF,
+                status.HaLow,
+                status.Esp,
+                status.Infratracker,
+                status.Guard,
+                status.Jupiter,
+                status.ElectroMagnet,
+                status.Servos,
+                status.Jupiter_Avionics_Health,
+                status.Ejector_Health,
+                status.Odin_Compute_Health,
+                status.Odin_Pico_Health,
+            ]
+        });
+
+        if STATUS_UPDATE.load(Ordering::Relaxed) {
+            feed = 0;
+            STATUS_UPDATE.store(false, Ordering::Relaxed)
         }
+
+
+        if feed >= 10 {
+            // Infratracker
+            current_colors[3] = COLOR_OFF;
+            
+            // Guard
+            current_colors[4] = COLOR_OFF;
+
+            // Jupiter State machine
+            current_colors[5] = COLOR_OFF;
+
+            // Jupiter Avionics
+            current_colors[8] = COLOR_OFF;
+        }
+        feed += 1;
+
+
+        
+        // info!("Color update");
+
+        // Infratracker blink
+        current_colors[3] = if blink_toggle { current_colors[3] } else { COLOR_OFF };
+
+        // Guard blink
+        current_colors[4] = if blink_toggle { current_colors[4] } else { COLOR_OFF };
+        
+
+
+        apply_local_states(&mut current_colors, blink_toggle, &mut rx_timeout_counter);
 
         rgb_driver.write(current_colors.iter().cloned()).unwrap();
 
-        // Greater value = faster swirl
-        tick = tick.wrapping_add(4); 
-
-        // 50 fps
-        Mono::delay(20_u64.millis()).await;
+        blink_toggle = !blink_toggle;
+        Mono::delay(1000_u64.millis()).await;
     }
+}
+
+
+// Party Anim
+// pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
+//     let rgb_driver = &mut ctx.local.rgb_driver; 
+    
+//     // 8 bit color wheel, 50 intensity max
+//     fn dim_wheel(mut pos: u8) -> RGB8 {
+//         pos = 255 - pos;
+//         if pos < 85 {
+//             RGB8::new((255 - pos * 3) / 5, 0, (pos * 3) / 5)
+//         } else if pos < 170 {
+//             pos -= 85;
+//             RGB8::new(0, (pos * 3) / 5, (255 - pos * 3) / 5)
+//         } else {
+//             pos -= 170;
+//             RGB8::new((pos * 3) / 5, (255 - pos * 3) / 5, 0)
+//         }
+//     }
+
+//     let mut tick: u8 = 0;
+
+//     loop {
+//         let mut current_colors = [RGB8::new(0, 0, 0); 12];
+
+//         for i in 0..12 {
+//             // Space the 12 LEDs evenly across the 0-255 color spectrum
+//             let offset = (i * 256 / 12) as u8;
+//             let pixel_pos = tick.wrapping_add(offset);
+            
+//             current_colors[i] = dim_wheel(pixel_pos);
+//         }
+
+//         rgb_driver.write(current_colors.iter().cloned()).unwrap();
+
+//         // Greater value = faster swirl
+//         tick = tick.wrapping_add(4); 
+
+//         // 50 fps
+//         Mono::delay(20_u64.millis()).await;
+//     }
+// }
+
+fn apply_local_states(
+    current_colors: &mut [RGB8; 12],
+    blink_toggle: bool,
+    rx_timeout_counter: &mut u8,
+) {
+    // Index 0: RBF
+    current_colors[0] = if LOCAL_RBF_IN.load(Ordering::Relaxed) {
+        COLOR_DIM_RED
+    } else {
+        COLOR_DIM_GREEN
+    };
+
+    // Index 6: Electromagnet
+    let magnet_state = MagnetState::from(LOCAL_MAGNET_STATE.load(Ordering::Relaxed));
+    current_colors[6] = magnet_state.color();
+
+    // Index 7: Servos
+    let servo_state = ServoState::from(LOCAL_SERVO_STATE.load(Ordering::Relaxed));
+    current_colors[7] = servo_state.color();
+
+    // Index 9: Ejector Health (Blink green if alive, solid red if dead for > 2s)
+    if LOCAL_RX_ALIVE.swap(false, Ordering::Relaxed) {
+        *rx_timeout_counter = 0;
+    } else {
+        *rx_timeout_counter = rx_timeout_counter.saturating_add(1);
+    }
+
+    current_colors[9] = if *rx_timeout_counter > 4 { 
+        COLOR_DIM_RED
+    } else {
+        if blink_toggle { COLOR_DIM_GREEN } else { COLOR_OFF } 
+    };
 }
 
