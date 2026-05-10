@@ -1,3 +1,4 @@
+use std::clone;
 use std::fs::create_dir;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{channel, sync_channel, Receiver, Sender, TrySendError, RecvTimeoutError};
@@ -168,7 +169,7 @@ impl InfratrackerThread {
 
                                     // Copy
                                     let img_vec = raw_buffer.to_vec(); 
-                                    let mut solve_img = ImageBuffer::from_raw(width, height, img_vec)
+                                    let mut solve_img = ImageBuffer::from_raw(width, height, img_vec.clone())
                                         .expect("Buffer size mismatch");
 
                                     avger.apply_average(&mut solve_img);
@@ -193,7 +194,7 @@ impl InfratrackerThread {
                                         }
                                     }
 
-                                    save_tx.send((timestamp, img_vec.clone(), width, height)).ok();
+                                    save_tx.send((timestamp, img_vec, width, height)).ok();
                                     // Do file save with zero copy
                                     // cuz we can get away with it
                                     // let local_img: ImageBuffer<Luma<u8>, &[u8]> = 
