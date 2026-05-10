@@ -14,7 +14,7 @@ use aether::reference_frame::{Body, ICRF};
 
 pub struct SerialHandler {
     pub uart_port: Box<dyn serialport::SerialPort>,
-    pub adcs_stream: TcpStream, 
+    pub adcs_stream: Option<TcpStream>, 
     pub main_q_rx: Receiver<Quaternion<f32, ICRF<f32>, Body<f32>>>,
     pub aux_q_rx: Receiver<Quaternion<f32, ICRF<f32>, Body<f32>>>,
     pub estimate_rx: Receiver<f32>,
@@ -39,21 +39,23 @@ impl SerialHandler {
     }
 
     /// Forward application packet bytes from the odinpico to the ADCS TCP stream.
-    #[inline]
+   #[inline]
     fn forward_uart_to_tcp(&mut self, rx_buffer: &mut [u8]) {
-        // Check fi timeout throttles loop or not
         match self.uart_port.read(rx_buffer) {
             Ok(bytes_read) if bytes_read > 0 => {
-                if let Err(e) = self.adcs_stream.write_all(&rx_buffer[..bytes_read]) {
-                    if e.kind() == io::ErrorKind::WouldBlock {
-                        warn!("ADCS TCP Blocked: Dropping telemetry frame");
-                    } else {
-                        error!("ADCS TCP Write Error: {}", e);
+                // Only attempt to forward if the TCP link is up
+                if let Some(stream) = &mut self.adcs_stream {
+                    if let Err(e) = stream.write_all(&rx_buffer[..bytes_read]) {
+                        if e.kind() == io::ErrorKind::WouldBlock {
+                            warn!("ADCS TCP Blocked: Dropping telemetry frame");
+                        } else {
+                            error!("ADCS TCP Write Error: {}", e);
+                        }
                     }
                 }
             }
-            Ok(_) => {} // 0 bytes read
-            Err(ref e) if e.kind() == io::ErrorKind::TimedOut => {} // Expected idle timeout
+            Ok(_) => {} 
+            Err(ref e) if e.kind() == io::ErrorKind::TimedOut => {} 
             Err(e) => error!("UART Read Error: {}", e),
         }
     }

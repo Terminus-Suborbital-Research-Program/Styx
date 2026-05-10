@@ -12,7 +12,7 @@ use signet::record::packet::SdrPacketLog;
 
 pub struct RadioHandler {
     pub consumer: Consumer<SdrPacketLog>,
-    pub stream: TcpStream,
+    pub stream: Option<TcpStream>,
     pub processor_tx: Sender<Box<SdrPacketLog>>,
     pub process_interval: usize,
 }
@@ -46,18 +46,21 @@ impl RadioHandler {
     }
 
     #[inline]
-    fn forward_to_tcp(stream: &mut TcpStream, packet: &SdrPacketLog, buffer: &mut [u8]) {
-        match encode_into_slice(packet, buffer, standard()) {
-            Ok(bytes) => {
-                if let Err(e) = stream.write_all(&buffer[..bytes]) {
-                    if e.kind() == io::ErrorKind::WouldBlock {
-                        warn!("TCP Buffer Full: Dropping packet to maintain real-time flow");
-                    } else {
-                        error!("TCP Write Error: {}", e);
+    fn forward_to_tcp(stream_opt: &mut Option<TcpStream>, packet: &SdrPacketLog, buffer: &mut [u8]) {
+        // If the network is down, skip encoding and sending entirely
+        if let Some(stream) = stream_opt {
+            match encode_into_slice(packet, buffer, standard()) {
+                Ok(bytes) => {
+                    if let Err(e) = stream.write_all(&buffer[..bytes]) {
+                        if e.kind() == io::ErrorKind::WouldBlock {
+                            warn!("TCP Buffer Full: Dropping packet to maintain real-time flow");
+                        } else {
+                            error!("TCP Write Error: {}", e);
+                        }
                     }
                 }
+                Err(e) => error!("Encode Error: {}", e),
             }
-            Err(e) => error!("Encode Error: {}", e),
         }
     }
 

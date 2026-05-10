@@ -68,21 +68,31 @@ fn main() {
 
     std::thread::sleep(Duration::from_millis(500));
 
-    let mut sdr_stream = TcpStream::connect("10.0.0.1:7878").expect("Failed to connect to Jupiter");
-    sdr_stream
-        .set_nonblocking(true)
-        .expect("Failed to set non-blocking");
-    sdr_stream
-        .set_write_timeout(Some(Duration::from_micros(100)))
-        .unwrap();
+    let sdr_stream = match TcpStream::connect("10.0.0.1:7878") {
+        Ok(stream) => {
+            stream.set_nonblocking(true).expect("Failed to set non-blocking");
+            stream.set_write_timeout(Some(Duration::from_micros(100))).unwrap();
+            info!("SDR TCP connected to Jupiter.");
+            Some(stream)
+        }
+        Err(e) => {
+            error!("Failed remote connection to Jupiter: {}. Proceeding without SDR telemetry.", e);
+            None
+        }
+    };
 
-    let mut adcs_stream = TcpStream::connect("10.0.0.1:7879").expect("Failed to connect to Jupiter");
-    adcs_stream
-        .set_nonblocking(true)
-        .expect("Failed to set non-blocking");
-    adcs_stream
-        .set_write_timeout(Some(Duration::from_micros(100)))
-        .unwrap();
+    let adcs_stream = match TcpStream::connect("10.0.0.1:7879") {
+        Ok(stream) => {
+            stream.set_nonblocking(true).expect("Failed to set non-blocking");
+            stream.set_write_timeout(Some(Duration::from_micros(100))).unwrap();
+            info!("ADCS TCP connected to Jupiter.");
+            Some(stream)
+        }
+        Err(e) => {
+            error!("Failed remote connection to Jupiter: {}. Proceeding with local UART only.", e);
+            None
+        }
+    };
 
     std::thread::sleep(Duration::from_millis(500));
 
