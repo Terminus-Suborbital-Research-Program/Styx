@@ -29,6 +29,7 @@ pub struct GpioHardware {
     te2: ReadPin,
     te3: ReadPin,
     battery_latch: WritePin,
+    battery_latch_2: WritePin,
     cam_active: WritePin,
 }
 
@@ -42,7 +43,8 @@ impl GpioHardware {
             te1: Pin::new("GPIO6").into(),
             te2: Pin::new("GPIO23").into(),
             te3: Pin::new("GPIO24").into(),
-            battery_latch: Pin::new("GPIO26").into(),
+            battery_latch: Pin::new("GPIO13").into(),
+            battery_latch_2: Pin::new("GPIO26").into(),
             cam_active: Pin::new("GPIO21").into(),
         }
     }
@@ -64,9 +66,11 @@ impl BoardHardware for GpioHardware {
             .build())
     }
 
-    fn activate_latch(&mut self) { self.battery_latch.write(true).ok(); }
+    fn activate_latch(&mut self) { self.battery_latch.write(true).ok();
+                                   self.battery_latch_2.write(true).ok(); }
     fn idle_latch(&mut self) {  }
-    fn deactivate_latch(&mut self) { self.battery_latch.write(false).ok(); }
+    fn deactivate_latch(&mut self) { self.battery_latch.write(false).ok(); 
+                                     self.battery_latch_2.write(false).ok();}
     fn cams_on(&mut self) { self.cam_active.write(true).ok();  }
 }
 
