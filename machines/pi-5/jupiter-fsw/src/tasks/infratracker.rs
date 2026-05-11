@@ -21,6 +21,8 @@ use aether::reference_frame::{ICRF, Body};
 
 use DarkAverager::ImageAveragerFromBuffer;
 
+use pylon_cxx::{NodeMap, EnumNode, IntegerNode,FloatNode, InstantCamera };
+
 const STAR_TRACKER_DIR: &str = "/home/terminus/basler/";
 
 // capture image and solve every 1Hz or 1000 millis
@@ -67,7 +69,7 @@ impl InfratrackerThread {
 
                 
                 let pylon = pylon_cxx::Pylon::new();
-                let camera = pylon_cxx::TlFactory::instance(&pylon).create_first_device()?;
+                let mut camera = pylon_cxx::TlFactory::instance(&pylon).create_first_device()?;
 
                 let mut pixel_format_node = camera.node_map()?.enum_node("PixelFormat")?;
 
@@ -78,6 +80,9 @@ impl InfratrackerThread {
                 for format in available_formats {
                     info!(" - {}", format);
                 }
+
+                InfratrackerThread::init_camera(&mut camera);
+
                 let mut was_tracking = false;
                 let mut grab_result = pylon_cxx::GrabResult::new()?;
 
@@ -260,6 +265,48 @@ impl InfratrackerThread {
         if let Err(e) = self.quaternion_sender.send(packet) {
             error!("Error sending estimate: {}", e);
         }
+    }
+
+
+    fn init_camera(camera: &mut InstantCamera<'_>) {
+         if let Ok(node_map) = camera.node_map() {
+                    // PixelFormat (Enum)
+                    if let Ok(mut node) = node_map.enum_node("PixelFormat") {
+                        if let Err(e) = node.set_value("Mono12") { error!("Failed to set PixelFormat: {}", e); }
+                    } else { error!("PixelFormat node not found"); }
+
+                    // DefectPixelCorrectionMode (Enum)
+                    if let Ok(mut node) = node_map.enum_node("DefectPixelCorrectionMode") {
+                        if let Err(e) = node.set_value("Off") { error!("Failed to set DefectPixelCorrectionMode: {}", e); }
+                    } else { error!("DefectPixelCorrectionMode node not found"); }
+
+                    // Width (Integer)
+                    if let Ok(mut node) = node_map.integer_node("Width") {
+                        if let Err(e) = node.set_value(1600) { error!("Failed to set Width: {}", e); }
+                    } else { error!("Width node not found"); }
+
+                    // Height (Integer)
+                    if let Ok(mut node) = node_map.integer_node("Height") {
+                        if let Err(e) = node.set_value(1200) { error!("Failed to set Height: {}", e); }
+                    } else { error!("Height node not found"); }
+
+                    // Gamma (Float)
+                    if let Ok(mut node) = node_map.float_node("Gamma") {
+                        if let Err(e) = node.set_value(1.0) { error!("Failed to set Gamma: {}", e); }
+                    } else { error!("Gamma node not found"); }
+
+                    // ExposureTime (Float)
+                    if let Ok(mut node) = node_map.float_node("ExposureTime") {
+                        if let Err(e) = node.set_value(10000.0) { error!("Failed to set ExposureTime (float): {}", e); }
+                    } else { error!("ExposureTime node not found"); }
+
+                    // Gain (Float)
+                    if let Ok(mut node) = node_map.float_node("Gain") {
+                        if let Err(e) = node.set_value(24.0) { error!("Failed to set Gain (float): {}", e); }
+                    } else { error!("Gain node not found"); }
+                } else {
+                    error!("Failed to retrieve camera node map. Cannot apply hardware settings.");
+                }
     }
 
 
