@@ -34,6 +34,12 @@ impl ValidState for Shutdown {
 
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
         if self.time_since_switch < ctx.t_time {
+            info!("Syncing filesystem to prevent corruption...");
+            let _ = Command::new("sync").status();
+
+            // Second to finish writes
+            std::thread::sleep(std::time::Duration::from_secs(1));
+
             info!("Shutting Down!");
             ctx.hardware.deactivate_latch();
 
