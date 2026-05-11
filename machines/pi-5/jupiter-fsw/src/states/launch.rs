@@ -18,8 +18,8 @@ impl ValidState for Launch {
     }
 
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
-        if ctx.t_time >= 60 {
-            info!("60 seconds since launch, start cam");
+        if ctx.t_time >= 50 {
+            info!("50 seconds since launch, start cam");
             ctx.hardware.cams_on();
             return Box::new(StartCameraRecording::default());
         } else {
