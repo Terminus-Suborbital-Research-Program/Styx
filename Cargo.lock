@@ -2416,6 +2416,7 @@ dependencies = [
  "adxl345_driver2",
  "aether",
  "bin-packets",
+ "bincode",
  "bindgen 0.72.1",
  "bmi323 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "common-states",

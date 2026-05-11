@@ -36,9 +36,13 @@ mod timing;
 
 use data::status::ExperimentColorState;
 use log::{error, info};
-use tasks::{RbfTask, GpioHardware, LogMonitor, TRACKING};
+use tasks::{RbfTask, GpioHardware, LogMonitor, TRACKING, SdrReceiverTask, AdcsReceiverTask};
 use bin_packets::commands::CommandPacket;
 use avionics::imu::{AvionicsImuManager, IMUError};
+
+use std::sync::mpsc::channel;
+
+
 
 
 // pub const CAM_ON_PIN: &str = "GPIO18"; // G3
@@ -127,6 +131,12 @@ fn main() {
     let mut last_update = Instant::now();
     let status_interval = Duration::from_millis(STATUS_INTERVAL);
 
+    let _sdr_handle = SdrReceiverTask::spawn();
+
+    let (adcs_tx, adcs_rx) = channel::<ApplicationPacket>();
+    let adcs_receiver = AdcsReceiverTask { tx: adcs_tx };
+    let _adcs_handle = adcs_receiver.spawn();
+
 
     loop {
         if let Some(iface) = &mut interface {
@@ -212,67 +222,19 @@ fn main() {
         }
 
         // JUPITER-ODIN Packet Comms
-        let sdr_listener = TcpListener::bind("127.0.0.1:7878").expect("Failed to bind");
-        info!("Recorder listening on 127.0.0.1:7878...");
+        while let Ok(packet) = adcs_rx.try_recv() {
+            // match &packet {
+            //     ApplicationPacket::AttitudeMetrics { .. } => {
+            //         color_status.feed_infratracker(); 
+            //     }
+            //     _ => {}
+            // }
 
-        let adcs_listener = TcpListener::bind("127.0.0.2:7878").expect("Failed to bind");
-        info!("Recorder listening on 127.0.0.2:7878...");
-
-        let mut sdr_buffer = [0u8; BUFF_SIZE * 10];
-        let mut adcs_buffer = [0u8; 1000];
-
-        for stream in sdr_listener.incoming() {
-            match stream {
-                Ok(mut stream) => {
-                    info!("Connection established: {:?}", stream.peer_addr());
-
-                    loop {
-                        match stream.read(&mut sdr_buffer) {
-                            Ok(0) => {
-                                info!("Sender disconnected. Closing file.");
-                                break;
-                            }
-                            Ok(bytes_read) => {
-                                if let Err(e) = onboard_packet_storage.write(&sdr_buffer[..bytes_read]) {
-                                    error!("Error writing encoded data {}", e);
-                                }
-                            }
-
-                            Err(e) => {
-                                error!("Error reading from socket{}", e);
-                            }
-                        }
-                    }
-                }
-                Err(e) => error!("Connection failed: {}", e),
-            }
-        }
-
-        for stream in adcs_listener.incoming() {
-            match stream {
-                Ok(mut stream) => {
-                    info!("Connection established: {:?}", stream.peer_addr());
-
-                    loop {
-                        match stream.read(&mut adcs_buffer) {
-                            Ok(0) => {
-                                info!("Sender disconnected. Closing file.");
-                                break;
-                            }
-                            Ok(bytes_read) => {
-                                if let Err(e) = onboard_packet_storage.write(&adcs_buffer[..bytes_read]) {
-                                    error!("Error writing encoded data {}", e);
-                                }
-                            }
-
-                            Err(e) => {
-                                error!("Error reading from socket{}", e);
-                            }
-                        }
-                    }
-                }
-                Err(e) => error!("Connection failed: {}", e),
-            }
+            // Write Odin's packet directly into Jupiter's OnboardPacketStorage
+            onboard_packet_storage.write(packet);
+            
+            #[cfg(feature = "packet_logging")]
+            info!("Logged remote Odin packet to local storage.");
         }
         ////
 
