@@ -24,8 +24,10 @@ use crate::{
 };
 
 use crate::tasks::{ActiveHardware, BoardHardware};
-
-
+use std::rc::Rc;
+use std::cell::RefCell;
+use bin_packets::device::std::Device;
+use serialport::SerialPort;
 /// State machine for JUPITER
 pub struct JupiterStateMachine {
     state: Box<dyn ValidState>,
@@ -34,8 +36,12 @@ pub struct JupiterStateMachine {
 
 impl JupiterStateMachine {
     /// Create a new state machine from a pin provider
-    pub fn new(atmega: ActiveHardware, ejection_pin: WritePin) -> Self {
-        let mut ctx = StateContext::new(atmega, ejection_pin);
+    pub fn new(
+        atmega: ActiveHardware, 
+        ejection_pin: WritePin, 
+        interface: Rc<RefCell<Option<Device<Box<dyn SerialPort>>>>>
+    ) -> Self {
+        let mut ctx = StateContext::new(atmega, ejection_pin, interface);
         let state = PowerOn::enter(&mut ctx);
 
         Self {
