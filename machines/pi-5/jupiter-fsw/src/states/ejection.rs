@@ -27,9 +27,9 @@ impl ValidState for Ejection {
             if let Err(e) = ctx.ejection_pin.write(true) {
                 error!("Failed to assert ejection pin: {:?}", e);
             }
-
+            let i = 1;
             if let Some(iface) = ctx.interface.borrow_mut().as_mut() {
-                for i in 1..=5 {
+                // for i in 1..=5 {
                     let cmd = ApplicationPacket::Command(
                         CommandPacket::EjectorPhaseSet(EjectorPhase::Ejection)
                     ); 
@@ -38,7 +38,7 @@ impl ValidState for Ejection {
                         Ok(_) => info!("Eject command {}/5 successfully sent to Ejector.", i),
                         Err(e) => error!("Failed to send Eject command {}/5 to Ejector over UART: {}", i, e),
                     }
-                }
+                // }
             } else {
                 error!("Cannot send Eject command: UART interface is unavailable.");
             }
