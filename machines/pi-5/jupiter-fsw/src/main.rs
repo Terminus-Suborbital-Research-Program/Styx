@@ -36,6 +36,9 @@ use tasks::{RbfTask, GpioHardware, LogMonitor, TRACKING};
 use bin_packets::commands::CommandPacket;
 use avionics::imu::{AvionicsImuManager, IMUError};
 
+use std::rc::Rc;
+use std::cell::RefCell;
+
 
 // pub const CAM_ON_PIN: &str = "GPIO18"; // G3
 
@@ -56,13 +59,13 @@ fn main() {
         .timeout(Duration::from_millis(10))
         .open();
     
-    let mut interface = match port_res {
+    let interface = Rc::new(RefCell::new(match port_res {
         Ok(port) => Some(Device::new(port)),
         Err(e) => {
             error!("Failed to open serial port {SERIAL_PORT}: {e}");
-            None // Continue booting so we can still log to SD card
+            None 
         }
-    };
+    }));
 
     let ejection_pin: WritePin = Pin::new(EJECTION_IND_PIN).into();
     if let Err(e) = ejection_pin.write(false) {
@@ -108,7 +111,11 @@ fn main() {
     let (infratracker_thread, infratracker_packet_rx) = InfratrackerThread::new();
     let infratracker_handle = infratracker_thread.begin_startracking();
 
-    let mut state_machine = JupiterStateMachine::new(hardware, ejection_pin);
+    let mut state_machine = JupiterStateMachine::new(
+        hardware, 
+        ejection_pin, 
+        Rc::clone(&interface)
+    );
     let mut counter = 0;
 
     let mut color_status = ExperimentColorState::new();
@@ -125,19 +132,15 @@ fn main() {
 
 
     loop {
-        if let Some(iface) = &mut interface {
+        if let Some(iface) = interface.borrow_mut().as_mut() {
             while let Some(packet) = iface.read() {
                 match &packet {
-                    ApplicationPacket::GeigerData { timestamp_ms: _, recorded_pulses: _ } => {
-                        color_status.feed_geiger();
-                    }
-                    ApplicationPacket::ThermocoupleData { timestamp: _, channel: _, hot_junction_temp: _ }=> {
-                        color_status.feed_thermocouple();
-                    }
+                    ApplicationPacket::GeigerData { .. } => color_status.feed_geiger(),
+                    ApplicationPacket::ThermocoupleData { .. }=> color_status.feed_thermocouple(),
                     _ => {}
                 }
 
-                onboard_packet_storage.write(packet); // Write to the onboard storage
+                onboard_packet_storage.write(packet);
                 #[cfg(feature = "packet_logging")]
                 info!("Got a packet: {packet:?}");
             }
@@ -219,7 +222,7 @@ fn main() {
             let current_rgb_options = color_status.current_status();
 
             // info!("Status update");
-            if let Some(iface) = &mut interface {
+            if let Some(iface) = interface.borrow_mut().as_mut() {
                 if let Err(e) = iface.write(ApplicationPacket::Command(CommandPacket::ColorSet(current_rgb_options))) {
                     error!("Failed to write color packet down: {e}");
                 }
