@@ -38,10 +38,10 @@ pub mod pins {
     pub type RGBLedPin = Gpio24;
 
     /// RBF PIN
-    pub type RBFPin = Pin<Gpio2, FunctionSio<SioInput>, PullDown>;
+    pub type RBFPin = Pin<Gpio42, FunctionSio<SioInput>, PullDown>;
 
     /// Ejection detection pin
-    pub type EjectionPin = Gpio8;
+    pub type EjectionPin = Gpio38;
 
     /// UART RX
     pub type JupiterRxPin = Pin<Gpio1, FunctionUart, PullDown>;
@@ -261,7 +261,7 @@ impl ServoState {
             ServoState::Off => COLOR_OFF,
             ServoState::PowerOn => COLOR_DIM_GREEN,
             ServoState::Release => COLOR_DIM_MAGENTA,
-            ServoState::Unknown => COLOR_OFF,
+            ServoState::Unknown => COLOR_DIM_MAGENTA,
         }
     }
 }

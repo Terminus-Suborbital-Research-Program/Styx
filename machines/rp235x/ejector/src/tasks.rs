@@ -42,6 +42,9 @@ static LOCAL_RX_ALIVE: AtomicBool = AtomicBool::new(false);
 static STATUS_UPDATE: AtomicBool = AtomicBool::new(false);
 
 
+static EJECT: AtomicBool = AtomicBool::new(false);
+
+
 
 
 #[cfg(not(feature = "fast-startup"))]
@@ -130,7 +133,7 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
     LOCAL_SERVO_STATE.store(ServoState::PowerOn as u8, Ordering::Relaxed);
     LOCAL_MAGNET_STATE.store(MagnetState::Holding as u8, Ordering::Relaxed);
 
-    // let ejection_pin = ctx.local.ejection_pin;
+    let ejection_pin = ctx.local.ejection_pin;
 
     // Lockout for one minute to let JUPITER boot up
     warn!("Idling sequencer");
@@ -138,7 +141,12 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
     // ctx.local.arming_led.set_low().ok();
     info!("Sequencer unlocked, waiting for ejection signal");
 
-    ctx.local.ejection_trigger_rx.wait().await;
+    // ctx.local.ejection_trigger_rx.wait().await;
+    while !(EJECT.load(Ordering::Relaxed) || ejection_pin.is_high().unwrap_or(false)) {
+        debug!("Ejector idling while waiting for ejection signal");
+        Mono::delay(100_u64.millis()).await;
+    }
+
     
 
 
@@ -162,11 +170,7 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
 
     // Right now we don't have a pin read from jupiter, although this may be re-added later
     // Wait until ejection pin from JUPITER reads high
-    // while !ejection_pin.is_high().unwrap_or(false) {
-    //     debug!("Ejector idling while waiting for ejection signal");
-    //     Mono::delay(100_u64.millis()).await;
-    // }
-
+    
     // Give seven seconds to retract, then disable to save power
     Mono::delay(7000_u64.millis()).await;
     e_magnet.polarity_switch();
@@ -344,7 +348,9 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
                     bytes_used,
                 )) => {
                     info!("Ejector phase set");
-                    ctx.local.ejection_trigger_tx.write(());
+                    // ctx.local.ejection_trigger_tx.write(());
+
+                    EJECT.store(true, Ordering::Relaxed);
 
                     let remaining = idx - bytes_used;
                     if remaining > 0 {

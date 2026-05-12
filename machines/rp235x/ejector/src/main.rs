@@ -62,7 +62,7 @@ mod app {
     use crate::device_constants::pins::{CamMosfetPin, RBFPin};
     use crate::device_constants::{
         EjectionDetectionPin, JupiterRX, JupiterTX, JupiterUart, OnboardLED, RGBLed, RGBStatus,
-        ThermoI2cBus, SAMPLE_COUNT,
+        ThermoI2cBus, SAMPLE_COUNT, SensorI2cManager
     };
     use crate::sd_card::EjectorSdCard;
 
@@ -153,7 +153,7 @@ mod app {
         // pub onboard_led: OnboardLED,
         pub ejector_servo: EjectorServo,
         pub ejecctor_magnet: EjectorMagnet,
-        //pub ejection_pin: EjectionDetectionPin,
+        pub ejection_pin: EjectionDetectionPin,
         pub rbf_pin: RBFPin,
         pub downlink: JupiterTX,
         // pub arming_led: RedLed,
@@ -162,7 +162,7 @@ mod app {
         pub status_link: JupiterRX,
         pub camera_mosfet: CamMosfetPin,
         // pub thermocouple: MCP9600<ThermoI2cBus>,
-        pub sensor_manager: crate::device_constants::SensorI2cManager,
+        pub sensor_manager: SensorI2cManager,
         // pub rgb_driver: WS2812<RGBLed>,
         pub rgb_driver: Ws2812Direct<
             PIO0,
@@ -181,7 +181,7 @@ mod app {
     extern "Rust" {
         // Sequences the ejection
         // ejection pin
-        #[task(shared = [ejection_enabled], local = [ ejector_servo, ejecctor_magnet, ejection_trigger_rx],  priority = 1)]
+        #[task(shared = [ejection_enabled], local = [ ejector_servo, ejecctor_magnet, ejection_trigger_rx , ejection_pin],  priority = 1)]
         async fn ejector_sequencer(mut ctx: ejector_sequencer::Context);
 
         // Sequences cameras activation

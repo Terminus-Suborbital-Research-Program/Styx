@@ -231,7 +231,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         ElectroMagnetPolarity::Attract,
     );
 
-    let mut rbf_pin: RBFPin = bank0_pins.gpio2.into_pull_down_input();
+    let mut rbf_pin: RBFPin = bank0_pins.gpio42.into_pull_down_input();
 
     // Create ejector servo
     let mut ejector_servo: EjectorServo = EjectorServo::new(ejection_servo);
@@ -239,7 +239,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     ejector_servo.hold();
 
     // Functionality currently not enabled
-    // let gpio_detect: EjectionDetectionPin = bank0_pins.gpio8.into_pull_down_input();
+    let gpio_detect: EjectionDetectionPin = bank0_pins.gpio38.into_pull_down_input();
 
 
     let mut rgb_wake = bank0_pins.gpio25.into_push_pull_output();
@@ -321,7 +321,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     // camera_sequencer::spawn().ok();
     poll_temperature::spawn().ok();
     downlink_jupiter::spawn().ok();
-    // write_sd_card::spawn().ok();
+    write_sd_card::spawn().ok();
     rx_from_jupiter::spawn().ok();
     set_rgb_status::spawn().ok();
 
@@ -342,6 +342,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             ejector_servo,
             rbf_pin: rbf_pin,
             ejecctor_magnet: ejector_magnet,
+            ejection_pin: gpio_detect,
             // arming_led: red_led_pin,
             // packet_led: packet_indicator,
             sensor_manager,
