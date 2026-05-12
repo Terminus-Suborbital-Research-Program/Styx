@@ -141,7 +141,7 @@ mod app {
     pub struct Shared {
         pub downlink_packets: Deque<ApplicationPacket, 128>,
         pub samples_buffer: [u16; SAMPLE_COUNT],
-        pub sd_card: EjectorSD,
+        // pub sd_card: EjectorSD,
         pub ejection_enabled: bool,
         pub status_config: RGBStatus,
         pub temp_store: Deque<ApplicationPacket, 100>
@@ -202,8 +202,8 @@ mod app {
         #[task(shared = [ejection_enabled], local = [rbf_pin], priority = 2)]
         async fn poll_rbf(mut ctx: poll_rbf::Context);
 
-        #[task(shared = [sd_card, temp_store], priority = 2)]
-        async fn write_sd_card(mut ctx: write_sd_card::Context);
+        // #[task(shared = [sd_card, temp_store], priority = 2)]
+        // async fn write_sd_card(mut ctx: write_sd_card::Context);
         // Commands
         // Status for status LED
         #[task(shared = [status_config], local = [status_link, ejection_trigger_tx], priority = 2)]

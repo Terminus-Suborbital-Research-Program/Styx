@@ -150,26 +150,26 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     //     }
     // }
 
-    let spi_mosi = bank0_pins.gpio19.into_function::<FunctionSpi>();
-    let spi_miso = bank0_pins.gpio16.into_function::<FunctionSpi>();
-    let spi_sck = bank0_pins.gpio18.into_function::<FunctionSpi>();
-    let spi_cs = bank0_pins
-        .gpio17
-        .into_push_pull_output_in_state(PinState::High);
+    // let spi_mosi = bank0_pins.gpio19.into_function::<FunctionSpi>();
+    // let spi_miso = bank0_pins.gpio16.into_function::<FunctionSpi>();
+    // let spi_sck = bank0_pins.gpio18.into_function::<FunctionSpi>();
+    // let spi_cs = bank0_pins
+    //     .gpio17
+    //     .into_push_pull_output_in_state(PinState::High);
 
-    let spi_bus =
-        rp235x_hal::spi::Spi::<_, _, _, 8>::new(ctx.device.SPI0, (spi_mosi, spi_miso, spi_sck));
+    // let spi_bus =
+    //     rp235x_hal::spi::Spi::<_, _, _, 8>::new(ctx.device.SPI0, (spi_mosi, spi_miso, spi_sck));
 
-    let spi = spi_bus.init(
-        &mut ctx.device.RESETS,
-        clocks.peripheral_clock.freq(),
-        400.kHz(), // card initialization happens at low baud rate
-        embedded_hal::spi::MODE_0,
-    );
+    // let spi = spi_bus.init(
+    //     &mut ctx.device.RESETS,
+    //     clocks.peripheral_clock.freq(),
+    //     400.kHz(), // card initialization happens at low baud rate
+    //     embedded_hal::spi::MODE_0,
+    // );
 
-    let spi = ExclusiveDevice::new(spi, spi_cs, timer.clone()).unwrap();
+    // let spi = ExclusiveDevice::new(spi, spi_cs, timer.clone()).unwrap();
 
-    let sd_card = sd_card::EjectorSdCard::new(spi, timer.clone());
+    // let sd_card = sd_card::EjectorSdCard::new(spi, timer.clone());
 
 
     // Jupiter downlink UART
@@ -321,7 +321,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     // camera_sequencer::spawn().ok();
     poll_temperature::spawn().ok();
     downlink_jupiter::spawn().ok();
-    write_sd_card::spawn().ok();
+    // write_sd_card::spawn().ok();
     rx_from_jupiter::spawn().ok();
     set_rgb_status::spawn().ok();
 
@@ -330,7 +330,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             downlink_packets: Deque::new(),
             samples_buffer: [0u16; SAMPLE_COUNT],
             ejection_enabled: false,
-            sd_card: sd_card,
+            // sd_card: sd_card,
             status_config,
             temp_store: Deque::new(),
         },
