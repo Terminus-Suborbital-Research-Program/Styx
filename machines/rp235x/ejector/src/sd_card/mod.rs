@@ -26,7 +26,6 @@ where
     SpiBus: SpiDevice,
     Timer: DelayNs,
 {
-    //phantom: core::marker::PhantomData<(SpiBus, Timer)>,
     vol: VolumeManager<SdCard<SpiBus, Timer>, DummyTimesource>,
     //root_dir: Directory<'_, SdCard<SpiBus, Timer>, Timer, DummyTimesource, 4, 4>,
 }
@@ -85,12 +84,12 @@ where
                     file.write(data).map_err(|_| ())?;
                     Ok(())
                 }
-                Err(_) => Err(()),
+                Err(e) => Err(e),
             },
-            Err(_) => Err(()),
+            Err(e) => Err(e),
         };
         return t;
     }
 }
 
-pub fn spi_bus() -> () {}
+//pub fn spi_bus() -> () {}

@@ -292,11 +292,10 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         off,
     ];
 
-    rgb_driver.write(current_colors.iter().cloned()).unwrap();
-        
-
-           
-
+    match rgb_driver.write(current_colors.iter().cloned()) {
+        Some(res) => {},
+        None => {error!("Error Writing to the rbg leds");},
+    }
     
     // let guard_i2c: GuardI2C = I2C::i2c1(
     //     ctx.device.I2C1,

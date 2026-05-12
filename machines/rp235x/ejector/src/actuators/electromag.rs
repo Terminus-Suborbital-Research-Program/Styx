@@ -45,21 +45,21 @@ impl<P1: OutputPin, P2: OutputPin, P3: OutputPin> HBridge<P1, P2, P3> {
     }
 
     pub fn bridge_state_00(&mut self) -> () {
-        self.input_pin1.set_low().expect("msg");
-        self.input_pin2.set_low().expect("msg");
+        self.input_pin1.set_low().expect("Can't set input 1 low!");
+        self.input_pin2.set_low().expect("Can't set input 2 low!");
     }
     pub fn bridge_state_01(&mut self) -> () {
-        self.input_pin1.set_low().expect("msg");
-        self.input_pin2.set_high().expect("msg");
+        self.input_pin1.set_low().expect("Can't set input 1 low!");
+        self.input_pin2.set_high().expect("Can't set input 2 high!");
     }
     pub fn bridge_state_10(&mut self) -> () {
-        self.input_pin1.set_high().expect("msg");
-        self.input_pin2.set_low().expect("msg");
+        self.input_pin1.set_high().expect("Can't set input 1 high!");
+        self.input_pin2.set_low().expect("Can't set input 2 low!");
     }
     /// S
     pub fn bridge_state_11(&mut self) -> () {
-        self.input_pin1.set_high().expect("msg");
-        self.input_pin2.set_high().expect("msg");
+        self.input_pin1.set_high().expect("Can't set input 1 high!");
+        self.input_pin2.set_high().expect("Can't set input 2 high!");
     }
 }
 

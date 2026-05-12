@@ -452,7 +452,10 @@ pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
 
         apply_local_states(&mut current_colors, blink_toggle, &mut rx_timeout_counter);
 
-        rgb_driver.write(current_colors.iter().cloned()).unwrap();
+        match rgb_driver.write(current_colors.iter().cloned()) {
+            Some(res) => {},
+            None => {error!("Error Writing to the rbg leds");},
+        }
 
         blink_toggle = !blink_toggle;
         Mono::delay(1000_u64.millis()).await;
