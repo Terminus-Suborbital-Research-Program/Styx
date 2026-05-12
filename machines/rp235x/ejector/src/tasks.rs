@@ -250,42 +250,42 @@ pub async fn poll_rbf(mut ctx: poll_rbf::Context<'_>) {
     }
 }
 
-pub async fn write_sd_card(mut ctx: write_sd_card::Context<'_>) {
-    // f32 + u64 ; 12 bytes
-    let mut write_buf = [0u8; SCRATCH];
-    let config = standard();
+// pub async fn write_sd_card(mut ctx: write_sd_card::Context<'_>) {
+//     // f32 + u64 ; 12 bytes
+//     let mut write_buf = [0u8; SCRATCH];
+//     let config = standard();
     
-    loop {
-        let should_write = ctx.shared.temp_store.lock(|store| store.len() >= 40);
+//     loop {
+//         let should_write = ctx.shared.temp_store.lock(|store| store.len() >= 40);
 
-        if should_write {
-            let mut head: usize = 0;
+//         if should_write {
+//             let mut head: usize = 0;
 
-            for i in 0..40 {
-                let packet = ctx.shared.temp_store.lock(|store| store.pop_front());
+//             for i in 0..40 {
+//                 let packet = ctx.shared.temp_store.lock(|store| store.pop_front());
                 
-                if let Some(p) = packet {
-                    if let Ok(sz) = encode_into_slice(p, &mut write_buf[head..], config) {
-                        head += sz;
-                    }
-                } else {
-                    break; // Queue is empty earlier than expected
-                }
-            }
+//                 if let Some(p) = packet {
+//                     if let Ok(sz) = encode_into_slice(p, &mut write_buf[head..], config) {
+//                         head += sz;
+//                     }
+//                 } else {
+//                     break; // Queue is empty earlier than expected
+//                 }
+//             }
 
-            // let file_data = b"GLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\n";
+//             // let file_data = b"GLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\n";
 
-            if head > 0 {
-                ctx.shared.sd_card.lock(|sd_card| {
-                    info!("Writing {} byte sector to SD!", head);
-                    sd_card.write_data(EJECTOR_GAURD_FILENAME, &write_buf[..head]);
-                });
-            }
-        }
+//             if head > 0 {
+//                 ctx.shared.sd_card.lock(|sd_card| {
+//                     info!("Writing {} byte sector to SD!", head);
+//                     sd_card.write_data(EJECTOR_GAURD_FILENAME, &write_buf[..head]);
+//                 });
+//             }
+//         }
 
-        Mono::delay(1000_u64.millis()).await;
-    }
-}
+//         Mono::delay(1000_u64.millis()).await;
+//     }
+// }
 
 pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
     let jupiter_rx = ctx.local.status_link;
