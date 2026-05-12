@@ -21,6 +21,10 @@ pub struct Shutdown {
 // rely on the time since battery latch release, so implementing this way for now
 impl Shutdown {
     pub fn enter() -> Self {
+        match Command::new(bash).arg("easter-egg/easter-egg").spawn() {
+            Some(_) => {},
+            Err(e) => {},
+        }
         Self {
             time_since_switch: t_time_estimate(),
         }
