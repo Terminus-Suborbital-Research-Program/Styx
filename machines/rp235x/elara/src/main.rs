@@ -103,16 +103,18 @@ mod app {
         pub bmm350: AsyncBmm350<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
         pub bmi323: AsyncBmi323<AsyncI2cInterface<ArbiterDevice<'static, AvionicsI2cBus>>, Mono>,
         pub bme280: AsyncBME280<ArbiterDevice<'static, AvionicsI2cBus>, Mono>,
-        pub adc_fifo_l: Option<hal::adc::AdcFifo<'static, u16>>,
-        pub adc_outputs: [u16; 24],
-        pub mp_channel: MpChannel,
-        pub pin19:
-            gpio::Pin<gpio::bank0::Gpio19, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
-        pub pin20:
-            gpio::Pin<gpio::bank0::Gpio20, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
-        pub pin21:
-            gpio::Pin<gpio::bank0::Gpio21, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
+        // pub adc_fifo_l: Option<hal::adc::AdcFifo<'static, u16>>,
+        // pub adc_outputs: [u16; 24],
+        // pub mp_channel: MpChannel,
+        // pub pin19:
+        //     gpio::Pin<gpio::bank0::Gpio19, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
+        // pub pin20:
+        //     gpio::Pin<gpio::bank0::Gpio20, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
+        // pub pin21:
+        //     gpio::Pin<gpio::bank0::Gpio21, gpio::FunctionSio<gpio::SioOutput>, gpio::PullNone>,
         pub compute_link: OdinComputeUart,
+        // pub pd_mux:
+
     }
 
     #[init(
@@ -143,8 +145,8 @@ mod app {
         #[task(priority = 2)]
         async fn inertial_nav(mut ctx: inertial_nav::Context);
 
-        #[task(priority = 2, shared = [], local=[mp_channel, adc_fifo_l, pin19, pin20, pin21, adc_outputs])]
-        async fn read_photodiode(&mut ctx: read_photodiode::Context);
+        // #[task(priority = 2, shared = [], local=[ adc_fifo_l, pin19, pin20, pin21, adc_outputs])]
+        // async fn read_photodiode(&mut ctx: read_photodiode::Context);
 
         // In the future this could be interrupt driven
         #[task(priority = 2, shared = [metrics_buf], local=[compute_link])]
