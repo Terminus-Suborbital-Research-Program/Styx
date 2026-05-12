@@ -129,7 +129,7 @@ impl InfratrackerThread {
 
                 thread::spawn(move || {
                     while let Ok((stamp, buf, w, h)) = save_rx.recv() {
-                        let img = ImageBuffer::<Luma<u8>, _>::from_raw(w, h, buf).unwrap();
+                        let img = ImageBuffer::<Luma<u8>, _>::from_raw(w, h, buf).unwrap(); //-Unwrap-
                         img.save(format!("{STAR_TRACKER_DIR}/infratracker{stamp}.tiff")).ok();
                     }
                 });

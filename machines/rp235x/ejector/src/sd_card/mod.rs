@@ -2,10 +2,10 @@
 
 #![warn(missing_docs, clippy::unwrap_used)]
 use bincode::de;
-use defmt::info;
+use defmt::{info, error};
 use embedded_hal::{delay::DelayNs, digital::OutputPin, spi::SpiDevice};
 use embedded_hal_bus::spi::ExclusiveDevice;
-use embedded_sdmmc::{Directory, Mode, SdCard, TimeSource, Timestamp, VolumeIdx, VolumeManager};
+use embedded_sdmmc::{Directory, Mode, SdCard, SdCardError, TimeSource, Timestamp, VolumeIdx, VolumeManager};
 use heapless::String;
 use rp235x_hal::{
     gpio::{Function, FunctionSio, FunctionSpi, Pin, PullDown, SioOutput},
@@ -73,7 +73,7 @@ where
         }
     }
 
-    pub fn write_data(&mut self, file_name: &'static str, data: &[u8]) -> Result<(), ()> {
+    pub fn write_data(&mut self, file_name: &'static str, data: &[u8]) -> Result<(), Error<SdCardError>> {
         //let mut volume_mgr = VolumeManager::new(self.sdcard, DummyTimesource::default());
         let t = match self.vol.open_volume(VolumeIdx(0)) {
             Ok(mut volume) => match volume.open_root_dir() {
