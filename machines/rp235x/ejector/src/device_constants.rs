@@ -293,10 +293,10 @@ impl SensorI2cManager {
     pub fn new(mut bus: ThermoI2cBus, timer: Timer<CopyableTimer1>) -> Self {
         // Ids mapped from lowest id to lowest addr, and upwards
         let tc_channels = [
-            ThermocoupleChannel { id: 1, address: DeviceAddr::AD3 },
-            ThermocoupleChannel { id: 2, address: DeviceAddr::AD0 },
-            ThermocoupleChannel { id: 3, address: DeviceAddr::AD1 },
-            ThermocoupleChannel { id: 4, address: DeviceAddr::AD2 },
+            ThermocoupleChannel { id: 1, address: DeviceAddr::AD0 },
+            ThermocoupleChannel { id: 2, address: DeviceAddr::AD1 },
+            ThermocoupleChannel { id: 3, address: DeviceAddr::AD2 },
+            ThermocoupleChannel { id: 4, address: DeviceAddr::AD3 },
             ThermocoupleChannel { id: 5, address: DeviceAddr::AD7 },
         ];
 
