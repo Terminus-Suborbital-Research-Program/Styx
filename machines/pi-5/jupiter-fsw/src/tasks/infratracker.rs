@@ -23,7 +23,7 @@ use DarkAverager::ImageAveragerFromBuffer;
 
 use pylon_cxx::{NodeMap, EnumNode, IntegerNode,FloatNode, InstantCamera, PylonError  };
 
-const STAR_TRACKER_DIR: &str = "/home/supergoodname77/Desktop/Styx/machines/pi-5/jupiter-fsw";
+const STAR_TRACKER_DIR: &str = "/home/terminus/basler/";
 
 // capture image and solve every 1Hz or 1000 millis
 // Save will happen no matter what but solve can be delayed
