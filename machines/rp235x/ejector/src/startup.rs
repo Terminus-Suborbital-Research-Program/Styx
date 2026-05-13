@@ -3,7 +3,7 @@
 #![warn(missing_docs, clippy::unwrap_used)]
 
 use common_states::rbf;
-use defmt::{info, warn};
+use defmt::{info, error, warn};
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
 use embedded_hal_bus::spi::ExclusiveDevice;
@@ -292,11 +292,10 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         off,
     ];
 
-    rgb_driver.write(current_colors.iter().cloned()).unwrap();
-        
-
-           
-
+    match rgb_driver.write(current_colors.iter().cloned()) {
+        Ok(res) => {},
+        Err(e) => {error!("Error Writing to the rbg leds");},
+    }
     
     // let guard_i2c: GuardI2C = I2C::i2c1(
     //     ctx.device.I2C1,

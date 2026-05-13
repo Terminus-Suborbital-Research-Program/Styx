@@ -107,7 +107,6 @@ mod app {
         ),
     >;
 
-    // TODO: Set proper pins
     pub type EjectorMagnet = ElectroMagnet<
         Pin<Gpio21, gpio::FunctionSioOutput, gpio::PullDown>,
         Pin<Gpio20, gpio::FunctionSioOutput, gpio::PullDown>,
@@ -149,7 +148,6 @@ mod app {
 
     #[local]
     pub struct Local {
-        // TODO: Add
         // pub onboard_led: OnboardLED,
         pub ejector_servo: EjectorServo,
         pub ejecctor_magnet: EjectorMagnet,

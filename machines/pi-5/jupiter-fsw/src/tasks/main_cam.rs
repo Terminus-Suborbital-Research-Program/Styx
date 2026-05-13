@@ -43,7 +43,7 @@ fn run_recording_segment(stop_at_t: Option<i32>) {
     'retry: loop {
         // figure out next filename
         let highest = read_dir(VIDEO_DIRECTORY)
-            .unwrap()
+            .unwrap() // -Unwrap-
             .filter_map(|e| e.ok())
             .filter_map(|e| {
                 // strip ".avi" and parse
@@ -55,7 +55,7 @@ fn run_recording_segment(stop_at_t: Option<i32>) {
             .max()
             .unwrap_or(0);
         let next = format!("{}.avi", highest + 1);
-        let mut file_path = PathBuf::from_str(VIDEO_DIRECTORY).unwrap();
+        let mut file_path = PathBuf::from_str(VIDEO_DIRECTORY).unwrap(); // -Unwrap-
         file_path.push(next);
 
         // spawn ffmpeg with a piped stdin
