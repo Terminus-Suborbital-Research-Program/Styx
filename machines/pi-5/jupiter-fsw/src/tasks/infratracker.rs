@@ -81,7 +81,7 @@ impl InfratrackerThread {
                     info!(" - {}", format);
                 }
 
-                InfratrackerThread::init_camera(&mut camera);
+                // InfratrackerThread::init_camera(&mut camera);
 
                 let mut was_tracking = false;
                 let mut grab_result = pylon_cxx::GrabResult::new()?;
@@ -117,10 +117,12 @@ impl InfratrackerThread {
                 }
                 
                 let avger = ImageAveragerFromBuffer::new_with_source(darkframe_source);
-
-                if let Err(e) = avger.get_average().save(format!("{STAR_TRACKER_DIR}/dark_frame.tiff")) {
-                    error!("Dark frame image save error, bad directory");
+                if let Some(ref averager) = avger {
+                     if let Err(e) = averager.get_average().save(format!("{STAR_TRACKER_DIR}/dark_frame.tiff")) {
+                        error!("Dark frame image save error, bad directory");
+                    }
                 }
+               
 
                 camera.stop_grabbing()?;
                 camera.close()?;
@@ -177,7 +179,9 @@ impl InfratrackerThread {
                                     let mut solve_img = ImageBuffer::from_raw(width, height, img_vec.clone())
                                         .expect("Buffer size mismatch");
 
-                                    avger.apply_average(&mut solve_img);
+                                    if let Some(ref averager) = avger {              
+                                        averager.apply_average(&mut solve_img);
+                                    }
 
                                     // Try sending an image to be solved
                                     match solver_tx.try_send((timestamp, solve_img)) {
