@@ -5,7 +5,7 @@ use bincode::de;
 use defmt::{info, error};
 use embedded_hal::{delay::DelayNs, digital::OutputPin, spi::SpiDevice};
 use embedded_hal_bus::spi::ExclusiveDevice;
-use embedded_sdmmc::{Directory, Mode, SdCard, SdCardError, TimeSource, Timestamp, VolumeIdx, VolumeManager};
+use embedded_sdmmc::{Directory, Mode, SdCard, SdCardError, TimeSource, Timestamp, VolumeIdx, VolumeManager, Error};
 use heapless::String;
 use rp235x_hal::{
     gpio::{Function, FunctionSio, FunctionSpi, Pin, PullDown, SioOutput},
@@ -79,9 +79,10 @@ where
             Ok(mut volume) => match volume.open_root_dir() {
                 Ok(mut root_dir) => {
                     let mut file = root_dir
-                        .open_file_in_dir(file_name, Mode::ReadWriteCreateOrTruncate)
-                        .map_err(|_| ())?;
-                    file.write(data).map_err(|_| ())?;
+                        .open_file_in_dir(file_name, Mode::ReadWriteCreateOrTruncate)?;
+                        // .map_err(|_| ())?;
+                    file.write(data)?;
+                    // .map_err(|_| ())?;
                     Ok(())
                 }
                 Err(e) => Err(e),

@@ -29,7 +29,7 @@ use smart_leds::{SmartLedsWrite, RGB8};
 use rtic_sync::portable_atomic::{AtomicBool, AtomicU8, Ordering};
 
 use crate::device_constants::{
-    MagnetState, ServoState, COLOR_DIM_BLUE, COLOR_DIM_GREEN, 
+    MagnetState, ServoState, RGBDriver, COLOR_DIM_BLUE, COLOR_DIM_GREEN, 
     COLOR_DIM_MAGENTA, COLOR_DIM_RED, COLOR_OFF
 };
 
@@ -129,11 +129,15 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
     }
 
     let servo = ctx.local.ejector_servo;
+    let power_servo = ctx.local.power_servo;
     let e_magnet = ctx.local.ejecctor_magnet;
 
     // Latch ejector servos closed
     servo.enable();
     servo.hold();
+    power_servo.enable();
+    power_servo.hold();
+
     LOCAL_SERVO_STATE.store(ServoState::PowerOn as u8, Ordering::Relaxed);
     LOCAL_MAGNET_STATE.store(MagnetState::Holding as u8, Ordering::Relaxed);
 
@@ -152,7 +156,9 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
     }
 
     
+    power_servo.power();
 
+    Mono::delay(2000_u64.millis()).await;
 
     info!("Ejecting!");
     LOCAL_SERVO_STATE.store(ServoState::Release as u8, Ordering::Relaxed);
@@ -497,12 +503,7 @@ fn dim_wheel(mut pos: u8) -> RGB8 {
     }
 }
 // Party Anim
-pub fn wes_mode(rgb_driver: &mut Ws2812Direct<
-            PIO0,
-            SM0,
-            Pin<Gpio24, FunctionPio0, PullDown>>,
-           tick: &mut u8) {
-    // let rgb_driver = &mut ctx.local.rgb_driver; 
+pub fn wes_mode(rgb_driver: &mut RGBDriver, tick: &mut u8) {
     let mut current_colors = [RGB8::new(0, 0, 0); 12];
 
     for i in 0..12 {

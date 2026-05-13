@@ -58,11 +58,11 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 mod app {
 
     use crate::actuators::electromag::ElectroMagnet;
-    use crate::actuators::servo::EjectorServo;
+    use crate::actuators::servo::{EjectorServo, PowerServo};
     use crate::device_constants::pins::{CamMosfetPin, RBFPin};
     use crate::device_constants::{
         EjectionDetectionPin, JupiterRX, JupiterTX, JupiterUart, OnboardLED, RGBLed, RGBStatus,
-        ThermoI2cBus, SAMPLE_COUNT, SensorI2cManager
+        ThermoI2cBus, SAMPLE_COUNT, SensorI2cManager, RGBDriver
     };
     use crate::sd_card::EjectorSdCard;
 
@@ -150,6 +150,7 @@ mod app {
     pub struct Local {
         // pub onboard_led: OnboardLED,
         pub ejector_servo: EjectorServo,
+        pub power_servo: PowerServo,
         pub ejecctor_magnet: EjectorMagnet,
         pub ejection_pin: EjectionDetectionPin,
         pub rbf_pin: RBFPin,
@@ -162,11 +163,7 @@ mod app {
         // pub thermocouple: MCP9600<ThermoI2cBus>,
         pub sensor_manager: SensorI2cManager,
         // pub rgb_driver: WS2812<RGBLed>,
-        pub rgb_driver: Ws2812Direct<
-            PIO0,
-            SM0,
-            Pin<Gpio24, FunctionPio0, PullDown>, 
-        >,
+        pub rgb_driver: RGBDriver,
         pub ejection_trigger_tx: SignalWriter<'static, ()>,
         pub ejection_trigger_rx: SignalReader<'static, ()>,
     }
@@ -179,7 +176,7 @@ mod app {
     extern "Rust" {
         // Sequences the ejection
         // ejection pin
-        #[task(shared = [ejection_enabled], local = [ ejector_servo, ejecctor_magnet, ejection_trigger_rx , ejection_pin],  priority = 1)]
+        #[task(shared = [ejection_enabled], local = [ power_servo, ejector_servo, ejecctor_magnet, ejection_trigger_rx , ejection_pin],  priority = 1)]
         async fn ejector_sequencer(mut ctx: ejector_sequencer::Context);
 
         // Sequences cameras activation

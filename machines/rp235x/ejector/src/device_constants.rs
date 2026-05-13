@@ -104,6 +104,13 @@ pub type JupiterUart = UartPeripheral<Enabled, UART0, (JupiterTxPin, JupiterRxPi
 pub type JupiterRX = Reader<UART0, (JupiterTxPin, JupiterRxPin)>;
 pub type JupiterTX = Writer<UART0, (JupiterTxPin, JupiterRxPin)>;
 
+use ws2812_pio::Ws2812Direct;
+use rp235x_hal::pio::SM0;
+use rp235x_hal::pac::PIO0;
+use rp235x_hal::gpio::{FunctionPio0, bank0::Gpio24};
+
+pub type RGBDriver = Ws2812Direct<PIO0,SM0,Pin<Gpio24, FunctionPio0, PullDown>>;
+
 /// Samples per second of the geiger counter
 pub static SAMPLE_COUNT: usize = 100;
 

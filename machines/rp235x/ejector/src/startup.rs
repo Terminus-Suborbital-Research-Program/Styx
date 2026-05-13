@@ -33,7 +33,7 @@ use smart_leds::{SmartLedsWrite, RGB8};
 // use rp235x_hal::timer::monotonic::Monotonic;
 
 use crate::actuators::electromag::{ElectroMagnet, ElectroMagnetPolarity, HBridge};
-use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
+use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, PowerServo, Servo};
 use crate::device_constants::pins::{CamMosfetPin, RBFPin};
 use crate::device_constants::{
     Cam1, Cam1Pin, Cam2, EjectionDetectionPin, JupiterUart, RGBLed, RGBStatus, ThermoI2CSclPin,
@@ -212,12 +212,14 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     let mut power_mosfet_pin = bank0_pins.gpio4.into_push_pull_output();
     power_mosfet_pin.set_low().unwrap();
-    let mut channel_a = power_servo_pwm.channel_b;
-    let channel_pin = channel_a.output_to(bank0_pins.gpio5);
-    channel_a.set_enabled(true);
-    let mut power_servo = Servo::new(channel_a, channel_pin, power_mosfet_pin);
+    let mut channel_bp = power_servo_pwm.channel_b;
+    let channel_pin = channel_bp.output_to(bank0_pins.gpio5);
+    channel_bp.set_enabled(true);
+    let mut power_servo = PowerServo::new(Servo::new(channel_bp, channel_pin, power_mosfet_pin));
     power_servo.enable();
-    power_servo.set_angle(90);
+    power_servo.hold();
+    // power_servo.enable();
+    // power_servo.set_angle(40);
 
     // Add emag variables
     let emag_pin1 = bank0_pins.gpio21.into_push_pull_output();
@@ -339,6 +341,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             status_link,
             downlink,
             ejector_servo,
+            power_servo,
             rbf_pin: rbf_pin,
             ejecctor_magnet: ejector_magnet,
             ejection_pin: gpio_detect,
