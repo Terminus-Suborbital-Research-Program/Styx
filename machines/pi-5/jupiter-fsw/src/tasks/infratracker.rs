@@ -21,9 +21,9 @@ use aether::reference_frame::{ICRF, Body};
 
 use DarkAverager::ImageAveragerFromBuffer;
 
-use pylon_cxx::{NodeMap, EnumNode, IntegerNode,FloatNode, InstantCamera };
+use pylon_cxx::{NodeMap, EnumNode, IntegerNode,FloatNode, InstantCamera, PylonError  };
 
-const STAR_TRACKER_DIR: &str = "/home/terminus/basler/";
+const STAR_TRACKER_DIR: &str = "/home/supergoodname77/Desktop/Styx/machines/pi-5/jupiter-fsw";
 
 // capture image and solve every 1Hz or 1000 millis
 // Save will happen no matter what but solve can be delayed
@@ -110,9 +110,14 @@ impl InfratrackerThread {
                             thread::sleep(Duration::from_millis(200)); 
 
                         }
-                        _ => {
-                            error!("Timeout or grab fail");
+                        Err(e) => {
+                            error!("Pylon error: {e}");
                         }
+                        _ => {
+                            error!("No Pylon error reported, but grab failed");
+                        }
+
+
                     }
                 }
                 
