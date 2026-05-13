@@ -44,6 +44,8 @@ static STATUS_UPDATE: AtomicBool = AtomicBool::new(false);
 
 static EJECT: AtomicBool = AtomicBool::new(false);
 
+static WES_MODE: AtomicBool = AtomicBool::new(true);
+
 
 
 
@@ -86,6 +88,8 @@ pub async fn downlink_jupiter(mut ctx: downlink_jupiter::Context<'_>) {
     let config = standard();
     // Ejector lockout
     Mono::delay(40000_u64.millis()).await;
+    // Evil lack of seperation of responsibilities
+    WES_MODE.store(false, Ordering::Relaxed);
     loop {
         let packet = ctx
             .shared
@@ -200,7 +204,10 @@ pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
                 //  ctx.shared
                 // .downlink_packets
                 // .lock(|q| q.push_back(packet).ok());
-                info!("BME Packet retrieved, {:?}",packet )
+                info!("BME Packet retrieved, {:?}",packet );
+                ctx.shared
+                .downlink_packets
+                .lock(|q| q.push_back(packet).ok());
             }
             None => error!("Failed to poll bme280")
         }
@@ -391,11 +398,19 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
 }
 
 pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
-    let rgb_driver = ctx.local.rgb_driver;
+    let mut rgb_driver = ctx.local.rgb_driver;
 
     let mut blink_toggle = false;
     let mut rx_timeout_counter: u8 = 0;
     let mut feed = 0;
+
+    let mut tick: u8 = 0;
+
+    while WES_MODE.load(Ordering::Relaxed) {
+        wes_mode(&mut rgb_driver, &mut tick);
+        Mono::delay(20_u64.millis()).await;
+    }
+
 
     loop {
 
@@ -420,6 +435,7 @@ pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
         if STATUS_UPDATE.load(Ordering::Relaxed) {
             feed = 0;
             STATUS_UPDATE.store(false, Ordering::Relaxed)
+            
         }
 
 
@@ -459,8 +475,50 @@ pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
     }
 }
 
+use rp235x_hal::pio::SM0;
+use rp235x_hal::pac::PIO0;
+use rp235x_hal::gpio::{PullDown, SioOutput, FunctionPio0, bank0::Gpio24};
+use rp235x_hal::gpio::Pin;
 
+// 8 bit color wheel, 50 intensity max
+fn dim_wheel(mut pos: u8) -> RGB8 {
+    pos = 255 - pos;
+    if pos < 85 {
+        RGB8::new((255 - pos * 3) / 5, 0, (pos * 3) / 5)
+    } else if pos < 170 {
+        pos -= 85;
+        RGB8::new(0, (pos * 3) / 5, (255 - pos * 3) / 5)
+    } else {
+        pos -= 170;
+        RGB8::new((pos * 3) / 5, (255 - pos * 3) / 5, 0)
+    }
+}
 // Party Anim
+pub fn wes_mode(rgb_driver: &mut Ws2812Direct<
+            PIO0,
+            SM0,
+            Pin<Gpio24, FunctionPio0, PullDown>>,
+           tick: &mut u8) {
+    // let rgb_driver = &mut ctx.local.rgb_driver; 
+    let mut current_colors = [RGB8::new(0, 0, 0); 12];
+
+    for i in 0..12 {
+        // Space the 12 LEDs evenly across the 0-255 color spectrum
+        let offset = (i * 256 / 12) as u8;
+        let pixel_pos = tick.wrapping_add(offset);
+        
+        current_colors[i] = dim_wheel(pixel_pos);
+    }
+
+    rgb_driver.write(current_colors.iter().cloned()).unwrap();
+
+    // Greater value = faster swirl
+    *tick = tick.wrapping_add(4); 
+
+    // 50 fps
+    
+}
+
 // pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
 //     let rgb_driver = &mut ctx.local.rgb_driver; 
     
