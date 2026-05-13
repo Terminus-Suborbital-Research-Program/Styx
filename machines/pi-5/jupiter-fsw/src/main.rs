@@ -141,7 +141,6 @@ fn main() {
                 }
 
                 onboard_packet_storage.write(packet);
-                #[cfg(feature = "packet_logging")]
                 info!("Got a packet: {packet:?}");
             }
         }
