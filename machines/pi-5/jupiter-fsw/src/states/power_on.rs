@@ -14,7 +14,7 @@ pub struct PowerOn {}
 
 impl PowerOn {
     pub fn enter(ctx: &mut StateContext) -> Box<dyn ValidState> {
-        ctx.hardware.activate_latch();
+        ctx.hardware.deactivate_latch();
         Box::new(Self::default())
     }
 }

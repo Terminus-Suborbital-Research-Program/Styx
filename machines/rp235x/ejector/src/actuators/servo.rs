@@ -103,8 +103,8 @@ pub type PowerServoType = Servo<
     PowerServoMosfet,
 >;
 
-pub static POWER_ANGLE: u16 = 130;
-pub static POWER_HOLDING_ANGLE: u16 = 40;
+pub static POWER_ANGLE: u16 = 40;
+pub static POWER_HOLDING_ANGLE: u16 = 130;
 
 pub struct PowerServo {
     pub servo: PowerServoType

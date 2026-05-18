@@ -46,6 +46,7 @@ impl ValidState for InfratrackerStart {
             Box::new(Shutdown::enter())
         } else if ctx.hardware.pins().unwrap_or_default().te3().into() {
             // No change
+            ctx.hardware.activate_latch();
             Box::new(BatteryPower::enter())
  
         } else {
