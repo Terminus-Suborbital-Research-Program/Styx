@@ -1,4 +1,4 @@
-#![warn(missing_docs)]
+#![warn(missing_docs, clippy::unwrap_used)]
 
 //! TERMINUS RS-X 2026 Elara JUPITER Code
 

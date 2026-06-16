@@ -1,4 +1,4 @@
-#![warn(missing_docs)]
+#![warn(missing_docs, clippy::unwrap_used)]
 
 use crate::{app::power_switch, device_constants::pins::JupiterI2c};
 

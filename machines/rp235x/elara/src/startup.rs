@@ -1,4 +1,4 @@
-#![warn(missing_docs)]
+#![warn(missing_docs, clippy::unwrap_used)]
 use crate::{
     actuators::servo::Servo,
     device_constants::{

@@ -1,4 +1,4 @@
-#![warn(missing_docs)]
+#![warn(missing_docs, clippy::unwrap_used)]
 use bin_packets::data;
 use bin_packets::data::adcs::AttitudeMetrics;
 use bin_packets::{

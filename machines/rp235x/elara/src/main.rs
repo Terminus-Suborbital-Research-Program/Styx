@@ -1,6 +1,7 @@
 // Specifies that the standard library is not used
 #![no_std]
 #![no_main]
+#![warn(missing_docs, clippy::unwrap_used)]
 
 // Our Modules
 mod actuators;

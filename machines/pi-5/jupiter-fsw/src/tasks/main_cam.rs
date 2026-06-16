@@ -1,4 +1,4 @@
-#![warn(missing_docs)]
+#![warn(missing_docs, clippy::unwrap_used)]
 
 use std::{
     fs::{create_dir, read_dir},

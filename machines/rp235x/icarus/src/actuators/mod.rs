@@ -1,2 +1,4 @@
-pub mod servo;
+#![warn(missing_docs)]
+
 pub mod electromag;
+pub mod servo;

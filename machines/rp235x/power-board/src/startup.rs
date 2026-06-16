@@ -1,4 +1,4 @@
-#![warn(missing_docs)]
+#![warn(missing_docs, clippy::unwrap_used)]
 
 use defmt::{info, warn};
 use embedded_hal::digital::OutputPin;

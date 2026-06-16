@@ -1,4 +1,4 @@
-#![warn(missing_docs)]
+#![warn(missing_docs, clippy::unwrap_used)]
 use nalgebra::{Matrix6x1, Matrix6};
 
 struct SpacecraftLQR{
