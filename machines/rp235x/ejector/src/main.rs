@@ -58,11 +58,11 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 mod app {
 
     use crate::actuators::electromag::ElectroMagnet;
-    use crate::actuators::servo::EjectorServo;
+    use crate::actuators::servo::{EjectorServo, PowerServo};
     use crate::device_constants::pins::{CamMosfetPin, RBFPin};
     use crate::device_constants::{
         EjectionDetectionPin, JupiterRX, JupiterTX, JupiterUart, OnboardLED, RGBLed, RGBStatus,
-        ThermoI2cBus, SAMPLE_COUNT,
+        ThermoI2cBus, SAMPLE_COUNT, SensorI2cManager, RGBDriver
     };
     use crate::sd_card::EjectorSdCard;
 
@@ -107,7 +107,6 @@ mod app {
         ),
     >;
 
-    // TODO: Set proper pins
     pub type EjectorMagnet = ElectroMagnet<
         Pin<Gpio21, gpio::FunctionSioOutput, gpio::PullDown>,
         Pin<Gpio20, gpio::FunctionSioOutput, gpio::PullDown>,
@@ -141,7 +140,7 @@ mod app {
     pub struct Shared {
         pub downlink_packets: Deque<ApplicationPacket, 128>,
         pub samples_buffer: [u16; SAMPLE_COUNT],
-        pub sd_card: EjectorSD,
+        // pub sd_card: EjectorSD,
         pub ejection_enabled: bool,
         pub status_config: RGBStatus,
         pub temp_store: Deque<ApplicationPacket, 100>
@@ -149,11 +148,11 @@ mod app {
 
     #[local]
     pub struct Local {
-        // TODO: Add
         // pub onboard_led: OnboardLED,
         pub ejector_servo: EjectorServo,
+        pub power_servo: PowerServo,
         pub ejecctor_magnet: EjectorMagnet,
-        //pub ejection_pin: EjectionDetectionPin,
+        pub ejection_pin: EjectionDetectionPin,
         pub rbf_pin: RBFPin,
         pub downlink: JupiterTX,
         // pub arming_led: RedLed,
@@ -162,13 +161,9 @@ mod app {
         pub status_link: JupiterRX,
         pub camera_mosfet: CamMosfetPin,
         // pub thermocouple: MCP9600<ThermoI2cBus>,
-        pub sensor_manager: crate::device_constants::SensorI2cManager,
+        pub sensor_manager: SensorI2cManager,
         // pub rgb_driver: WS2812<RGBLed>,
-        pub rgb_driver: Ws2812Direct<
-            PIO0,
-            SM0,
-            Pin<Gpio24, FunctionPio0, PullDown>, 
-        >,
+        pub rgb_driver: RGBDriver,
         pub ejection_trigger_tx: SignalWriter<'static, ()>,
         pub ejection_trigger_rx: SignalReader<'static, ()>,
     }
@@ -181,7 +176,7 @@ mod app {
     extern "Rust" {
         // Sequences the ejection
         // ejection pin
-        #[task(shared = [ejection_enabled], local = [ ejector_servo, ejecctor_magnet, ejection_trigger_rx],  priority = 1)]
+        #[task(shared = [ejection_enabled], local = [ power_servo, ejector_servo, ejecctor_magnet, ejection_trigger_rx , ejection_pin],  priority = 1)]
         async fn ejector_sequencer(mut ctx: ejector_sequencer::Context);
 
         // Sequences cameras activation
@@ -202,8 +197,8 @@ mod app {
         #[task(shared = [ejection_enabled], local = [rbf_pin], priority = 2)]
         async fn poll_rbf(mut ctx: poll_rbf::Context);
 
-        #[task(shared = [sd_card, temp_store], priority = 2)]
-        async fn write_sd_card(mut ctx: write_sd_card::Context);
+        // #[task(shared = [sd_card, temp_store], priority = 2)]
+        // async fn write_sd_card(mut ctx: write_sd_card::Context);
         // Commands
         // Status for status LED
         #[task(shared = [status_config], local = [status_link, ejection_trigger_tx], priority = 2)]

@@ -9,11 +9,11 @@ use super::traits::{StateContext, ValidState};
 use log::info;
 
 
-const D:i32 = 3; 
+const DELAY_TO_EJECT_SEC:i32 = 3; 
 
 #[derive(Debug, Default)]
 pub struct RocketDespin {
-    te3_recieved_at: i32,
+    te2_recieved_at: i32,
 }
 
 impl RocketDespin {
@@ -25,7 +25,7 @@ impl RocketDespin {
         // TE 3 - 30 second to powerdown - t + 347
         timing::calibrate_to(78);
         Self {
-            te3_recieved_at: t_time_estimate(),
+            te2_recieved_at: t_time_estimate(),
         }
     }
 }
@@ -36,10 +36,10 @@ impl ValidState for RocketDespin {
     }
 
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
-        if true {            
-            info!("Despin complete, entering ejection");
-            return Box::new(Ejection::default());
-        }
+        if self.te2_recieved_at + DELAY_TO_EJECT_SEC < ctx.t_time {
+            info!("Rocket despin complete, entering ejection.");
+            Box::new(Ejection::default())
+        } 
         else {
             return Box::new(Self::default());
         }

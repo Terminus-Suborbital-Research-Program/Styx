@@ -29,7 +29,7 @@ use smart_leds::{SmartLedsWrite, RGB8};
 use rtic_sync::portable_atomic::{AtomicBool, AtomicU8, Ordering};
 
 use crate::device_constants::{
-    MagnetState, ServoState, COLOR_DIM_BLUE, COLOR_DIM_GREEN, 
+    MagnetState, ServoState, RGBDriver, COLOR_DIM_BLUE, COLOR_DIM_GREEN, 
     COLOR_DIM_MAGENTA, COLOR_DIM_RED, COLOR_OFF
 };
 
@@ -40,6 +40,11 @@ static LOCAL_SERVO_STATE: AtomicU8 = AtomicU8::new(0);
 static LOCAL_RX_ALIVE: AtomicBool = AtomicBool::new(false);
 
 static STATUS_UPDATE: AtomicBool = AtomicBool::new(false);
+
+
+static EJECT: AtomicBool = AtomicBool::new(false);
+
+static WES_MODE: AtomicBool = AtomicBool::new(true);
 
 
 
@@ -83,6 +88,8 @@ pub async fn downlink_jupiter(mut ctx: downlink_jupiter::Context<'_>) {
     let config = standard();
     // Ejector lockout
     Mono::delay(40000_u64.millis()).await;
+    // Evil lack of seperation of responsibilities
+    WES_MODE.store(false, Ordering::Relaxed);
     loop {
         let packet = ctx
             .shared
@@ -122,15 +129,19 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
     }
 
     let servo = ctx.local.ejector_servo;
+    let power_servo = ctx.local.power_servo;
     let e_magnet = ctx.local.ejecctor_magnet;
 
     // Latch ejector servos closed
     servo.enable();
     servo.hold();
+    power_servo.enable();
+    power_servo.hold();
+
     LOCAL_SERVO_STATE.store(ServoState::PowerOn as u8, Ordering::Relaxed);
     LOCAL_MAGNET_STATE.store(MagnetState::Holding as u8, Ordering::Relaxed);
 
-    // let ejection_pin = ctx.local.ejection_pin;
+    let ejection_pin = ctx.local.ejection_pin;
 
     // Lockout for one minute to let JUPITER boot up
     warn!("Idling sequencer");
@@ -138,9 +149,16 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
     // ctx.local.arming_led.set_low().ok();
     info!("Sequencer unlocked, waiting for ejection signal");
 
-    ctx.local.ejection_trigger_rx.wait().await;
-    
+    // ctx.local.ejection_trigger_rx.wait().await;
+    while !(EJECT.load(Ordering::Relaxed) || ejection_pin.is_high().unwrap_or(false)) {
+        debug!("Ejector idling while waiting for ejection signal");
+        Mono::delay(100_u64.millis()).await;
+    }
 
+    
+    power_servo.power();
+
+    Mono::delay(2000_u64.millis()).await;
 
     info!("Ejecting!");
     LOCAL_SERVO_STATE.store(ServoState::Release as u8, Ordering::Relaxed);
@@ -162,11 +180,7 @@ pub async fn ejector_sequencer(mut ctx: ejector_sequencer::Context<'_>) {
 
     // Right now we don't have a pin read from jupiter, although this may be re-added later
     // Wait until ejection pin from JUPITER reads high
-    // while !ejection_pin.is_high().unwrap_or(false) {
-    //     debug!("Ejector idling while waiting for ejection signal");
-    //     Mono::delay(100_u64.millis()).await;
-    // }
-
+    
     // Give seven seconds to retract, then disable to save power
     Mono::delay(7000_u64.millis()).await;
     e_magnet.polarity_switch();
@@ -196,7 +210,10 @@ pub async fn poll_temperature(mut ctx: poll_temperature::Context<'_>) {
                 //  ctx.shared
                 // .downlink_packets
                 // .lock(|q| q.push_back(packet).ok());
-                info!("BME Packet retrieved, {:?}",packet )
+                info!("BME Packet retrieved, {:?}",packet );
+                ctx.shared
+                .downlink_packets
+                .lock(|q| q.push_back(packet).ok());
             }
             None => error!("Failed to poll bme280")
         }
@@ -246,42 +263,42 @@ pub async fn poll_rbf(mut ctx: poll_rbf::Context<'_>) {
     }
 }
 
-pub async fn write_sd_card(mut ctx: write_sd_card::Context<'_>) {
-    // f32 + u64 ; 12 bytes
-    let mut write_buf = [0u8; SCRATCH];
-    let config = standard();
+// pub async fn write_sd_card(mut ctx: write_sd_card::Context<'_>) {
+//     // f32 + u64 ; 12 bytes
+//     let mut write_buf = [0u8; SCRATCH];
+//     let config = standard();
     
-    loop {
-        let should_write = ctx.shared.temp_store.lock(|store| store.len() >= 40);
+//     loop {
+//         let should_write = ctx.shared.temp_store.lock(|store| store.len() >= 40);
 
-        if should_write {
-            let mut head: usize = 0;
+//         if should_write {
+//             let mut head: usize = 0;
 
-            for i in 0..40 {
-                let packet = ctx.shared.temp_store.lock(|store| store.pop_front());
+//             for i in 0..40 {
+//                 let packet = ctx.shared.temp_store.lock(|store| store.pop_front());
                 
-                if let Some(p) = packet {
-                    if let Ok(sz) = encode_into_slice(p, &mut write_buf[head..], config) {
-                        head += sz;
-                    }
-                } else {
-                    break; // Queue is empty earlier than expected
-                }
-            }
+//                 if let Some(p) = packet {
+//                     if let Ok(sz) = encode_into_slice(p, &mut write_buf[head..], config) {
+//                         head += sz;
+//                     }
+//                 } else {
+//                     break; // Queue is empty earlier than expected
+//                 }
+//             }
 
-            // let file_data = b"GLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\n";
+//             // let file_data = b"GLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\nGLORY BE TO RUST!\n";
 
-            if head > 0 {
-                ctx.shared.sd_card.lock(|sd_card| {
-                    info!("Writing {} byte sector to SD!", head);
-                    sd_card.write_data(EJECTOR_GAURD_FILENAME, &write_buf[..head]);
-                });
-            }
-        }
+//             if head > 0 {
+//                 ctx.shared.sd_card.lock(|sd_card| {
+//                     info!("Writing {} byte sector to SD!", head);
+//                     sd_card.write_data(EJECTOR_GAURD_FILENAME, &write_buf[..head]);
+//                 });
+//             }
+//         }
 
-        Mono::delay(1000_u64.millis()).await;
-    }
-}
+//         Mono::delay(1000_u64.millis()).await;
+//     }
+// }
 
 pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
     let jupiter_rx = ctx.local.status_link;
@@ -344,7 +361,9 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
                     bytes_used,
                 )) => {
                     info!("Ejector phase set");
-                    ctx.local.ejection_trigger_tx.write(());
+                    // ctx.local.ejection_trigger_tx.write(());
+
+                    EJECT.store(true, Ordering::Relaxed);
 
                     let remaining = idx - bytes_used;
                     if remaining > 0 {
@@ -385,11 +404,19 @@ pub async fn rx_from_jupiter(mut ctx: rx_from_jupiter::Context<'_>) {
 }
 
 pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
-    let rgb_driver = ctx.local.rgb_driver;
+    let mut rgb_driver = ctx.local.rgb_driver;
 
     let mut blink_toggle = false;
     let mut rx_timeout_counter: u8 = 0;
     let mut feed = 0;
+
+    let mut tick: u8 = 0;
+
+    while WES_MODE.load(Ordering::Relaxed) {
+        wes_mode(&mut rgb_driver, &mut tick);
+        Mono::delay(20_u64.millis()).await;
+    }
+
 
     loop {
 
@@ -414,6 +441,7 @@ pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
         if STATUS_UPDATE.load(Ordering::Relaxed) {
             feed = 0;
             STATUS_UPDATE.store(false, Ordering::Relaxed)
+            
         }
 
 
@@ -446,15 +474,55 @@ pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
 
         apply_local_states(&mut current_colors, blink_toggle, &mut rx_timeout_counter);
 
-        rgb_driver.write(current_colors.iter().cloned()).unwrap();
+        match rgb_driver.write(current_colors.iter().cloned()) {
+            Ok(res) => {},
+            Err(e) => {error!("Error Writing to the rbg leds");},
+        }
 
         blink_toggle = !blink_toggle;
         Mono::delay(1000_u64.millis()).await;
     }
 }
 
+use rp235x_hal::pio::SM0;
+use rp235x_hal::pac::PIO0;
+use rp235x_hal::gpio::{PullDown, SioOutput, FunctionPio0, bank0::Gpio24};
+use rp235x_hal::gpio::Pin;
 
+// 8 bit color wheel, 50 intensity max
+fn dim_wheel(mut pos: u8) -> RGB8 {
+    pos = 255 - pos;
+    if pos < 85 {
+        RGB8::new((255 - pos * 3) / 5, 0, (pos * 3) / 5)
+    } else if pos < 170 {
+        pos -= 85;
+        RGB8::new(0, (pos * 3) / 5, (255 - pos * 3) / 5)
+    } else {
+        pos -= 170;
+        RGB8::new((pos * 3) / 5, (255 - pos * 3) / 5, 0)
+    }
+}
 // Party Anim
+pub fn wes_mode(rgb_driver: &mut RGBDriver, tick: &mut u8) {
+    let mut current_colors = [RGB8::new(0, 0, 0); 12];
+
+    for i in 0..12 {
+        // Space the 12 LEDs evenly across the 0-255 color spectrum
+        let offset = (i * 256 / 12) as u8;
+        let pixel_pos = tick.wrapping_add(offset);
+        
+        current_colors[i] = dim_wheel(pixel_pos);
+    }
+
+    rgb_driver.write(current_colors.iter().cloned()).unwrap();
+
+    // Greater value = faster swirl
+    *tick = tick.wrapping_add(4); 
+
+    // 50 fps
+    
+}
+
 // pub async fn set_rgb_status(mut ctx: set_rgb_status::Context<'_>) {
 //     let rgb_driver = &mut ctx.local.rgb_driver; 
     

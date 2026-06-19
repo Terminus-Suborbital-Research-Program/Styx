@@ -92,6 +92,51 @@ where
     }
 }
 
+pub type PowerServoPin = gpio::bank0::Gpio5;
+pub type PowerServoPwm = rp235x_hal::pwm::Pwm2;
+pub type PowerServoSlice = Slice<PowerServoPwm, FreeRunning>;
+pub type PowerServoMosfet =
+    gpio::Pin<gpio::bank0::Gpio4, gpio::FunctionSioOutput, gpio::PullDown>;
+pub type PowerServoType = Servo<
+    Channel<PowerServoSlice, B>,
+    gpio::Pin<PowerServoPin, gpio::FunctionPwm, gpio::PullDown>,
+    PowerServoMosfet,
+>;
+
+pub static POWER_ANGLE: u16 = 40;
+pub static POWER_HOLDING_ANGLE: u16 = 130;
+
+pub struct PowerServo {
+    pub servo: PowerServoType
+}
+
+impl PowerServo {
+    pub fn new(servo: PowerServoType) -> Self {
+        Self {
+            servo
+        }
+    }
+    /// Sets the servo to the powering angle
+    pub fn power(&mut self) {
+        self.servo.set_angle(POWER_ANGLE);
+        self.servo.enable();
+    }
+
+    /// Hold the servo at the holding angle
+    pub fn hold(&mut self) {
+        self.servo.set_angle(POWER_HOLDING_ANGLE);
+        self.servo.enable();
+    }
+
+    /// Disable the servo by setting the mosfet pin low
+    pub fn disable(&mut self) {
+        self.servo.disable();
+    }
+
+    pub fn enable(&mut self) {
+        self.servo.enable();
+    }
+}
 /// Ejector servo
 pub struct EjectorServo {
     pub servo: Servo<
@@ -100,6 +145,7 @@ pub struct EjectorServo {
         EjectionServoMosfet,
     >,
 }
+
 
 impl EjectorServo {
     /// Create a new ejector servo instance

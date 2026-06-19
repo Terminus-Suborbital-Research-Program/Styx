@@ -3,7 +3,7 @@
 #![warn(missing_docs, clippy::unwrap_used)]
 
 use common_states::rbf;
-use defmt::{info, warn};
+use defmt::{info, error, warn};
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::OutputPin;
 use embedded_hal_bus::spi::ExclusiveDevice;
@@ -33,7 +33,7 @@ use smart_leds::{SmartLedsWrite, RGB8};
 // use rp235x_hal::timer::monotonic::Monotonic;
 
 use crate::actuators::electromag::{ElectroMagnet, ElectroMagnetPolarity, HBridge};
-use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, Servo};
+use crate::actuators::servo::{EjectionServoMosfet, EjectorServo, PowerServo, Servo};
 use crate::device_constants::pins::{CamMosfetPin, RBFPin};
 use crate::device_constants::{
     Cam1, Cam1Pin, Cam2, EjectionDetectionPin, JupiterUart, RGBLed, RGBStatus, ThermoI2CSclPin,
@@ -150,26 +150,26 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     //     }
     // }
 
-    let spi_mosi = bank0_pins.gpio19.into_function::<FunctionSpi>();
-    let spi_miso = bank0_pins.gpio16.into_function::<FunctionSpi>();
-    let spi_sck = bank0_pins.gpio18.into_function::<FunctionSpi>();
-    let spi_cs = bank0_pins
-        .gpio17
-        .into_push_pull_output_in_state(PinState::High);
+    // let spi_mosi = bank0_pins.gpio19.into_function::<FunctionSpi>();
+    // let spi_miso = bank0_pins.gpio16.into_function::<FunctionSpi>();
+    // let spi_sck = bank0_pins.gpio18.into_function::<FunctionSpi>();
+    // let spi_cs = bank0_pins
+    //     .gpio17
+    //     .into_push_pull_output_in_state(PinState::High);
 
-    let spi_bus =
-        rp235x_hal::spi::Spi::<_, _, _, 8>::new(ctx.device.SPI0, (spi_mosi, spi_miso, spi_sck));
+    // let spi_bus =
+    //     rp235x_hal::spi::Spi::<_, _, _, 8>::new(ctx.device.SPI0, (spi_mosi, spi_miso, spi_sck));
 
-    let spi = spi_bus.init(
-        &mut ctx.device.RESETS,
-        clocks.peripheral_clock.freq(),
-        400.kHz(), // card initialization happens at low baud rate
-        embedded_hal::spi::MODE_0,
-    );
+    // let spi = spi_bus.init(
+    //     &mut ctx.device.RESETS,
+    //     clocks.peripheral_clock.freq(),
+    //     400.kHz(), // card initialization happens at low baud rate
+    //     embedded_hal::spi::MODE_0,
+    // );
 
-    let spi = ExclusiveDevice::new(spi, spi_cs, timer.clone()).unwrap();
+    // let spi = ExclusiveDevice::new(spi, spi_cs, timer.clone()).unwrap();
 
-    let sd_card = sd_card::EjectorSdCard::new(spi, timer.clone());
+    // let sd_card = sd_card::EjectorSdCard::new(spi, timer.clone());
 
 
     // Jupiter downlink UART
@@ -212,12 +212,14 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     let mut power_mosfet_pin = bank0_pins.gpio4.into_push_pull_output();
     power_mosfet_pin.set_low().unwrap();
-    let mut channel_a = power_servo_pwm.channel_b;
-    let channel_pin = channel_a.output_to(bank0_pins.gpio5);
-    channel_a.set_enabled(true);
-    let mut power_servo = Servo::new(channel_a, channel_pin, power_mosfet_pin);
+    let mut channel_bp = power_servo_pwm.channel_b;
+    let channel_pin = channel_bp.output_to(bank0_pins.gpio5);
+    channel_bp.set_enabled(true);
+    let mut power_servo = PowerServo::new(Servo::new(channel_bp, channel_pin, power_mosfet_pin));
     power_servo.enable();
-    power_servo.set_angle(90);
+    power_servo.hold();
+    // power_servo.enable();
+    // power_servo.set_angle(40);
 
     // Add emag variables
     let emag_pin1 = bank0_pins.gpio21.into_push_pull_output();
@@ -231,7 +233,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         ElectroMagnetPolarity::Attract,
     );
 
-    let mut rbf_pin: RBFPin = bank0_pins.gpio2.into_pull_down_input();
+    let mut rbf_pin: RBFPin = bank0_pins.gpio42.into_pull_down_input();
 
     // Create ejector servo
     let mut ejector_servo: EjectorServo = EjectorServo::new(ejection_servo);
@@ -239,7 +241,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
     ejector_servo.hold();
 
     // Functionality currently not enabled
-    // let gpio_detect: EjectionDetectionPin = bank0_pins.gpio8.into_pull_down_input();
+    let gpio_detect: EjectionDetectionPin = bank0_pins.gpio38.into_pull_down_input();
 
 
     let mut rgb_wake = bank0_pins.gpio25.into_push_pull_output();
@@ -292,11 +294,10 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
         off,
     ];
 
-    rgb_driver.write(current_colors.iter().cloned()).unwrap();
-        
-
-           
-
+    match rgb_driver.write(current_colors.iter().cloned()) {
+        Ok(res) => {},
+        Err(e) => {error!("Error Writing to the rbg leds");},
+    }
     
     // let guard_i2c: GuardI2C = I2C::i2c1(
     //     ctx.device.I2C1,
@@ -330,7 +331,7 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             downlink_packets: Deque::new(),
             samples_buffer: [0u16; SAMPLE_COUNT],
             ejection_enabled: false,
-            sd_card: sd_card,
+            // sd_card: sd_card,
             status_config,
             temp_store: Deque::new(),
         },
@@ -340,8 +341,10 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             status_link,
             downlink,
             ejector_servo,
+            power_servo,
             rbf_pin: rbf_pin,
             ejecctor_magnet: ejector_magnet,
+            ejection_pin: gpio_detect,
             // arming_led: red_led_pin,
             // packet_led: packet_indicator,
             sensor_manager,

@@ -57,7 +57,7 @@ fn rbf_states_thread<T: RbfIndicator>(
     loop {
         {
             // Explicit context
-            let mut state = state.lock().unwrap();
+            let mut state = state.lock().unwrap(); //-Unwrap-
             *state = indicator.get_inhibition();
         }
         std::thread::sleep(std::time::Duration::from_millis(update_interval));

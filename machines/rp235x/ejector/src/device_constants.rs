@@ -38,10 +38,10 @@ pub mod pins {
     pub type RGBLedPin = Gpio24;
 
     /// RBF PIN
-    pub type RBFPin = Pin<Gpio2, FunctionSio<SioInput>, PullDown>;
+    pub type RBFPin = Pin<Gpio42, FunctionSio<SioInput>, PullDown>;
 
     /// Ejection detection pin
-    pub type EjectionPin = Gpio8;
+    pub type EjectionPin = Gpio38;
 
     /// UART RX
     pub type JupiterRxPin = Pin<Gpio1, FunctionUart, PullDown>;
@@ -103,6 +103,13 @@ pub type JupiterUart = UartPeripheral<Enabled, UART0, (JupiterTxPin, JupiterRxPi
 // Update these as well to match the new JupiterUart tuple order
 pub type JupiterRX = Reader<UART0, (JupiterTxPin, JupiterRxPin)>;
 pub type JupiterTX = Writer<UART0, (JupiterTxPin, JupiterRxPin)>;
+
+use ws2812_pio::Ws2812Direct;
+use rp235x_hal::pio::SM0;
+use rp235x_hal::pac::PIO0;
+use rp235x_hal::gpio::{FunctionPio0, bank0::Gpio24};
+
+pub type RGBDriver = Ws2812Direct<PIO0,SM0,Pin<Gpio24, FunctionPio0, PullDown>>;
 
 /// Samples per second of the geiger counter
 pub static SAMPLE_COUNT: usize = 100;
@@ -261,7 +268,7 @@ impl ServoState {
             ServoState::Off => COLOR_OFF,
             ServoState::PowerOn => COLOR_DIM_GREEN,
             ServoState::Release => COLOR_DIM_MAGENTA,
-            ServoState::Unknown => COLOR_OFF,
+            ServoState::Unknown => COLOR_DIM_MAGENTA,
         }
     }
 }
@@ -293,10 +300,10 @@ impl SensorI2cManager {
     pub fn new(mut bus: ThermoI2cBus, timer: Timer<CopyableTimer1>) -> Self {
         // Ids mapped from lowest id to lowest addr, and upwards
         let tc_channels = [
-            ThermocoupleChannel { id: 1, address: DeviceAddr::AD3 },
-            ThermocoupleChannel { id: 2, address: DeviceAddr::AD0 },
-            ThermocoupleChannel { id: 3, address: DeviceAddr::AD1 },
-            ThermocoupleChannel { id: 4, address: DeviceAddr::AD2 },
+            ThermocoupleChannel { id: 1, address: DeviceAddr::AD0 },
+            ThermocoupleChannel { id: 2, address: DeviceAddr::AD1 },
+            ThermocoupleChannel { id: 3, address: DeviceAddr::AD2 },
+            ThermocoupleChannel { id: 4, address: DeviceAddr::AD3 },
             ThermocoupleChannel { id: 5, address: DeviceAddr::AD7 },
         ];
 

@@ -11,19 +11,31 @@ use crate::{
 
 use crate::tasks::hardware::{ActiveHardware, BoardHardware};
 
+use std::rc::Rc;
+use std::cell::RefCell;
+use bin_packets::device::std::Device;
+use serialport::SerialPort;
+
+
 // Active hardware is an alias for atmega or gpios, whichever we are using
 pub struct StateContext {
     pub t_time: i32,
     pub ejection_pin: WritePin,
     pub hardware: ActiveHardware,
+    pub interface: Rc<RefCell<Option<Device<Box<dyn SerialPort>>>>>,
 }
 
 impl StateContext {
-    pub fn new(hardware: ActiveHardware, ejection_pin: WritePin) -> Self {
+    pub fn new(
+        hardware: ActiveHardware, 
+        ejection_pin: WritePin,
+        interface: Rc<RefCell<Option<Device<Box<dyn SerialPort>>>>>
+    ) -> Self {
         Self {
             t_time: t_time_estimate(),
             ejection_pin,
             hardware,
+            interface,
         }
     }
 }

@@ -21,6 +21,10 @@ pub struct Shutdown {
 // rely on the time since battery latch release, so implementing this way for now
 impl Shutdown {
     pub fn enter() -> Self {
+        //match Command::new(bash).arg("easter-egg/easter-egg").spawn() {
+        //    Some(_) => {},
+        //    Err(e) => {},
+        //}
         Self {
             time_since_switch: t_time_estimate(),
         }
@@ -33,11 +37,16 @@ impl ValidState for Shutdown {
     }
 
     fn next(&self, ctx: &mut StateContext) -> Box<dyn ValidState> {
-        if self.time_since_switch + DELAY_TO_SHUTDOWN < ctx.t_time {
+        if self.time_since_switch < ctx.t_time {
+            info!("Syncing filesystem to prevent corruption...");
+            let _ = Command::new("sync").status();
+
+            // Second to finish writes
+            std::thread::sleep(std::time::Duration::from_secs(1));
+
             info!("Shutting Down!");
             ctx.hardware.deactivate_latch();
 
-            // Replace with actual shutdown behavior <-- ??
             Box::new(Self::enter())
         } else {
             Box::new(self.clone())
