@@ -6,21 +6,22 @@ use fugit::RateExtU32;
 use heapless::Deque;
 use rp235x_hal::adc::AdcPin;
 use rp235x_hal::clocks::init_clocks_and_plls;
-use rp235x_hal::gpio::{FunctionI2C, FunctionI2c, FunctionSio, FunctionUart, PinState, PullNone, SioInput};
+use rp235x_hal::gpio::{
+    FunctionI2C, FunctionI2c, FunctionSio, FunctionUart, PinState, PullNone, SioInput,
+};
 use rp235x_hal::pwm::Slices;
 use rp235x_hal::uart::{DataBits, StopBits, UartConfig, UartPeripheral};
 use rp235x_hal::{Clock, Sio, Watchdog};
 use rtic_monotonics::Monotonic;
 
 use mcp9600::{
-    ADCResolution, BurstModeSamples, ColdJunctionResolution, DeviceAddr, 
-    FilterCoefficient, MCP9600, ShutdownMode, ThermocoupleType
+    ADCResolution, BurstModeSamples, ColdJunctionResolution, DeviceAddr, FilterCoefficient,
+    ShutdownMode, ThermocoupleType, MCP9600,
 };
 use rp235x_hal::i2c::I2C;
 // use rp235x_hal::timer::monotonic::Monotonic;
 
-pub const SAMPLE_COUNT :usize= 128;
-
+pub const SAMPLE_COUNT: usize = 128;
 
 use crate::device_constants::pins::{I2cScl, I2cSda, JupiterI2c};
 use crate::hal;
@@ -73,14 +74,17 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
 
     // Jupiter downlink UART
 
-    let i2csda:I2cSda = bank0_pins.gpio24.reconfigure();
-    let i2cscl:I2cScl = bank0_pins.gpio25.reconfigure();
+    let i2csda: I2cSda = bank0_pins.gpio24.reconfigure();
+    let i2cscl: I2cScl = bank0_pins.gpio25.reconfigure();
 
- 
-    let jupiter_i2c = I2C::new_peripheral_event_iterator(i2c0, i2csda, i2cscl,  &mut ctx.device.RESETS,
-        0x27 as u16);
+    let jupiter_i2c = I2C::new_peripheral_event_iterator(
+        i2c0,
+        i2csda,
+        i2cscl,
+        &mut ctx.device.RESETS,
+        0x27 as u16,
+    );
 
- 
     // SI1445 I2C
     // let guard_i2c: GuardI2C = I2C::i2c1(
     //     ctx.device.I2C1,
@@ -100,9 +104,6 @@ pub fn startup(mut ctx: init::Context<'_>) -> (Shared, Local) {
             downlink_packets: Deque::new(),
             samples_buffer: [0u16; SAMPLE_COUNT],
         },
-        Local {
-            jupiter_i2c,
-        
-        },
+        Local { jupiter_i2c },
     )
 }

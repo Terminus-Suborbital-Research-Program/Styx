@@ -3,7 +3,6 @@
 #![no_main]
 
 // Our Modules
-mod actuators;
 mod device_constants;
 mod peripherals;
 mod phases;

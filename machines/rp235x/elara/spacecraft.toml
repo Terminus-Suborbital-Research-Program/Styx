@@ -1,0 +1,19 @@
+name = "satellite"
+
+[vehicle.inertia]
+value = [
+  [0.001818313, 0.0,   0.0],
+  [0.0,   0.003719973, 0.0],
+  [0.0,   0.0,   0.00369104]
+]
+
+[control.constraints]
+max_desired_body_rate_dps = [2.5, 2.5, 2.5]
+
+[control.maneuver]
+segment_duration_s = 30.0
+zero_rate_attitude_deg = [0.0, 0.0, 0.0]
+roll_attitude_deg = [90.0, 0.0, 0.0]
+pitch_attitude_deg = [90.0, 90.0, 0.0]
+yaw_attitude_deg = [90.0, 90.0, 90.0]
+final_roll_rate_dps = 2.5

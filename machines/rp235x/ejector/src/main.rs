@@ -3,12 +3,7 @@
 #![warn(missing_docs, clippy::unwrap_used)]
 
 //! TERMINUS RS-X 2026 Elara Ejector Code
-
-//! TERMINUS RS-X 2026 Elara Ejector Code
-
 // Our Modules
-pub mod actuators;
-
 mod device_constants;
 pub mod sd_card;
 
@@ -56,14 +51,14 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
 )]
 mod app {
 
-    use crate::actuators::electromag::ElectroMagnet;
-    use crate::actuators::servo::EjectorServo;
     use crate::device_constants::pins::{CamMosfetPin, RBFPin};
     use crate::device_constants::{
         EjectionDetectionPin, JupiterRX, JupiterTX, JupiterUart, OnboardLED, RGBLed, RGBStatus,
         ThermoI2cBus, SAMPLE_COUNT,
     };
     use crate::sd_card::EjectorSdCard;
+    use actuators::electromag::ElectroMagnet;
+    use actuators::servo::Servo as EjectorServo;
 
     use super::*;
     use bin_packets::packets::ApplicationPacket;

@@ -21,12 +21,13 @@ embedded-hal = "1.0.0"
 embedded_hal_0_2 = {package = "embedded-hal", version = "0.2.7"}
 embedded-hal-async = "1.0"
 embedded-io = "0.6.1"
+actuators-lib = { package = "actuators", path = "../../../common/actuators" }
 
 # Cortex-M peripherals
 cortex-m = "0.7.7"
 # RTIC for real-time operations
 rtic = { version = "2.1.2" }
-rtic-monotonics = {version = "2.1.0", features = ["rp235x"]}
+rtic-monotonics = {version = "2.1.0", default-features = false, features = ["rp235x"]}
 
 rtic-sync = "*"
 # USB Device Support

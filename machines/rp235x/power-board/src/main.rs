@@ -2,15 +2,14 @@
 #![no_std]
 #![no_main]
 
-
 pub mod device_constants;
 pub mod startup;
 pub mod task;
 // HAL Access
-use rp235x_hal as hal;
-use rp235x_pac::interrupt;
 use crate::task::power_switch;
-use defmt_rtt as _; // global logger
+use defmt_rtt as _;
+use rp235x_hal as hal;
+use rp235x_pac::interrupt; // global logger
 
 use crate::startup::SAMPLE_COUNT;
 
@@ -43,7 +42,6 @@ pub static IMAGE_DEF: rp235x_hal::block::ImageDef = rp235x_hal::block::ImageDef:
     dispatchers = [PIO2_IRQ_0, PIO2_IRQ_1, DMA_IRQ_0],
 )]
 mod app {
-
 
     use crate::device_constants::pins::JupiterI2c;
 
@@ -87,8 +85,7 @@ mod app {
     }
 
     extern "Rust" {
-        
-        
+
         // #[task(binds = ADC_IRQ_FIFO, priority = 3, shared = [samples_buffer], local = [ counter: usize = 1])]
         // fn adc_irq(mut ctx: adc_irq::Context);
 
@@ -106,4 +103,3 @@ mod app {
         Timestamp::new(epoch_ns())
     }
 }
-
