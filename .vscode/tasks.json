@@ -37,6 +37,15 @@
                 "isDefault": true
             },
             "problemMatcher": []
+        },
+        {
+            "label": "Run Telemetry CLI",
+            "type": "shell",
+            "command": "./scripts/run-telemetry-cli",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
         }
     ]
 }
