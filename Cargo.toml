@@ -3,14 +3,17 @@ members = [
   "common/messages/bin-packets",
   "common/messages/tinyframe",
   #"common/signet",
+  # "common/actuators",
   "common/states",
   "ground/data-cli",
   "ground/gs-cli",
+  "ground/telemetry-cli",
   "machines/pi-4/munin",
   "machines/pi-5/jupiter-fsw",
   "machines/pi-5/odin-compute",
-  "machines/rp235x/ejector",
+  # "machines/rp235x/ejector",
   "machines/rp235x/elara",
+  "machines/rp235x/power-board",
   "machines/rp235x/jupiter-telemetry",
   "machines/rp235x/simple",
   "machines/rp235x/simple-async",
@@ -20,11 +23,13 @@ members = [
   "sensors/ina260", 
 ]
 default-members = [
+  # "common/actuators",
   "common/messages/bin-packets",
   "common/messages/tinyframe",
   "common/states",
   "ground/data-cli",
   "ground/gs-cli",
+  "ground/telemetry-cli",
   "machines/pi-4/munin",
   "machines/pi-5/jupiter-fsw",
   "machines/pi-5/odin-compute",
@@ -37,7 +42,7 @@ resolver = "3"
 
 [workspace.dependencies]
 bincode = {version = "2.0.1"}
-aether_core = {git = "https://github.com/AtmoPierce/aether.git", "package" = "aether_core"}
+aether_core = {path = "../aether/crates/aether_core", package = "aether_core"}
 defmt = {version = "*"}
 defmt-rtt = {version = "*"}
 heapless = {version = "*"}

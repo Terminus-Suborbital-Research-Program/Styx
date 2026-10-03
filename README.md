@@ -36,7 +36,8 @@ This repository uses a single Cargo workspace at the repository root:
 
 - `./` is the workspace root for both host and embedded crates.
 - `machines/rp235x/*` contains the embedded RP235x packages.
-- target-specific RP235x configuration lives in the root [`.cargo/config.toml`](.cargo/config.toml).
+- shared target-specific RP235x configuration lives in the root [`.cargo/config.toml`](.cargo/config.toml).
+- embedded target crates can also provide local Cargo config such as `machines/rp235x/elara/.cargo/config.toml`.
 
 # Building
 
@@ -63,6 +64,24 @@ cargo make build-all
 This runs the host build first and the RP235x build second. It does not try to make RP235x crates build with `std`.
 
 If you prefer VS Code tasks, use `Build All Targets` from the workspace root.
+
+# Telemetry CLI
+
+`machines/rp235x/elara/.cargo/config.toml` sets a default RP2350 build target. If you run the host `telemetry-cli` from that directory with plain `cargo run -p telemetry-cli`, Cargo will try to build the viewer for `thumbv8m.main-none-eabihf` and host dependencies will fail.
+
+Use the workspace-root command instead:
+
+```sh
+cargo run -p telemetry-cli -- [args...]
+```
+
+Or use the helper script at `scripts/run-telemetry-cli`, which changes to the workspace root before launching the viewer:
+
+```sh
+./scripts/run-telemetry-cli [args...]
+```
+
+Passing `--manifest-path` alone is not enough when your current shell is still inside `machines/rp235x/elara`, because Cargo still applies that directory's local `.cargo/config.toml`.
 
 # Embedded Development
 ## Installation

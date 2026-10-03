@@ -3,7 +3,7 @@
 use bincode::{Decode, Encode};
 use defmt::Format;
 
-use crate::phases::EjectorPhase;
+use crate::phases::{EjectorPhase, ElaraPhase};
 use crate::rgbstatus::RGBOptions;
 
 use serde::{Deserialize, Serialize};
@@ -13,5 +13,6 @@ pub enum CommandPacket {
     SyncTime(u32),
     Ping,
     EjectorPhaseSet(EjectorPhase),
+    ElaraPhaseSet(ElaraPhase),
     ColorSet(RGBOptions),
 }

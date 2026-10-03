@@ -16,7 +16,6 @@ heapless = { version = "0.8.0", features = ["defmt-03"] }
 serde = { version = "*", features = ["derive"], default-features = false }
 ws2812-rs = "0.3.1"
 
-
 [features]
 default = []
 std = ["bincode/std", "serde/std", "embedded-io/std"]
